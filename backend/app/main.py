@@ -8,11 +8,13 @@ app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 # CORS middleware - Allow all origins for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=settings.ALLOWED_ORIGINS if getattr(settings, 'ALLOWED_ORIGINS', None) else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+print(f"CORS allowed origins: {settings.ALLOWED_ORIGINS}")
 
 # Lazy import routes to avoid circular imports
 def include_routes():
