@@ -578,7 +578,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF2D5016), Color(0xFF3D6B1F)],
+                colors: [Color(0xFF2D5016), Color.fromARGB(255, 55, 98, 27)],
               ),
               borderRadius: BorderRadius.circular(10),
             ),
