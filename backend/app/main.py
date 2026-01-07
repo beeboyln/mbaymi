@@ -6,15 +6,20 @@ from app.config import settings
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 
 # CORS middleware - Allow all origins for development
+# Configure CORS middleware
+allow_origins_setting = settings.ALLOWED_ORIGINS if getattr(settings, 'ALLOWED_ORIGINS', None) else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS if getattr(settings, 'ALLOWED_ORIGINS', None) else ["*"],
+    allow_origins=allow_origins_setting,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-print(f"CORS allowed origins: {settings.ALLOWED_ORIGINS}")
+if allow_origins_setting == ["*"]:
+    print("CORS allowed origins: [*] (allow all origins)")
+else:
+    print(f"CORS allowed origins: {allow_origins_setting}")
 
 # Lazy import routes to avoid circular imports
 def include_routes():
