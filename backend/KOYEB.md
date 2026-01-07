@@ -43,3 +43,13 @@ docker run -e DATABASE_URL="postgresql://..." -e SECRET_KEY="..." -p 8000:8000 m
 Troubleshooting
 - If DB initialization fails, check `DATABASE_URL` and network access (do you allow incoming connections from Koyeb to your DB?).
 - If image build fails due to missing build deps, ensure `libpq-dev` is installed (the Dockerfile includes it).
+
+Procfile (Buildpack note)
+
+- If you deploy using Buildpacks (no Dockerfile), add a `Procfile` at the root of the `backend/` folder to force the correct run command. Example `backend/Procfile`:
+
+```
+web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+- Koyeb may default to `gunicorn` when no `Procfile` is present, which will fail if `gunicorn` is not installed. Adding the `Procfile` ensures the app is launched with `uvicorn`.
