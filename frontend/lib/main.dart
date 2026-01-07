@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/home_screen.dart';
 import 'package:mbaymi/screens/login_screen.dart';
 import 'package:mbaymi/screens/register_screen.dart';
@@ -7,6 +9,15 @@ import 'package:mbaymi/screens/register_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+  // Initialize intl locale data required for DateFormat with locales (e.g. 'fr_FR')
+  try {
+    await initializeDateFormatting('fr_FR');
+    Intl.defaultLocale = 'fr_FR';
+  } catch (_) {
+    // Fallback: initialize default data
+    await initializeDateFormatting();
+    // leave defaultLocale unset (will use system/default)
+  }
   runApp(const MbaymiApp());
 }
 
