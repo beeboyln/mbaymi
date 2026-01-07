@@ -1,0 +1,54 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models.user import User
+from app.schemas.schemas import UserCreate, UserResponse, UserLogin, UserLoginResponse
+from passlib.context import CryptContext
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+@router.post("/register", response_model=UserResponse)
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    # Check if user exists
+    existing_user = db.query(User).filter(User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create new user
+    new_user = User(
+        name=user.name,
+        email=user.email,
+        phone=user.phone,
+        password_hash=hash_password(user.password),
+        role=user.role,
+        region=user.region,
+        village=user.village
+    )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    return new_user
+
+@router.post("/login", response_model=UserLoginResponse)
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    
+    if not db_user or not verify_password(user.password, db_user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    return {
+        "id": db_user.id,
+        "email": db_user.email,
+        "name": db_user.name,
+        "role": db_user.role,
+        "message": "Login successful"
+    }
