@@ -253,7 +253,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w300,
-                                      color: Color(0xFF2D5016),
+                                      color: Color.fromARGB(255, 38, 68, 18),
                                       letterSpacing: -0.4,
                                     ),
                                   );
