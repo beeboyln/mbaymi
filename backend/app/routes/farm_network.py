@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
@@ -93,8 +93,8 @@ def get_farm_profile(farm_id: int, db: Session = Depends(get_db)):
 
 @router.get("/profiles/search")
 def search_farm_profiles(
-    q: Optional[str] = None,  # Recherche par nom, région, spécialité
-    specialty: Optional[str] = None,
+    q: Optional[str] = Query(None),
+    specialty: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
