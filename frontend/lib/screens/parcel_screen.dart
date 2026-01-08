@@ -328,6 +328,28 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
     }
   }
 
+  int? _toInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    return int.tryParse(v.toString());
+  }
+
+  List<dynamic> _toList(dynamic v) {
+    if (v == null) return [];
+    if (v is List<dynamic>) return v;
+    try {
+      return List<dynamic>.from(v as Iterable);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  String? _firstString(dynamic v) {
+    final l = _toList(v);
+    if (l.isEmpty) return null;
+    return l.first?.toString();
+  }
+
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -694,7 +716,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
           MaterialPageRoute(
             builder: (_) => ActivityScreen(
               farmId: widget.farmId,
-              cropId: parcel['id'] as int,
+              cropId: _toInt(parcel['id']) ?? 0,
               userId: widget.userId,
             ),
           ),
@@ -723,7 +745,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                 children: [
                   // Image with Future Builder
                   FutureBuilder<List<dynamic>>(
-                    future: ApiService.getActivitiesForCrop(parcel['id'] as int),
+                    future: ApiService.getActivitiesForCrop(_toInt(parcel['id']) ?? 0),
                     builder: (context, snap) {
                       Widget imageWidget;
                       
@@ -758,18 +780,21 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                             return db.compareTo(da);
                           });
                           final latest = withImages.first;
-                          final imgUrl = (latest['image_urls'] as List).first as String;
-                          
-                          imageWidget = ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              imgUrl,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _buildDefaultImage(isDark),
-                            ),
-                          );
+                          final imgUrl = _firstString(latest['image_urls']);
+                          if (imgUrl != null && imgUrl.isNotEmpty) {
+                            imageWidget = ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.network(
+                                imgUrl,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildDefaultImage(isDark),
+                              ),
+                            );
+                          } else {
+                            imageWidget = _buildDefaultImage(isDark);
+                          }
                         } else {
                           imageWidget = _buildDefaultImage(isDark);
                         }
@@ -852,7 +877,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                         ),
                         const SizedBox(height: 4),
                         FutureBuilder<List<dynamic>>(
-                          future: ApiService.getActivitiesForCrop(parcel['id'] as int),
+                          future: ApiService.getActivitiesForCrop(_toInt(parcel['id']) ?? 0),
                           builder: (context, actSnap) {
                             if (actSnap.connectionState == ConnectionState.waiting) {
                               return const SizedBox.shrink();
@@ -919,7 +944,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                             MaterialPageRoute(
                               builder: (_) => ActivityScreen(
                                 farmId: widget.farmId,
-                                cropId: parcel['id'] as int,
+                                cropId: _toInt(parcel['id']) ?? 0,
                                 userId: widget.userId,
                               ),
                             ),
@@ -969,7 +994,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                             MaterialPageRoute(
                               builder: (_) => ActivityScreen(
                                 farmId: widget.farmId,
-                                cropId: parcel['id'] as int,
+                                cropId: _toInt(parcel['id']) ?? 0,
                                 userId: widget.userId,
                               ),
                             ),
