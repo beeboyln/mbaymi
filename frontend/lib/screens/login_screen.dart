@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_storage.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -40,6 +41,11 @@ class _LoginScreenState extends State<LoginScreen> {
         // Extract user id from backend response and navigate to home
         final userId = result['id'] ?? result['user_id'];
         if (userId != null) {
+          // Persist user id so reloads don't log the user out
+          try {
+            final parsed = userId is int ? userId : int.tryParse(userId.toString());
+            if (parsed != null) await AuthStorage.saveUserId(parsed);
+          } catch (_) {}
           Navigator.of(context).pushReplacementNamed(
             '/home',
             arguments: userId is int ? userId : int.tryParse(userId.toString()),

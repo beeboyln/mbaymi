@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/home_screen.dart';
+import 'package:mbaymi/services/auth_storage.dart';
 import 'package:mbaymi/screens/login_screen.dart';
 import 'package:mbaymi/screens/register_screen.dart';
 
@@ -18,11 +19,16 @@ Future<void> main() async {
     await initializeDateFormatting();
     // leave defaultLocale unset (will use system/default)
   }
-  runApp(const MbaymiApp());
+
+  // Try to restore stored user id to keep user logged in after reloads
+  final storedUserId = await AuthStorage.getUserId();
+  runApp(MbaymiApp(initialUserId: storedUserId));
 }
 
 class MbaymiApp extends StatelessWidget {
-  const MbaymiApp({Key? key}) : super(key: key);
+  final int? initialUserId;
+
+  const MbaymiApp({Key? key, this.initialUserId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +39,7 @@ class MbaymiApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.light,
       ),
-      home: const HomeScreen(userId: null),
+      home: HomeScreen(userId: initialUserId),
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
           final arg = settings.arguments;
@@ -41,7 +47,7 @@ class MbaymiApp extends StatelessWidget {
           if (arg is int) userId = arg;
           if (arg is Map && arg['id'] != null) userId = arg['id'] as int;
           return MaterialPageRoute(
-            builder: (context) => HomeScreen(userId: userId),
+            builder: (context) => HomeScreen(userId: userId ?? initialUserId),
           );
         }
         return null;

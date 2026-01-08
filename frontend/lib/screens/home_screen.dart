@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_storage.dart';
 // moved: market UI moved to separate screen
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
@@ -26,13 +27,30 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isDarkMode = false;
   late final List<Widget> _screens;
 
-  bool get isLoggedIn => userId != null;
-  int? get userId => widget.userId;
+  int? _userId;
+
+  bool get isLoggedIn => _userId != null;
+  int? get userId => _userId;
 
   @override
   void initState() {
     super.initState();
-    
+    _userId = widget.userId;
+
+    // If no userId provided by route, try to restore from storage
+    if (_userId == null) {
+      AuthStorage.getUserId().then((v) {
+        if (v != null && mounted) {
+          setState(() {
+            _userId = v;
+            // rebuild screens with user context
+            _screens[0] = DashboardTab(isDarkMode: _isDarkMode, userId: _userId);
+            _screens[1] = FarmTab(isDarkMode: _isDarkMode, userId: _userId);
+          });
+        }
+      });
+    }
+
     _screens = [
       DashboardTab(isDarkMode: _isDarkMode, userId: userId),
       FarmTab(isDarkMode: _isDarkMode, userId: userId),
@@ -51,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: appBarBg,
         title: const Text(
           'Mbaymi',
@@ -83,11 +102,30 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             },
           ),
-          if (!isLoggedIn)
-            IconButton(
-              icon: Icon(Icons.person_outline, color: appBarIconColor, size: 22),
-              onPressed: () => _showAuthSheet(context),
+          // Single auth button: shows 'Se connecter' or 'Se déconnecter'
+          TextButton(
+            onPressed: () async {
+              if (isLoggedIn) {
+                // logout
+                await AuthStorage.clear();
+                if (!mounted) return;
+                setState(() {
+                  _userId = null;
+                  // rebuild screens without user
+                  _screens[0] = DashboardTab(isDarkMode: _isDarkMode, userId: null);
+                  _screens[1] = FarmTab(isDarkMode: _isDarkMode, userId: null);
+                });
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Déconnecté')));
+              } else {
+                // navigate to login
+                Navigator.of(context).pushNamed('/login');
+              }
+            },
+            child: Text(
+              isLoggedIn ? 'Se déconnecter' : 'Se connecter',
+              style: TextStyle(color: appBarIconColor, fontWeight: FontWeight.w500),
             ),
+          ),
         ],
       ),
       body: _screens[_selectedIndex],
