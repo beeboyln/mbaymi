@@ -208,6 +208,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           children: [

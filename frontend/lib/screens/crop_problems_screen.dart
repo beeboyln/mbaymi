@@ -36,6 +36,7 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : Colors.white,
         elevation: 0,

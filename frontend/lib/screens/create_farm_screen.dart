@@ -164,6 +164,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           children: [
@@ -218,7 +219,12 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  20,
+                  20,
+                  20 + MediaQuery.of(context).viewInsets.bottom,
+                ),
                 child: Form(
                   key: _formKey,
                   child: Column(
