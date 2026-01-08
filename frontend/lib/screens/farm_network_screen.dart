@@ -13,6 +13,7 @@ class FarmNetworkScreen extends StatefulWidget {
 
 class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
   late Future<List<dynamic>> _feedFuture;
+  late Future<List<dynamic>> _publicFarmsFuture;
   int _userId = 0;
 
   @override
@@ -26,6 +27,7 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
     _feedFuture = _userId > 0 
         ? ApiService.getFarmFeed(_userId)
         : Future.value([]);
+    _publicFarmsFuture = ApiService.getPublicFarms();
   }
 
   @override
@@ -57,6 +59,7 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
               onRefresh: () async {
                 setState(() {
                   _feedFuture = ApiService.getFarmFeed(_userId);
+                  _publicFarmsFuture = ApiService.getPublicFarms();
                 });
               },
               child: FutureBuilder<List<dynamic>>(
@@ -85,40 +88,75 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                   final posts = snapshot.data ?? [];
 
                   if (posts.isEmpty) {
-                    return Center(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                    // Afficher les fermes publiques à découvrir
+                    return FutureBuilder<List<dynamic>>(
+                      future: _publicFarmsFuture,
+                      builder: (context, farmSnap) {
+                        final publicFarms = farmSnap.data ?? [];
+                        
+                        if (publicFarms.isEmpty) {
+                          return Center(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.grass_outlined, size: 48, color: const Color(0xFF6B8E23)),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Aucune publication pour le moment',
+                                    style: TextStyle(
+                                      color: widget.isDarkMode ? Colors.white : Colors.black87,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Commencez à suivre des fermes',
+                                    style: TextStyle(
+                                      color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  ElevatedButton.icon(
+                                    onPressed: () => _showSearchDialog(),
+                                    icon: const Icon(Icons.search),
+                                    label: const Text('Découvrir des fermes'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF6B8E23),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView(
+                          padding: const EdgeInsets.all(12),
                           children: [
-                            Icon(Icons.grass_outlined, size: 48, color: const Color(0xFF6B8E23)),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Aucune publication pour le moment',
-                              style: TextStyle(
-                                color: widget.isDarkMode ? Colors.white : Colors.black87,
-                                fontSize: 16,
+                            // En-tête "Fermes à découvrir"
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(0, 12, 0, 16),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.explore_outlined, color: Color(0xFF6B8E23), size: 24),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '🌾 Fermes à découvrir',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: widget.isDarkMode ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Commencez à suivre des fermes',
-                              style: TextStyle(
-                                color: widget.isDarkMode ? Colors.white60 : Colors.black45,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            ElevatedButton.icon(
-                              onPressed: () => _showSearchDialog(),
-                              icon: const Icon(Icons.search),
-                              label: const Text('Découvrir des fermes'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF6B8E23),
-                              ),
-                            ),
+                            ...publicFarms.map((farm) => _buildPublicFarmCard(farm)).toList(),
                           ],
-                        ),
-                      ),
+                        );
+                      },
                     );
                   }
 
@@ -160,6 +198,187 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
             child: const Text('Se connecter', style: TextStyle(color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPublicFarmCard(dynamic farm) {
+    final farmName = farm['farm_name'] as String? ?? 'Ferme';
+    final ownerName = farm['owner_name'] as String? ?? 'Agriculteur';
+    final location = farm['location'] as String? ?? 'Localisation inconnue';
+    final description = farm['description'] as String? ?? '';
+    final specialties = (farm['specialties'] as List?)?.cast<String>() ?? [];
+    final followers = farm['followers'] as int? ?? 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: widget.isDarkMode ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // En-tête
+            Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6B8E23).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.agriculture, color: Color(0xFF6B8E23), size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        farmName,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: widget.isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      Text(
+                        'par $ownerName',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Localisation
+            Row(
+              children: [
+                Icon(Icons.location_on_outlined, size: 14, color: const Color(0xFF6B8E23)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    location,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Description
+            if (description.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+                    height: 1.4,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+
+            // Spécialités
+            if (specialties.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: specialties.take(3).map((spec) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6B8E23).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        spec.trim(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6B8E23),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+
+            // Boutons
+            Row(
+              children: [
+                Icon(Icons.people_outline, size: 14, color: widget.isDarkMode ? Colors.white60 : Colors.black45),
+                const SizedBox(width: 4),
+                Text(
+                  '$followers abonné${followers > 1 ? 's' : ''}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                  ),
+                ),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      await ApiService.followFarm(
+                        farmId: farm['farm_id'] as int,
+                        userId: _userId,
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✅ Vous suivez maintenant cette ferme'),
+                            backgroundColor: Color(0xFF6B8E23),
+                          ),
+                        );
+                        // Rafraîchir le feed
+                        setState(() {
+                          _feedFuture = ApiService.getFarmFeed(_userId);
+                        });
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erreur: $e')),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6B8E23),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  ),
+                  child: const Text(
+                    'Suivre',
+                    style: TextStyle(fontSize: 12, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

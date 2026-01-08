@@ -348,3 +348,38 @@ def get_user_following(user_id: int, db: Session = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+@router.get("/public-farms")
+def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    """
+    🌾 Récupérer les fermes publiques (à découvrir).
+    
+    Affiche les fermes qui ont été rendues publiques par leurs propriétaires.
+    """
+    try:
+        profiles = db.query(FarmProfile, Farm, User)\
+            .join(Farm)\
+            .join(User, Farm.user_id == User.id)\
+            .filter(FarmProfile.is_public == True)\
+            .order_by(FarmProfile.created_at.desc())\
+            .offset(skip)\
+            .limit(limit)\
+            .all()
+        
+        return {
+            "count": len(profiles),
+            "farms": [
+                {
+                    "farm_id": p.Farm.id,
+                    "farm_name": p.Farm.name,
+                    "location": p.Farm.location,
+                    "owner_name": p.User.name,
+                    "description": p.FarmProfile.description,
+                    "specialties": p.FarmProfile.specialties.split(",") if p.FarmProfile.specialties else [],
+                    "followers": p.FarmProfile.total_followers,
+                }
+                for p, farm, user in profiles
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")

@@ -1121,4 +1121,24 @@ class ApiService {
       throw Exception('Error toggling visibility: $e');
     }
   }
+
+  static Future<List<dynamic>> getPublicFarms({int skip = 0, int limit = 10}) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farm-network/public-farms?skip=$skip&limit=$limit'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['farms'] as List;
+        } else {
+          throw Exception('Failed to get public farms');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting public farms: $e');
+    }
+  }
 }
