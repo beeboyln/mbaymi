@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -27,18 +28,17 @@ Future<void> main() async {
   // Global error handling so uncaught Flutter errors are logged in console
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.dumpErrorToConsole(details);
+    debugPrint('🔥 FlutterError: ${details.exception}');
+    if (details.stack != null) debugPrint(details.stack.toString());
   };
 
   // Run the app inside a guarded zone to catch uncaught async errors
   runZonedGuarded(() {
     runApp(MbaymiApp(initialUserId: storedUserId));
   }, (error, stack) {
-    // You can send this to analytics or remote logging if desired
-    // For now, print to console so it's visible in production logs
-    // ignore: avoid_print
-    print('Uncaught zone error: $error');
-    // ignore: avoid_print
-    print(stack);
+    // Log uncaught async/zone errors
+    debugPrint('💥 ZONE ERROR: $error');
+    debugPrint(stack.toString());
   });
 }
 

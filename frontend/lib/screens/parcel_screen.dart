@@ -23,6 +23,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
+    debugPrint('🟢 initState ParcelScreen (farmId=${widget.farmId})');
     _parcelsFuture = ApiService.getFarmCrops(widget.farmId);
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -37,14 +38,17 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    debugPrint('🔴 dispose ParcelScreen (farmId=${widget.farmId})');
     _animationController.dispose();
     super.dispose();
   }
 
   Future<void> _refresh() async {
+    debugPrint('➡️ _refresh START (farmId=${widget.farmId})');
     setState(() {
       _parcelsFuture = ApiService.getFarmCrops(widget.farmId);
     });
+    debugPrint('✅ _refresh scheduled');
   }
 
   void _showAddParcel() {
@@ -307,21 +311,27 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
   Future<void> _addFarmPhotos() async {
     HapticFeedback.mediumImpact();
     final picker = ImagePicker();
+    debugPrint('➡️ _addFarmPhotos START');
     final picked = await picker.pickMultiImage(maxWidth: 1600);
     if (picked.isEmpty) return;
     
     setState(() => _loadingPhotos = true);
     try {
       for (final file in picked) {
+        debugPrint('📡 upload START for ${file.name}');
         final url = await ApiService.uploadImageToCloudinary(file);
+        debugPrint('📡 upload DONE for ${file.name} -> $url');
         if (url != null) {
+          debugPrint('📡 addFarmPhoto START -> $url');
           await ApiService.addFarmPhoto(farmId: widget.farmId, imageUrl: url);
+          debugPrint('📡 addFarmPhoto DONE -> $url');
         }
       }
       if (!mounted) return;
       _showSuccessSnackBar('${picked.length} photo(s) ajoutée(s)');
       _refresh();
     } catch (e) {
+      debugPrint('❌ _addFarmPhotos ERROR: $e');
       _showErrorSnackBar('Erreur: $e');
     } finally {
       if (mounted) setState(() => _loadingPhotos = false);
