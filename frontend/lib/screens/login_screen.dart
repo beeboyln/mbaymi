@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
-import 'package:mbaymi/services/auth_storage.dart';
+import 'package:mbaymi/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -38,21 +38,31 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (mounted) {
-        // Extract user id from backend response and navigate to home
         final userId = result['id'] ?? result['user_id'];
         if (userId != null) {
-          // Persist user id so reloads don't log the user out
-          try {
-            final parsed = userId is int ? userId : int.tryParse(userId.toString());
-            if (parsed != null) await AuthStorage.saveUserId(parsed);
-          } catch (_) {}
-          Navigator.of(context).pushReplacementNamed(
-            '/home',
-            arguments: userId is int ? userId : int.tryParse(userId.toString()),
-          );
+          final parsedId = userId is int ? userId : int.tryParse(userId.toString());
+          if (parsedId != null) {
+            // Save session to localStorage via AuthService
+            final email = _emailController.text.isNotEmpty ? _emailController.text : 'user@example.com';
+            final name = result['name'] as String? ?? 'User';
+            final role = result['role'] as String? ?? 'farmer';
+            
+            await AuthService.login(
+              userId: parsedId,
+              email: email,
+              name: name,
+              role: role,
+            );
+            Navigator.of(context).pushReplacementNamed('/home', arguments: parsedId);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Erreur: ID utilisateur invalide')),
+            );
+          }
         } else {
-          // fallback: navigate without id
-          Navigator.of(context).pushReplacementNamed('/home');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Erreur: Pas d\'ID utilisateur retourné')),
+          );
         }
       }
     } catch (e) {

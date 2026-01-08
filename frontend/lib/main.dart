@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/home_screen.dart';
 import 'package:mbaymi/services/auth_storage.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/login_screen.dart';
 import 'package:mbaymi/screens/register_screen.dart';
 
@@ -25,8 +26,9 @@ Future<void> main() async {
       // leave defaultLocale unset (will use system/default)
     }
 
-    // Try to restore stored user id to keep user logged in after reloads
-    final storedUserId = await AuthStorage.getUserId();
+    // Restore session from localStorage (JWT style persistence)
+    debugPrint('🔄 Restoring session from localStorage...');
+    await AuthService.restoreSession();
 
     // Global error handling so uncaught Flutter errors are logged in console
     FlutterError.onError = (FlutterErrorDetails details) {
@@ -35,7 +37,7 @@ Future<void> main() async {
       if (details.stack != null) debugPrint(details.stack.toString());
     };
 
-    runApp(MbaymiApp(initialUserId: storedUserId));
+    runApp(const MbaymiApp());
   }, (error, stack) {
     // Log uncaught async/zone errors
     debugPrint('💥 ZONE ERROR: $error');
@@ -44,12 +46,13 @@ Future<void> main() async {
 }
 
 class MbaymiApp extends StatelessWidget {
-  final int? initialUserId;
-
-  const MbaymiApp({Key? key, this.initialUserId}) : super(key: key);
+  const MbaymiApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Decide home screen based on session (no need for initialUserId parameter)
+    final initialUserId = AuthService.currentSession?.userId;
+
     return MaterialApp(
       title: 'Mbaymi',
       theme: ThemeData(

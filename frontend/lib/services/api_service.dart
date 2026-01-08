@@ -1,15 +1,77 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/models/market_model.dart';
 import 'package:mbaymi/models/news_model.dart';
+import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/services/token_storage.dart';
 
 class ApiService {
   // For local development on Windows/Web: use localhost
   // For Android Emulator: use 'http://10.0.2.2:8000/api'
   // Read from .env (API_BASE_URL) if provided; otherwise default to localhost
   static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000/api';
+
+  /// Helper: Get auth headers with access token.
+  static Future<Map<String, String>> _getAuthHeaders() async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    final accessToken = await TokenStorage.getAccessToken();
+    if (accessToken != null && accessToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $accessToken';
+    }
+    return headers;
+  }
+
+  /// Helper: Handle 401 by refreshing token and retrying request.
+  static Future<http.Response> _handleUnauthorized(
+    Future<http.Response> Function(Map<String, String>) requestFn,
+  ) async {
+    debugPrint('⚠️ Got 401, attempting token refresh...');
+    final refreshToken = await TokenStorage.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) {
+      // No refresh token, user must log in again
+      await AuthService.logout();
+      throw Exception('Session expired. Please log in again.');
+    }
+
+    try {
+      // Call refresh endpoint
+      final refreshResponse = await http.post(
+        Uri.parse('$baseUrl/auth/refresh'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refresh_token': refreshToken}),
+      );
+
+      if (refreshResponse.statusCode == 200) {
+        final refreshData = jsonDecode(refreshResponse.body);
+        final newAccessToken = refreshData['access_token'] as String?;
+        if (newAccessToken != null && newAccessToken.isNotEmpty) {
+          // Save new access token
+          await TokenStorage.saveTokens(
+            accessToken: newAccessToken,
+            refreshToken: refreshToken,
+            userId: AuthService.currentSession?.userId ?? 0,
+            userEmail: AuthService.currentSession?.email ?? '',
+          );
+          debugPrint('✅ Token refreshed successfully');
+          
+          // Retry original request with new token
+          final headers = await _getAuthHeaders();
+          return await requestFn(headers);
+        }
+      }
+      // Refresh failed
+      await AuthService.logout();
+      throw Exception('Failed to refresh session. Please log in again.');
+    } catch (e) {
+      debugPrint('❌ Token refresh error: $e');
+      await AuthService.logout();
+      rethrow;
+    }
+  }
+
 
   static Future<Map<String, dynamic>> register({
     required String name,
@@ -282,15 +344,26 @@ class ApiService {
 
   static Future<List<dynamic>> getFarmCrops(int farmId) async {
     try {
-      final response = await http.get(
+      final headers = await _getAuthHeaders();
+      var response = await http.get(
         Uri.parse('$baseUrl/farms/$farmId/crops'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
       );
+
+      // Handle 401 with token refresh and retry
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(
+            Uri.parse('$baseUrl/farms/$farmId/crops'),
+            headers: newHeaders,
+          );
+        });
+      }
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as List;
       } else {
-        throw Exception('Failed to get farm crops');
+        throw Exception('Failed to get farm crops: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error getting farm crops: $e');
