@@ -15,7 +15,7 @@ class CreateFarmScreen extends StatefulWidget {
   State<CreateFarmScreen> createState() => _CreateFarmScreenState();
 }
 
-class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerProviderStateMixin {
+class _CreateFarmScreenState extends State<CreateFarmScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _regionCtrl = TextEditingController();
@@ -23,39 +23,30 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
   final TextEditingController _communeCtrl = TextEditingController();
   final TextEditingController _descCtrl = TextEditingController();
   final TextEditingController _sizeCtrl = TextEditingController();
-  String _type = '🌱 Agricole';
+  String _type = 'Agricole';
   String? _location;
   XFile? _imageFile;
   Uint8List? _imageBytes;
   bool _loading = false;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
 
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
-    _animationController.forward();
-  }
+  // Palette de couleurs marron moderne
+  static const Color _primaryColor = Color(0xFF8B6B4D);
+  static const Color _primaryLight = Color(0xFFA58A6D);
+  static const Color _primaryDark = Color(0xFF5D4730);
+  static const Color _accentColor = Color(0xFFC4A484);
+  static const Color _bgLight = Color(0xFFFAF8F5);
+  static const Color _bgDark = Color(0xFF121212);
+  static const Color _cardLight = Colors.white;
+  static const Color _cardDark = Color(0xFF1E1E1E);
+  static const Color _borderLight = Color(0xFFE8E2D8);
+  static const Color _borderDark = Color(0xFF2C2C2C);
+  static const Color _textLight = Color(0xFF1A1A1A);
+  static const Color _textDark = Colors.white;
+  static const Color _textSecondaryLight = Color(0xFF6B6B6B);
+  static const Color _textSecondaryDark = Color(0xFF8E8E93);
 
   @override
   void dispose() {
-    _animationController.dispose();
     _nameCtrl.dispose();
     _regionCtrl.dispose();
     _departmentCtrl.dispose();
@@ -139,17 +130,10 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: const Color(0xFF34C759),
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w300)),
+        backgroundColor: const Color(0xFF8B6B4D),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -157,17 +141,10 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_rounded, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: const Color(0xFFFF3B30),
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w300)),
+        backgroundColor: Colors.red.shade400,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -175,269 +152,186 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0F0F0F) : const Color(0xFFFAFAFA);
-    final cardColor = isDark ? const Color(0xFF1C1C1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
-    final secondaryTextColor = isDark ? const Color(0xFF8E8E93) : const Color(0xFF6B6B6B);
-    final borderColor = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5E5);
+    final bgColor = isDark ? _bgDark : _bgLight;
+    final cardColor = isDark ? _cardDark : _cardLight;
+    final textColor = isDark ? _textDark : _textLight;
+    final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
+    final borderColor = isDark ? _borderDark : _borderLight;
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: Stack(
-        children: [
-          // Gradient Background
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 300,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF2D5016),
-                    const Color(0xFF3D6B1F).withOpacity(0.8),
-                    bgColor,
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header minimaliste
+            Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 12,
+                bottom: 12,
               ),
-            ),
-          ),
-          
-          // Content
-          SafeArea(
-            child: Column(
-              children: [
-                // Custom App Bar
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Text(
-                          'Créer une ferme',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w300,
-                            color: Colors.white,
-                            letterSpacing: -0.8,
-                          ),
-                        ),
-                      ),
-                    ],
+              decoration: BoxDecoration(
+                color: cardColor,
+                border: Border(
+                  bottom: BorderSide(
+                    color: borderColor,
+                    width: 1,
                   ),
                 ),
-
-                // Form Container
-                Expanded(
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.all(20),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Hero Image Section
-                              _buildImageSection(cardColor, borderColor),
-                              const SizedBox(height: 32),
-
-                              // Basic Info Section
-                              _buildSectionHeader('Informations de base', Icons.info_outline_rounded, textColor),
-                              const SizedBox(height: 16),
-                              _buildModernTextField(
-                                controller: _nameCtrl,
-                                label: 'Nom de la ferme',
-                                hint: 'Ex: Ferme Keur Moussa',
-                                icon: Icons.agriculture_rounded,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                secondaryTextColor: secondaryTextColor,
-                                borderColor: borderColor,
-                                validator: (v) => (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildFarmTypeSelector(cardColor, textColor, borderColor),
-                              const SizedBox(height: 16),
-                              _buildModernTextField(
-                                controller: _sizeCtrl,
-                                label: 'Superficie',
-                                hint: 'Hectares',
-                                icon: Icons.square_foot_rounded,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                secondaryTextColor: secondaryTextColor,
-                                borderColor: borderColor,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                              const SizedBox(height: 32),
-
-                              // Location Section
-                              _buildSectionHeader('Localisation', Icons.location_on_outlined, textColor),
-                              const SizedBox(height: 16),
-                              _buildModernTextField(
-                                controller: _regionCtrl,
-                                label: 'Région',
-                                hint: 'Ex: Thiès',
-                                icon: Icons.map_outlined,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                secondaryTextColor: secondaryTextColor,
-                                borderColor: borderColor,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildModernTextField(
-                                controller: _departmentCtrl,
-                                label: 'Département',
-                                hint: 'Ex: Mbour',
-                                icon: Icons.flag_outlined,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                secondaryTextColor: secondaryTextColor,
-                                borderColor: borderColor,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildModernTextField(
-                                controller: _communeCtrl,
-                                label: 'Commune / Village',
-                                hint: 'Ex: Saly',
-                                icon: Icons.home_work_outlined,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                secondaryTextColor: secondaryTextColor,
-                                borderColor: borderColor,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildMapSelector(cardColor, textColor, secondaryTextColor, borderColor),
-                              const SizedBox(height: 32),
-
-                              // Description Section
-                              _buildSectionHeader('Description', Icons.description_outlined, textColor),
-                              const SizedBox(height: 16),
-                              _buildModernTextField(
-                                controller: _descCtrl,
-                                label: 'Description',
-                                hint: 'Décrivez votre ferme...',
-                                icon: Icons.edit_note_rounded,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                secondaryTextColor: secondaryTextColor,
-                                borderColor: borderColor,
-                                maxLines: 4,
-                              ),
-                              const SizedBox(height: 40),
-
-                              // Submit Button
-                              _buildSubmitButton(textColor),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                        ),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.pop(context);
+                    },
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: secondaryTextColor,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Text(
+                      'Créer une ferme',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w300,
+                        color: textColor,
+                        letterSpacing: -0.8,
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Loading Overlay
-          if (_loading)
-            Container(
-              color: Colors.black.withOpacity(0.5),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 24,
-                        spreadRadius: -4,
-                      ),
-                    ],
-                  ),
+            // Formulaire
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: Color(0xFF2D5016),
+                      // Photo de la ferme
+                      _buildImageSection(cardColor, borderColor),
+                      const SizedBox(height: 32),
+
+                      // Informations de base
+                      _buildSectionTitle('Informations de base'),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _nameCtrl,
+                        label: 'Nom de la ferme',
+                        hint: 'Ex: Ferme Keur Moussa',
+                        icon: Icons.agriculture_outlined,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        secondaryTextColor: secondaryTextColor,
+                        borderColor: borderColor,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
                       ),
+                      const SizedBox(height: 16),
+                      _buildTypeSelector(cardColor, textColor, borderColor),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _sizeCtrl,
+                        label: 'Superficie',
+                        hint: 'Hectares',
+                        icon: Icons.square_foot_outlined,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        secondaryTextColor: secondaryTextColor,
+                        borderColor: borderColor,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Localisation
+                      _buildSectionTitle('Localisation'),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _regionCtrl,
+                        label: 'Région',
+                        hint: 'Ex: Thiès',
+                        icon: Icons.location_on_outlined,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        secondaryTextColor: secondaryTextColor,
+                        borderColor: borderColor,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _departmentCtrl,
+                        label: 'Département',
+                        hint: 'Ex: Mbour',
+                        icon: Icons.map_outlined,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        secondaryTextColor: secondaryTextColor,
+                        borderColor: borderColor,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _communeCtrl,
+                        label: 'Commune / Village',
+                        hint: 'Ex: Saly',
+                        icon: Icons.home_outlined,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        secondaryTextColor: secondaryTextColor,
+                        borderColor: borderColor,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildMapSelector(cardColor, textColor, secondaryTextColor, borderColor),
+                      const SizedBox(height: 32),
+
+                      // Description
+                      _buildSectionTitle('Description'),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _descCtrl,
+                        label: 'Description',
+                        hint: 'Décrivez votre ferme...',
+                        icon: Icons.text_snippet_outlined,
+                        cardColor: cardColor,
+                        textColor: textColor,
+                        secondaryTextColor: secondaryTextColor,
+                        borderColor: borderColor,
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 40),
+
+                      // Bouton de soumission
+                      _buildSubmitButton(),
                       const SizedBox(height: 20),
-                      Text(
-                        'Création en cours...',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w300,
-                          color: textColor,
-                        ),
-                      ),
                     ],
                   ),
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon, Color textColor) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2D5016), Color(0xFF3D6B1F)],
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w300,
-            color: textColor,
-            letterSpacing: -0.5,
-          ),
-        ),
-      ],
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w400,
+        color: _primaryDark,
+        letterSpacing: -0.3,
+      ),
     );
   }
 
@@ -445,45 +339,28 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
     return GestureDetector(
       onTap: _pickImage,
       child: Container(
-        height: 220,
+        height: 200,
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: borderColor, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-              spreadRadius: -2,
-            ),
-          ],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor, width: 1),
         ),
         child: _imageBytes == null
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2D5016), Color(0xFF3D6B1F)],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.add_photo_alternate_rounded,
-                      color: Colors.white,
-                      size: 40,
-                    ),
+                  Icon(
+                    Icons.add_photo_alternate_outlined,
+                    size: 40,
+                    color: _primaryLight,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  const SizedBox(height: 12),
+                  Text(
                     'Ajouter une photo',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w300,
-                      color: Color(0xFF2D5016),
+                      color: _primaryColor,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -491,7 +368,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
                     'Touchez pour sélectionner',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey.shade600,
+                      color: _primaryLight,
+                      fontWeight: FontWeight.w300,
                     ),
                   ),
                 ],
@@ -499,7 +377,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
             : Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(11),
                     child: Image.memory(
                       _imageBytes!,
                       width: double.infinity,
@@ -511,15 +389,15 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
                     top: 12,
                     right: 12,
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        shape: BoxShape.circle,
+                        color: Colors.black.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
-                        Icons.edit_rounded,
+                      child: Icon(
+                        Icons.edit_outlined,
                         color: Colors.white,
-                        size: 20,
+                        size: 18,
                       ),
                     ),
                   ),
@@ -529,7 +407,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildModernTextField({
+  Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required String hint,
@@ -545,15 +423,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: TextFormField(
         controller: controller,
@@ -568,22 +439,15 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          hintStyle: TextStyle(color: secondaryTextColor.withOpacity(0.5)),
-          labelStyle: TextStyle(
+          hintStyle: TextStyle(
             color: secondaryTextColor,
             fontWeight: FontWeight.w300,
           ),
-          prefixIcon: Container(
-            margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2D5016), Color.fromARGB(255, 55, 98, 27)],
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: Colors.white, size: 20),
+          labelStyle: TextStyle(
+            color: secondaryTextColor,
+            fontWeight: FontWeight.w400,
           ),
+          prefixIcon: Icon(icon, color: _primaryColor, size: 20),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
@@ -591,27 +455,24 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildFarmTypeSelector(Color cardColor, Color textColor, Color borderColor) {
+  Widget _buildTypeSelector(Color cardColor, Color textColor, Color borderColor) {
     final types = [
-      {'emoji': '🌱', 'label': 'Agricole', 'value': '🌱 Agricole'},
-      {'emoji': '🐄', 'label': 'Élevage', 'value': '🐄 Élevage'},
-      {'emoji': '🌾', 'label': 'Mixte', 'value': '🌾 Mixte'},
+      {'icon': Icons.grass_outlined, 'label': 'Agricole', 'value': 'Agricole'},
+      {'icon': Icons.agriculture_outlined, 'label': 'Élevage', 'value': 'Élevage'},
+      {'icon': Icons.forest_outlined, 'label': 'Mixte', 'value': 'Mixte'},
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            'Type de ferme',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w300,
-              color: textColor.withOpacity(0.7),
-            ),
+        Text(
+          'Type de ferme',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
           ),
         ),
+        const SizedBox(height: 8),
         Row(
           children: types.map((type) {
             final isSelected = _type == type['value'];
@@ -623,35 +484,23 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
                 },
                 child: Container(
                   margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF2D5016)
-                        : cardColor,
-                    borderRadius: BorderRadius.circular(16),
+                    color: isSelected ? _primaryColor : cardColor,
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isSelected
-                          ? const Color(0xFF2D5016)
-                          : borderColor,
-                      width: isSelected ? 2 : 1,
+                      color: isSelected ? _primaryColor : borderColor,
+                      width: 1,
                     ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFF2D5016).withOpacity(0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : null,
                   ),
                   child: Column(
                     children: [
-                      Text(
-                        type['emoji'] as String,
-                        style: const TextStyle(fontSize: 28),
+                      Icon(
+                        type['icon'] as IconData,
+                        color: isSelected ? Colors.white : _primaryColor,
+                        size: 20,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         type['label'] as String,
                         style: TextStyle(
@@ -675,38 +524,24 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
     return GestureDetector(
       onTap: _pickLocation,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: _location != null ? const Color(0xFF34C759) : borderColor,
-            width: _location != null ? 2 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 1),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _location != null
-                      ? [const Color(0xFF34C759), const Color(0xFF30D158)]
-                      : [const Color(0xFF2D5016), const Color(0xFF3D6B1F)],
-                ),
-                borderRadius: BorderRadius.circular(12),
+                color: _location != null ? _primaryColor : _primaryLight.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                _location != null ? Icons.check_circle_rounded : Icons.map_outlined,
-                color: Colors.white,
-                size: 24,
+                Icons.map_outlined,
+                color: _location != null ? Colors.white : _primaryColor,
+                size: 20,
               ),
             ),
             const SizedBox(width: 16),
@@ -717,16 +552,17 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
                   Text(
                     _location != null ? 'Localisation définie' : 'Définir sur la carte',
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w300,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
                       color: textColor,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
-                    _location ?? 'Touchez pour ouvrir la carte',
+                    _location ?? 'Sélectionner un emplacement',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w300,
                       color: secondaryTextColor,
                     ),
                     maxLines: 1,
@@ -746,54 +582,48 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildSubmitButton(Color textColor) {
+  Widget _buildSubmitButton() {
     return Container(
       width: double.infinity,
-      height: 56,
+      height: 52,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2D5016), Color(0xFF3D6B1F), Color(0xFF4A7F26)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2D5016).withOpacity(0.4),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-            spreadRadius: -2,
-          ),
-        ],
+        color: _primaryColor,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: _loading ? null : _submit,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (!_loading) ...[
-                  const Icon(
-                    Icons.add_circle_rounded,
-                    color: Colors.white,
-                    size: 24,
+            child: _loading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_circle_outline,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Créer la ferme',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w300,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                ],
-                Text(
-                  _loading ? 'Création en cours...' : 'Créer la ferme',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w300,
-                    color: Colors.white,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),

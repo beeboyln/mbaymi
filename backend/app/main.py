@@ -5,21 +5,18 @@ from app.config import settings
 # Initialize app
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 
-# CORS middleware - Allow all origins for development
-# Configure CORS middleware
-allow_origins_setting = settings.ALLOWED_ORIGINS if getattr(settings, 'ALLOWED_ORIGINS', None) else ["*"]
+# CORS middleware - Stable regex-based config (no intermittent failures)
+# ✅ Handles Vercel, Koyeb, localhost, custom domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allow_origins_setting,
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.koyeb\.app|http://localhost:\d+|https://mbaymi\.com|https://.*\.mbaymi\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-if allow_origins_setting == ["*"]:
-    print("CORS allowed origins: [*] (allow all origins)")
-else:
-    print(f"CORS allowed origins: {allow_origins_setting}")
+print("✅ CORS configured with regex (production-ready)")
+print("   Allows: *.vercel.app, *.koyeb.app, localhost:*, mbaymi.com")
 
 # Lazy import routes to avoid circular imports
 def include_routes():

@@ -10,53 +10,74 @@ class ActivityScreen extends StatefulWidget {
   final int cropId;
   final int userId;
 
-  const ActivityScreen({Key? key, required this.farmId, required this.cropId, required this.userId}) : super(key: key);
+  const ActivityScreen({
+    Key? key,
+    required this.farmId,
+    required this.cropId,
+    required this.userId,
+  }) : super(key: key);
 
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();
 }
 
-class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProviderStateMixin {
-  final _typeCtrl = TextEditingController();
-  final _notesCtrl = TextEditingController();
+class _ActivityScreenState extends State<ActivityScreen> {
+  final TextEditingController _typeCtrl = TextEditingController();
+  final TextEditingController _notesCtrl = TextEditingController();
   DateTime? _date;
   bool _loading = false;
-  List<XFile> _imageFiles = [];
-  List<Uint8List> _imageBytes = [];
+  final List<XFile> _imageFiles = [];
+  final List<Uint8List> _imageBytes = [];
   late Future<List<dynamic>> _activitiesFuture;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
   String _selectedActivityType = '';
+  bool _showAddActivityForm = false;
 
-  final List<Map<String, dynamic>> _activityTypes = [
-    {'icon': '🌱', 'label': 'Semis', 'value': 'Semis', 'color': Color(0xFF34C759)},
-    {'icon': '💧', 'label': 'Arrosage', 'value': 'Arrosage', 'color': Color(0xFF30B0C7)},
-    {'icon': '🌿', 'label': 'Fertilisation', 'value': 'Fertilisation', 'color': Color(0xFF32ADE6)},
-    {'icon': '✂️', 'label': 'Taille', 'value': 'Taille', 'color': Color(0xFFFF9500)},
-    {'icon': '🐛', 'label': 'Traitement', 'value': 'Traitement', 'color': Color(0xFFFF3B30)},
-    {'icon': '🌾', 'label': 'Récolte', 'value': 'Récolte', 'color': Color(0xFFFFD60A)},
-    {'icon': '🚜', 'label': 'Labour', 'value': 'Labour', 'color': Color(0xFF8E8E93)},
-    {'icon': '📝', 'label': 'Autre', 'value': 'Autre', 'color': Color(0xFF5856D6)},
-  ];
+  // Palette de couleurs marron moderne
+  static const Color _primaryColor = Color(0xFF8B6B4D);
+  static const Color _primaryLight = Color(0xFFA58A6D);
+  static const Color _primaryDark = Color(0xFF5D4730);
+  static const Color _accentColor = Color(0xFFC4A484);
+  static const Color _bgLight = Color(0xFFFAF8F5);
+  static const Color _bgDark = Color(0xFF121212);
+  static const Color _cardLight = Colors.white;
+  static const Color _cardDark = Color(0xFF1E1E1E);
+  static const Color _borderLight = Color(0xFFE8E2D8);
+  static const Color _borderDark = Color(0xFF2C2C2C);
+  static const Color _textLight = Color(0xFF1A1A1A);
+  static const Color _textDark = Colors.white;
+  static const Color _textSecondaryLight = Color(0xFF6B6B6B);
+  static const Color _textSecondaryDark = Color(0xFF8E8E93);
+
+  // Types d'activités organisées par catégories
+  static const Map<String, List<Map<String, dynamic>>> _activityCategories = {
+    'Culture': [
+      {'icon': Icons.grass, 'label': 'Semis', 'value': 'Semis', 'color': Colors.green},
+      {'icon': Icons.eco, 'label': 'Plantation', 'value': 'Plantation', 'color': Colors.green},
+      {'icon': Icons.agriculture, 'label': 'Récolte', 'value': 'Récolte', 'color': Colors.yellow},
+      {'icon': Icons.agriculture_outlined, 'label': 'Labour', 'value': 'Labour', 'color': Colors.brown},
+    ],
+    'Soins': [
+      {'icon': Icons.water_drop, 'label': 'Arrosage', 'value': 'Arrosage', 'color': Colors.blue},
+      {'icon': Icons.clean_hands, 'label': 'Fertilisation', 'value': 'Fertilisation', 'color': Color(0xFF32ADE6)},
+      {'icon': Icons.content_cut, 'label': 'Taille', 'value': 'Taille', 'color': Colors.orange},
+      {'icon': Icons.bug_report, 'label': 'Traitement', 'value': 'Traitement', 'color': Colors.red},
+    ],
+    'Autres': [
+      {'icon': Icons.assignment, 'label': 'Inspection', 'value': 'Inspection', 'color': Colors.purple},
+      {'icon': Icons.build, 'label': 'Maintenance', 'value': 'Maintenance', 'color': Colors.grey},
+      {'icon': Icons.assessment, 'label': 'Suivi', 'value': 'Suivi', 'color': Colors.cyan},
+      {'icon': Icons.edit, 'label': 'Autre', 'value': 'Autre', 'color': Colors.purple},
+    ],
+  };
 
   @override
   void initState() {
     super.initState();
     _activitiesFuture = ApiService.getActivitiesForCrop(widget.cropId);
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    );
-    _animationController.forward();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
     _typeCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
@@ -79,7 +100,7 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
     HapticFeedback.mediumImpact();
     setState(() => _loading = true);
     try {
-      List<String> uploadedUrls = [];
+      final List<String> uploadedUrls = [];
       for (final f in _imageFiles) {
         final url = await ApiService.uploadImageToCloudinary(f);
         if (url != null) uploadedUrls.add(url);
@@ -103,6 +124,7 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
         _imageBytes.clear();
         _date = null;
         _selectedActivityType = '';
+        _showAddActivityForm = false;
         await _refreshActivities();
       }
     } catch (e) {
@@ -134,7 +156,6 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
     try {
       return DateFormat(pattern, 'fr_FR').format(dt);
     } catch (e) {
-      // Fallback to ISO-like date if intl locale data isn't available yet
       return dt.toLocal().toString().split('.')[0];
     }
   }
@@ -150,17 +171,10 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: const Color(0xFF34C759),
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w300)),
+        backgroundColor: _primaryColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
       ),
     );
   }
@@ -168,334 +182,321 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_rounded, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: const Color(0xFFFF3B30),
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w300)),
+        backgroundColor: Colors.red.shade400,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
       ),
     );
+  }
+
+  void _toggleAddActivityForm() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _showAddActivityForm = !_showAddActivityForm;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0F0F0F) : const Color(0xFFFAFAFA);
-    final cardColor = isDark ? const Color(0xFF1C1C1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
-    final secondaryTextColor = isDark ? const Color(0xFF8E8E93) : const Color(0xFF6B6B6B);
-    final borderColor = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5E5);
+    final bgColor = isDark ? _bgDark : _bgLight;
+    final cardColor = isDark ? _cardDark : _cardLight;
+    final textColor = isDark ? _textDark : _textLight;
+    final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
+    final borderColor = isDark ? _borderDark : _borderLight;
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: Stack(
-        children: [
-          // Subtle header background (minimal)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 160,
-            child: Container(
-              color: bgColor,
-            ),
-          ),
-
-          SafeArea(
-            child: Column(
-              children: [
-                // Custom App Bar
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: borderColor.withOpacity(0.5), width: 1),
-                          ),
-                          child: Icon(Icons.arrow_back_ios_new_rounded, color: textColor, size: 18),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          'Activités',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w500,
-                            color: textColor,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header minimaliste
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: cardColor,
+                border: Border(
+                  bottom: BorderSide(color: borderColor, width: 1),
                 ),
-
-                // Content
-                Expanded(
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Add Activity Section
-                          _buildSectionHeader('Nouvelle activité', Icons.add_task_rounded, textColor),
-                          const SizedBox(height: 20),
-                          _buildAddActivityForm(cardColor, textColor, secondaryTextColor, borderColor, isDark),
-                          const SizedBox(height: 32),
-
-                          // Activities List Section
-                          _buildSectionHeader('Historique', Icons.history_rounded, textColor),
-                          const SizedBox(height: 20),
-                          _buildActivitiesList(cardColor, textColor, secondaryTextColor, borderColor, isDark),
-                        ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 12,
+                  bottom: 12,
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(context);
+                      },
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: secondaryTextColor,
+                        size: 20,
                       ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Loading Overlay
-          if (_loading)
-            Container(
-              color: Colors.black.withOpacity(0.5),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 24,
-                        spreadRadius: -4,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: Color(0xFF2D5016),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Enregistrement...',
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Text(
+                        'Activités',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 24,
                           fontWeight: FontWeight.w300,
                           color: textColor,
+                          letterSpacing: -0.8,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon, Color textColor) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: const Color(0xFFEFF7EE),
-          child: Icon(icon, color: const Color(0xFF2D5016), size: 18),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: textColor,
-            letterSpacing: -0.2,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAddActivityForm(Color cardColor, Color textColor, Color secondaryTextColor, Color borderColor, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-            spreadRadius: -2,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Activity Type Selector
-          Text(
-            'Type d\'activité',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w300,
-              color: secondaryTextColor,
-              letterSpacing: 0.3,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: _activityTypes.map((type) {
-              final isSelected = _selectedActivityType == type['value'];
-              return GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  setState(() => _selectedActivityType = type['value'] as String);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isSelected 
-                        ? (type['color'] as Color).withOpacity(0.15)
-                        : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F5)),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected 
-                          ? (type['color'] as Color)
-                          : borderColor,
-                      width: isSelected ? 2 : 1,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        type['icon'] as String,
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        type['label'] as String,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w300,
-                          color: isSelected ? (type['color'] as Color) : textColor,
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
-              );
-            }).toList(),
-          ),
-          
-          // Custom Activity Type (if Autre selected)
-          if (_selectedActivityType == 'Autre') ...[
-            const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: borderColor, width: 1),
               ),
-              child: TextField(
-                controller: _typeCtrl,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor),
-                decoration: InputDecoration(
-                  hintText: 'Précisez le type d\'activité',
-                  hintStyle: TextStyle(color: secondaryTextColor.withOpacity(0.5)),
-                  prefixIcon: Icon(Icons.edit_rounded, color: const Color(0xFF2D5016), size: 20),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+
+            // Contenu principal
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Section pour ajouter une nouvelle activité
+                    _buildAddActivitySection(cardColor, textColor, secondaryTextColor, borderColor, isDark),
+                    
+                    // Historique des activités
+                    _buildActivitiesList(cardColor, textColor, secondaryTextColor, borderColor, isDark),
+                  ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
 
-          const SizedBox(height: 20),
-
-          // Date Selector
-          GestureDetector(
-            onTap: () async {
-              HapticFeedback.lightImpact();
-              final d = await showDatePicker(
-                context: context,
-                initialDate: DateTime.now(),
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
-                builder: (context, child) {
-                  return Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: ColorScheme.light(
-                        primary: const Color(0xFF2D5016),
-                        onPrimary: Colors.white,
-                        surface: cardColor,
-                      ),
+  Widget _buildAddActivitySection(Color cardColor, Color textColor, Color secondaryTextColor, Color borderColor, bool isDark) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cardColor,
+        border: Border(
+          bottom: BorderSide(color: borderColor, width: 1),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Bouton pour ajouter une activité
+            if (!_showAddActivityForm) ...[
+              GestureDetector(
+                onTap: _toggleAddActivityForm,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF8B6B4D),
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_circle_outline, color: Colors.white, size: 20),
+                        SizedBox(width: 12),
+                        Text(
+                          'Ajouter une activité',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w300,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
-                    child: child!,
-                  );
-                },
-              );
-              if (d != null) setState(() => _date = d);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: _date != null ? const Color(0xFF34C759) : borderColor,
-                  width: _date != null ? 2 : 1,
+                  ),
                 ),
               ),
-              child: Row(
+            ],
+
+            // Formulaire d'ajout (caché par défaut)
+            if (_showAddActivityForm) ...[
+              Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: _date != null
-                            ? [const Color(0xFF34C759), const Color(0xFF30D158)]
-                            : [const Color(0xFF2D5016), const Color(0xFF3D6B1F)],
+                  Expanded(
+                    child: Text(
+                      'Nouvelle activité',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w400,
+                        color: textColor,
                       ),
-                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(
-                      _date != null ? Icons.check_circle_rounded : Icons.calendar_today_rounded,
-                      color: Colors.white,
+                  ),
+                  IconButton(
+                    onPressed: _toggleAddActivityForm,
+                    icon: Icon(
+                      Icons.close,
+                      color: secondaryTextColor,
                       size: 20,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildActivityForm(cardColor, textColor, secondaryTextColor, borderColor, isDark),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActivityForm(Color cardColor, Color textColor, Color secondaryTextColor, Color borderColor, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Type d'activité avec catégories
+        Text(
+          'Type d\'activité',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: secondaryTextColor,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Affichage par catégories
+        ..._activityCategories.entries.map((category) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                category.key,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: _primaryDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: category.value.map((type) {
+                  final isSelected = _selectedActivityType == type['value'];
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() => _selectedActivityType = type['value'] as String);
+                    },
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: isSelected ? _primaryColor : cardColor,
+                        borderRadius: const BorderRadius.all(Radius.circular(8)),
+                        border: Border.all(
+                          color: isSelected ? _primaryColor : borderColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              type['icon'] as IconData,
+                              color: isSelected ? Colors.white : type['color'] as Color,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              type['label'] as String,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w300,
+                                color: isSelected ? Colors.white : textColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
+          );
+        }).toList(),
+
+        // Type personnalisé
+        if (_selectedActivityType == 'Autre') ...[
+          const SizedBox(height: 8),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: const BorderRadius.all(Radius.circular(10)),
+              border: Border.all(color: borderColor, width: 1),
+            ),
+            child: TextField(
+              controller: _typeCtrl,
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
+              decoration: InputDecoration(
+                hintText: 'Précisez le type d\'activité',
+                hintStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w300),
+                prefixIcon: const Icon(Icons.edit_outlined, color: Color(0xFF8B6B4D), size: 20),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Date
+        GestureDetector(
+          onTap: () async {
+            HapticFeedback.lightImpact();
+            final d = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime(2020),
+              lastDate: DateTime(2030),
+            );
+            if (d != null) setState(() => _date = d);
+          },
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: const BorderRadius.all(Radius.circular(10)),
+              border: Border.all(
+                color: _date != null ? _primaryColor : borderColor,
+                width: 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _date != null ? _primaryColor : _primaryLight.withOpacity(0.1),
+                      borderRadius: const BorderRadius.all(Radius.circular(8)),
+                    ),
+                    child: Icon(
+                      _date != null ? Icons.check_circle_outline : Icons.calendar_today_outlined,
+                      color: _date != null ? Colors.white : _primaryColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,20 +505,21 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
                           _date != null ? 'Date sélectionnée' : 'Sélectionner une date',
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w300,
+                            fontWeight: FontWeight.w400,
                             color: textColor,
                           ),
                         ),
                         if (_date != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatDateSafe(_date, pattern: 'EEEE d MMMM yyyy'),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: secondaryTextColor,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(height: 2),
+                          Text(
+                            _formatDateSafe(_date, pattern: 'EEEE d MMMM yyyy'),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w300,
+                              color: secondaryTextColor,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -530,246 +532,335 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
               ),
             ),
           ),
+        ),
 
-          const SizedBox(height: 20),
+        const SizedBox(height: 20),
 
-          // Notes Field
-          Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: borderColor, width: 1),
+        // Notes
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: const BorderRadius.all(Radius.circular(10)),
+            border: Border.all(color: borderColor, width: 1),
+          ),
+          child: TextField(
+            controller: _notesCtrl,
+            maxLines: 4,
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor, height: 1.5),
+            decoration: InputDecoration(
+              hintText: 'Ajouter des notes ou observations...',
+              hintStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w300),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.all(16),
             ),
-            child: TextField(
-              controller: _notesCtrl,
-              maxLines: 4,
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: textColor, height: 1.5),
-              decoration: InputDecoration(
-                hintText: 'Ajouter des notes ou observations...',
-                hintStyle: TextStyle(color: secondaryTextColor.withOpacity(0.5)),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.all(16),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Photos
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Photos',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: secondaryTextColor,
               ),
             ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Photos Section
-          Text(
-            'Photos',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w300,
-              color: secondaryTextColor,
-              letterSpacing: 0.3,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          if (_imageBytes.isNotEmpty)
-            Container(
-              height: 100,
-              margin: const EdgeInsets.only(bottom: 12),
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: _imageBytes.length,
-                itemBuilder: (context, i) => Stack(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: borderColor, width: 1),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Image.memory(
-                        _imageBytes[i],
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Positioned(
-                      top: 4,
-                      right: 16,
-                      child: GestureDetector(
-                        onTap: () => _removeImage(i),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFF3B30),
-                            shape: BoxShape.circle,
+            const SizedBox(height: 12),
+            
+            if (_imageBytes.isNotEmpty)
+              SizedBox(
+                height: 100,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _imageBytes.length,
+                  itemBuilder: (context, i) => Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Stack(
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: const BorderRadius.all(Radius.circular(8)),
+                            border: Border.all(color: borderColor, width: 1),
                           ),
-                          child: const Icon(
-                            Icons.close_rounded,
-                            color: Colors.white,
-                            size: 16,
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.all(Radius.circular(8)),
+                            child: Image.memory(
+                              _imageBytes[i],
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
-                      ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () => _removeImage(i),
+                            child: const DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Padding(
+                                padding: EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                ),
+              ),
+
+            if (_imageBytes.isNotEmpty) const SizedBox(height: 12),
+            
+            GestureDetector(
+              onTap: _pickImages,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                  border: Border.all(color: borderColor, width: 1),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_a_photo_outlined,
+                        color: Color(0xFF8B6B4D),
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Ajouter des photos',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w300,
+                          color: Color(0xFF8B6B4D),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
+          ],
+        ),
 
-          GestureDetector(
-            onTap: _pickImages,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: borderColor, width: 1, style: BorderStyle.solid),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_a_photo_rounded,
-                    color: const Color(0xFF2D5016),
-                    size: 20,
+        const SizedBox(height: 24),
+
+        // Boutons d'action
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: _toggleAddActivityForm,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    border: Border.all(color: borderColor, width: 1),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    _imageBytes.isEmpty ? 'Ajouter des photos' : 'Ajouter d\'autres photos',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w300,
-                      color: const Color(0xFF2D5016),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: Text(
+                        'Annuler',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w300,
+                          color: Color(0xFF6B6B6B),
+                        ),
+                      ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Submit Button
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _loading ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2D5016),
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Enregistrer',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF8B6B4D),
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
                   ),
-                ],
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _loading ? null : _submit,
+                      borderRadius: const BorderRadius.all(Radius.circular(10)),
+                      child: Center(
+                        child: _loading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Enregistrer',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w300,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildActivitiesList(Color cardColor, Color textColor, Color secondaryTextColor, Color borderColor, bool isDark) {
-    return FutureBuilder<List<dynamic>>(
-      future: _activitiesFuture,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(48),
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                color: const Color(0xFF2D5016),
-                backgroundColor: borderColor,
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Historique',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w400,
+              color: _primaryDark,
+              letterSpacing: -0.3,
             ),
-          );
-        }
-
-        if (snap.hasError) {
-          return Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: borderColor, width: 1),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.error_outline_rounded, size: 48, color: Color(0xFFFF3B30)),
-                const SizedBox(height: 16),
-                Text(
-                  'Erreur de chargement',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: textColor),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${snap.error}',
-                  style: TextStyle(fontSize: 14, color: secondaryTextColor),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          );
-        }
-
-        final activities = snap.data ?? [];
-        
-        if (activities.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(40),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: borderColor, width: 1),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF2D5016), Color(0xFF3D6B1F)],
+          ),
+          const SizedBox(height: 20),
+          FutureBuilder<List<dynamic>>(
+            future: _activitiesFuture,
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(48),
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF8B6B4D),
+                      ),
                     ),
-                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.timeline_rounded, size: 40, color: Colors.white),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Aucune activité',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w300, color: textColor),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Commencez par enregistrer votre première activité',
-                  style: TextStyle(fontSize: 14, color: secondaryTextColor),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          );
-        }
+                );
+              }
 
-        return Column(
-          children: activities.map((a) => _buildActivityCard(
-            a as Map<String, dynamic>,
-            cardColor,
-            textColor,
-            secondaryTextColor,
-            borderColor,
-            isDark,
-          )).toList(),
-        );
-      },
+              if (snap.hasError) {
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                    border: Border.all(color: borderColor, width: 1),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Column(
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        SizedBox(height: 16),
+                        Text(
+                          'Erreur de chargement',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final activities = snap.data ?? [];
+              
+              if (activities.isEmpty) {
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                    border: Border.all(color: borderColor, width: 1),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.timeline_outlined,
+                          size: 56,
+                          color: Color(0xFFA58A6D),
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          'Aucune activité',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Commencez par enregistrer votre première activité',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF6B6B6B),
+                            fontWeight: FontWeight.w300,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return Column(
+                children: activities.map((a) => _buildActivityCard(
+                  a as Map<String, dynamic>,
+                  cardColor,
+                  textColor,
+                  secondaryTextColor,
+                  borderColor,
+                  isDark,
+                )).toList(),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -783,10 +874,26 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
   ) {
     final imgs = (activity['image_urls'] as List?) ?? [];
     final activityType = activity['activity_type'] ?? 'Activité';
-    final typeInfo = _activityTypes.firstWhere(
-      (t) => t['value'] == activityType,
-      orElse: () => _activityTypes.last,
-    );
+    
+    // Trouver le type d'activité dans les catégories
+    late Map<String, dynamic> typeInfo;
+    bool found = false;
+    
+    for (final category in _activityCategories.values) {
+      final match = category.firstWhere(
+        (t) => t['value'] == activityType,
+        orElse: () => {},
+      );
+      if (match.isNotEmpty) {
+        typeInfo = match;
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) {
+      typeInfo = _activityCategories['Autres']!.last;
+    }
 
     DateTime? activityDate;
     if (activity['activity_date'] != null) {
@@ -795,132 +902,138 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor.withOpacity(0.6), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          border: Border.all(color: borderColor, width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: (typeInfo['color'] as Color).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: (typeInfo['color'] as Color).withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  typeInfo['icon'] as String,
-                  style: const TextStyle(fontSize: 20),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      activityType,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w300,
-                        color: textColor,
-                        letterSpacing: -0.3,
+              Row(
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: (typeInfo['color'] as Color).withOpacity(0.1),
+                      borderRadius: const BorderRadius.all(Radius.circular(10)),
+                      border: Border.all(
+                        color: (typeInfo['color'] as Color).withOpacity(0.2),
+                        width: 1,
                       ),
                     ),
-                    if (activityDate != null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time_rounded,
-                            size: 14,
-                            color: secondaryTextColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDateSafe(activityDate, pattern: 'd MMM yyyy'),
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: secondaryTextColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Icon(
+                        typeInfo['icon'] as IconData,
+                        color: typeInfo['color'] as Color,
+                        size: 20,
                       ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          
-          if (activity['notes'] != null && activity['notes'].toString().isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              activity['notes'].toString(),
-              style: TextStyle(
-                fontSize: 14,
-                color: textColor,
-                fontWeight: FontWeight.w400,
-                height: 1.4,
-              ),
-            ),
-          ],
-
-          if (imgs.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: imgs.length,
-                itemBuilder: (context, i) => Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: borderColor, width: 1),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    ),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Image.network(
-                    imgs[i] as String,
-                    width: 160,
-                    height: 120,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 160,
-                        height: 120,
-                        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F5),
-                        child: Center(
-                          child: Icon(
-                            Icons.broken_image_rounded,
-                            color: secondaryTextColor,
-                            size: 32,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          activityType,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: textColor,
                           ),
                         ),
-                      );
-                    },
+                        if (activityDate != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.access_time_outlined,
+                                size: 14,
+                                color: Color(0xFF6B6B6B),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatDateSafe(activityDate, pattern: 'd MMM yyyy'),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: secondaryTextColor,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              if (activity['notes'] != null && activity['notes'].toString().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  activity['notes'].toString(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: textColor,
+                    fontWeight: FontWeight.w300,
+                    height: 1.4,
                   ),
                 ),
-              ),
-            ),
-          ],
-        ],
+              ],
+
+              if (imgs.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: imgs.length,
+                    itemBuilder: (context, i) => Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.all(Radius.circular(8)),
+                          border: Border.all(color: borderColor, width: 1),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.all(Radius.circular(8)),
+                          child: Image.network(
+                            imgs[i] as String,
+                            width: 160,
+                            height: 120,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return SizedBox(
+                                width: 160,
+                                height: 120,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F5),
+                                    borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                  ),
+                                  child: const Icon(
+                                    Icons.broken_image_outlined,
+                                    color: Color(0xFF6B6B6B),
+                                    size: 32,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

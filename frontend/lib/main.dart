@@ -50,8 +50,8 @@ class MbaymiApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Decide home screen based on session (no need for initialUserId parameter)
-    final initialUserId = AuthService.currentSession?.userId;
+    // Always show HomeScreen (read-only mode for guests, full access for authenticated users)
+    final userId = AuthService.currentSession?.userId;
 
     return MaterialApp(
       title: 'Mbaymi',
@@ -60,22 +60,22 @@ class MbaymiApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.light,
       ),
-      home: HomeScreen(userId: initialUserId),
+      home: HomeScreen(userId: userId),
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
           final arg = settings.arguments;
-          int? userId;
-          if (arg is int) userId = arg;
+          int? routeUserId;
+          if (arg is int) routeUserId = arg;
           if (arg is Map && arg['id'] != null) {
             final raw = arg['id'];
             if (raw is int) {
-              userId = raw;
+              routeUserId = raw;
             } else {
-              userId = int.tryParse(raw.toString());
+              routeUserId = int.tryParse(raw.toString());
             }
           }
           return MaterialPageRoute(
-            builder: (context) => HomeScreen(userId: userId ?? initialUserId),
+            builder: (context) => HomeScreen(userId: routeUserId ?? userId),
           );
         }
         return null;
