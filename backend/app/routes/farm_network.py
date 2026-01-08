@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
+from typing import Optional
 from app.database import get_db
 from app.models import Farm, FarmProfile, FarmPost, FarmFollowing, User
 
@@ -92,8 +93,8 @@ def get_farm_profile(farm_id: int, db: Session = Depends(get_db)):
 
 @router.get("/profiles/search")
 def search_farm_profiles(
-    q: str | None = None,  # Recherche par nom, région, spécialité
-    specialty: str | None = None,
+    q: Optional[str] = None,  # Recherche par nom, région, spécialité
+    specialty: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """

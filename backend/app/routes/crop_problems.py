@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from datetime import datetime
 from pydantic import BaseModel
+from typing import Optional
 from app.database import get_db
 from app.models import CropProblem, Crop, Farm
 
@@ -17,7 +18,7 @@ class CropProblemCreate(BaseModel):
     user_id: int
     problem_type: str  # yellowing, leaf_holes, poor_yield, rot, pest, disease
     description: str = ""
-    photo_url: str | None = None
+    photo_url: Optional[str] = None
     severity: str = "medium"  # low, medium, high
 
 # ═══════════════════════════════════════════════════════════════════════════
