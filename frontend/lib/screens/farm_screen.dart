@@ -4,6 +4,7 @@ import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/screens/edit_farm_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/parcel_screen.dart';
+import 'package:mbaymi/screens/farm_profile_screen.dart';
 
 class FarmTab extends StatefulWidget {
   final bool isDarkMode;
@@ -600,7 +601,19 @@ class _FarmTabState extends State<FarmTab> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       color: widget.isDarkMode ? const Color(0xFF2C2C2E) : Colors.white,
       onSelected: (v) async {
-        if (v == 'edit') {
+        if (v == 'profile') {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FarmProfileScreen(
+                farmId: farm['id'] as int,
+                userId: widget.userId ?? 0,
+                isDarkMode: widget.isDarkMode,
+              ),
+            ),
+          );
+          if (result != null && mounted) setState(() {});
+        } else if (v == 'edit') {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -694,6 +707,17 @@ class _FarmTabState extends State<FarmTab> {
         }
       },
       itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'profile',
+          child: Text(
+            'Profil public',
+            style: TextStyle(
+              fontWeight: FontWeight.w300,
+              fontSize: 14,
+              color: const Color(0xFF6B8E23),
+            ),
+          ),
+        ),
         PopupMenuItem(
           value: 'edit',
           child: Text(

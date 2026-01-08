@@ -9,6 +9,9 @@ import 'package:mbaymi/services/auth_storage.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/login_screen.dart';
 import 'package:mbaymi/screens/register_screen.dart';
+import 'package:mbaymi/screens/crop_problems_screen.dart';
+import 'package:mbaymi/screens/farm_profile_screen.dart';
+import 'package:mbaymi/screens/farm_network_screen.dart';
 
 Future<void> main() async {
   // Run all initialization inside the same zone as runApp to avoid "Zone mismatch".
@@ -76,6 +79,30 @@ class MbaymiApp extends StatelessWidget {
           }
           return MaterialPageRoute(
             builder: (context) => HomeScreen(userId: routeUserId ?? userId),
+          );
+        }
+        // 🌾 Crop Problems Screen
+        if (settings.name?.startsWith('/crop-problems/') == true) {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => CropProblemsScreen(
+              farmId: args['farmId'] as int,
+              cropId: args['cropId'] as int,
+              userId: args['userId'] as int,
+              cropName: args['cropName'] as String,
+              isDarkMode: args['isDarkMode'] as bool? ?? false,
+            ),
+          );
+        }
+        // 🌾 Farm Profile Screen
+        if (settings.name?.startsWith('/farm-profile/') == true) {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => FarmProfileScreen(
+              farmId: args['farmId'] as int,
+              userId: args['userId'] as int,
+              isDarkMode: args['isDarkMode'] as bool? ?? false,
+            ),
           );
         }
         return null;

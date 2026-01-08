@@ -149,13 +149,17 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
     );
   }
 
+  Color _getSecondaryTextColor(bool isDark) {
+    return isDark ? _textSecondaryDark : _textSecondaryLight;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? _bgDark : _bgLight;
     final cardColor = isDark ? _cardDark : _cardLight;
     final textColor = isDark ? _textDark : _textLight;
-    final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
+    final secondaryTextColor = _getSecondaryTextColor(isDark);
     final borderColor = isDark ? _borderDark : _borderLight;
 
     return Scaffold(
@@ -165,7 +169,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
           children: [
             // Header minimaliste
             Container(
-              padding: EdgeInsets.only(
+              padding: const EdgeInsets.only(
                 left: 20,
                 right: 20,
                 top: 12,
@@ -394,7 +398,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                         color: Colors.black.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.edit_outlined,
                         color: Colors.white,
                         size: 18,
@@ -456,7 +460,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
   }
 
   Widget _buildTypeSelector(Color cardColor, Color textColor, Color borderColor) {
-    final types = [
+    final List<Map<String, dynamic>> types = const [
       {'icon': Icons.grass_outlined, 'label': 'Agricole', 'value': 'Agricole'},
       {'icon': Icons.agriculture_outlined, 'label': 'Élevage', 'value': 'Élevage'},
       {'icon': Icons.forest_outlined, 'label': 'Mixte', 'value': 'Mixte'},
@@ -470,6 +474,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w400,
+            color: _getSecondaryTextColor(Theme.of(context).brightness == Brightness.dark),
           ),
         ),
         const SizedBox(height: 8),
@@ -607,14 +612,14 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                   )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+                    children: const [
                       Icon(
                         Icons.add_circle_outline,
                         color: Colors.white,
                         size: 20,
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'Créer la ferme',
                         style: TextStyle(
                           fontSize: 16,

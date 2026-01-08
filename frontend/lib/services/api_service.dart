@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +10,37 @@ import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/token_storage.dart';
 
 class ApiService {
+  // 🔄 Retry configuration
+  static const int _maxRetries = 3;
+  static const Duration _initialDelay = Duration(milliseconds: 500);
+
+  /// 🔄 Retry helper with exponential backoff
+  /// Handles transient network errors (timeouts, connection issues)
+  static Future<T> _withRetry<T>(
+    Future<T> Function() fn, {
+    int maxRetries = _maxRetries,
+  }) async {
+    int attempt = 0;
+    Duration delay = _initialDelay;
+
+    while (true) {
+      try {
+        attempt++;
+        return await fn().timeout(Duration(seconds: 15));
+      } catch (e) {
+        if (attempt >= maxRetries) {
+          debugPrint('❌ Request failed after $maxRetries attempts: $e');
+          rethrow;
+        }
+        
+        debugPrint('⚠️ Attempt $attempt failed, retrying in ${delay.inMilliseconds}ms...');
+        await Future.delayed(delay);
+        
+        // Exponential backoff: 500ms → 1000ms → 2000ms
+        delay = Duration(milliseconds: delay.inMilliseconds * 2);
+      }
+    }
+  }
   // For local development on Windows/Web: use localhost
   // For Android Emulator: use 'http://10.0.2.2:8000/api'
   // Read from .env (API_BASE_URL) if provided; otherwise default to localhost
@@ -344,27 +376,29 @@ class ApiService {
 
   static Future<List<dynamic>> getFarmCrops(int farmId) async {
     try {
-      final headers = await _getAuthHeaders();
-      var response = await http.get(
-        Uri.parse('$baseUrl/farms/$farmId/crops'),
-        headers: headers,
-      );
+      return await _withRetry(() async {
+        final headers = await _getAuthHeaders();
+        var response = await http.get(
+          Uri.parse('$baseUrl/farms/$farmId/crops'),
+          headers: headers,
+        );
 
-      // Handle 401 with token refresh and retry
-      if (response.statusCode == 401) {
-        response = await _handleUnauthorized((newHeaders) async {
-          return await http.get(
-            Uri.parse('$baseUrl/farms/$farmId/crops'),
-            headers: newHeaders,
-          );
-        });
-      }
+        // Handle 401 with token refresh and retry
+        if (response.statusCode == 401) {
+          response = await _handleUnauthorized((newHeaders) async {
+            return await http.get(
+              Uri.parse('$baseUrl/farms/$farmId/crops'),
+              headers: newHeaders,
+            );
+          });
+        }
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List;
-      } else {
-        throw Exception('Failed to get farm crops: ${response.statusCode}');
-      }
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body) as List;
+        } else {
+          throw Exception('Failed to get farm crops: ${response.statusCode}');
+        }
+      });
     } catch (e) {
       throw Exception('Error getting farm crops: $e');
     }
@@ -494,16 +528,18 @@ class ApiService {
 
   static Future<List<dynamic>> getUserFarms(int userId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/farms/user/$userId'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farms/user/$userId'),
+          headers: {'Content-Type': 'application/json'},
+        );
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List;
-      } else {
-        throw Exception('Failed to get farms');
-      }
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body) as List;
+        } else {
+          throw Exception('Failed to get farms');
+        }
+      });
     } catch (e) {
       throw Exception('Error getting farms: $e');
     }
@@ -634,29 +670,31 @@ class ApiService {
   // Get agricultural news from backend (which proxies Google News RSS)
   static Future<List<NewsArticle>> getAgriculturalNews() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/news/agricultural'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/news/agricultural'),
+          headers: {'Content-Type': 'application/json'},
+        );
 
-      if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-        final List<dynamic> articles = jsonData['articles'] ?? [];
-        
-        return articles.map((item) {
-          return NewsArticle(
-            title: item['title'] ?? 'Actualité agricole',
-            description: item['description'] ?? '',
-            imageUrl: item['imageUrl'],
-            pubDate: DateTime.parse(item['pubDate'] ?? DateTime.now().toIso8601String()),
-            source: item['source'] ?? 'Source',
-            category: item['category'] ?? 'Agriculture',
-            link: item['link'],
-          );
-        }).toList();
-      } else {
-        throw Exception('Failed to load news: ${response.statusCode}');
-      }
+        if (response.statusCode == 200) {
+          final jsonData = jsonDecode(response.body);
+          final List<dynamic> articles = jsonData['articles'] ?? [];
+          
+          return articles.map((item) {
+            return NewsArticle(
+              title: item['title'] ?? 'Actualité agricole',
+              description: item['description'] ?? '',
+              imageUrl: item['imageUrl'],
+              pubDate: DateTime.parse(item['pubDate'] ?? DateTime.now().toIso8601String()),
+              source: item['source'] ?? 'Source',
+              category: item['category'] ?? 'Agriculture',
+              link: item['link'],
+            );
+          }).toList();
+        } else {
+          throw Exception('Failed to load news: ${response.statusCode}');
+        }
+      });
     } catch (e) {
       // Retourner des actualités par défaut si la requête échoue
       return _getDefaultNews();
@@ -703,5 +741,320 @@ class ApiService {
         category: 'Santé animale',
       ),
     ];
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌾 CROP PROBLEMS (Maladies & Ravageurs)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static Future<Map<String, dynamic>> reportCropProblem({
+    required int cropId,
+    required int farmId,
+    required int userId,
+    required String problemType,
+    String description = '',
+    String? photoUrl,
+    String severity = 'medium',
+  }) async {
+    try {
+      return await _withRetry(() async {
+        final headers = await _getAuthHeaders();
+        final response = await http.post(
+          Uri.parse('$baseUrl/crop-problems/'),
+          headers: headers,
+          body: jsonEncode({
+            'crop_id': cropId,
+            'farm_id': farmId,
+            'user_id': userId,
+            'problem_type': problemType,
+            'description': description,
+            'photo_url': photoUrl,
+            'severity': severity,
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body);
+        } else {
+          throw Exception('Failed to report problem: ${response.statusCode}');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error reporting problem: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getCropProblems(int cropId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/crop-problems/crop/$cropId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['problems'] as List;
+        } else {
+          throw Exception('Failed to get problems');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting problems: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getFarmProblems(int farmId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/crop-problems/farm/$farmId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['problems'] as List;
+        } else {
+          throw Exception('Failed to get farm problems');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting farm problems: $e');
+    }
+  }
+
+  static Future<void> updateProblemStatus({
+    required int problemId,
+    required String status,
+    String? treatmentNotes,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/crop-problems/$problemId/status'),
+        headers: headers,
+        body: jsonEncode({
+          'status': status,
+          'treatment_notes': treatmentNotes,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update problem status');
+      }
+    } catch (e) {
+      throw Exception('Error updating problem: $e');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌾 FARM NETWORK (Profils & Publications)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static Future<Map<String, dynamic>> createFarmProfile({
+    required int farmId,
+    required int userId,
+    String description = '',
+    String specialties = '',
+    bool isPublic = true,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/farm-network/profiles/$farmId'),
+        headers: headers,
+        body: jsonEncode({
+          'farm_id': farmId,
+          'user_id': userId,
+          'description': description,
+          'specialties': specialties,
+          'is_public': isPublic,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to create profile');
+      }
+    } catch (e) {
+      throw Exception('Error creating profile: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getFarmProfile(int farmId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farm-network/profiles/$farmId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body);
+        } else {
+          throw Exception('Failed to get profile');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting profile: $e');
+    }
+  }
+
+  static Future<List<dynamic>> searchFarmProfiles({
+    String query = '',
+    String? specialty,
+  }) async {
+    try {
+      return await _withRetry(() async {
+        String url = '$baseUrl/farm-network/profiles/search';
+        final params = <String, String>{};
+        if (query.isNotEmpty) params['q'] = query;
+        if (specialty != null && specialty.isNotEmpty) params['specialty'] = specialty;
+
+        final uri = Uri.parse(url).replace(queryParameters: params);
+        final response = await http.get(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['farms'] as List;
+        } else {
+          throw Exception('Failed to search profiles');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error searching profiles: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createFarmPost({
+    required int farmId,
+    required int userId,
+    required String title,
+    String description = '',
+    String? photoUrl,
+    String postType = 'crop_update',
+    int? cropId,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/farm-network/posts'),
+        headers: headers,
+        body: jsonEncode({
+          'farm_id': farmId,
+          'user_id': userId,
+          'title': title,
+          'description': description,
+          'photo_url': photoUrl,
+          'post_type': postType,
+          'crop_id': cropId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to create post');
+      }
+    } catch (e) {
+      throw Exception('Error creating post: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getFarmPosts(int farmId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farm-network/posts/farm/$farmId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['posts'] as List;
+        } else {
+          throw Exception('Failed to get posts');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting posts: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getFarmFeed(int userId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farm-network/feed?user_id=$userId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['posts'] as List;
+        } else {
+          throw Exception('Failed to get feed');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting feed: $e');
+    }
+  }
+
+  static Future<void> followFarm({required int farmId, required int userId}) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/farm-network/follow/$farmId?user_id=$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to follow farm');
+      }
+    } catch (e) {
+      throw Exception('Error following farm: $e');
+    }
+  }
+
+  static Future<void> unfollowFarm({required int farmId, required int userId}) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/farm-network/follow/$farmId?user_id=$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to unfollow farm');
+      }
+    } catch (e) {
+      throw Exception('Error unfollowing farm: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getUserFollowing(int userId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farm-network/following/$userId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['farms'] as List;
+        } else {
+          throw Exception('Failed to get following');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting following: $e');
+    }
   }
 }

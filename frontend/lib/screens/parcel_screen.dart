@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/screens/activity_screen.dart';
+import 'package:mbaymi/screens/crop_problems_screen.dart';
 
 class ParcelScreen extends StatefulWidget {
   final int farmId;
@@ -761,6 +762,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
             ),
             child: Row(
               children: [
+                // Bouton Détails
                 Expanded(
                   child: Material(
                     color: Colors.transparent,
@@ -782,9 +784,9 @@ class _ParcelScreenState extends State<ParcelScreen> {
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Center(
                           child: Text(
-                            'Voir détails',
+                            'Détails',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w300,
                               color: Color(0xFF1A1A1A),
                             ),
@@ -803,6 +805,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                     ),
                   ),
                 ),
+                // Bouton Activité
                 Expanded(
                   child: Material(
                     color: Colors.transparent,
@@ -824,11 +827,56 @@ class _ParcelScreenState extends State<ParcelScreen> {
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Center(
                           child: Text(
-                            'Ajouter activité',
+                            'Activité',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w300,
                               color: Color(0xFF8B6B4D),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  width: 1,
+                  height: 40,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Color(0xFFE8E2D8),
+                    ),
+                  ),
+                ),
+                // Bouton Problèmes
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CropProblemsScreen(
+                              farmId: widget.farmId,
+                              cropId: _toInt(parcel['id']) ?? 0,
+                              userId: widget.userId,
+                              cropName: parcel['crop_name'] as String? ?? 'Culture',
+                              isDarkMode: false,
+                            ),
+                          ),
+                        ).then((_) => _refresh());
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: Text(
+                            '🚨 Problèmes',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w300,
+                              color: Color(0xFFE07856),
                             ),
                           ),
                         ),

@@ -11,6 +11,7 @@ import 'package:mbaymi/screens/livestock_screen.dart';
 import 'package:mbaymi/screens/market_screen.dart';
 import 'package:mbaymi/screens/advice_screen.dart';
 import 'package:mbaymi/screens/dashboard_tab.dart';
+import 'package:mbaymi/screens/farm_network_screen.dart';
 // shared empty state is now in widgets/empty_state.dart
 
 class HomeScreen extends StatefulWidget {
@@ -54,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _screens = [
       DashboardTab(isDarkMode: _isDarkMode, userId: userId),
       FarmTab(isDarkMode: _isDarkMode, userId: userId),
+      FarmNetworkScreen(isDarkMode: _isDarkMode),
       LivestockTab(isDarkMode: _isDarkMode),
       MarketTab(isDarkMode: _isDarkMode),
       AdviceTab(isDarkMode: _isDarkMode),
@@ -153,8 +155,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildNavItem(Icons.home_outlined, Icons.home, 'Accueil', 0, _isDarkMode),
                     _buildNavItem(Icons.agriculture_outlined, Icons.agriculture, 'Fermes', 1, _isDarkMode),
                     const SizedBox(width: 60), // Space for FAB
-                    _buildNavItem(Icons.pets_outlined, Icons.pets, 'Élevage', 2, _isDarkMode),
-                    _buildNavItem(Icons.storefront_outlined, Icons.storefront, 'Marché', 3, _isDarkMode),
+                    _buildNavItem(Icons.groups_outlined, Icons.groups, 'Réseau', 2, _isDarkMode),
+                    _buildNavItem(Icons.pets_outlined, Icons.pets, 'Élevage', 3, _isDarkMode),
                   ],
                 ),
                 // Central action button
