@@ -156,7 +156,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                       'Statut',
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w300,
                         color: secondaryTextColor,
                         letterSpacing: 0.3,
                       ),
@@ -265,7 +265,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
           labelText: label,
           hintText: hint,
           hintStyle: TextStyle(color: secondaryTextColor.withOpacity(0.5), fontWeight: FontWeight.w400),
-          labelStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w600, fontSize: 13),
+          labelStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w300, fontSize: 13),
           prefixIcon: Icon(icon, color: const Color(0xFF2D5016), size: 20),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -295,7 +295,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
           label,
           style: TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w300,
             color: isSelected ? Colors.white : textColor,
             letterSpacing: 0.2,
           ),
@@ -427,7 +427,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                           'Mes Parcelles',
                           style: TextStyle(
                             fontSize: 24,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w200,
                             color: Colors.white,
                             letterSpacing: -0.8,
                           ),
@@ -943,7 +943,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                                 'Voir les détails',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w300,
                                   color: textColor,
                                 ),
                               ),
@@ -993,7 +993,7 @@ class _ParcelScreenState extends State<ParcelScreen> with SingleTickerProviderSt
                                 'Ajouter activité',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w300,
                                   color: const Color(0xFF2D5016),
                                 ),
                               ),
