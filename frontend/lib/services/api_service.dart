@@ -1057,4 +1057,68 @@ class ApiService {
       throw Exception('Error getting following: $e');
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // USER PROFILE (Profil personnel)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static Future<Map<String, dynamic>> getUserProfile(int userId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/users/$userId/profile'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body);
+        } else {
+          throw Exception('Failed to get profile');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting profile: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getUserPosts(int userId, {int skip = 0, int limit = 20}) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/users/$userId/posts?skip=$skip&limit=$limit'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['posts'] as List;
+        } else {
+          throw Exception('Failed to get posts');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting posts: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> toggleFarmVisibility({
+    required int userId,
+    required int farmId,
+    required bool isPublic,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/$userId/farms/$farmId/visibility?is_public=$isPublic'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to toggle visibility');
+      }
+    } catch (e) {
+      throw Exception('Error toggling visibility: $e');
+    }
+  }
 }

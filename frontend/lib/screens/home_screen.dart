@@ -104,6 +104,22 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             },
           ),
+          // Profil button (only if logged in)
+          if (isLoggedIn)
+            IconButton(
+              icon: Icon(Icons.account_circle_outlined, color: appBarIconColor, size: 24),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.pushNamed(
+                  context,
+                  '/user-profile/$_userId',
+                  arguments: {
+                    'userId': _userId,
+                    'isDarkMode': _isDarkMode,
+                  },
+                );
+              },
+            ),
           // Single auth button: shows 'Se connecter' or 'Se déconnecter'
           TextButton(
             onPressed: () async {

@@ -609,68 +609,22 @@ class _ParcelScreenState extends State<ParcelScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Image
-                FutureBuilder<List<dynamic>>(
-                  future: ApiService.getActivitiesForCrop(_toInt(parcel['id']) ?? 0),
-                  builder: (context, snap) {
-                    Widget imageWidget;
-                    
-                    if (snap.connectionState == ConnectionState.waiting) {
-                      imageWidget = SizedBox(
-                        width: 60,
-                        height: 60,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: cardColor,
-                            borderRadius: const BorderRadius.all(Radius.circular(10)),
-                          ),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFF8B6B4D),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    } else if (snap.hasData && (snap.data?.isNotEmpty ?? false)) {
-                      final activities = (snap.data! as List<dynamic>).cast<Map<String, dynamic>>();
-                      final withImages = activities.where((a) => ((a['image_urls'] as List?)?.isNotEmpty ?? false)).toList();
-                      
-                      if (withImages.isNotEmpty) {
-                        withImages.sort((a, b) {
-                          final da = DateTime.tryParse(a['activity_date']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-                          final db = DateTime.tryParse(b['activity_date']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-                          return db.compareTo(da);
-                        });
-                        final latest = withImages.first;
-                        final imgUrl = _firstString(latest['image_urls']);
-                        if (imgUrl != null && imgUrl.isNotEmpty) {
-                          imageWidget = ClipRRect(
-                            borderRadius: const BorderRadius.all(Radius.circular(10)),
-                            child: Image.network(
-                              imgUrl,
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _buildDefaultImage(isDark),
-                            ),
-                          );
-                        } else {
-                          imageWidget = _buildDefaultImage(isDark);
-                        }
-                      } else {
-                        imageWidget = _buildDefaultImage(isDark);
-                      }
-                    } else {
-                      imageWidget = _buildDefaultImage(isDark);
-                    }
-
-                    return imageWidget;
-                  },
+                // Image - Afficher une image par défaut au lieu de faire un appel API
+                ClipRRect(
+                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    ),
+                    child: Icon(
+                      Icons.landscape_outlined,
+                      size: 30,
+                      color: _primaryColor,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 

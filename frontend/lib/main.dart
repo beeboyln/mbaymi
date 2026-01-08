@@ -12,6 +12,7 @@ import 'package:mbaymi/screens/register_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
 import 'package:mbaymi/screens/farm_profile_screen.dart';
 import 'package:mbaymi/screens/farm_network_screen.dart';
+import 'package:mbaymi/screens/user_profile_screen.dart';
 
 Future<void> main() async {
   // Run all initialization inside the same zone as runApp to avoid "Zone mismatch".
@@ -100,6 +101,16 @@ class MbaymiApp extends StatelessWidget {
           return MaterialPageRoute(
             builder: (context) => FarmProfileScreen(
               farmId: args['farmId'] as int,
+              userId: args['userId'] as int,
+              isDarkMode: args['isDarkMode'] as bool? ?? false,
+            ),
+          );
+        }
+        // 👤 User Profile Screen
+        if (settings.name?.startsWith('/user-profile/') == true) {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => UserProfileScreen(
               userId: args['userId'] as int,
               isDarkMode: args['isDarkMode'] as bool? ?? false,
             ),

@@ -1,10 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from datetime import datetime
+from pydantic import BaseModel
 from app.database import get_db
 from app.models import CropProblem, Crop, Farm
 
 router = APIRouter(prefix="/api/crop-problems", tags=["Crop Problems"])
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MODELS
+# ═══════════════════════════════════════════════════════════════════════════
+
+class CropProblemCreate(BaseModel):
+    crop_id: int
+    farm_id: int
+    user_id: int
+    problem_type: str  # yellowing, leaf_holes, poor_yield, rot, pest, disease
+    description: str = ""
+    photo_url: str | None = None
+    severity: str = "medium"  # low, medium, high
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CROP PROBLEMS ENDPOINTS (Maladies & Ravageurs)
@@ -12,13 +26,7 @@ router = APIRouter(prefix="/api/crop-problems", tags=["Crop Problems"])
 
 @router.post("/")
 def report_crop_problem(
-    crop_id: int,
-    farm_id: int,
-    user_id: int,
-    problem_type: str,  # yellowing, leaf_holes, poor_yield, rot, pest, disease
-    description: str = "",
-    photo_url: str = None,
-    severity: str = "medium",  # low, medium, high
+    problem: CropProblemCreate,
     db: Session = Depends(get_db)
 ):
     """
@@ -37,32 +45,32 @@ def report_crop_problem(
     """
     try:
         # Vérifier que la culture existe
-        crop = db.query(Crop).filter(Crop.id == crop_id, Crop.farm_id == farm_id).first()
+        crop = db.query(Crop).filter(Crop.id == problem.crop_id, Crop.farm_id == problem.farm_id).first()
         if not crop:
             raise HTTPException(status_code=404, detail="Culture non trouvée")
         
         # Créer le problème
-        problem = CropProblem(
-            crop_id=crop_id,
-            farm_id=farm_id,
-            user_id=user_id,
-            problem_type=problem_type,
-            description=description,
-            photo_url=photo_url,
-            severity=severity,
+        crop_problem = CropProblem(
+            crop_id=problem.crop_id,
+            farm_id=problem.farm_id,
+            user_id=problem.user_id,
+            problem_type=problem.problem_type,
+            description=problem.description,
+            photo_url=problem.photo_url,
+            severity=problem.severity,
             status="reported",
         )
-        db.add(problem)
+        db.add(crop_problem)
         db.commit()
-        db.refresh(problem)
+        db.refresh(crop_problem)
         
         return {
-            "id": problem.id,
-            "crop_id": problem.crop_id,
-            "problem_type": problem.problem_type,
-            "severity": problem.severity,
-            "status": problem.status,
-            "created_at": problem.created_at.isoformat(),
+            "id": crop_problem.id,
+            "crop_id": crop_problem.crop_id,
+            "problem_type": crop_problem.problem_type,
+            "severity": crop_problem.severity,
+            "status": crop_problem.status,
+            "created_at": crop_problem.created_at.isoformat(),
             "message": "✅ Problème signalé avec succès"
         }
     except Exception as e:

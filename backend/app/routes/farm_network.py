@@ -92,8 +92,8 @@ def get_farm_profile(farm_id: int, db: Session = Depends(get_db)):
 
 @router.get("/profiles/search")
 def search_farm_profiles(
-    q: str = "",  # Recherche par nom, région, spécialité
-    specialty: str = None,
+    q: str | None = None,  # Recherche par nom, région, spécialité
+    specialty: str | None = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -104,13 +104,13 @@ def search_farm_profiles(
     try:
         query = db.query(FarmProfile, Farm).join(Farm).filter(FarmProfile.is_public == True)
         
-        if q:
+        if q and q.strip():
             query = query.filter(
                 (Farm.name.ilike(f"%{q}%")) | 
                 (Farm.location.ilike(f"%{q}%"))
             )
         
-        if specialty:
+        if specialty and specialty.strip():
             query = query.filter(FarmProfile.specialties.ilike(f"%{specialty}%"))
         
         results = query.all()

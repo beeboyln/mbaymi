@@ -32,9 +32,10 @@ def include_routes():
     app.include_router(sales.router)
     
     # 🌾 Agricultural features
-    from app.routes import crop_problems, farm_network
+    from app.routes import crop_problems, farm_network, user_profile
     app.include_router(crop_problems.router)
     app.include_router(farm_network.router)
+    app.include_router(user_profile.router)
 
 @app.on_event("startup")
 def startup():
