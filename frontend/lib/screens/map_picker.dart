@@ -40,6 +40,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
           16,
           16 + MediaQuery.of(context).viewInsets.bottom,
         ),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Column(
           children: [
             const Text('Entrez manuellement la latitude et la longitude, ou implémentez la carte plus tard.'),

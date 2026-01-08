@@ -209,24 +209,25 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header minimaliste
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: cardColor,
-                border: Border(
-                  bottom: BorderSide(color: borderColor, width: 1),
-                ),
+      body: Column(
+        children: [
+          // Header minimaliste
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: cardColor,
+              border: Border(
+                bottom: BorderSide(color: borderColor, width: 1),
               ),
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  top: 12,
-                  bottom: 12,
-                ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 12,
+                bottom: 12,
+              ),
+              child: SafeArea(
+                bottom: false,
                 child: Row(
                   children: [
                     IconButton(
@@ -258,24 +259,28 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 ),
               ),
             ),
+          ),
 
-            // Contenu principal
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  children: [
-                    // Section pour ajouter une nouvelle activité
-                    _buildAddActivitySection(cardColor, textColor, secondaryTextColor, borderColor, isDark),
-                    
-                    // Historique des activités
-                    _buildActivitiesList(cardColor, textColor, secondaryTextColor, borderColor, isDark),
-                  ],
-                ),
+          // Contenu principal - TOUJOURS scrollable avec padding clavier
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Column(
+                children: [
+                  // Section pour ajouter une nouvelle activité
+                  _buildAddActivitySection(cardColor, textColor, secondaryTextColor, borderColor, isDark),
+                  
+                  // Historique des activités
+                  _buildActivitiesList(cardColor, textColor, secondaryTextColor, borderColor, isDark),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
