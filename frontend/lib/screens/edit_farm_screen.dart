@@ -96,14 +96,15 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
   Widget build(BuildContext context) {
     final photos = (widget.farm['photos'] as List?) ?? [];
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text('Éditer la ferme')),
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          16 + MediaQuery.of(context).viewInsets.bottom,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.only(
+          left: 16,
+          top: 16,
+          right: 16,
+          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
         ),
         child: Form(
           key: _formKey,

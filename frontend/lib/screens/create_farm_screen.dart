@@ -33,7 +33,6 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
   static const Color _primaryColor = Color(0xFF8B6B4D);
   static const Color _primaryLight = Color(0xFFA58A6D);
   static const Color _primaryDark = Color(0xFF5D4730);
-  static const Color _accentColor = Color(0xFFC4A484);
   static const Color _bgLight = Color(0xFFFAF8F5);
   static const Color _bgDark = Color(0xFF121212);
   static const Color _cardLight = Colors.white;
@@ -164,27 +163,28 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header minimaliste
-            Container(
-              padding: const EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 12,
-                bottom: 12,
-              ),
-              decoration: BoxDecoration(
-                color: cardColor,
-                border: Border(
-                  bottom: BorderSide(
-                    color: borderColor,
-                    width: 1,
-                  ),
+      resizeToAvoidBottomInset: false,
+      body: Column(
+        children: [
+          // Header minimaliste
+          Container(
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 12,
+              bottom: 12,
+            ),
+            decoration: BoxDecoration(
+              color: cardColor,
+              border: Border(
+                bottom: BorderSide(
+                  color: borderColor,
+                  width: 1,
                 ),
               ),
+            ),
+            child: SafeArea(
+              bottom: false,
               child: Row(
                 children: [
                   IconButton(
@@ -214,22 +214,23 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                 ],
               ),
             ),
+          ),
 
-            // Formulaire
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  20,
-                  20,
-                  20 + MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+          // Formulaire
+          Expanded(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.only(
+                left: 20,
+                top: 20,
+                right: 20,
+                bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                       // Photo de la ferme
                       _buildImageSection(cardColor, borderColor),
                       const SizedBox(height: 32),
@@ -329,9 +330,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
+      );
+    }
 
   Widget _buildSectionTitle(String title) {
     return Text(
