@@ -10,30 +10,31 @@ import 'package:mbaymi/screens/login_screen.dart';
 import 'package:mbaymi/screens/register_screen.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
-  // Initialize intl locale data required for DateFormat with locales (e.g. 'fr_FR')
-  try {
-    await initializeDateFormatting('fr_FR');
-    Intl.defaultLocale = 'fr_FR';
-  } catch (_) {
-    // Fallback: initialize default data
-    await initializeDateFormatting();
-    // leave defaultLocale unset (will use system/default)
-  }
+  // Run all initialization inside the same zone as runApp to avoid "Zone mismatch".
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await dotenv.load(fileName: '.env');
 
-  // Try to restore stored user id to keep user logged in after reloads
-  final storedUserId = await AuthStorage.getUserId();
+    // Initialize intl locale data required for DateFormat with locales (e.g. 'fr_FR')
+    try {
+      await initializeDateFormatting('fr_FR');
+      Intl.defaultLocale = 'fr_FR';
+    } catch (_) {
+      // Fallback: initialize default data
+      await initializeDateFormatting();
+      // leave defaultLocale unset (will use system/default)
+    }
 
-  // Global error handling so uncaught Flutter errors are logged in console
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.dumpErrorToConsole(details);
-    debugPrint('🔥 FlutterError: ${details.exception}');
-    if (details.stack != null) debugPrint(details.stack.toString());
-  };
+    // Try to restore stored user id to keep user logged in after reloads
+    final storedUserId = await AuthStorage.getUserId();
 
-  // Run the app inside a guarded zone to catch uncaught async errors
-  runZonedGuarded(() {
+    // Global error handling so uncaught Flutter errors are logged in console
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.dumpErrorToConsole(details);
+      debugPrint('🔥 FlutterError: ${details.exception}');
+      if (details.stack != null) debugPrint(details.stack.toString());
+    };
+
     runApp(MbaymiApp(initialUserId: storedUserId));
   }, (error, stack) {
     // Log uncaught async/zone errors
