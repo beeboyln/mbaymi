@@ -371,15 +371,15 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
             "count": len(profiles),
             "farms": [
                 {
-                    "farm_id": p.Farm.id,
-                    "farm_name": p.Farm.name,
-                    "location": p.Farm.location,
-                    "owner_name": p.User.name,
-                    "description": p.FarmProfile.description,
-                    "specialties": p.FarmProfile.specialties.split(",") if p.FarmProfile.specialties else [],
-                    "followers": p.FarmProfile.total_followers,
+                    "farm_id": farm.id,
+                    "farm_name": farm.name,
+                    "location": farm.location,
+                    "owner_name": user.name,
+                    "description": profile.description,
+                    "specialties": profile.specialties.split(",") if profile.specialties else [],
+                    "followers": profile.total_followers,
                 }
-                for p, farm, user in profiles
+                for profile, farm, user in profiles
             ]
         }
     except Exception as e:

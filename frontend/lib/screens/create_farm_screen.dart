@@ -218,138 +218,136 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      resizeToAvoidBottomInset: true,
-      body: Column(
-        children: [
-          // Header minimaliste
-          _buildHeader(cardColor, textColor, secondaryTextColor, borderColor),
-          
-          // Formulaire - TOUJOURS scrollable avec padding clavier
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.only(
-                left: _defaultPadding,
-                top: _defaultPadding,
-                right: _defaultPadding,
-                bottom: MediaQuery.of(context).viewInsets.bottom + _defaultPadding,
-              ),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: GestureDetector(
-                onTap: () => FocusScope.of(context).unfocus(),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Photo de la ferme
-                      _buildImageSection(cardColor, borderColor),
-                      const SizedBox(height: _largePadding),
+      resizeToAvoidBottomInset: true, // ✅ Laisse Flutter gérer la compensation
+      body: SafeArea( // ✅ Ajout de SafeArea
+        child: Column(
+          children: [
+            // Header minimaliste
+            _buildHeader(cardColor, textColor, secondaryTextColor, borderColor),
+            
+            // Formulaire - Scrollable avec padding normal
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(_defaultPadding), // ✅ Padding normal, pas de viewInsets
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                child: GestureDetector(
+                  onTap: () => FocusScope.of(context).unfocus(),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Photo de la ferme
+                        _buildImageSection(cardColor, borderColor),
+                        const SizedBox(height: _largePadding),
 
-                      // Informations de base
-                      _buildSectionTitle('Informations de base'),
-                      const SizedBox(height: _mediumPadding),
-                      _buildTextField(
-                        controller: _nameCtrl,
-                        focusNode: _nameFocus,
-                        label: 'Nom de la ferme',
-                        hint: 'Ex: Ferme Keur Moussa',
-                        icon: Icons.agriculture_outlined,
-                        cardColor: cardColor,
-                        textColor: textColor,
-                        secondaryTextColor: secondaryTextColor,
-                        borderColor: borderColor,
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
-                      ),
-                      const SizedBox(height: _mediumPadding),
-                      _buildTypeSelector(cardColor, textColor, borderColor),
-                      const SizedBox(height: _mediumPadding),
-                      _buildTextField(
-                        controller: _sizeCtrl,
-                        focusNode: _sizeFocus,
-                        label: 'Superficie',
-                        hint: 'Hectares',
-                        icon: Icons.square_foot_outlined,
-                        cardColor: cardColor,
-                        textColor: textColor,
-                        secondaryTextColor: secondaryTextColor,
-                        borderColor: borderColor,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      ),
-                      const SizedBox(height: _largePadding),
+                        // Informations de base
+                        _buildSectionTitle('Informations de base'),
+                        const SizedBox(height: _mediumPadding),
+                        _buildTextField(
+                          controller: _nameCtrl,
+                          focusNode: _nameFocus,
+                          label: 'Nom de la ferme',
+                          hint: 'Ex: Ferme Keur Moussa',
+                          icon: Icons.agriculture_outlined,
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          secondaryTextColor: secondaryTextColor,
+                          borderColor: borderColor,
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
+                        ),
+                        const SizedBox(height: _mediumPadding),
+                        _buildTypeSelector(cardColor, textColor, borderColor),
+                        const SizedBox(height: _mediumPadding),
+                        _buildTextField(
+                          controller: _sizeCtrl,
+                          focusNode: _sizeFocus,
+                          label: 'Superficie',
+                          hint: 'Hectares',
+                          icon: Icons.square_foot_outlined,
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          secondaryTextColor: secondaryTextColor,
+                          borderColor: borderColor,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                        const SizedBox(height: _largePadding),
 
-                      // Localisation
-                      _buildSectionTitle('Localisation'),
-                      const SizedBox(height: _mediumPadding),
-                      _buildTextField(
-                        controller: _regionCtrl,
-                        focusNode: _regionFocus,
-                        label: 'Région',
-                        hint: 'Ex: Thiès',
-                        icon: Icons.location_on_outlined,
-                        cardColor: cardColor,
-                        textColor: textColor,
-                        secondaryTextColor: secondaryTextColor,
-                        borderColor: borderColor,
-                      ),
-                      const SizedBox(height: _mediumPadding),
-                      _buildTextField(
-                        controller: _departmentCtrl,
-                        focusNode: _departmentFocus,
-                        label: 'Département',
-                        hint: 'Ex: Mbour',
-                        icon: Icons.map_outlined,
-                        cardColor: cardColor,
-                        textColor: textColor,
-                        secondaryTextColor: secondaryTextColor,
-                        borderColor: borderColor,
-                      ),
-                      const SizedBox(height: _mediumPadding),
-                      _buildTextField(
-                        controller: _communeCtrl,
-                        focusNode: _communeFocus,
-                        label: 'Commune / Village',
-                        hint: 'Ex: Saly',
-                        icon: Icons.home_outlined,
-                        cardColor: cardColor,
-                        textColor: textColor,
-                        secondaryTextColor: secondaryTextColor,
-                        borderColor: borderColor,
-                      ),
-                      const SizedBox(height: _mediumPadding),
-                      _buildMapSelector(cardColor, textColor, secondaryTextColor, borderColor),
-                      const SizedBox(height: _largePadding),
+                        // Localisation
+                        _buildSectionTitle('Localisation'),
+                        const SizedBox(height: _mediumPadding),
+                        _buildTextField(
+                          controller: _regionCtrl,
+                          focusNode: _regionFocus,
+                          label: 'Région',
+                          hint: 'Ex: Thiès',
+                          icon: Icons.location_on_outlined,
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          secondaryTextColor: secondaryTextColor,
+                          borderColor: borderColor,
+                        ),
+                        const SizedBox(height: _mediumPadding),
+                        _buildTextField(
+                          controller: _departmentCtrl,
+                          focusNode: _departmentFocus,
+                          label: 'Département',
+                          hint: 'Ex: Mbour',
+                          icon: Icons.map_outlined,
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          secondaryTextColor: secondaryTextColor,
+                          borderColor: borderColor,
+                        ),
+                        const SizedBox(height: _mediumPadding),
+                        _buildTextField(
+                          controller: _communeCtrl,
+                          focusNode: _communeFocus,
+                          label: 'Commune / Village',
+                          hint: 'Ex: Saly',
+                          icon: Icons.home_outlined,
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          secondaryTextColor: secondaryTextColor,
+                          borderColor: borderColor,
+                        ),
+                        const SizedBox(height: _mediumPadding),
+                        _buildMapSelector(cardColor, textColor, secondaryTextColor, borderColor),
+                        const SizedBox(height: _largePadding),
 
-                      // Description
-                      _buildSectionTitle('Description'),
-                      const SizedBox(height: _mediumPadding),
-                      _buildTextField(
-                        controller: _descCtrl,
-                        focusNode: _descFocus,
-                        label: 'Description',
-                        hint: 'Décrivez votre ferme...',
-                        icon: Icons.text_snippet_outlined,
-                        cardColor: cardColor,
-                        textColor: textColor,
-                        secondaryTextColor: secondaryTextColor,
-                        borderColor: borderColor,
-                        maxLines: 4,
-                      ),
-                      const SizedBox(height: 40),
+                        // Description
+                        _buildSectionTitle('Description'),
+                        const SizedBox(height: _mediumPadding),
+                        _buildTextField(
+                          controller: _descCtrl,
+                          focusNode: _descFocus,
+                          label: 'Description',
+                          hint: 'Décrivez votre ferme...',
+                          icon: Icons.text_snippet_outlined,
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          secondaryTextColor: secondaryTextColor,
+                          borderColor: borderColor,
+                          maxLines: 4,
+                        ),
+                        const SizedBox(height: 40),
 
-                      // Bouton de soumission
-                      _buildSubmitButton(),
-                      const SizedBox(height: _defaultPadding),
-                    ],
+                        // Bouton de soumission
+                        _buildSubmitButton(),
+                        const SizedBox(height: _defaultPadding),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
+  // ... (le reste de vos méthodes _buildHeader, _buildImageSection, etc. reste inchangé)
   Widget _buildHeader(Color cardColor, Color textColor, Color secondaryTextColor, Color borderColor) {
     return Container(
       padding: const EdgeInsets.only(
