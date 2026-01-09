@@ -13,9 +13,11 @@ class User(Base):
     role = Column(String(50), nullable=False)  # farmer, livestock_breeder, buyer, seller
     region = Column(String(100))
     village = Column(String(100))
+    profile_image = Column(String(500))  # URL de la photo de profil
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def __repr__(self):
         return f"<User {self.email}>"
+

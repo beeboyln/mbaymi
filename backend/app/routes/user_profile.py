@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Farm, FarmProfile, FarmPost
+import aiofiles
+import os
+from datetime import datetime
 
 router = APIRouter(prefix="/api/users", tags=["User Profile"])
 
@@ -36,6 +39,7 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
             "name": user.name,
             "email": user.email,
             "phone": getattr(user, 'phone', None),
+            "profile_image": getattr(user, 'profile_image', None),
             "total_farms": len(farms),
             "total_followers": total_followers,
             "total_posts": total_posts,
@@ -50,6 +54,58 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
             ]
         }
     except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.put("/{user_id}/profile")
+def update_user_profile(
+    user_id: int,
+    name: str = None,
+    email: str = None,
+    db: Session = Depends(get_db)
+):
+    """
+    ✏️ Mettre à jour le profil utilisateur (nom et email).
+    """
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+        # Valider et mettre à jour le nom
+        if name:
+            name = name.strip()
+            if len(name) < 2:
+                raise HTTPException(status_code=400, detail="Le nom doit contenir au moins 2 caractères")
+            user.name = name
+        
+        # Valider et mettre à jour l'email
+        if email:
+            email = email.strip().lower()
+            # Vérifier que l'email n'existe pas déjà (sauf pour cet utilisateur)
+            existing_user = db.query(User).filter(
+                User.email == email,
+                User.id != user_id
+            ).first()
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
+            user.email = email
+        
+        db.commit()
+        db.refresh(user)
+        
+        return {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "profile_image": getattr(user, 'profile_image', None),
+            "message": "Profil mis à jour avec succès"
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 
@@ -127,3 +183,54 @@ def toggle_farm_visibility(user_id: int, farm_id: int, is_public: bool, db: Sess
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.post("/{user_id}/profile-image")
+async def upload_profile_image(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    📸 Uploader une photo de profil pour l'utilisateur.
+    """
+    try:
+        # Vérifier que l'utilisateur existe
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+        # Vérifier que le fichier est une image
+        if file.content_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+            raise HTTPException(status_code=400, detail="Format d'image non supporté")
+        
+        # Créer le dossier uploads s'il n'existe pas
+        upload_dir = "uploads/profiles"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Générer un nom de fichier unique
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_extension = file.filename.split(".")[-1] if file.filename else "jpg"
+        filename = f"profile_{user_id}_{timestamp}.{file_extension}"
+        filepath = os.path.join(upload_dir, filename)
+        
+        # Sauvegarder le fichier
+        async with aiofiles.open(filepath, 'wb') as f:
+            content = await file.read()
+            await f.write(content)
+        
+        # Construire l'URL relative
+        file_url = f"/uploads/profiles/{filename}"
+        
+        # Mettre à jour le profil utilisateur
+        user.profile_image = file_url
+        db.commit()
+        db.refresh(user)
+        
+        return {
+            "success": True,
+            "profile_image": user.profile_image,
+            "message": "Photo de profil mise à jour avec succès"
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erreur lors du téléchargement : {str(e)}")

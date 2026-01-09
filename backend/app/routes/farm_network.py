@@ -491,7 +491,7 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
                 "location": farm.location,
                 "user_id": user.id,
                 "owner_name": user.name,
-                "profile_image": user.profile_image,
+                "profile_image": getattr(user, 'profile_image', None),
                 "description": profile.description,
                 "specialties": profile.specialties.split(",") if profile.specialties else [],
                 "followers": profile.total_followers,

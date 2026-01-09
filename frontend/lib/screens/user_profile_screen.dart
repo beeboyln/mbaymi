@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:intl/intl.dart';
 
@@ -20,6 +21,7 @@ class UserProfileScreen extends StatefulWidget {
 class _UserProfileScreenState extends State<UserProfileScreen> {
   late Future<Map<String, dynamic>> _profileFuture;
   late Future<List<dynamic>> _postsFuture;
+  final ImagePicker _imagePicker = ImagePicker();
 
   // Couleurs
   static const Color _primaryColor = Color(0xFF8B6B4D);
@@ -63,6 +65,195 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Visibilité mise à jour'),
+            backgroundColor: _primaryColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _refresh();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickAndUploadProfileImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      );
+
+      if (image == null) return;
+
+      // Afficher un indicateur de chargement
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Téléchargement de la photo...'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Uploader l'image
+      final result = await ApiService.uploadProfileImage(
+        userId: widget.userId,
+        imageFile: image,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Photo mise à jour'),
+            backgroundColor: _primaryColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _refresh();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showEditProfileDialog(String currentName, String currentEmail) async {
+    final nameController = TextEditingController(text: currentName);
+    final emailController = TextEditingController(text: currentEmail);
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        final isDark = widget.isDarkMode;
+        final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+        final textColor = isDark ? Colors.white : Colors.black87;
+
+        return AlertDialog(
+          backgroundColor: bgColor,
+          title: Text(
+            'Modifier mon profil',
+            style: TextStyle(color: textColor),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  style: TextStyle(color: textColor),
+                  decoration: InputDecoration(
+                    labelText: 'Nom',
+                    labelStyle: TextStyle(color: textColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: _primaryColor.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: _primaryColor, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailController,
+                  style: TextStyle(color: textColor),
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    labelStyle: TextStyle(color: textColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: _primaryColor.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: _primaryColor, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Annuler',
+                style: TextStyle(color: textColor),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryColor,
+              ),
+              onPressed: () async {
+                Navigator.pop(context);
+                await _updateProfile(
+                  nameController.text.trim(),
+                  emailController.text.trim(),
+                );
+              },
+              child: const Text(
+                'Enregistrer',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _updateProfile(String name, String email) async {
+    try {
+      if (name.isEmpty && email.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Veuillez modifier au moins un champ'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final result = await ApiService.updateUserProfile(
+        userId: widget.userId,
+        name: name.isNotEmpty ? name : null,
+        email: email.isNotEmpty ? email : null,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Profil mis à jour'),
             backgroundColor: _primaryColor,
             behavior: SnackBarBehavior.floating,
           ),
@@ -133,6 +324,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               final profile = profileSnap.data ?? {};
               final name = profile['name'] ?? 'Utilisateur';
               final email = profile['email'] ?? '';
+              final profileImage = profile['profile_image'] as String?;
               final totalFarms = profile['total_farms'] ?? 0;
               final totalFollowers = profile['total_followers'] ?? 0;
               final totalPosts = profile['total_posts'] ?? 0;
@@ -158,16 +350,54 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             // Avatar + Nom
                             Row(
                               children: [
-                                CircleAvatar(
-                                  radius: 40,
-                                  backgroundColor: _primaryColor,
-                                  child: Text(
-                                    name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
+                                GestureDetector(
+                                  onTap: _pickAndUploadProfileImage,
+                                  child: Stack(
+                                    children: [
+                                      profileImage != null && profileImage.isNotEmpty
+                                          ? Container(
+                                              width: 80,
+                                              height: 80,
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(40),
+                                                border: Border.all(
+                                                  color: _primaryColor,
+                                                  width: 2,
+                                                ),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(40),
+                                                child: Image.network(
+                                                  profileImage,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) =>
+                                                      _buildDefaultAvatar(name),
+                                                ),
+                                              ),
+                                            )
+                                          : _buildDefaultAvatar(name),
+                                      // Bouton d'édition
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: _primaryColor,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: cardColor,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.all(6),
+                                          child: const Icon(
+                                            Icons.camera_alt,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -175,20 +405,48 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        name,
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w400,
-                                          color: textColor,
+                                      GestureDetector(
+                                        onTap: () => _showEditProfileDialog(name, email),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                name,
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w400,
+                                                  color: textColor,
+                                                ),
+                                              ),
+                                            ),
+                                            Icon(
+                                              Icons.edit_outlined,
+                                              size: 16,
+                                              color: _primaryColor,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        email,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: secondaryTextColor,
+                                      GestureDetector(
+                                        onTap: () => _showEditProfileDialog(name, email),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                email,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: secondaryTextColor,
+                                                ),
+                                              ),
+                                            ),
+                                            Icon(
+                                              Icons.edit_outlined,
+                                              size: 14,
+                                              color: secondaryTextColor,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
@@ -505,5 +763,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       default:
         return '📝';
     }
+  }
+
+  Widget _buildDefaultAvatar(String name) {
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: _primaryColor,
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: const TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
   }
 }
