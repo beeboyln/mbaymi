@@ -57,13 +57,29 @@ class FarmPost(Base):
 class FarmFollowing(Base):
     """
     Relation de suivi entre agriculteurs.
-    Un agriculteur peut suivre la ferme d'un autre.
+    DEPRECATED: Utilisez UserFollowing à la place.
+    Un utilisateur suit maintenant un autre utilisateur (propriétaire de ferme) au lieu de suivre une ferme.
     """
     __tablename__ = "farm_following"
     
     id = Column(Integer, primary_key=True, index=True)
     follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Qui suit
     farm_id = Column(Integer, ForeignKey("farms.id"), nullable=False)  # Quelle ferme
+    
+    # Métadonnées
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class UserFollowing(Base):
+    """
+    Relation de suivi entre utilisateurs.
+    Un agriculteur peut suivre un autre agriculteur.
+    """
+    __tablename__ = "user_following"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Qui suit
+    following_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Quel utilisateur suit-on
     
     # Métadonnées
     created_at = Column(DateTime, default=datetime.utcnow)

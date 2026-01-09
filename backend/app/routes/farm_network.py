@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
 from app.database import get_db
-from app.models import Farm, FarmProfile, FarmPost, FarmFollowing, User, Crop
+from app.models import Farm, FarmProfile, FarmPost, FarmFollowing, UserFollowing, User, Crop
 import logging
 
 logger = logging.getLogger(__name__)
@@ -224,19 +224,19 @@ def get_farm_posts(farm_id: int, skip: int = 0, limit: int = 20, db: Session = D
 @router.get("/feed")
 def get_farm_feed(user_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     """
-    📰 Récupérer le fil d'actualité (posts des fermes suivies).
+    📰 Récupérer le fil d'actualité (posts des utilisateurs suivis).
     """
     try:
-        # Récupérer les fermes que l'utilisateur suit
-        following = db.query(FarmFollowing.farm_id).filter(FarmFollowing.follower_id == user_id).all()
-        farm_ids = [f[0] for f in following]
+        # Récupérer les utilisateurs que l'utilisateur suit
+        following = db.query(UserFollowing.following_id).filter(UserFollowing.follower_id == user_id).all()
+        following_ids = [f[0] for f in following]
         
-        if not farm_ids:
+        if not following_ids:
             return {"count": 0, "posts": []}
         
-        # Récupérer les posts de ces fermes
+        # Récupérer les posts de ces utilisateurs (via leurs fermes)
         posts = db.query(FarmPost, Farm, User).join(Farm, FarmPost.farm_id == Farm.id).join(User, Farm.user_id == User.id)\
-            .filter(FarmPost.farm_id.in_(farm_ids))\
+            .filter(Farm.user_id.in_(following_ids))\
             .order_by(FarmPost.created_at.desc())\
             .offset(skip)\
             .limit(limit)\
@@ -264,97 +264,88 @@ def get_farm_feed(user_id: int, skip: int = 0, limit: int = 20, db: Session = De
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# FARM FOLLOWING (Suivre des fermes)
+# SUIVRE DES UTILISATEURS (Propriétaires de fermes)
 # ═══════════════════════════════════════════════════════════════════════════
 
-@router.post("/follow/{farm_id}")
-def follow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
+@router.post("/follow-user/{user_id_to_follow}")
+def follow_user(user_id_to_follow: int, user_id: int, db: Session = Depends(get_db)):
     """
-    ➕ Suivre une ferme.
+    ➕ Suivre un utilisateur (propriétaire de ferme).
     """
     try:
-        print(f'➕ Follow request: farm_id={farm_id}, user_id={user_id}')
+        print(f'➕ Follow user request: following_id={user_id_to_follow}, follower_id={user_id}')
         
-        # Vérifier que la ferme existe
-        farm = db.query(Farm).filter(Farm.id == farm_id).first()
-        if not farm:
-            print(f'❌ Farm {farm_id} not found')
-            raise HTTPException(status_code=404, detail="Ferme non trouvée")
+        # Vérifier qu'on ne se suit pas soi-même
+        if user_id == user_id_to_follow:
+            print(f'⚠️ User {user_id} cannot follow themselves')
+            return {"message": "Vous ne pouvez pas vous suivre vous-même"}
         
-        # Vérifier que l'utilisateur existe
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            print(f'❌ User {user_id} not found')
+        # Vérifier que l'utilisateur suivi existe
+        user_to_follow = db.query(User).filter(User.id == user_id_to_follow).first()
+        if not user_to_follow:
+            print(f'❌ User {user_id_to_follow} not found')
             raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
         
+        # Vérifier que le follower existe
+        follower = db.query(User).filter(User.id == user_id).first()
+        if not follower:
+            print(f'❌ Follower user {user_id} not found')
+            raise HTTPException(status_code=404, detail="Utilisateur courant non trouvé")
+        
         # Vérifier qu'on ne suit pas déjà
-        existing = db.query(FarmFollowing).filter(
-            FarmFollowing.follower_id == user_id,
-            FarmFollowing.farm_id == farm_id
+        existing = db.query(UserFollowing).filter(
+            UserFollowing.follower_id == user_id,
+            UserFollowing.following_id == user_id_to_follow
         ).first()
         if existing:
-            print(f'⚠️ User {user_id} already follows farm {farm_id}')
-            return {"message": "✅ Ferme suivie"}  # Retourner 200 au lieu de 400
+            print(f'⚠️ User {user_id} already follows user {user_id_to_follow}')
+            return {"message": "✅ Utilisateur suivi"}
         
         # Créer la relation
-        following = FarmFollowing(follower_id=user_id, farm_id=farm_id)
+        following = UserFollowing(follower_id=user_id, following_id=user_id_to_follow)
         db.add(following)
-        
-        # Incrémenter le compteur dans FarmProfile
-        profile = db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).first()
-        if profile:
-            profile.total_followers += 1
-            print(f'✅ Updated followers count for farm {farm_id}: {profile.total_followers}')
-        else:
-            print(f'⚠️ No FarmProfile found for farm {farm_id}')
-        
         db.commit()
-        print(f'✅ Farm {farm_id} followed by user {user_id}')
         
-        return {"message": "✅ Ferme suivie"}
+        print(f'✅ User {user_id_to_follow} followed by user {user_id}')
+        
+        return {"message": "✅ Utilisateur suivi"}
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        print(f'❌ Error following farm: {str(e)}')
+        print(f'❌ Error following user: {str(e)}')
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 
-@router.delete("/follow/{farm_id}")
-def unfollow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
+@router.delete("/follow-user/{user_id_to_unfollow}")
+def unfollow_user(user_id_to_unfollow: int, user_id: int, db: Session = Depends(get_db)):
     """
-    ➖ Arrêter de suivre une ferme.
+    ➖ Arrêter de suivre un utilisateur.
     """
     try:
-        print(f'➖ Unfollow request: farm_id={farm_id}, user_id={user_id}')
+        print(f'➖ Unfollow user request: following_id={user_id_to_unfollow}, follower_id={user_id}')
         
-        following = db.query(FarmFollowing).filter(
-            FarmFollowing.follower_id == user_id,
-            FarmFollowing.farm_id == farm_id
+        following = db.query(UserFollowing).filter(
+            UserFollowing.follower_id == user_id,
+            UserFollowing.following_id == user_id_to_unfollow
         ).first()
         if not following:
-            print(f'⚠️ User {user_id} is not following farm {farm_id}')
-            return {"message": "❌ Ferme non suivie"}  # Retourner 200 au lieu de 404
+            print(f'⚠️ User {user_id} is not following user {user_id_to_unfollow}')
+            return {"message": "❌ Utilisateur non suivi"}
         
         db.delete(following)
-        
-        # Décrémenter le compteur
-        profile = db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).first()
-        if profile and profile.total_followers > 0:
-            profile.total_followers -= 1
-            print(f'✅ Updated followers count for farm {farm_id}: {profile.total_followers}')
-        
         db.commit()
-        print(f'✅ Farm {farm_id} unfollowed by user {user_id}')
         
-        return {"message": "❌ Ferme non suivie"}
+        print(f'✅ User {user_id_to_unfollow} unfollowed by user {user_id}')
+        
+        return {"message": "❌ Utilisateur non suivi"}
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        print(f'❌ Error unfollowing farm: {str(e)}')
+        print(f'❌ Error unfollowing user: {str(e)}')
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")

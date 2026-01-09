@@ -34,9 +34,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
   static const String _baseUrl = 'http://localhost:8000/api';
 
   late Future<Map<String, dynamic>> _farmDetailsFuture;
-  bool _isFollowing = false;
   int _userId = 0;
-  bool _checkingFollowStatus = false;
 
   @override
   void initState() {
@@ -45,25 +43,6 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     print('🌾 FarmDetailScreen - farmId: ${widget.farmId}');
     // Use the new comprehensive endpoint
     _farmDetailsFuture = _getFarmDetails(widget.farmId);
-    
-    // Vérifier si l'utilisateur suit déjà la ferme
-    if (_userId > 0) {
-      _checkFollowStatus();
-    }
-  }
-
-  Future<void> _checkFollowStatus() async {
-    try {
-      setState(() => _checkingFollowStatus = true);
-      // Vérifier si l'utilisateur suit cette ferme
-      // Pour l'instant, on suppose que le backend retourne cet info
-      // À adapter selon votre API
-      print('👤 Checking follow status for user $_userId and farm ${widget.farmId}');
-      setState(() => _checkingFollowStatus = false);
-    } catch (e) {
-      print('❌ Error checking follow status: $e');
-      setState(() => _checkingFollowStatus = false);
-    }
   }
 
   Future<Map<String, dynamic>> _getFarmDetails(int farmId) async {
@@ -86,64 +65,6 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     setState(() {
       _farmDetailsFuture = _getFarmDetails(widget.farmId);
     });
-  }
-
-  Future<void> _toggleFollow() async {
-    if (_userId == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connectez-vous pour suivre des fermes'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      Navigator.pushNamed(context, '/login');
-      return;
-    }
-
-    try {
-      if (_isFollowing) {
-        // Désabonner
-        print('🔌 Unfollowing farm ${widget.farmId}');
-        await ApiService.unfollowFarm(
-          farmId: widget.farmId,
-          userId: _userId,
-        );
-        setState(() => _isFollowing = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✓ Vous ne suivez plus cette ferme'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      } else {
-        // Suivre
-        print('➕ Following farm ${widget.farmId}');
-        await ApiService.followFarm(
-          farmId: widget.farmId,
-          userId: _userId,
-        );
-        setState(() => _isFollowing = true);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Vous suivez maintenant cette ferme'),
-              backgroundColor: Color(0xFF6B8E23),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: Colors.red.shade400,
-          ),
-        );
-      }
-    }
   }
 
   int? _toInt(dynamic v) {
@@ -242,40 +163,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    
-                    // Follow Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: _isFollowing ? _primaryColor.withOpacity(0.1) : _primaryColor,
-                          borderRadius: const BorderRadius.all(Radius.circular(8)),
-                          border: Border.all(
-                            color: _isFollowing ? _primaryColor : Colors.transparent,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: _toggleFollow,
-                            borderRadius: const BorderRadius.all(Radius.circular(8)),
-                            child: Center(
-                              child: Text(
-                                _isFollowing ? '✓ Ne plus suivre' : '+ Suivre cette ferme',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w400,
-                                  color: _isFollowing ? _primaryColor : Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -467,7 +355,6 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                 }
 
                 final crops = (snapshot.data?['crops'] as List?) ?? [];
-                final farmOwnerId = snapshot.data?['owner_id'] as int?;
                 print('🌾 Crops loaded: ${crops.length}');
 
                 if (crops.isEmpty) {
@@ -512,7 +399,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                       crops.length,
                       (index) {
                         final crop = crops[index] as Map<String, dynamic>;
-                        return _buildCropCard(crop, cardColor, textColor, secondaryTextColor, borderColor, isDark, farmOwnerId);
+                        return _buildCropCard(crop, cardColor, textColor, secondaryTextColor, borderColor, isDark);
                       },
                     ),
                   ),
@@ -532,7 +419,6 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     Color secondaryTextColor,
     Color borderColor,
     bool isDark,
-    int? farmOwnerId,
   ) {
     final Map<String, Map<String, dynamic>> statusColors = const {
       'En préparation': {'color': Colors.orange, 'icon': Icons.construction_outlined},
@@ -655,7 +541,6 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                                 farmId: widget.farmId,
                                 cropId: _toInt(crop['id']) ?? 0,
                                 userId: _userId,
-                                farmOwnerId: farmOwnerId,
                               ),
                             ),
                           ).then((_) => _refresh());

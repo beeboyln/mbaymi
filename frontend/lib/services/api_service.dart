@@ -1006,6 +1006,40 @@ class ApiService {
     }
   }
 
+  static Future<void> followUser({required int userIdToFollow, required int userId}) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/farm-network/follow-user/$userIdToFollow?user_id=$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to follow user');
+      }
+    } catch (e) {
+      throw Exception('Error following user: $e');
+    }
+  }
+
+  static Future<void> unfollowUser({required int userIdToUnfollow, required int userId}) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/farm-network/follow-user/$userIdToUnfollow?user_id=$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to unfollow user');
+      }
+    } catch (e) {
+      throw Exception('Error unfollowing user: $e');
+    }
+  }
+  
+  // DEPRECATED: Méthodes anciennes conservées pour compatibilité
+  @deprecated
   static Future<void> followFarm({required int farmId, required int userId}) async {
     try {
       final headers = await _getAuthHeaders();
@@ -1022,6 +1056,7 @@ class ApiService {
     }
   }
 
+  @deprecated
   static Future<void> unfollowFarm({required int farmId, required int userId}) async {
     try {
       final headers = await _getAuthHeaders();

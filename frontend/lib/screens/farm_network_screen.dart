@@ -207,6 +207,7 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
   Widget _buildPublicFarmCard(dynamic farm) {
     final farmName = farm['farm_name'] as String? ?? 'Ferme';
     final ownerName = farm['owner_name'] as String? ?? 'Agriculteur';
+    final ownerId = farm['user_id'] as int? ?? 0;
     final location = farm['location'] as String? ?? 'Localisation inconnue';
     final description = farm['description'] as String? ?? '';
     final specialties = (farm['specialties'] as List?)?.cast<String>() ?? [];
@@ -359,47 +360,68 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                       if (_userId == 0) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Connectez-vous pour suivre des fermes'),
+                            content: Text('Connectez-vous pour suivre des agriculteurs'),
                             backgroundColor: Colors.orange,
                           ),
                         );
                         Navigator.pushNamed(context, '/login');
                         return;
                       }
+                      
+                      if (ownerId == 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Erreur: propriétaire introuvable'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+                      
+                      if (_userId == ownerId) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Vous ne pouvez pas vous suivre vous-même'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                        return;
+                      }
+                      
                       try {
-                        final isFollowed = _followedFarmIds.contains(farmId);
+                        final isFollowed = _followedFarmIds.contains(ownerId);
                         if (isFollowed) {
-                          // Désabonner
-                          await ApiService.unfollowFarm(
-                            farmId: farmId,
+                          // Arrêter de suivre
+                          await ApiService.unfollowUser(
+                            userIdToUnfollow: ownerId,
                             userId: _userId,
                           );
                           if (mounted) {
                             setState(() {
-                              _followedFarmIds.remove(farmId);
+                              _followedFarmIds.remove(ownerId);
                               _feedFuture = ApiService.getFarmFeed(_userId);
                             });
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('✓ Vous ne suivez plus cette ferme'),
+                                content: Text('✓ Vous ne suivez plus cet agriculteur'),
                                 backgroundColor: Colors.orange,
                               ),
                             );
                           }
                         } else {
                           // Suivre
-                          await ApiService.followFarm(
-                            farmId: farmId,
+                          await ApiService.followUser(
+                            userIdToFollow: ownerId,
                             userId: _userId,
                           );
                           if (mounted) {
                             setState(() {
-                              _followedFarmIds.add(farmId);
+                              _followedFarmIds.add(ownerId);
                               _feedFuture = ApiService.getFarmFeed(_userId);
                             });
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('✅ Vous suivez maintenant cette ferme'),
+                                content: Text('✅ Vous suivez maintenant cet agriculteur'),
                                 backgroundColor: Color(0xFF6B8E23),
                               ),
                             );
@@ -414,16 +436,16 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _followedFarmIds.contains(farmId) 
+                      backgroundColor: _followedFarmIds.contains(ownerId) 
                           ? const Color(0xFF6B8E23).withOpacity(0.2)
                           : const Color(0xFF6B8E23),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     ),
                     child: Text(
-                      _followedFarmIds.contains(farmId) ? '✓ Ne plus suivre' : 'Suivre',
+                      _followedFarmIds.contains(ownerId) ? '✓ Ne plus suivre' : 'Suivre',
                       style: TextStyle(
                         fontSize: 12,
-                        color: _followedFarmIds.contains(farmId)
+                        color: _followedFarmIds.contains(ownerId)
                             ? const Color(0xFF6B8E23)
                             : Colors.white,
                       ),
