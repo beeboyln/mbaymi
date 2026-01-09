@@ -51,13 +51,21 @@ def create_farm_profile(
         db.commit()
         db.refresh(profile)
         
+        # Safe specialties handling
+        specialties = []
+        if profile.specialties:
+            try:
+                specialties = [s.strip() for s in profile.specialties.split(",") if s.strip()]
+            except Exception:
+                specialties = []
+        
         return {
             "id": profile.id,
             "farm_id": profile.farm_id,
-            "description": profile.description,
-            "specialties": profile.specialties.split(",") if profile.specialties else [],
+            "description": profile.description or "",
+            "specialties": specialties,
             "is_public": profile.is_public,
-            "total_followers": profile.total_followers,
+            "total_followers": profile.total_followers or 0,
         }
     except Exception as e:
         db.rollback()
@@ -77,16 +85,24 @@ def get_farm_profile(farm_id: int, db: Session = Depends(get_db)):
         farm = db.query(Farm).filter(Farm.id == farm_id).first()
         user = db.query(User).filter(User.id == farm.user_id).first()
         
+        # Safe specialties handling
+        specialties = []
+        if profile.specialties:
+            try:
+                specialties = [s.strip() for s in profile.specialties.split(",") if s.strip()]
+            except Exception:
+                specialties = []
+        
         return {
             "id": profile.id,
             "farm_id": profile.farm_id,
             "farm_name": farm.name,
             "farm_location": farm.location,
             "owner_name": user.name if user else "Agriculteur",
-            "description": profile.description,
-            "specialties": profile.specialties.split(",") if profile.specialties else [],
+            "description": profile.description or "",
+            "specialties": specialties,
             "is_public": profile.is_public,
-            "total_followers": profile.total_followers,
+            "total_followers": profile.total_followers or 0,
             "created_at": profile.created_at.isoformat(),
         }
     except HTTPException:
@@ -120,18 +136,27 @@ def search_farm_profiles(
         
         results = query.all()
         
+        farms_data = []
+        for profile, farm in results:
+            # Safe specialties handling
+            specialties = []
+            if profile.specialties:
+                try:
+                    specialties = [s.strip() for s in profile.specialties.split(",") if s.strip()]
+                except Exception:
+                    specialties = []
+            
+            farms_data.append({
+                "farm_id": farm.id,
+                "farm_name": farm.name,
+                "location": farm.location,
+                "specialties": specialties,
+                "followers": profile.total_followers or 0,
+            })
+        
         return {
-            "count": len(results),
-            "farms": [
-                {
-                    "farm_id": farm.id,
-                    "farm_name": farm.name,
-                    "location": farm.location,
-                    "specialties": profile.specialties.split(",") if profile.specialties else [],
-                    "followers": profile.total_followers,
-                }
-                for profile, farm in results
-            ]
+            "count": len(farms_data),
+            "farms": farms_data
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
@@ -428,15 +453,23 @@ def get_farm_details(farm_id: int, db: Session = Depends(get_db)):
             for p in photos
         ]
         
+        # Safe specialties handling
+        specialties = []
+        if profile.specialties:
+            try:
+                specialties = [s.strip() for s in profile.specialties.split(",") if s.strip()]
+            except Exception:
+                specialties = []
+        
         return {
             "farm_id": farm.id,
             "farm_name": farm.name,
             "location": farm.location,
             "owner_name": user.name if user else "Agriculteur",
             "owner_id": farm.user_id,
-            "description": profile.description,
-            "specialties": profile.specialties.split(",") if profile.specialties else [],
-            "followers": profile.total_followers,
+            "description": profile.description or "",
+            "specialties": specialties,
+            "followers": profile.total_followers or 0,
             "is_public": profile.is_public,
             "crops": crops_data,
             "photos": photos_data,
@@ -485,6 +518,16 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
         farms_list = []
         for idx, (profile, farm, user) in enumerate(profiles):
             logger.debug(f"  📦 Traitement ferme {idx+1}/{len(profiles)}: farm_id={farm.id}, farm_name={farm.name}")
+            
+            # Traiter les spécialités de manière sûre
+            specialties = []
+            if profile.specialties:
+                try:
+                    specialties = [s.strip() for s in profile.specialties.split(",") if s.strip()]
+                except Exception as e:
+                    logger.warning(f"  ⚠️ Erreur en traitant specialties: {e}")
+                    specialties = []
+            
             farm_data = {
                 "farm_id": farm.id,
                 "farm_name": farm.name,
@@ -492,9 +535,9 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
                 "user_id": user.id,
                 "owner_name": user.name,
                 "profile_image": getattr(user, 'profile_image', None),
-                "description": profile.description,
-                "specialties": profile.specialties.split(",") if profile.specialties else [],
-                "followers": profile.total_followers,
+                "description": profile.description or "",
+                "specialties": specialties,
+                "followers": profile.total_followers or 0,
             }
             farms_list.append(farm_data)
         
