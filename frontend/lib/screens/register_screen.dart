@@ -20,7 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _regionController = TextEditingController();
   final _villageController = TextEditingController();
 
-  // FocusNodes (Next / Done fluide)
+  // FocusNodes
   final _nameFocus = FocusNode();
   final _emailFocus = FocusNode();
   final _phoneFocus = FocusNode();
@@ -39,7 +39,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   static const Color _textDark = Colors.white;
   static const Color _borderLight = Color(0xFFE8E2D8);
   static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _buttonDark = Color(0xFF2C2C2C);
   static const Color _hintLight = Color(0xFF999999);
   static const Color _hintDark = Color(0xFF666666);
 
@@ -97,7 +96,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  InputDecoration _inputDecoration(String label, Color borderColor, Color hintColor, bool isDark) {
+  InputDecoration _inputDecoration(
+      String label, Color borderColor, Color hintColor, bool isDark) {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: hintColor),
@@ -117,9 +117,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final bgColor = isDark ? _bgDark : _bgLight;
     final textColor = isDark ? _textDark : _textLight;
     final borderColor = isDark ? _borderDark : _borderLight;
-    final buttonColor = isDark ? _buttonDark : Colors.black;
-    final appBarColor = isDark ? Color(0xFF1E1E1E) : Colors.white;
     final hintColor = isDark ? _hintDark : _hintLight;
+    final buttonColor = isDark ? Colors.brown[700] : Colors.brown;
+    final buttonTextColor = Colors.white;
+    final appBarColor = isDark ? Color(0xFF1E1E1E) : Colors.white;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -145,6 +146,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 const SizedBox(height: 32),
 
+                // Logo centré
+                Center(
+                  child: Icon(
+                    Icons.agriculture_rounded, // ou autre icône d'éleveur
+                    size: 80,
+                    color: buttonColor,
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
                 // NOM
                 TextFormField(
                   controller: _nameController,
@@ -153,7 +165,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_emailFocus),
                   style: TextStyle(color: textColor),
-                  decoration: _inputDecoration('Nom complet', borderColor, hintColor, isDark),
+                  decoration:
+                      _inputDecoration('Nom complet', borderColor, hintColor, isDark),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Nom requis' : null,
                 ),
@@ -185,7 +198,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_passwordFocus),
                   style: TextStyle(color: textColor),
-                  decoration: _inputDecoration('Téléphone', borderColor, hintColor, isDark),
+                  decoration:
+                      _inputDecoration('Téléphone', borderColor, hintColor, isDark),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Téléphone requis' : null,
                 ),
@@ -201,7 +215,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_confirmPasswordFocus),
                   style: TextStyle(color: textColor),
-                  decoration: _inputDecoration('Mot de passe', borderColor, hintColor, isDark),
+                  decoration:
+                      _inputDecoration('Mot de passe', borderColor, hintColor, isDark),
                   validator: (v) =>
                       v != null && v.length < 6 ? '6 caractères minimum' : null,
                 ),
@@ -217,7 +232,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_regionFocus),
                   style: TextStyle(color: textColor),
-                  decoration: _inputDecoration('Confirmer le mot de passe', borderColor, hintColor, isDark),
+                  decoration: _inputDecoration(
+                      'Confirmer le mot de passe', borderColor, hintColor, isDark),
                   validator: (v) =>
                       v != _passwordController.text
                           ? 'Les mots de passe ne correspondent pas'
@@ -233,13 +249,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: _inputDecoration('Rôle', borderColor, hintColor, isDark),
                   items: const [
                     DropdownMenuItem(value: 'farmer', child: Text('Agriculteur')),
-                    DropdownMenuItem(
-                        value: 'livestock_breeder', child: Text('Éleveur')),
+                    DropdownMenuItem(value: 'livestock_breeder', child: Text('Éleveur')),
                     DropdownMenuItem(value: 'buyer', child: Text('Acheteur')),
                     DropdownMenuItem(value: 'seller', child: Text('Vendeur')),
                   ],
-                  onChanged: (v) =>
-                      setState(() => _selectedRole = v ?? 'farmer'),
+                  onChanged: (v) => setState(() => _selectedRole = v ?? 'farmer'),
                 ),
 
                 const SizedBox(height: 24),
@@ -265,12 +279,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   focusNode: _villageFocus,
                   textInputAction: TextInputAction.done,
                   style: TextStyle(color: textColor),
-                  decoration: _inputDecoration('Village (optionnel)', borderColor, hintColor, isDark),
+                  decoration: _inputDecoration(
+                      'Village (optionnel)', borderColor, hintColor, isDark),
                 ),
 
                 const SizedBox(height: 40),
 
-                // BOUTON
+                // BOUTON MARRON
                 SizedBox(
                   height: 50,
                   child: ElevatedButton(
@@ -283,13 +298,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     child: _isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                                  AlwaysStoppedAnimation<Color>(buttonTextColor),
                             ),
                           )
                         : Text(
@@ -297,7 +312,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             style: TextStyle(
                               letterSpacing: 1.2,
                               fontWeight: FontWeight.w600,
-                              color: textColor,
+                              color: buttonTextColor,
                             ),
                           ),
                   ),

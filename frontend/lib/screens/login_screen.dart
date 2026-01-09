@@ -10,27 +10,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  // FocusNodes
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-
-  // Palette de couleurs
-  static const Color _bgLight = Colors.white;
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _textLight = Color(0xFF1A1A1A);
-  static const Color _textDark = Colors.white;
-  static const Color _borderLight = Color(0xFFE8E2D8);
-  static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _buttonDark = Color(0xFF2C2C2C);
-  static const Color _hintLight = Color(0xFF999999);
-  static const Color _hintDark = Color(0xFF666666);
 
   @override
   void dispose() {
@@ -42,8 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
-    if (_emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez remplir tous les champs')),
       );
@@ -61,9 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       final userId = result['id'] ?? result['user_id'];
-      if (userId == null) {
-        throw Exception('ID utilisateur manquant');
-      }
+      if (userId == null) throw Exception('ID utilisateur manquant');
 
       await AuthService.login(
         userId: userId is int ? userId : int.parse(userId.toString()),
@@ -83,39 +66,48 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  InputDecoration _inputDecoration(String label, Color borderColor, Color hintColor, bool isDark, {Widget? suffix}) {
+  InputDecoration _inputDecoration(
+      String label, Color borderColor, Color hintColor,
+      {Widget? suffix}) {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: hintColor),
-      border: const UnderlineInputBorder(),
-      enabledBorder: UnderlineInputBorder(
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: borderColor),
       ),
-      focusedBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: isDark ? Colors.white70 : Colors.black),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.brown.shade700, width: 2),
       ),
       suffixIcon: suffix,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? _bgDark : _bgLight;
-    final textColor = isDark ? _textDark : _textLight;
-    final borderColor = isDark ? _borderDark : _borderLight;
-    final buttonColor = isDark ? _buttonDark : Colors.black;
-    final appBarColor = isDark ? Color(0xFF1E1E1E) : Colors.white;
-    final hintColor = isDark ? _hintDark : _hintLight;
+
+    // Palette dynamique
+    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
+    final appBarColor = bgColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final hintColor = isDark ? Colors.grey.shade500 : Colors.grey.shade600;
+    final borderColor = isDark ? Colors.grey.shade700 : Colors.grey.shade300;
+    final buttonColor = isDark ? Colors.brown.shade700 : Colors.brown;
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: appBarColor,
         elevation: 0,
-        foregroundColor: textColor,
         centerTitle: true,
+        foregroundColor: textColor,
         title: Text(
           'Connexion',
           style: TextStyle(fontWeight: FontWeight.w600, color: textColor),
@@ -123,12 +115,22 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.symmetric(horizontal: 24),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 48),
+              const SizedBox(height: 40),
+
+              // ICONE CENTREE
+              Center(
+                child: Icon(
+                  Icons.agriculture,
+                  size: 100,
+                  color: buttonColor,
+                ),
+              ),
+              const SizedBox(height: 40),
 
               // EMAIL
               TextField(
@@ -139,10 +141,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 onSubmitted: (_) =>
                     FocusScope.of(context).requestFocus(_passwordFocus),
                 style: TextStyle(color: textColor),
-                decoration: _inputDecoration('Email', borderColor, hintColor, isDark),
+                decoration:
+                    _inputDecoration('Email', borderColor, hintColor),
               ),
-
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
               // MOT DE PASSE
               TextField(
@@ -156,27 +158,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   'Mot de passe',
                   borderColor,
                   hintColor,
-                  isDark,
                   suffix: IconButton(
                     icon: Icon(
                       _obscurePassword
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
-                      size: 20,
                       color: hintColor,
                     ),
                     onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
+                      setState(() => _obscurePassword = !_obscurePassword);
                     },
                   ),
                 ),
               ),
+              const SizedBox(height: 32),
 
-              const SizedBox(height: 48),
-
-              // BOUTON
+              // BOUTON SE CONNECTER
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
@@ -185,25 +182,25 @@ class _LoginScreenState extends State<LoginScreen> {
                     backgroundColor: buttonColor,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                          width: 24,
+                          height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor:
                                 AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : Text(
+                      : const Text(
                           'SE CONNECTER',
                           style: TextStyle(
-                            letterSpacing: 1.2,
+                            color: Colors.white,
                             fontWeight: FontWeight.w600,
-                            color: textColor,
+                            letterSpacing: 1.1,
                           ),
                         ),
                 ),
@@ -221,11 +218,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.of(context).pushNamed('/register'),
                     child: Text(
                       'Créer un compte',
-                      style: TextStyle(fontWeight: FontWeight.w600, color: buttonColor),
+                      style: TextStyle(
+                        color: buttonColor,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
