@@ -28,9 +28,10 @@ app.add_middleware(
         "https://cuddly-lil-bigboyllmnd-9965fc8f.koyeb.app",  # Self origin for internal calls
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    max_age=3600,  # 1 hour
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],
+    expose_headers=["Content-Type", "X-Total-Count"],
+    max_age=86400,  # 24 hours
 )
 
 print("✅ CORS configured with regex (production-ready)")
@@ -73,6 +74,11 @@ def startup():
         print("🗄️ Database initialized")
     except Exception as e:
         print(f"⚠️ Database init failed: {e}")
+
+@app.options("/{full_path:path}")
+def options_handler():
+    """Handle preflight OPTIONS requests"""
+    return {"message": "OK"}
 
 @app.get("/")
 def read_root():
