@@ -63,10 +63,11 @@ def update_user_profile(
     user_id: int,
     name: str = None,
     email: str = None,
+    profile_image: str = None,
     db: Session = Depends(get_db)
 ):
     """
-    ✏️ Mettre à jour le profil utilisateur (nom et email).
+    ✏️ Mettre à jour le profil utilisateur (nom, email et photo de profil).
     """
     try:
         user = db.query(User).filter(User.id == user_id).first()
@@ -92,6 +93,11 @@ def update_user_profile(
                 raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
             user.email = email
         
+        # Mettre à jour la photo de profil si fournie
+        if profile_image:
+            profile_image = profile_image.strip()
+            user.profile_image = profile_image
+        
         db.commit()
         db.refresh(user)
         
@@ -100,6 +106,7 @@ def update_user_profile(
             "name": user.name,
             "email": user.email,
             "profile_image": getattr(user, 'profile_image', None),
+            "success": True,
             "message": "Profil mis à jour avec succès"
         }
     
