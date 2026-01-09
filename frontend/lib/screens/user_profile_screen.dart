@@ -105,16 +105,23 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         );
       }
 
-      // Uploader l'image
-      final result = await ApiService.uploadProfileImage(
+      // Upload vers Cloudinary (comme pour les fermes)
+      final imageUrl = await ApiService.uploadImageToCloudinary(image);
+      
+      if (imageUrl == null) {
+        throw Exception('Impossible de télécharger l\'image');
+      }
+
+      // Mettre à jour le profil avec l'URL Cloudinary
+      final result = await ApiService.updateUserProfile(
         userId: widget.userId,
-        imageFile: image,
+        profileImage: imageUrl,
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Photo mise à jour'),
+            content: Text(result['success'] == true ? 'Photo de profil mise à jour ✅' : 'Erreur'),
             backgroundColor: _primaryColor,
             behavior: SnackBarBehavior.floating,
           ),

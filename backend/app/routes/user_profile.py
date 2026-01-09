@@ -1,10 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Farm, FarmProfile, FarmPost
-import aiofiles
-import os
-from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -199,79 +196,4 @@ def toggle_farm_visibility(user_id: int, farm_id: int, is_public: bool, db: Sess
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 
-@router.post("/{user_id}/profile-image")
-async def upload_profile_image(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """
-    📸 Uploader une photo de profil pour l'utilisateur.
-    """
-    try:
-        logger.info(f"📸 Upload profile image for user {user_id}")
-        logger.info(f"   Filename: {file.filename}, Content-Type: {file.content_type}")
-        
-        # Vérifier que l'utilisateur existe
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            logger.warning(f"User {user_id} not found")
-            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-        
-        # Vérifier que le fichier existe
-        if not file or not file.filename:
-            logger.warning("No file provided")
-            raise HTTPException(status_code=400, detail="Aucun fichier fourni")
-        
-        # Vérifier que le fichier est une image (par extension et content_type)
-        allowed_extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
-        file_ext = "." + file.filename.split(".")[-1].lower() if "." in file.filename else ""
-        
-        logger.info(f"   File extension: {file_ext}")
-        
-        if file_ext not in allowed_extensions:
-            logger.warning(f"Invalid file extension: {file_ext}")
-            raise HTTPException(status_code=400, detail=f"Format d'image non supporté: {file_ext}")
-        
-        # Vérifier le content_type s'il est disponible
-        if file.content_type and not file.content_type.startswith("image/"):
-            logger.warning(f"Invalid content type: {file.content_type}")
-            raise HTTPException(status_code=400, detail="Le fichier doit être une image")
-        
-        # Créer le dossier uploads s'il n'existe pas
-        upload_dir = "uploads/profiles"
-        os.makedirs(upload_dir, exist_ok=True)
-        logger.info(f"   Upload directory: {upload_dir}")
-        
-        # Générer un nom de fichier unique
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_extension = file.filename.split(".")[-1] if file.filename else "jpg"
-        filename = f"profile_{user_id}_{timestamp}.{file_extension}"
-        filepath = os.path.join(upload_dir, filename)
-        logger.info(f"   Saving to: {filepath}")
-        
-        # Sauvegarder le fichier
-        async with aiofiles.open(filepath, 'wb') as f:
-            content = await file.read()
-            await f.write(content)
-        
-        logger.info(f"✅ File saved successfully")
-        
-        # Construire l'URL relative
-        file_url = f"/uploads/profiles/{filename}"
-        
-        # Mettre à jour le profil utilisateur
-        user.profile_image = file_url
-        db.commit()
-        db.refresh(user)
-        
-        logger.info(f"✅ Profile image updated: {file_url}")
-        
-        return {
-            "success": True,
-            "profile_image": user.profile_image,
-            "message": "Photo de profil mise à jour avec succès"
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ Error uploading profile image: {str(e)}", exc_info=True)
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erreur lors du téléchargement : {str(e)}")
+

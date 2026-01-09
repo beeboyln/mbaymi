@@ -1177,47 +1177,17 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> uploadProfileImage({
-    required int userId,
-    required XFile imageFile,
-  }) async {
-    try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/users/$userId/profile-image'),
-      );
-      
-      final file = await imageFile.readAsBytes();
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          file,
-          filename: imageFile.name,
-        ),
-      );
-      
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-      
-      if (response.statusCode == 200) {
-        return jsonDecode(responseBody);
-      } else {
-        throw Exception('Failed to upload profile image');
-      }
-    } catch (e) {
-      throw Exception('Error uploading profile image: $e');
-    }
-  }
-
   static Future<Map<String, dynamic>> updateUserProfile({
     required int userId,
     String? name,
     String? email,
+    String? profileImage,
   }) async {
     try {
       final params = <String, String>{};
       if (name != null && name.isNotEmpty) params['name'] = name;
       if (email != null && email.isNotEmpty) params['email'] = email;
+      if (profileImage != null && profileImage.isNotEmpty) params['profile_image'] = profileImage;
 
       final response = await http.put(
         Uri.parse('$baseUrl/users/$userId/profile').replace(
