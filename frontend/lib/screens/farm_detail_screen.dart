@@ -36,6 +36,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
   late Future<Map<String, dynamic>> _farmDetailsFuture;
   bool _isFollowing = false;
   int _userId = 0;
+  bool _checkingFollowStatus = false;
 
   @override
   void initState() {
@@ -44,6 +45,25 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     print('🌾 FarmDetailScreen - farmId: ${widget.farmId}');
     // Use the new comprehensive endpoint
     _farmDetailsFuture = _getFarmDetails(widget.farmId);
+    
+    // Vérifier si l'utilisateur suit déjà la ferme
+    if (_userId > 0) {
+      _checkFollowStatus();
+    }
+  }
+
+  Future<void> _checkFollowStatus() async {
+    try {
+      setState(() => _checkingFollowStatus = true);
+      // Vérifier si l'utilisateur suit cette ferme
+      // Pour l'instant, on suppose que le backend retourne cet info
+      // À adapter selon votre API
+      print('👤 Checking follow status for user $_userId and farm ${widget.farmId}');
+      setState(() => _checkingFollowStatus = false);
+    } catch (e) {
+      print('❌ Error checking follow status: $e');
+      setState(() => _checkingFollowStatus = false);
+    }
   }
 
   Future<Map<String, dynamic>> _getFarmDetails(int farmId) async {
@@ -81,18 +101,38 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     }
 
     try {
-      await ApiService.followFarm(
-        farmId: widget.farmId,
-        userId: _userId,
-      );
-      setState(() => _isFollowing = true);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Vous suivez maintenant cette ferme'),
-            backgroundColor: Color(0xFF6B8E23),
-          ),
+      if (_isFollowing) {
+        // Désabonner
+        print('🔌 Unfollowing farm ${widget.farmId}');
+        await ApiService.unfollowFarm(
+          farmId: widget.farmId,
+          userId: _userId,
         );
+        setState(() => _isFollowing = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✓ Vous ne suivez plus cette ferme'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        // Suivre
+        print('➕ Following farm ${widget.farmId}');
+        await ApiService.followFarm(
+          farmId: widget.farmId,
+          userId: _userId,
+        );
+        setState(() => _isFollowing = true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Vous suivez maintenant cette ferme'),
+              backgroundColor: Color(0xFF6B8E23),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -224,7 +264,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                             borderRadius: const BorderRadius.all(Radius.circular(8)),
                             child: Center(
                               child: Text(
-                                _isFollowing ? '✓ En suivi' : '+ Suivre cette ferme',
+                                _isFollowing ? '✓ Ne plus suivre' : '+ Suivre cette ferme',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w400,
@@ -427,6 +467,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                 }
 
                 final crops = (snapshot.data?['crops'] as List?) ?? [];
+                final farmOwnerId = snapshot.data?['owner_id'] as int?;
                 print('🌾 Crops loaded: ${crops.length}');
 
                 if (crops.isEmpty) {
@@ -471,7 +512,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                       crops.length,
                       (index) {
                         final crop = crops[index] as Map<String, dynamic>;
-                        return _buildCropCard(crop, cardColor, textColor, secondaryTextColor, borderColor, isDark);
+                        return _buildCropCard(crop, cardColor, textColor, secondaryTextColor, borderColor, isDark, farmOwnerId);
                       },
                     ),
                   ),
@@ -491,6 +532,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     Color secondaryTextColor,
     Color borderColor,
     bool isDark,
+    int? farmOwnerId,
   ) {
     final Map<String, Map<String, dynamic>> statusColors = const {
       'En préparation': {'color': Colors.orange, 'icon': Icons.construction_outlined},
@@ -592,16 +634,16 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
             ),
             
             // Action Buttons
-            DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: borderColor, width: 1),
-                ),
-              ),
-              child: Row(
-                children: [
-                  // Détails Button
-                  Expanded(
+            Row(
+              children: [
+                // Détails Button
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: BorderSide(color: borderColor, width: 1),
+                      ),
+                    ),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -613,6 +655,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                                 farmId: widget.farmId,
                                 cropId: _toInt(crop['id']) ?? 0,
                                 userId: _userId,
+                                farmOwnerId: farmOwnerId,
                               ),
                             ),
                           ).then((_) => _refresh());
@@ -633,38 +676,31 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                       ),
                     ),
                   ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        left: BorderSide(color: borderColor, width: 1),
-                      ),
-                    ),
-                    child: Expanded(
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            // Could show harvest details here
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Center(
-                              child: Text(
-                                'Récoltes',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w300,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
+                ),
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        // Could show harvest details here
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: Text(
+                            'Récoltes',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w300,
+                              color: _primaryColor,
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),

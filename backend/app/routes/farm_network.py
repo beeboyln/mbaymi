@@ -273,9 +273,19 @@ def follow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
     ➕ Suivre une ferme.
     """
     try:
+        print(f'➕ Follow request: farm_id={farm_id}, user_id={user_id}')
+        
+        # Vérifier que la ferme existe
         farm = db.query(Farm).filter(Farm.id == farm_id).first()
         if not farm:
+            print(f'❌ Farm {farm_id} not found')
             raise HTTPException(status_code=404, detail="Ferme non trouvée")
+        
+        # Vérifier que l'utilisateur existe
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            print(f'❌ User {user_id} not found')
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
         
         # Vérifier qu'on ne suit pas déjà
         existing = db.query(FarmFollowing).filter(
@@ -283,22 +293,32 @@ def follow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
             FarmFollowing.farm_id == farm_id
         ).first()
         if existing:
-            raise HTTPException(status_code=400, detail="Vous suivez déjà cette ferme")
+            print(f'⚠️ User {user_id} already follows farm {farm_id}')
+            return {"message": "✅ Ferme suivie"}  # Retourner 200 au lieu de 400
         
         # Créer la relation
         following = FarmFollowing(follower_id=user_id, farm_id=farm_id)
         db.add(following)
         
-        # Incrémenter le compteur
+        # Incrémenter le compteur dans FarmProfile
         profile = db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).first()
         if profile:
             profile.total_followers += 1
+            print(f'✅ Updated followers count for farm {farm_id}: {profile.total_followers}')
+        else:
+            print(f'⚠️ No FarmProfile found for farm {farm_id}')
         
         db.commit()
+        print(f'✅ Farm {farm_id} followed by user {user_id}')
         
         return {"message": "✅ Ferme suivie"}
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
+        print(f'❌ Error following farm: {str(e)}')
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 
@@ -308,12 +328,15 @@ def unfollow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
     ➖ Arrêter de suivre une ferme.
     """
     try:
+        print(f'➖ Unfollow request: farm_id={farm_id}, user_id={user_id}')
+        
         following = db.query(FarmFollowing).filter(
             FarmFollowing.follower_id == user_id,
             FarmFollowing.farm_id == farm_id
         ).first()
         if not following:
-            raise HTTPException(status_code=404, detail="Vous ne suivez pas cette ferme")
+            print(f'⚠️ User {user_id} is not following farm {farm_id}')
+            return {"message": "❌ Ferme non suivie"}  # Retourner 200 au lieu de 404
         
         db.delete(following)
         
@@ -321,12 +344,19 @@ def unfollow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
         profile = db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).first()
         if profile and profile.total_followers > 0:
             profile.total_followers -= 1
+            print(f'✅ Updated followers count for farm {farm_id}: {profile.total_followers}')
         
         db.commit()
+        print(f'✅ Farm {farm_id} unfollowed by user {user_id}')
         
         return {"message": "❌ Ferme non suivie"}
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
+        print(f'❌ Error unfollowing farm: {str(e)}')
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 

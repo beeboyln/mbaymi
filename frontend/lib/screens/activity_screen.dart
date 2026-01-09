@@ -9,12 +9,14 @@ class ActivityScreen extends StatefulWidget {
   final int farmId;
   final int cropId;
   final int userId;
+  final int? farmOwnerId; // ID du propriétaire de la ferme
 
   const ActivityScreen({
     Key? key,
     required this.farmId,
     required this.cropId,
     required this.userId,
+    this.farmOwnerId,
   }) : super(key: key);
 
   @override
@@ -197,6 +199,27 @@ class _ActivityScreenState extends State<ActivityScreen> {
     });
   }
 
+  bool _canEdit() {
+    // Peut éditer UNIQUEMENT si c'est le propriétaire de la ferme
+    // Si farmOwnerId est null, c'est une ferme locale (ParcelScreen) → peut éditer
+    // Si farmOwnerId != null, c'est une visite publique → peut éditer QUE si propriétaire
+    
+    print('🔍 _canEdit check:');
+    print('   userId: ${widget.userId}');
+    print('   farmOwnerId: ${widget.farmOwnerId}');
+    print('   Can edit: ${widget.farmOwnerId == null || widget.userId == widget.farmOwnerId}');
+    
+    if (widget.farmOwnerId == null) {
+      // Mode local: utilisateur visite sa propre ferme via ParcelScreen
+      print('   → Mode local (farmOwnerId null) - CAN EDIT');
+      return true;
+    }
+    // Mode public: vérifier que l'utilisateur est le propriétaire
+    final canEdit = widget.userId == widget.farmOwnerId;
+    print('   → Mode public - ${canEdit ? 'CAN EDIT' : 'CANNOT EDIT'}');
+    return canEdit;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -295,8 +318,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Bouton pour ajouter une activité
-            if (!_showAddActivityForm) ...[
+            // Bouton pour ajouter une activité - Visible seulement pour le propriétaire
+            if (!_showAddActivityForm && _canEdit()) ...[
               GestureDetector(
                 onTap: _toggleAddActivityForm,
                 child: DecoratedBox(

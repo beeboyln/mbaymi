@@ -16,6 +16,7 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
   late Future<List<dynamic>> _feedFuture;
   late Future<List<dynamic>> _publicFarmsFuture;
   int _userId = 0;
+  final Set<int> _followedFarmIds = {};
 
   @override
   void initState() {
@@ -366,20 +367,43 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                         return;
                       }
                       try {
-                        await ApiService.followFarm(
-                          farmId: farmId,
-                          userId: _userId,
-                        );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✅ Vous suivez maintenant cette ferme'),
-                              backgroundColor: Color(0xFF6B8E23),
-                            ),
+                        final isFollowed = _followedFarmIds.contains(farmId);
+                        if (isFollowed) {
+                          // Désabonner
+                          await ApiService.unfollowFarm(
+                            farmId: farmId,
+                            userId: _userId,
                           );
-                          setState(() {
-                            _feedFuture = ApiService.getFarmFeed(_userId);
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _followedFarmIds.remove(farmId);
+                              _feedFuture = ApiService.getFarmFeed(_userId);
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('✓ Vous ne suivez plus cette ferme'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                        } else {
+                          // Suivre
+                          await ApiService.followFarm(
+                            farmId: farmId,
+                            userId: _userId,
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _followedFarmIds.add(farmId);
+                              _feedFuture = ApiService.getFarmFeed(_userId);
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('✅ Vous suivez maintenant cette ferme'),
+                                backgroundColor: Color(0xFF6B8E23),
+                              ),
+                            );
+                          }
                         }
                       } catch (e) {
                         if (mounted) {
@@ -390,12 +414,19 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6B8E23),
+                      backgroundColor: _followedFarmIds.contains(farmId) 
+                          ? const Color(0xFF6B8E23).withOpacity(0.2)
+                          : const Color(0xFF6B8E23),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     ),
-                    child: const Text(
-                      'Suivre',
-                      style: TextStyle(fontSize: 12, color: Colors.white),
+                    child: Text(
+                      _followedFarmIds.contains(farmId) ? '✓ Ne plus suivre' : 'Suivre',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _followedFarmIds.contains(farmId)
+                            ? const Color(0xFF6B8E23)
+                            : Colors.white,
+                      ),
                     ),
                   ),
                 ],
