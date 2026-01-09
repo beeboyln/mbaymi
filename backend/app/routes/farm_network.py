@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
 from app.database import get_db
-from app.models import Farm, FarmProfile, FarmPost, FarmFollowing, User
+from app.models import Farm, FarmProfile, FarmPost, FarmFollowing, User, Crop
 import logging
 
 logger = logging.getLogger(__name__)
@@ -353,6 +353,79 @@ def get_user_following(user_id: int, db: Session = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+@router.get("/details/{farm_id}")
+def get_farm_details(farm_id: int, db: Session = Depends(get_db)):
+    """
+    📋 Récupérer les détails complets d'une ferme publique avec crops et photos.
+    """
+    try:
+        # Vérifier que c'est une ferme publique
+        profile = db.query(FarmProfile).filter(
+            FarmProfile.farm_id == farm_id,
+            FarmProfile.is_public == True
+        ).first()
+        
+        if not profile:
+            raise HTTPException(status_code=404, detail="Ferme non trouvée ou privée")
+        
+        # Récupérer la ferme et l'utilisateur
+        farm = db.query(Farm).filter(Farm.id == farm_id).first()
+        user = db.query(User).filter(User.id == farm.user_id).first()
+        
+        if not farm:
+            raise HTTPException(status_code=404, detail="Ferme non trouvée")
+        
+        # Récupérer les crops
+        crops = db.query(Crop).filter(Crop.farm_id == farm_id).all()
+        crops_data = [
+            {
+                "id": c.id,
+                "farm_id": c.farm_id,
+                "crop_name": c.crop_name,
+                "planted_date": c.planted_date,
+                "expected_harvest_date": c.expected_harvest_date,
+                "quantity_planted": c.quantity_planted,
+                "expected_yield": c.expected_yield,
+                "status": c.status,
+                "notes": c.notes,
+                "created_at": c.created_at,
+                "updated_at": c.updated_at,
+            }
+            for c in crops
+        ]
+        
+        # Récupérer les photos de la ferme
+        from app.models.photo import FarmPhoto
+        photos = db.query(FarmPhoto).filter(FarmPhoto.farm_id == farm_id).all()
+        photos_data = [
+            {
+                "id": p.id,
+                "image_url": p.image_url,
+                "created_at": p.created_at,
+            }
+            for p in photos
+        ]
+        
+        return {
+            "farm_id": farm.id,
+            "farm_name": farm.name,
+            "location": farm.location,
+            "owner_name": user.name if user else "Agriculteur",
+            "owner_id": farm.user_id,
+            "description": profile.description,
+            "specialties": profile.specialties.split(",") if profile.specialties else [],
+            "followers": profile.total_followers,
+            "is_public": profile.is_public,
+            "crops": crops_data,
+            "photos": photos_data,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ [get_farm_details] ERREUR: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
 
 @router.get("/public-farms")
 def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
