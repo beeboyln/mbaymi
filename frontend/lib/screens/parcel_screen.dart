@@ -117,6 +117,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                       secondaryTextColor: secondaryTextColor,
                       borderColor: borderColor,
                       isDark: isDark,
+                      textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 16),
 
@@ -132,6 +133,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                       borderColor: borderColor,
                       isDark: isDark,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textInputAction: TextInputAction.done,
                     ),
                     const SizedBox(height: 20),
 
@@ -224,6 +226,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
     required Color borderColor,
     required bool isDark,
     TextInputType? keyboardType,
+    TextInputAction textInputAction = TextInputAction.next,
   }) {
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -235,6 +238,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
         controller: controller,
         autofocus: false,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
         decoration: InputDecoration(
           labelText: label,

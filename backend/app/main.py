@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from app.config import settings
 import os
+import traceback
 
 # Initialize app
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
@@ -93,6 +95,27 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "message": "Mbaymi API is running"}
+
+# ✅ Global exception handler to ensure CORS headers are always present
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch all exceptions and return with proper CORS headers"""
+    print(f"❌ Unhandled exception: {exc}")
+    traceback.print_exc()
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": str(exc),
+            "type": "InternalServerError"
+        },
+        headers={
+            "Access-Control-Allow-Origin": "https://mbaymi.vercel.app",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Origin",
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn

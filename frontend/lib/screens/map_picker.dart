@@ -44,6 +44,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
               TextField(
                 controller: _latCtrl,
                 autofocus: false,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(labelText: 'Latitude'),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
               ),
@@ -51,6 +52,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
               TextField(
                 controller: _lngCtrl,
                 autofocus: false,
+                textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(labelText: 'Longitude'),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
               ),

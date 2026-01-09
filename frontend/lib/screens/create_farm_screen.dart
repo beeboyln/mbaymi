@@ -255,6 +255,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                           secondaryTextColor: secondaryTextColor,
                           borderColor: borderColor,
                           validator: (v) => (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: () => FocusScope.of(context).requestFocus(_sizeFocus),
                         ),
                         const SizedBox(height: _mediumPadding),
                         _buildTypeSelector(cardColor, textColor, borderColor),
@@ -270,6 +272,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                           secondaryTextColor: secondaryTextColor,
                           borderColor: borderColor,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: () => FocusScope.of(context).requestFocus(_regionFocus),
                         ),
                         const SizedBox(height: _largePadding),
 
@@ -286,6 +290,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                           textColor: textColor,
                           secondaryTextColor: secondaryTextColor,
                           borderColor: borderColor,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: () => FocusScope.of(context).requestFocus(_departmentFocus),
                         ),
                         const SizedBox(height: _mediumPadding),
                         _buildTextField(
@@ -298,6 +304,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                           textColor: textColor,
                           secondaryTextColor: secondaryTextColor,
                           borderColor: borderColor,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: () => FocusScope.of(context).requestFocus(_communeFocus),
                         ),
                         const SizedBox(height: _mediumPadding),
                         _buildTextField(
@@ -310,6 +318,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                           textColor: textColor,
                           secondaryTextColor: secondaryTextColor,
                           borderColor: borderColor,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: () => FocusScope.of(context).requestFocus(_descFocus),
                         ),
                         const SizedBox(height: _mediumPadding),
                         _buildMapSelector(cardColor, textColor, secondaryTextColor, borderColor),
@@ -329,6 +339,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                           secondaryTextColor: secondaryTextColor,
                           borderColor: borderColor,
                           maxLines: 4,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: () => FocusScope.of(context).unfocus(),
                         ),
                         const SizedBox(height: 40),
 
@@ -469,6 +481,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
     String? Function(String?)? validator,
     TextInputType? keyboardType,
     int maxLines = 1,
+    TextInputAction textInputAction = TextInputAction.next,
+    VoidCallback? onSubmitted,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -484,6 +498,8 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
         keyboardType: keyboardType,
         maxLines: maxLines,
         minLines: maxLines == 1 ? 1 : 3,
+        textInputAction: textInputAction,
+        onFieldSubmitted: (_) => onSubmitted?.call(),
         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
         decoration: InputDecoration(
           labelText: label,

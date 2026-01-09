@@ -106,6 +106,13 @@ class ApiService {
     debugPrint('🔄 Cleared all cache');
   }
 
+  /// Logout user and clear all session data + cache
+  static Future<void> logout() async {
+    await AuthService.logout();
+    clearCache();
+    debugPrint('🚪 Full logout completed: session and cache cleared');
+  }
+
   // For local development on Windows/Web: use localhost
   // For Android Emulator: use 'http://10.0.2.2:8000/api'
   // Read from .env (API_BASE_URL) if provided; otherwise default to localhost

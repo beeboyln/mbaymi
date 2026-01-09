@@ -286,7 +286,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.all(20), // ✅ Padding normal, pas de viewInsets
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 child: Column(
                   children: [
@@ -473,6 +478,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             child: TextField(
               controller: _typeCtrl,
               autofocus: false,
+              textInputAction: TextInputAction.next,
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
               decoration: InputDecoration(
                 hintText: 'Précisez le type d\'activité',
@@ -573,6 +579,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
           child: TextField(
             controller: _notesCtrl,
             maxLines: 4,
+            textInputAction: TextInputAction.done,
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor, height: 1.5),
             decoration: InputDecoration(
               hintText: 'Ajouter des notes ou observations...',

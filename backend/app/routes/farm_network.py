@@ -114,25 +114,22 @@ def get_farm_profile(farm_id: int, db: Session = Depends(get_db)):
 @router.get("/profiles/search")
 def search_farm_profiles(
     q: Optional[str] = Query(None),
-    specialty: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
-    🔍 Rechercher des fermes publiques.
+    🔍 Rechercher des fermes publiques par nom ou localisation.
     
-    Exemple : /profiles/search?specialty=tomate
+    Exemple : /profiles/search?q=tomate
     """
     try:
         query = db.query(FarmProfile, Farm).join(Farm, FarmProfile.farm_id == Farm.id).filter(FarmProfile.is_public == True)
         
         if q and q.strip():
+            search_term = f"%{q.strip()}%"
             query = query.filter(
-                (Farm.name.ilike(f"%{q}%")) | 
-                (Farm.location.ilike(f"%{q}%"))
+                (Farm.name.ilike(search_term)) | 
+                (Farm.location.ilike(search_term))
             )
-        
-        if specialty and specialty.strip():
-            query = query.filter(FarmProfile.specialties.ilike(f"%{specialty}%"))
         
         results = query.all()
         

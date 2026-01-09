@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:mbaymi/services/token_storage.dart';
+import 'package:mbaymi/services/api_service.dart';
 
 /// Session model for the current authenticated user.
 class Session {
@@ -37,6 +38,9 @@ class AuthService {
     required String name,
     required String role,
   }) async {
+    // Clear cache for previous user
+    ApiService.clearCache();
+    
     // For now, use userId as a simple access token.
     // In production, this would come from backend JWT.
     final accessToken = 'token_$userId';
@@ -71,6 +75,9 @@ class AuthService {
       final email = await TokenStorage.getUserEmail();
 
       if (userId != null && accessToken != null && refreshToken != null && email != null) {
+        // Clear cache when restoring session
+        ApiService.clearCache();
+        
         _currentSession = Session(
           userId: userId,
           email: email,

@@ -489,7 +489,12 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -585,6 +590,7 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
                 onChanged: (value) => _description = value,
                 autofocus: false,
                 maxLines: 3,
+                textInputAction: TextInputAction.done,
                 style: TextStyle(color: widget.isDarkMode ? Colors.white : Colors.black87),
                 decoration: InputDecoration(
                   hintText: 'Décrivez le problème observé...',

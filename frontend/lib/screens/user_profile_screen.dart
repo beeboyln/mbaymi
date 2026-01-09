@@ -160,13 +160,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
           content: SizedBox(
             width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
               children: [
                 // TextField pour le nom
                 TextField(
                   controller: nameController,
                   autofocus: false,
+                  textInputAction: TextInputAction.next,
                   style: TextStyle(color: textColor),
                   decoration: InputDecoration(
                     labelText: 'Nom',
@@ -191,6 +193,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 TextField(
                   controller: emailController,
                   autofocus: false,
+                  textInputAction: TextInputAction.done,
                   style: TextStyle(color: textColor),
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
@@ -212,6 +215,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ),
               ],
+            ),
             ),
           ),
           actions: [

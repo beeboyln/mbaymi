@@ -178,7 +178,7 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                 'Agriculteurs à découvrir',
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w300,
                   color: widget.isDarkMode ? Colors.white : Colors.black87,
                 ),
               ),
@@ -694,26 +694,17 @@ class _FarmSearchWidget extends StatefulWidget {
 
 class __FarmSearchWidgetState extends State<_FarmSearchWidget> {
   String _query = '';
-  String _selectedSpecialty = '';
   late Future<List<dynamic>> _searchFuture;
-
-  final List<String> _specialties = [
-    'tomate', 'riz', 'mil', 'maïs', 'oignon', 'carotte', 'arachide', 'niébé',
-    'chou', 'courge', 'navet', 'poivron', 'aubergine', 'légumes', 'fruits'
-  ];
 
   @override
   void initState() {
     super.initState();
-    _searchFuture = ApiService.searchFarmProfiles();
+    _searchFuture = ApiService.searchFarmProfiles(query: '');
   }
 
   void _updateSearch() {
     setState(() {
-      _searchFuture = ApiService.searchFarmProfiles(
-        query: _query,
-        specialty: _selectedSpecialty.isNotEmpty ? _selectedSpecialty : null,
-      );
+      _searchFuture = ApiService.searchFarmProfiles(query: _query);
     });
   }
 
@@ -723,7 +714,12 @@ class __FarmSearchWidgetState extends State<_FarmSearchWidget> {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -743,6 +739,7 @@ class __FarmSearchWidgetState extends State<_FarmSearchWidget> {
                   _updateSearch();
                 },
                 autofocus: false,
+                textInputAction: TextInputAction.search,
                 style: TextStyle(color: widget.isDarkMode ? Colors.white : Colors.black87),
                 decoration: InputDecoration(
                   hintText: 'Rechercher une ferme...',
@@ -753,36 +750,6 @@ class __FarmSearchWidgetState extends State<_FarmSearchWidget> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              Text(
-                'Spécialités',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: widget.isDarkMode ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _specialties.map((specialty) {
-                  final isSelected = _selectedSpecialty == specialty;
-                  return FilterChip(
-                    label: Text(specialty),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedSpecialty = selected ? specialty : '';
-                      });
-                      _updateSearch();
-                    },
-                    backgroundColor: widget.isDarkMode ? const Color(0xFF2C2C2E) : Colors.white,
-                    selectedColor: const Color(0xFF6B8E23).withOpacity(0.3),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
 
               FutureBuilder<List<dynamic>>(
                 future: _searchFuture,

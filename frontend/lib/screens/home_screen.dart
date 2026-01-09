@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
-import 'package:mbaymi/services/auth_storage.dart';
+import 'package:mbaymi/services/token_storage.dart';
 // moved: market UI moved to separate screen
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // If no userId provided by route, try to restore from storage
     if (_userId == null) {
-      AuthStorage.getUserId().then((v) {
+      TokenStorage.getUserId().then((v) {
         if (v != null && mounted) {
           setState(() {
             _userId = v;
@@ -98,9 +98,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Rebuild screens with new theme
                 _screens[0] = DashboardTab(isDarkMode: _isDarkMode, userId: userId);
                 _screens[1] = FarmTab(isDarkMode: _isDarkMode, userId: userId);
-                _screens[2] = LivestockTab(isDarkMode: _isDarkMode);
-                _screens[3] = MarketTab(isDarkMode: _isDarkMode);
-                _screens[4] = AdviceTab(isDarkMode: _isDarkMode);
+                _screens[2] = FarmNetworkScreen(isDarkMode: _isDarkMode);
+                _screens[3] = LivestockTab(isDarkMode: _isDarkMode);
+                _screens[4] = MarketTab(isDarkMode: _isDarkMode);
+                _screens[5] = AdviceTab(isDarkMode: _isDarkMode);
               });
             },
           ),
@@ -124,8 +125,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () async {
               if (isLoggedIn) {
-                // logout
-                await AuthStorage.clear();
+                // logout - clears session and cache
+                await ApiService.logout();
                 if (!mounted) return;
                 setState(() {
                   _userId = null;
