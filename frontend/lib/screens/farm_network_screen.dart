@@ -16,7 +16,6 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
   late Future<List<dynamic>> _feedFuture;
   late Future<List<dynamic>> _publicFarmsFuture;
   int _userId = 0;
-  final Set<int> _followedFarmIds = {};
 
   @override
   void initState() {
@@ -342,7 +341,7 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                   ),
                 ),
 
-              // Boutons
+              // Nombre d'abonnés
               Row(
                 children: [
                   Icon(Icons.people_outline, size: 14, color: widget.isDarkMode ? Colors.white60 : Colors.black45),
@@ -352,103 +351,6 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                     style: TextStyle(
                       fontSize: 11,
                       color: widget.isDarkMode ? Colors.white60 : Colors.black45,
-                    ),
-                  ),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (_userId == 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Connectez-vous pour suivre des agriculteurs'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
-                        Navigator.pushNamed(context, '/login');
-                        return;
-                      }
-                      
-                      if (ownerId == 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Erreur: propriétaire introuvable'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                      
-                      if (_userId == ownerId) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Vous ne pouvez pas vous suivre vous-même'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
-                        return;
-                      }
-                      
-                      try {
-                        final isFollowed = _followedFarmIds.contains(ownerId);
-                        if (isFollowed) {
-                          // Arrêter de suivre
-                          await ApiService.unfollowUser(
-                            userIdToUnfollow: ownerId,
-                            userId: _userId,
-                          );
-                          if (mounted) {
-                            setState(() {
-                              _followedFarmIds.remove(ownerId);
-                              _feedFuture = ApiService.getFarmFeed(_userId);
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('✓ Vous ne suivez plus cet agriculteur'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
-                          }
-                        } else {
-                          // Suivre
-                          await ApiService.followUser(
-                            userIdToFollow: ownerId,
-                            userId: _userId,
-                          );
-                          if (mounted) {
-                            setState(() {
-                              _followedFarmIds.add(ownerId);
-                              _feedFuture = ApiService.getFarmFeed(_userId);
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ Vous suivez maintenant cet agriculteur'),
-                                backgroundColor: Color(0xFF6B8E23),
-                              ),
-                            );
-                          }
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Erreur: $e')),
-                          );
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _followedFarmIds.contains(ownerId) 
-                          ? const Color(0xFF6B8E23).withOpacity(0.2)
-                          : const Color(0xFF6B8E23),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    ),
-                    child: Text(
-                      _followedFarmIds.contains(ownerId) ? '✓ Ne plus suivre' : 'Suivre',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _followedFarmIds.contains(ownerId)
-                            ? const Color(0xFF6B8E23)
-                            : Colors.white,
-                      ),
                     ),
                   ),
                 ],

@@ -31,7 +31,6 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
   static const Color _textDark = Colors.white;
   static const Color _textSecondaryLight = Color(0xFF6B6B6B);
   static const Color _textSecondaryDark = Color(0xFF8E8E93);
-  static const String _baseUrl = 'http://localhost:8000/api';
 
   late Future<Map<String, dynamic>> _farmDetailsFuture;
   int _userId = 0;
@@ -48,7 +47,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
   Future<Map<String, dynamic>> _getFarmDetails(int farmId) async {
     try {
       final response = await http.get(
-        Uri.parse('${_baseUrl}/farm-network/details/$farmId'),
+        Uri.parse('${ApiService.baseUrl}/farm-network/details/$farmId'),
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
