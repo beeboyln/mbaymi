@@ -25,8 +25,9 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
         # Récupérer toutes les fermes de l'utilisateur
         farms = db.query(Farm).filter(Farm.user_id == user_id).all()
         
-        # Récupérer les profils publics de l'utilisateur
-        profiles = db.query(FarmProfile).filter(FarmProfile.user_id == user_id).all()
+        # Récupérer les profils publics de l'utilisateur (via Farm.user_id)
+        farm_ids = [f.id for f in farms]
+        profiles = db.query(FarmProfile).filter(FarmProfile.farm_id.in_(farm_ids)).all() if farm_ids else []
         
         # Compter les followers totaux
         total_followers = sum(p.total_followers for p in profiles)
@@ -115,27 +116,37 @@ def get_user_posts(user_id: int, skip: int = 0, limit: int = 20, db: Session = D
     📰 Récupérer tous les posts d'un utilisateur.
     """
     try:
-        posts = db.query(FarmPost, Farm).join(Farm).filter(FarmPost.user_id == user_id)\
+        # Récupérer les fermes de l'utilisateur
+        farms = db.query(Farm).filter(Farm.user_id == user_id).all()
+        farm_ids = [f.id for f in farms]
+        
+        if not farm_ids:
+            return {"count": 0, "posts": []}
+        
+        # Récupérer les posts des fermes
+        posts = db.query(FarmPost).filter(FarmPost.farm_id.in_(farm_ids))\
             .order_by(FarmPost.created_at.desc())\
             .offset(skip)\
             .limit(limit)\
             .all()
         
+        posts_data = []
+        for post in posts:
+            farm = db.query(Farm).filter(Farm.id == post.farm_id).first()
+            posts_data.append({
+                "id": post.id,
+                "farm_id": post.farm_id,
+                "farm_name": farm.name if farm else "Unknown",
+                "title": post.title,
+                "description": post.description,
+                "photo_url": post.photo_url,
+                "post_type": post.post_type,
+                "created_at": post.created_at.isoformat() if post.created_at else None,
+            })
+        
         return {
-            "count": len(posts),
-            "posts": [
-                {
-                    "id": p.FarmPost.id,
-                    "farm_id": p.FarmPost.farm_id,
-                    "farm_name": p.Farm.name,
-                    "title": p.FarmPost.title,
-                    "description": p.FarmPost.description,
-                    "photo_url": p.FarmPost.photo_url,
-                    "post_type": p.FarmPost.post_type,
-                    "created_at": p.FarmPost.created_at.isoformat(),
-                }
-                for p in posts
-            ]
+            "count": len(posts_data),
+            "posts": posts_data
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
