@@ -4,6 +4,10 @@ from datetime import datetime
 from typing import Optional
 from app.database import get_db
 from app.models import Farm, FarmProfile, FarmPost, FarmFollowing, User
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 router = APIRouter(prefix="/api/farm-network", tags=["Farm Network"])
 
@@ -103,7 +107,7 @@ def search_farm_profiles(
     Exemple : /profiles/search?specialty=tomate
     """
     try:
-        query = db.query(FarmProfile, Farm).join(Farm).filter(FarmProfile.is_public == True)
+        query = db.query(FarmProfile, Farm).join(Farm, FarmProfile.farm_id == Farm.id).filter(FarmProfile.is_public == True)
         
         if q and q.strip():
             query = query.filter(
@@ -231,7 +235,7 @@ def get_farm_feed(user_id: int, skip: int = 0, limit: int = 20, db: Session = De
             return {"count": 0, "posts": []}
         
         # Récupérer les posts de ces fermes
-        posts = db.query(FarmPost, Farm, User).join(Farm).join(User, Farm.user_id == User.id)\
+        posts = db.query(FarmPost, Farm, User).join(Farm, FarmPost.farm_id == Farm.id).join(User, Farm.user_id == User.id)\
             .filter(FarmPost.farm_id.in_(farm_ids))\
             .order_by(FarmPost.created_at.desc())\
             .offset(skip)\
@@ -242,17 +246,17 @@ def get_farm_feed(user_id: int, skip: int = 0, limit: int = 20, db: Session = De
             "count": len(posts),
             "posts": [
                 {
-                    "id": p.FarmPost.id,
-                    "farm_id": p.FarmPost.farm_id,
-                    "farm_name": p.Farm.name,
-                    "owner_name": p.User.name,
-                    "title": p.FarmPost.title,
-                    "description": p.FarmPost.description,
-                    "photo_url": p.FarmPost.photo_url,
-                    "post_type": p.FarmPost.post_type,
-                    "created_at": p.FarmPost.created_at.isoformat(),
+                    "id": post.id,
+                    "farm_id": post.farm_id,
+                    "farm_name": farm.name,
+                    "owner_name": user.name,
+                    "title": post.title,
+                    "description": post.description,
+                    "photo_url": post.photo_url,
+                    "post_type": post.post_type,
+                    "created_at": post.created_at.isoformat(),
                 }
-                for p in posts
+                for post, farm, user in posts
             ]
         }
     except Exception as e:
@@ -332,7 +336,7 @@ def get_user_following(user_id: int, db: Session = Depends(get_db)):
     📋 Récupérer les fermes suivies par un utilisateur.
     """
     try:
-        following = db.query(FarmFollowing, Farm).join(Farm)\
+        following = db.query(FarmFollowing, Farm).join(Farm, FarmFollowing.farm_id == Farm.id)\
             .filter(FarmFollowing.follower_id == user_id)\
             .all()
         
@@ -357,9 +361,23 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
     
     Affiche les fermes qui ont été rendues publiques par leurs propriétaires.
     """
+    logger.info(f"📍 [get_public_farms] Début - skip={skip}, limit={limit}")
     try:
+        # Vérifier les tables existent
+        logger.debug("🔍 [get_public_farms] Vérification des tables...")
+        farm_profile_count = db.query(FarmProfile).count()
+        logger.info(f"✅ [get_public_farms] farm_profiles table existe - {farm_profile_count} lignes")
+        
+        farm_count = db.query(Farm).count()
+        logger.info(f"✅ [get_public_farms] farms table existe - {farm_count} lignes")
+        
+        user_count = db.query(User).count()
+        logger.info(f"✅ [get_public_farms] users table existe - {user_count} lignes")
+        
+        # Récupérer les profils publics
+        logger.debug("🔍 [get_public_farms] Exécution de la query...")
         profiles = db.query(FarmProfile, Farm, User)\
-            .join(Farm)\
+            .join(Farm, FarmProfile.farm_id == Farm.id)\
             .join(User, Farm.user_id == User.id)\
             .filter(FarmProfile.is_public == True)\
             .order_by(FarmProfile.created_at.desc())\
@@ -367,20 +385,30 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
             .limit(limit)\
             .all()
         
-        return {
-            "count": len(profiles),
-            "farms": [
-                {
-                    "farm_id": farm.id,
-                    "farm_name": farm.name,
-                    "location": farm.location,
-                    "owner_name": user.name,
-                    "description": profile.description,
-                    "specialties": profile.specialties.split(",") if profile.specialties else [],
-                    "followers": profile.total_followers,
-                }
-                for profile, farm, user in profiles
-            ]
+        logger.info(f"✅ [get_public_farms] Query réussie - {len(profiles)} fermes trouvées")
+        
+        # Transformer les résultats
+        farms_list = []
+        for idx, (profile, farm, user) in enumerate(profiles):
+            logger.debug(f"  📦 Traitement ferme {idx+1}/{len(profiles)}: farm_id={farm.id}, farm_name={farm.name}")
+            farm_data = {
+                "farm_id": farm.id,
+                "farm_name": farm.name,
+                "location": farm.location,
+                "owner_name": user.name,
+                "description": profile.description,
+                "specialties": profile.specialties.split(",") if profile.specialties else [],
+                "followers": profile.total_followers,
+            }
+            farms_list.append(farm_data)
+        
+        result = {
+            "count": len(farms_list),
+            "farms": farms_list
         }
+        logger.info(f"✅ [get_public_farms] Succès - Retour {len(farms_list)} fermes")
+        return result
+        
     except Exception as e:
+        logger.error(f"❌ [get_public_farms] ERREUR: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
