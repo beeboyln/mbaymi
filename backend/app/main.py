@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.config import settings
+import os
 
 # Initialize app
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
@@ -17,6 +19,12 @@ app.add_middleware(
 
 print("✅ CORS configured with regex (production-ready)")
 print("   Allows: *.vercel.app, *.koyeb.app, localhost:*, mbaymi.com")
+
+# Mount static files for uploads
+uploads_dir = "uploads"
+if os.path.exists(uploads_dir):
+    app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+    print("✅ Static files mounted at /uploads")
 
 # Lazy import routes to avoid circular imports
 def include_routes():

@@ -913,7 +913,7 @@ class ApiService {
         if (query.isNotEmpty) params['q'] = query;
         if (specialty != null && specialty.isNotEmpty) params['specialty'] = specialty;
 
-        final uri = Uri.parse(url).replace(queryParameters: params);
+        final uri = params.isEmpty ? Uri.parse(url) : Uri.parse(url).replace(queryParameters: params);
         final response = await http.get(
           uri,
           headers: {'Content-Type': 'application/json'},
