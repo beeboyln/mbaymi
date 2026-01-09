@@ -113,26 +113,21 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(fontWeight: FontWeight.w600, color: textColor),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 0,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          ),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 40),
 
-              // ICONE CENTREE
+              // LOGO CENTRÉ
               Center(
-                child: Icon(
-                  Icons.agriculture,
-                  size: 100,
-                  color: buttonColor,
+                child: Image.asset(
+                  'assets/images/aa.png',
+                  height: 100,
+                  width: 100,
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 40),
@@ -146,6 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 onSubmitted: (_) =>
                     FocusScope.of(context).requestFocus(_passwordFocus),
+                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
                 style: TextStyle(color: textColor),
                 decoration:
                     _inputDecoration('Email', borderColor, hintColor),
@@ -160,6 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 textInputAction: TextInputAction.done,
                 obscureText: _obscurePassword,
                 onSubmitted: (_) => _handleLogin(),
+                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
                 style: TextStyle(color: textColor),
                 decoration: _inputDecoration(
                   'Mot de passe',

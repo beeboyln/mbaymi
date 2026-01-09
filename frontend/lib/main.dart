@@ -64,7 +64,7 @@ class MbaymiApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.light,
       ),
-      home: HomeScreen(userId: userId),
+      home: SplashScreen(userId: userId),
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
           final arg = settings.arguments;
@@ -122,6 +122,42 @@ class MbaymiApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
       },
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  final int? userId;
+  const SplashScreen({Key? key, this.userId}) : super(key: key);
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Afficher le splash pendant 2 secondes, puis passer à HomeScreen
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/home', arguments: widget.userId);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Image.asset(
+          'assets/images/aa.png',
+          height: 200,
+          width: 200,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 }

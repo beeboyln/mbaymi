@@ -153,10 +153,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // Logo centré
                 Center(
-                  child: Icon(
-                    Icons.agriculture_rounded, // ou autre icône d'éleveur
-                    size: 80,
-                    color: buttonColor,
+                  child: Image.asset(
+                    'assets/images/aa.png',
+                    height: 80,
+                    width: 80,
+                    fit: BoxFit.contain,
                   ),
                 ),
 

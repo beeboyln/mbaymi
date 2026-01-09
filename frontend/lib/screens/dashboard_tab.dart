@@ -72,7 +72,7 @@ class _DashboardTabState extends State<DashboardTab> {
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: const AssetImage('assets/images/b.jpg'),
+          image: const AssetImage('assets/images/aa.png'),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.black.withOpacity(isDarkMode ? 0.15 : 0.03),
@@ -685,11 +685,11 @@ class _DashboardTabState extends State<DashboardTab> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: widget.isDarkMode ? const Color(0xFF1a1a1a) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withOpacity(widget.isDarkMode ? 0.3 : 0.1),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -704,11 +704,11 @@ class _DashboardTabState extends State<DashboardTab> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/images/d.jpg'),
+                  image: AssetImage('assets/images/b.png'),
                   fit: BoxFit.contain,
                   alignment: Alignment.center,
                 ),
-                color: Color(0xFFF5F5F5),
+                color: Color.fromARGB(255, 255, 255, 255),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
@@ -728,10 +728,10 @@ class _DashboardTabState extends State<DashboardTab> {
                     Flexible(
                       child: Text(
                         article.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
+                          color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
                           height: 1.2,
                         ),
                         maxLines: 2,
@@ -746,9 +746,9 @@ class _DashboardTabState extends State<DashboardTab> {
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
                             article.description,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF666666),
+                              color: widget.isDarkMode ? Colors.grey.shade400 : const Color(0xFF666666),
                               height: 1.2,
                             ),
                             maxLines: 2,
@@ -770,20 +770,20 @@ class _DashboardTabState extends State<DashboardTab> {
                               children: [
                                 Text(
                                   'SOURCE',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 7,
                                     fontWeight: FontWeight.w600,
-                                    color: Color(0xFF888888),
+                                    color: widget.isDarkMode ? Colors.grey.shade600 : const Color(0xFF888888),
                                     letterSpacing: 0.3,
                                   ),
                                 ),
                                 const SizedBox(height: 1),
                                 Text(
                                   article.source ?? 'Unknown',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w500,
-                                    color: Color(0xFF444444),
+                                    color: widget.isDarkMode ? Colors.grey.shade400 : const Color(0xFF444444),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -799,20 +799,20 @@ class _DashboardTabState extends State<DashboardTab> {
                             children: [
                               Text(
                                 'PUBLIÉ',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 7,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF888888),
+                                  color: widget.isDarkMode ? Colors.grey.shade600 : const Color(0xFF888888),
                                   letterSpacing: 0.3,
                                 ),
                               ),
                               const SizedBox(height: 1),
                               Text(
                                 article.timeAgo,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w500,
-                                  color: Color(0xFF444444),
+                                  color: widget.isDarkMode ? Colors.grey.shade400 : const Color(0xFF444444),
                                 ),
                               ),
                             ],

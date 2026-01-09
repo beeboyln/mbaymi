@@ -35,26 +35,39 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
-      appBar: AppBar(
-        backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: Text(
-          '🌾 Réseau Agricole',
-          style: TextStyle(
-            color: widget.isDarkMode ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.w400,
-            fontSize: 18,
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: const AssetImage('assets/images/aa.png'),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withOpacity(widget.isDarkMode ? 0.15 : 0.03),
+              BlendMode.darken,
+            ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search, color: widget.isDarkMode ? Colors.white : Colors.black),
-            onPressed: () => _showSearchDialog(),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : Colors.white,
+            elevation: 0,
+            surfaceTintColor: Colors.transparent,
+            title: Text(
+              '🌾 Réseau Agricole',
+              style: TextStyle(
+                color: widget.isDarkMode ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w400,
+                fontSize: 18,
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.search, color: widget.isDarkMode ? Colors.white : Colors.black),
+                onPressed: () => _showSearchDialog(),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: RefreshIndicator(
+          body: RefreshIndicator(
         onRefresh: () async {
           setState(() {
             if (_userId > 0) {
@@ -113,6 +126,8 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                   return _buildPublicFarmsView(snapshot.data ?? []);
                 },
               ),
+      ),
+    ),
       ),
     );
   }
