@@ -136,6 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _emailController,
                 focusNode: _emailFocus,
+                autofocus: false,
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.emailAddress,
                 onSubmitted: (_) =>
@@ -150,6 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 focusNode: _passwordFocus,
+                autofocus: false,
                 textInputAction: TextInputAction.done,
                 obscureText: _obscurePassword,
                 onSubmitted: (_) => _handleLogin(),

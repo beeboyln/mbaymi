@@ -233,6 +233,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
       ),
       child: TextField(
         controller: controller,
+        autofocus: false,
         keyboardType: keyboardType,
         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
         decoration: InputDecoration(

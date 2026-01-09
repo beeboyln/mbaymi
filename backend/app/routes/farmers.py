@@ -82,8 +82,29 @@ def delete_farm(farm_id: int, db: Session = Depends(get_db)):
     farm = db.query(Farm).filter(Farm.id == farm_id).first()
     if not farm:
         raise HTTPException(status_code=404, detail="Farm not found")
+    
+    # Delete all related photos first
+    db.query(FarmPhoto).filter(FarmPhoto.farm_id == farm_id).delete()
+    
+    # Delete all related crops
+    db.query(Crop).filter(Crop.farm_id == farm_id).delete()
+    
+    # Delete all related harvests
+    from app.models.harvest import Harvest
+    db.query(Harvest).filter(Harvest.farm_id == farm_id).delete()
+    
+    # Delete all related sales
+    from app.models.sale import Sale
+    db.query(Sale).filter(Sale.farm_id == farm_id).delete()
+    
+    # Delete all related livestock
+    from app.models.livestock import Livestock
+    db.query(Livestock).filter(Livestock.farm_id == farm_id).delete()
+    
+    # Delete the farm
     db.delete(farm)
     db.commit()
+    
     return {"status": "deleted"}
 
 

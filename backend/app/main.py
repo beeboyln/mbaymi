@@ -7,14 +7,22 @@ import os
 # Initialize app
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 
-# CORS middleware - Stable regex-based config (no intermittent failures)
+# CORS middleware - Production-ready config
 # ✅ Handles Vercel, Koyeb, localhost, custom domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.koyeb\.app|http://localhost:\d+|https://mbaymi\.com|https://.*\.mbaymi\.com",
+    allow_origins=[
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "https://*.vercel.app",
+        "https://*.koyeb.app",
+        "https://mbaymi.com",
+        "https://www.mbaymi.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    max_age=86400,  # 24 hours
 )
 
 print("✅ CORS configured with regex (production-ready)")

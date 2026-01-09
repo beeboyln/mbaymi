@@ -158,12 +158,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             'Modifier mon profil',
             style: TextStyle(color: textColor),
           ),
-          content: SingleChildScrollView(
+          content: SizedBox(
+            width: double.maxFinite,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // TextField pour le nom
                 TextField(
                   controller: nameController,
+                  autofocus: false,
                   style: TextStyle(color: textColor),
                   decoration: InputDecoration(
                     labelText: 'Nom',
@@ -184,8 +187,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                // TextField pour l'email
                 TextField(
                   controller: emailController,
+                  autofocus: false,
                   style: TextStyle(color: textColor),
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
@@ -211,7 +216,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                nameController.dispose();
+                emailController.dispose();
+                Navigator.pop(context);
+              },
               child: Text(
                 'Annuler',
                 style: TextStyle(color: textColor),
@@ -222,6 +231,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 backgroundColor: _primaryColor,
               ),
               onPressed: () async {
+                nameController.dispose();
+                emailController.dispose();
                 Navigator.pop(context);
                 await _updateProfile(
                   nameController.text.trim(),

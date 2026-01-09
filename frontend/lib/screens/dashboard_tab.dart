@@ -15,8 +15,9 @@ class DashboardTab extends StatefulWidget {
 }
 
 class _DashboardTabState extends State<DashboardTab> {
-  String _selectedNewsFilter = 'Local'; // Default to local news
+  String _selectedNewsFilter = 'Local';
   late Future<Map<String, dynamic>> _countsFuture;
+  int _currentNewsPage = 0;
 
   @override
   void initState() {
@@ -41,17 +42,14 @@ class _DashboardTabState extends State<DashboardTab> {
       result['farms'] = (farms as List).length;
       result['livestock'] = (livestock as List).length;
 
-      // Parcels (crops)
       final parcelFutures = (farms as List).map((f) => ApiService.getFarmCrops(f['id'] as int)).toList();
       final parcelsLists = await Future.wait(parcelFutures);
       result['parcels'] = parcelsLists.fold<int>(0, (sum, l) => sum + ((l as List).length));
 
-      // Harvests per farm
       final harvestFutures = (farms as List).map((f) => ApiService.getHarvestsForFarm(f['id'] as int)).toList();
       final harvestsLists = await Future.wait(harvestFutures);
       result['harvests'] = harvestsLists.fold<int>(0, (sum, l) => sum + ((l as List).length));
 
-      // Revenue from sales by user
       final sales = await ApiService.getSalesByUser(widget.userId!);
       double revenue = 0.0;
       for (final s in sales) {
@@ -61,7 +59,6 @@ class _DashboardTabState extends State<DashboardTab> {
       }
       result['revenue'] = revenue;
     } catch (e) {
-      // If any call fails, return partial results
       return result;
     }
 
@@ -71,736 +68,612 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = widget.isDarkMode;
-    final bgColor = isDarkMode ? const Color(0xFF1a1a1a) : Colors.transparent;
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF2D5016);
-    final secondaryTextColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade500;
     
     return Container(
       decoration: BoxDecoration(
-        color: bgColor,
         image: DecorationImage(
           image: const AssetImage('assets/images/b.jpg'),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            const Color.fromARGB(0, 255, 255, 255),
-            BlendMode.lighten,
+            Colors.black.withOpacity(isDarkMode ? 0.15 : 0.03),
+            BlendMode.darken,
           ),
         ),
       ),
       child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bonjour',
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w300,
-                    color: textColor,
-                    letterSpacing: -0.8,
-                  ),
+          // Header Section
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+            sliver: SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: isDarkMode 
+                    ? const Color(0xFF1a1a1a).withOpacity(0.85)
+                    : Colors.white.withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _getFormattedDate(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: secondaryTextColor,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: 0.4,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bonjour',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w300,
+                        color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _getFormattedDate(),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF666666),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
 
-        // Conseil du jour - Moderne
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          sliver: SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF2D5016), Color(0xFF3D6B1F)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          // Conseil du jour
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDarkMode
+                        ? [const Color(0xFF2D5016).withOpacity(0.8), const Color(0xFF3A6122).withOpacity(0.8)]
+                        : [const Color(0xFF2D5016), const Color(0xFF3D6B1F)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2D5016).withOpacity(0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(5),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF2D5016).withOpacity(0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.lightbulb_outline,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'CONSEIL DU JOUR',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.9),
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Arrosez vos cultures tôt le matin pour réduire l\'évaporation',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
+            ),
+          ),
+
+          // Stats Cards
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.tips_and_updates,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Conseil du jour',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w300,
-                            color: Colors.white70,
-                            letterSpacing: 0.5,
-                          ),
+                  // First Row - Fermes & Animaux
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          icon: Icons.agriculture,
+                          iconColor: const Color(0xFF6B8E23),
+                          valueKey: 'farms',
+                          label: 'Fermes',
+                          subtitle: '🔴 À surveiller',
+                          subtitleColor: const Color(0xFFE07856),
                         ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Arrosez vos cultures tôt le matin',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w300,
-                            color: Colors.white,
-                            letterSpacing: -0.2,
-                          ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          icon: Icons.pets,
+                          iconColor: const Color(0xFFD2691E),
+                          valueKey: 'livestock',
+                          label: 'Animaux',
+                          subtitle: '💉 Vaccination',
+                          subtitleColor: const Color(0xFFF39C12),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Second Row - Parcelles & Récoltes
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          icon: Icons.grass,
+                          iconColor: const Color(0xFF8B7355),
+                          valueKey: 'parcels',
+                          label: 'Parcelles',
+                          subtitle: '🌱 En croissance',
+                          subtitleColor: const Color(0xFF2D5016),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          icon: Icons.emoji_nature,
+                          iconColor: const Color(0xFFF39C12),
+                          valueKey: 'harvests',
+                          label: 'Récoltes',
+                          subtitle: '📅 Prévues',
+                          subtitleColor: const Color(0xFF8B7355),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Revenue Card - Conteneur avec fond
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDarkMode 
+                        ? const Color(0xFF1a1a1a).withOpacity(0.85)
+                        : Colors.white.withOpacity(0.85),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
+                    child: _buildRevenueCard(),
                   ),
                 ],
               ),
             ),
           ),
-        ),
 
-        // Stats - Amélioré avec actions
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              children: [
-                // Grid de 2 colonnes pour Fermes et Animaux
-                Row(
-                  children: [
-                    // Fermes - Actionnable
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          // Navigate to farms
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color.fromARGB(226, 255, 255, 255),
-                                const Color.fromARGB(226, 254, 254, 254),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(5),
-                            border: Border.all(
-                              color: const Color(0xFF6B8E23).withOpacity(0.2),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF6B8E23).withOpacity(0.1),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF6B8E23).withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: const Icon(
-                                  Icons.local_florist,
-                                  color: Color(0xFF6B8E23),
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              FutureBuilder<Map<String, dynamic>>(
-                                future: _countsFuture,
-                                builder: (context, snap) {
-                                  final count = (snap.data != null) ? snap.data!['farms'] ?? 0 : 0;
-                                  return Text(
-                                    '$count',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w300,
-                                      color: Color.fromARGB(255, 38, 68, 18),
-                                      letterSpacing: -0.4,
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Fermes',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF6B8E23),
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      const Color.fromARGB(246, 251, 250, 250),
-                                      const Color.fromARGB(238, 255, 255, 255),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                    color: const Color(0xFFE07856).withOpacity(0.2),
-                                  ),
-                                ),
-                                child: const Text(
-                                  '🔴 Attention',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFFE07856),
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Animaux - Actionnable
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          // Navigate to livestock
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color.fromARGB(227, 255, 255, 255),
-                                const Color.fromARGB(226, 255, 255, 255),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(5),
-                            border: Border.all(
-                              color: const Color(0xFFD2691E).withOpacity(0.2),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFD2691E).withOpacity(0.1),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFD2691E).withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: const Icon(
-                                  Icons.pets,
-                                  color: Color(0xFFD2691E),
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              FutureBuilder<Map<String, dynamic>>(
-                                future: _countsFuture,
-                                builder: (context, snap) {
-                                  final count = (snap.data != null) ? snap.data!['livestock'] ?? 0 : 0;
-                                  return Text(
-                                    '$count',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w300,
-                                      color: Color(0xFF2D5016),
-                                      letterSpacing: -0.4,
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Animaux',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFFD2691E),
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      const Color(0xFFF39C12).withOpacity(0.15),
-                                      const Color(0xFFF39C12).withOpacity(0.08),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                    color: const Color(0xFFF39C12).withOpacity(0.2),
-                                  ),
-                                ),
-                                child: const Text(
-                                  '💉 À vacciner',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFFF39C12),
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-
-                // Second row: Parcelles & Récoltes
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: widget.isDarkMode ? const Color(0xFF1f1f1f) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.withOpacity(0.06)),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0,4)),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF8B7355).withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.grass, color: Color(0xFF8B7355)),
-                            ),
-                            const SizedBox(height: 10),
-                            FutureBuilder<Map<String, dynamic>>(
-                              future: _countsFuture,
-                              builder: (context, snap) {
-                                final count = (snap.data != null) ? snap.data!['parcels'] ?? 0 : 0;
-                                return Text(
-                                  '$count',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w300, color: Color(0xFF2D5016)),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 4),
-                            const Text('Parcelles', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Color(0xFF6B8E23))),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: widget.isDarkMode ? const Color(0xFF1f1f1f) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.withOpacity(0.06)),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0,4)),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF39C12).withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.emoji_nature, color: Color(0xFFF39C12)),
-                            ),
-                            const SizedBox(height: 10),
-                            FutureBuilder<Map<String, dynamic>>(
-                              future: _countsFuture,
-                              builder: (context, snap) {
-                                final count = (snap.data != null) ? snap.data!['harvests'] ?? 0 : 0;
-                                return Text(
-                                  '$count',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w300, color: Color(0xFF2D5016)),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 4),
-                            const Text('Récoltes', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Color(0xFFD2691E))),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-
-                // Revenue summary
-                FutureBuilder<Map<String, dynamic>>(
-                  future: _countsFuture,
-                  builder: (context, snap) {
-                    final revenue = (snap.data != null) ? (snap.data!['revenue'] ?? 0.0) : 0.0;
-                    return Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: widget.isDarkMode ? const Color(0xFF1f1f1f) : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0,6))],
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.monetization_on, color: Color(0xFF8B7355)),
-                          const SizedBox(width: 12),
-                          Expanded(child: Text('Revenu estimé', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A1A)))),
-                          Text('${revenue.toStringAsFixed(0)} CFA', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF2D5016))),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-        ),
-
-        // Section Actualités avec filtres
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-          sliver: SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              decoration: BoxDecoration(
-                color: widget.isDarkMode ? const Color(0xFF2a2a2a) : Colors.white.withOpacity(0.98),
-                borderRadius: BorderRadius.circular(6),
-                gradient: LinearGradient(
-                  colors: [
-                    widget.isDarkMode ? const Color(0xFF2a2a2a) : Colors.white,
-                    widget.isDarkMode ? const Color(0xFF252525) : Colors.grey.shade50,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    'Actualités',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w300,
-                      color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const Spacer(),
-                  const SizedBox(width: 12),
-                  // Voir tout button
-                  const SizedBox(width: 12),
-                  // Filtre icon
-                  GestureDetector(
-                    onTap: () => _showFilterMenu(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6B8E23).withOpacity(isDarkMode ? 0.25 : 0.2),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: const Icon(
-                        Icons.tune_outlined,
-                        color: Color(0xFF6B8E23),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-        // News
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          sliver: FutureBuilder<List<NewsArticle>>(
-            future: ApiService.getAgriculturalNews(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF8B7355),
-                      ),
-                    ),
-                  ),
-                );
-              }
-
-              if (snapshot.hasError || !snapshot.hasData) {
-                return const SliverToBoxAdapter(child: SizedBox.shrink());
-              }
-
-              final articles = snapshot.data ?? [];
-              
-              // Filtrer les articles par catégorie sélectionnée
-              final filteredArticles = articles.where((article) {
-                if (_selectedNewsFilter == 'Local') {
-                  return (article.category?.toLowerCase() ?? '').contains('local') || 
-                         (article.category?.toLowerCase() ?? '').contains('sénégal') ||
-                         (article.category?.toLowerCase() ?? '').contains('senegal') ||
-                         (article.source?.toLowerCase() ?? '').contains('local');
-                } else if (_selectedNewsFilter == 'Cultures') {
-                  return (article.category?.toLowerCase() ?? '').contains('culture') ||
-                         (article.category?.toLowerCase() ?? '').contains('agriculture') ||
-                         (article.category?.toLowerCase() ?? '').contains('crop');
-                } else if (_selectedNewsFilter == 'Élevage') {
-                  return (article.category?.toLowerCase() ?? '').contains('élevage') ||
-                         (article.category?.toLowerCase() ?? '').contains('santé animale') ||
-                         (article.category?.toLowerCase() ?? '').contains('livestock') ||
-                         (article.category?.toLowerCase() ?? '').contains('bétail');
-                } else if (_selectedNewsFilter == 'International') {
-                  return (article.category?.toLowerCase() ?? '').contains('international') ||
-                         (article.category?.toLowerCase() ?? '').contains('world');
-                }
-                return true;
-              }).toList();
-              
-              if (filteredArticles.isEmpty) {
-                return SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.search_off_outlined,
-                            size: 48,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Aucune actualité pour cette catégorie',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }
-              
-              return SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final article = filteredArticles[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildNewsCard(context, article),
-                    );
-                  },
-                  childCount: filteredArticles.length > 5 ? 5 : filteredArticles.length,
-                ),
-              );
-            },
-          ),
-        ),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
-      ],
-    ),
-    );
-  }
-
-  void _showFilterMenu(BuildContext context) {
-    HapticFeedback.lightImpact();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF2a2a2a) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
+          // News Section Header avec fond
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
+            sliver: SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
-                  color: widget.isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+                  color: isDarkMode 
+                    ? const Color(0xFF1a1a1a).withOpacity(0.85)
+                    : Colors.white.withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Actualités',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isDarkMode
+                                    ? const Color(0xFF2D5016).withOpacity(0.3)
+                                    : const Color(0xFF2D5016).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.filter_alt, size: 14, color: Color(0xFF6B8E23)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _selectedNewsFilter,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF6B8E23),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => _showFilterMenu(context),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? const Color(0xFF2D5016).withOpacity(0.3)
+                                      : const Color(0xFF2D5016).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.tune,
+                                  size: 18,
+                                  color: Color(0xFF6B8E23),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Sélection des meilleures actualités agricoles',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF666666),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-              Text(
-                'Filtrer les actualités',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w300,
-                  color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildFilterOption('🌾 Cultures', 'Cultures'),
-              const SizedBox(height: 12),
-              _buildFilterOption('🐄 Élevage', 'Élevage'),
-              const SizedBox(height: 12),
-              _buildFilterOption('🌍 International', 'International'),
-              const SizedBox(height: 12),
-              _buildFilterOption('🇸🇳 Local', 'Local'),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
-        ),
+
+          // News Carousel
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 30),
+            sliver: FutureBuilder<List<NewsArticle>>(
+              future: ApiService.getAgriculturalNews(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return SliverToBoxAdapter(
+                    child: Container(
+                      height: 300,
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: isDarkMode 
+                          ? const Color(0xFF1a1a1a).withOpacity(0.85)
+                          : Colors.white.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: const Color(0xFF6B8E23),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                if (snapshot.hasError || !snapshot.hasData) {
+                  return SliverToBoxAdapter(
+                    child: Container(
+                      height: 200,
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: isDarkMode 
+                          ? const Color(0xFF1a1a1a).withOpacity(0.85)
+                          : Colors.white.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Impossible de charger les actualités',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                final articles = snapshot.data ?? [];
+                final filteredArticles = _filterArticles(articles);
+
+                if (filteredArticles.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Container(
+                      height: 200,
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: isDarkMode 
+                          ? const Color(0xFF1a1a1a).withOpacity(0.85)
+                          : Colors.white.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off_outlined,
+                              size: 48,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Aucune actualité disponible',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                return SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      // Carousel
+                      SizedBox(
+                        height: 320,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: filteredArticles.length,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemBuilder: (context, index) {
+                            final article = filteredArticles[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 12),
+                              child: SizedBox(
+                                width: MediaQuery.of(context).size.width - 80,
+                                child: _buildNewsCard(article, index == _currentNewsPage),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Indicators
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          filteredArticles.length,
+                          (index) => Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _currentNewsPage == index
+                                  ? const Color(0xFF6B8E23)
+                                  : Colors.grey.withOpacity(0.3),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildFilterOption(String label, String filter) {
-    final isSelected = _selectedNewsFilter == filter;
-    final bgColor = isSelected 
-        ? const Color(0xFF2D5016).withOpacity(widget.isDarkMode ? 0.15 : 0.08) 
-        : (widget.isDarkMode ? const Color(0xFF333333) : Colors.grey.shade50);
-    final borderColor = isSelected 
-        ? const Color(0xFF2D5016) 
-        : (widget.isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200);
-    
+  Widget _buildStatCard({
+    required IconData icon,
+    required Color iconColor,
+    required String valueKey,
+    required String label,
+    String? subtitle,
+    Color? subtitleColor,
+  }) {
     return GestureDetector(
-      onTap: () {
-        setState(() => _selectedNewsFilter = filter);
-        HapticFeedback.lightImpact();
-        Navigator.pop(context);
-      },
+      onTap: () => HapticFeedback.lightImpact(),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: bgColor,
-          border: Border.all(
-            color: borderColor,
-            width: isSelected ? 2 : 1,
-          ),
-          borderRadius: BorderRadius.circular(4),
-          gradient: isSelected
-              ? LinearGradient(
-                  colors: [
-                    const Color(0xFF2D5016).withOpacity(0.12),
-                    const Color(0xFF2D5016).withOpacity(0.04),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
+          color: widget.isDarkMode 
+            ? const Color(0xFF1a1a1a)
+            : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(widget.isDarkMode ? 0.3 : 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Row(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  color: isSelected ? const Color(0xFF2D5016) : (widget.isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700),
-                  letterSpacing: 0.2,
-                ),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(widget.isDarkMode ? 0.2 : 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(height: 12),
+            FutureBuilder<Map<String, dynamic>>(
+              future: _countsFuture,
+              builder: (context, snapshot) {
+                final count = snapshot.data?[valueKey] ?? 0;
+                return Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                    height: 1,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: widget.isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
               ),
             ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle,
-                color: Color(0xFF2D5016),
-                size: 20,
+            if (subtitle != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: subtitleColor?.withOpacity(0.1) ??
+                      const Color(0xFF2D5016).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: subtitleColor ?? const Color(0xFF2D5016),
+                  ),
+                ),
               ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNewsCard(BuildContext context, NewsArticle article) {
+  Widget _buildRevenueCard() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _countsFuture,
+      builder: (context, snapshot) {
+        final revenue = snapshot.data?['revenue'] ?? 0.0;
+        return Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: widget.isDarkMode 
+                  ? const Color(0xFF2D5016).withOpacity(0.3)
+                  : const Color(0xFF2D5016).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.monetization_on_outlined,
+                color: Color(0xFF6B8E23),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Revenu total',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: widget.isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${revenue.toStringAsFixed(0)} CFA',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.trending_up,
+              color: const Color(0xFF6B8E23),
+              size: 20,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildNewsCard(NewsArticle article, bool isActive) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -812,126 +685,334 @@ class _DashboardTabState extends State<DashboardTab> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF2a2a2a) : Colors.white,
-          borderRadius: BorderRadius.circular(5),
-          gradient: LinearGradient(
-            colors: [
-              widget.isDarkMode ? const Color(0xFF2a2a2a) : Colors.white,
-              widget.isDarkMode ? const Color(0xFF252525) : Colors.grey.shade50,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-              spreadRadius: 2,
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        clipBehavior: Clip.hardEdge,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image si disponible
-            if (article.imageUrl != null && article.imageUrl!.isNotEmpty)
-              Container(
-                width: double.infinity,
-                height: 180,
-                color: const Color(0xFF2D5016).withOpacity(0.1),
-                child: Image.network(
-                  article.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: const Color(0xFF2D5016).withOpacity(0.1),
-                      child: const Icon(
-                        Icons.image_not_supported_outlined,
-                        color: Color(0xFF2D5016),
-                        size: 32,
-                      ),
-                    );
-                  },
+            // Journal Header Image
+            Container(
+              height: 160,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/d.jpg'),
+                  fit: BoxFit.contain,
+                  alignment: Alignment.center,
+                ),
+                color: Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
-            // Contenu
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Titre
-                  Text(
-                    article.title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
-                      height: 1.5,
-                      letterSpacing: -0.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 10),
-                  // Description
-                  if (article.description.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+            ),
+            
+            // Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Title
+                    Flexible(
                       child: Text(
-                        article.description,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: widget.isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
-                          height: 1.6,
-                          fontWeight: FontWeight.w300,
-                          letterSpacing: 0.2,
+                        article.title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                          height: 1.2,
                         ),
-                        maxLines: 3,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  // Date et icône
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        article.timeAgo,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: widget.isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400,
-                          fontWeight: FontWeight.w400,
-                          letterSpacing: 0.1,
+                    
+                    // Summary
+                    if (article.description.isNotEmpty)
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            article.description,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF666666),
+                              height: 1.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2D5016).withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 14,
-                          color: const Color(0xFF2D5016).withOpacity(0.4),
-                        ),
+                    
+                    // Source and Time
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Source
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'SOURCE',
+                                  style: const TextStyle(
+                                    fontSize: 7,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF888888),
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  article.source ?? 'Unknown',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF444444),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          
+                          // Time
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'PUBLIÉ',
+                                style: const TextStyle(
+                                  fontSize: 7,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF888888),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                article.timeAgo,
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF444444),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  List<NewsArticle> _filterArticles(List<NewsArticle> articles) {
+    return articles.where((article) {
+      final category = (article.category ?? '').toLowerCase();
+      final source = (article.source ?? '').toLowerCase();
+
+      switch (_selectedNewsFilter) {
+        case 'Local':
+          return category.contains('local') ||
+              category.contains('sénégal') ||
+              category.contains('senegal') ||
+              source.contains('local') ||
+              source.contains('senegal');
+        case 'Cultures':
+          return category.contains('culture') ||
+              category.contains('agriculture') ||
+              category.contains('crop') ||
+              category.contains('récolte');
+        case 'Élevage':
+          return category.contains('élevage') ||
+              category.contains('santé animale') ||
+              category.contains('livestock') ||
+              category.contains('bétail') ||
+              category.contains('animal');
+        case 'International':
+          return category.contains('international') ||
+              category.contains('world') ||
+              category.contains('global');
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
+  void _showFilterMenu(BuildContext context) {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: widget.isDarkMode 
+            ? const Color(0xFF1a1a1a).withOpacity(0.95)
+            : Colors.white.withOpacity(0.95),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: widget.isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Sélectionnez une catégorie',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...['Local', 'Cultures', 'Élevage', 'International'].map((filter) {
+              return _buildFilterOption(filter);
+            }).toList(),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: const Color(0xFF2D5016),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'APPLIQUER',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterOption(String filter) {
+    final isSelected = _selectedNewsFilter == filter;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedNewsFilter = filter;
+        });
+        HapticFeedback.lightImpact();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          Navigator.pop(context);
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF2D5016).withOpacity(widget.isDarkMode ? 0.3 : 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF2D5016)
+                : widget.isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _getFilterIcon(filter),
+              size: 20,
+              color: isSelected ? const Color(0xFF6B8E23) : Colors.grey,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                filter,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected
+                      ? const Color(0xFF2D5016)
+                      : widget.isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                ),
+              ),
+            ),
+            if (isSelected)
+              const Icon(
+                Icons.check_circle,
+                size: 20,
+                color: Color(0xFF6B8E23),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getFilterIcon(String filter) {
+    switch (filter) {
+      case 'Local':
+        return Icons.location_on;
+      case 'Cultures':
+        return Icons.grass;
+      case 'Élevage':
+        return Icons.pets;
+      case 'International':
+        return Icons.public;
+      default:
+        return Icons.newspaper;
+    }
   }
 
   String _getFormattedDate() {
@@ -943,6 +1024,11 @@ class _DashboardTabState extends State<DashboardTab> {
     final dayName = weekdays[now.weekday - 1];
     final monthName = months[now.month - 1];
     
-    return '$dayName, ${now.day} $monthName ${now.year}';
+    return '$dayName ${now.day} $monthName ${now.year}';
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }

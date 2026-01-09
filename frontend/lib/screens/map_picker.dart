@@ -31,31 +31,29 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text('Sélectionner la localisation')),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          16 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        child: Column(
-          children: [
-            const Text('Entrez manuellement la latitude et la longitude, ou implémentez la carte plus tard.'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _latCtrl,
-              decoration: const InputDecoration(labelText: 'Latitude'),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _lngCtrl,
-              decoration: const InputDecoration(labelText: 'Longitude'),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-            ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(
+            children: [
+              const Text('Entrez manuellement la latitude et la longitude, ou implémentez la carte plus tard.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _latCtrl,
+                autofocus: false,
+                decoration: const InputDecoration(labelText: 'Latitude'),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _lngCtrl,
+                autofocus: false,
+                decoration: const InputDecoration(labelText: 'Longitude'),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+              ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _useLocation,
@@ -70,6 +68,6 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

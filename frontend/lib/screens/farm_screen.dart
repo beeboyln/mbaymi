@@ -17,8 +17,23 @@ class FarmTab extends StatefulWidget {
 }
 
 class _FarmTabState extends State<FarmTab> {
+  late Future<List<dynamic>> _farmsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshFarms();
+  }
+
   Future<void> _refreshFarms() async {
-    setState(() {});
+    setState(() {
+      _farmsFuture = widget.userId != null
+          ? ApiService.getUserFarms(widget.userId!)
+          : Future.value([]);
+      // Vider le cache d'images pour éviter les problèmes de persistence
+      imageCache.clearLiveImages();
+      imageCache.clear();
+    });
   }
 
   @override
@@ -147,7 +162,7 @@ class _FarmTabState extends State<FarmTab> {
     }
 
     return FutureBuilder<List<dynamic>>(
-      future: ApiService.getUserFarms(widget.userId!),
+      future: _farmsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Padding(
@@ -665,6 +680,11 @@ class _FarmTabState extends State<FarmTab> {
             try {
               await ApiService.deleteFarm(farm['id'] as int);
               if (!mounted) return;
+              // Vider le cache d'images
+              imageCache.clearLiveImages();
+              imageCache.clear();
+              // Rafraîchir la liste
+              await _refreshFarms();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Row(
@@ -682,7 +702,7 @@ class _FarmTabState extends State<FarmTab> {
                   backgroundColor: const Color(0xFF4CAF50),
                 ),
               );
-              setState(() {});
+              Navigator.pop(context);
             } catch (e) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(

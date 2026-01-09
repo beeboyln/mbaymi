@@ -36,7 +36,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : Colors.white,
         elevation: 0,
@@ -389,6 +389,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
           TextField(
             controller: TextEditingController(text: _description),
             onChanged: (value) => _description = value,
+            autofocus: false,
             maxLines: 3,
             style: TextStyle(color: widget.isDarkMode ? Colors.white : Colors.black87),
             decoration: InputDecoration(
@@ -403,6 +404,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
           // Spécialités
           TextField(
             controller: TextEditingController(text: _specialties),
+            autofocus: false,
             onChanged: (value) => _specialties = value,
             style: TextStyle(color: widget.isDarkMode ? Colors.white : Colors.black87),
             decoration: InputDecoration(

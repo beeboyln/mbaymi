@@ -189,6 +189,9 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
                                   try {
                                     await ApiService.deleteFarmPhoto(farmId: widget.farm['id'] as int, photoId: id as int);
                                     if (!mounted) return;
+                                    // Vider le cache d'images
+                                    imageCache.clearLiveImages();
+                                    imageCache.clear();
                                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo supprimée')));
                                     // Refresh the screen by popping and returning an update, or simply reload
                                     final updated = await ApiService.getFarm(widget.farm['id'] as int);
@@ -294,6 +297,9 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
               if (ok == true) {
                 try {
                   await ApiService.deleteFarmProfilePhoto(farmId: widget.farm['id'] as int);
+                  // Vider le cache d'images
+                  imageCache.clearLiveImages();
+                  imageCache.clear();
                   // Update local farm map
                   widget.farm['image_url'] = null;
                   widget.farm['imageUrl'] = null;

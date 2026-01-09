@@ -231,7 +231,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      resizeToAvoidBottomInset: true, // ✅ Laisse Flutter gérer la compensation
+      resizeToAvoidBottomInset: false,
       body: SafeArea( // ✅ Wrap tout le body avec SafeArea
         child: Column(
           children: [
@@ -472,6 +472,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             ),
             child: TextField(
               controller: _typeCtrl,
+              autofocus: false,
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
               decoration: InputDecoration(
                 hintText: 'Précisez le type d\'activité',

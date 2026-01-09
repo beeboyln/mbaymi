@@ -8,13 +8,23 @@ import 'package:mbaymi/models/market_model.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/token_storage.dart';
+import 'package:mbaymi/services/simple_cache.dart';
+import 'package:mbaymi/services/connectivity_service.dart';
+import 'package:mbaymi/services/network_exception.dart';
 
 class ApiService {
   // 🔄 Retry configuration
   static const int _maxRetries = 3;
   static const Duration _initialDelay = Duration(milliseconds: 500);
+  static const Duration _requestTimeout = Duration(seconds: 15);
 
-  /// 🔄 Retry helper with exponential backoff
+  // 💾 Cache simple pour les GET
+  static final _getCache = SimpleCache<dynamic>(ttl: Duration(minutes: 5));
+  
+  // 📡 Service de connectivité
+  static final ConnectivityService _connectivity = ConnectivityService();
+
+  /// 🔄 Retry helper with exponential backoff et timeout global
   /// Handles transient network errors (timeouts, connection issues)
   static Future<T> _withRetry<T>(
     Future<T> Function() fn, {
@@ -22,25 +32,80 @@ class ApiService {
   }) async {
     int attempt = 0;
     Duration delay = _initialDelay;
+    NetworkException? lastError;
 
     while (true) {
       try {
         attempt++;
-        return await fn().timeout(Duration(seconds: 15));
+        final result = await fn().timeout(_requestTimeout);
+        // Succès - enregistrer la connexion
+        _connectivity.recordConnectionSuccess();
+        return result;
+      } on TimeoutException catch (e) {
+        lastError = e;
+        _connectivity.recordConnectionError();
+        if (attempt >= maxRetries) {
+          debugPrint('❌ Request timeout after $maxRetries attempts');
+          rethrow;
+        }
+        debugPrint('⚠️ Timeout attempt $attempt, retrying in ${delay.inMilliseconds}ms...');
+        await Future.delayed(delay);
+        delay = Duration(milliseconds: delay.inMilliseconds * 2);
+      } on ConnectionException catch (e) {
+        lastError = e;
+        _connectivity.recordConnectionError();
+        if (attempt >= maxRetries) {
+          debugPrint('❌ Connection error after $maxRetries attempts');
+          rethrow;
+        }
+        debugPrint('⚠️ Connection error attempt $attempt, retrying...');
+        await Future.delayed(delay);
+        delay = Duration(milliseconds: delay.inMilliseconds * 2);
       } catch (e) {
+        lastError = NetworkExceptionHandler.handleError(error: e);
+        _connectivity.recordConnectionError();
         if (attempt >= maxRetries) {
           debugPrint('❌ Request failed after $maxRetries attempts: $e');
           rethrow;
         }
-        
         debugPrint('⚠️ Attempt $attempt failed, retrying in ${delay.inMilliseconds}ms...');
         await Future.delayed(delay);
-        
-        // Exponential backoff: 500ms → 1000ms → 2000ms
         delay = Duration(milliseconds: delay.inMilliseconds * 2);
       }
     }
   }
+  /// Helper: Get avec cache pour les requêtes fréquentes
+  static Future<T> _getCached<T>(
+    String cacheKey,
+    Future<T> Function() fn,
+  ) async {
+    // Vérifier le cache d'abord
+    final cached = _getCache.get(cacheKey);
+    if (cached != null) {
+      debugPrint('✅ Cache hit for $cacheKey');
+      return cached as T;
+    }
+
+    // Faire la requête
+    final result = await fn();
+    
+    // Mettre en cache
+    _getCache.set(cacheKey, result);
+    return result;
+  }
+
+  /// Helper: Invalider le cache d'une clé
+  static void invalidateCache(String cacheKey) {
+    _getCache.remove(cacheKey);
+    debugPrint('🔄 Invalidated cache for $cacheKey');
+  }
+
+  /// Helper: Vider tout le cache
+  static void clearCache() {
+    _getCache.clear();
+    debugPrint('🔄 Cleared all cache');
+  }
+
   // For local development on Windows/Web: use localhost
   // For Android Emulator: use 'http://10.0.2.2:8000/api'
   // Read from .env (API_BASE_URL) if provided; otherwise default to localhost

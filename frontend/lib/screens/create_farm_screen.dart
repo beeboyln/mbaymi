@@ -218,7 +218,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      resizeToAvoidBottomInset: true, // ✅ Laisse Flutter gérer la compensation
+      resizeToAvoidBottomInset: false,
       body: SafeArea( // ✅ Ajout de SafeArea
         child: Column(
           children: [
@@ -479,6 +479,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
       child: TextFormField(
         controller: controller,
         focusNode: focusNode,
+        autofocus: false,
         validator: validator,
         keyboardType: keyboardType,
         maxLines: maxLines,

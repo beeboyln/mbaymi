@@ -123,7 +123,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final appBarColor = isDark ? Color(0xFF1E1E1E) : Colors.white;
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: appBarColor,
@@ -161,6 +161,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _nameController,
                   focusNode: _nameFocus,
+                  autofocus: false,
                   textInputAction: TextInputAction.next,
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_emailFocus),
@@ -177,6 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _emailController,
                   focusNode: _emailFocus,
+                  autofocus: false,
                   textInputAction: TextInputAction.next,
                   keyboardType: TextInputType.emailAddress,
                   onFieldSubmitted: (_) =>
@@ -192,6 +194,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // TELEPHONE
                 TextFormField(
                   controller: _phoneController,
+                  autofocus: false,
                   focusNode: _phoneFocus,
                   textInputAction: TextInputAction.next,
                   keyboardType: TextInputType.phone,
@@ -209,6 +212,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // MOT DE PASSE
                 TextFormField(
                   controller: _passwordController,
+                  autofocus: false,
                   focusNode: _passwordFocus,
                   obscureText: true,
                   textInputAction: TextInputAction.next,
@@ -226,6 +230,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // CONFIRMATION
                 TextFormField(
                   controller: _confirmPasswordController,
+                  autofocus: false,
                   focusNode: _confirmPasswordFocus,
                   obscureText: true,
                   textInputAction: TextInputAction.next,
@@ -260,6 +265,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // REGION
                 TextFormField(
+                  autofocus: false,
                   controller: _regionController,
                   focusNode: _regionFocus,
                   textInputAction: TextInputAction.next,
@@ -275,6 +281,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // VILLAGE
                 TextFormField(
+                  autofocus: false,
                   controller: _villageController,
                   focusNode: _villageFocus,
                   textInputAction: TextInputAction.done,

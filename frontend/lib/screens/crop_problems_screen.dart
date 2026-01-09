@@ -36,7 +36,7 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : Colors.white,
         elevation: 0,
@@ -583,6 +583,7 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
               // Description
               TextField(
                 onChanged: (value) => _description = value,
+                autofocus: false,
                 maxLines: 3,
                 style: TextStyle(color: widget.isDarkMode ? Colors.white : Colors.black87),
                 decoration: InputDecoration(
