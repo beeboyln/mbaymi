@@ -220,6 +220,20 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
     );
   }
 
+  Widget _buildDefaultAvatarCircle(String name) {
+    return CircleAvatar(
+      backgroundColor: const Color(0xFF6B8E23),
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
   Widget _buildFarmerCard(Map<String, dynamic> farmer) {
     final farmerName = farmer['farmer_name'] as String? ?? 'Agriculteur';
     final profileImage = farmer['profile_image'] as String?;
@@ -242,29 +256,27 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
             // En-tête agriculteur
             Row(
               children: [
-                // Photo de profil
+                // Photo de profil circulaire et épurée
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6B8E23).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    shape: BoxShape.circle,
                     border: Border.all(
-                      color: const Color(0xFF6B8E23).withOpacity(0.3),
+                      color: const Color(0xFF6B8E23),
                       width: 2,
                     ),
                   ),
                   child: profileImage != null && profileImage.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
+                      ? ClipOval(
                           child: Image.network(
                             profileImage,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.person, color: Color(0xFF6B8E23), size: 28),
+                                _buildDefaultAvatarCircle(farmerName),
                           ),
                         )
-                      : const Icon(Icons.person, color: Color(0xFF6B8E23), size: 28),
+                      : _buildDefaultAvatarCircle(farmerName),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -294,29 +306,33 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Liste des fermes
-            Column(
-              children: List.generate(
-                farms.length,
-                (index) {
-                  final farm = farms[index] as Map<String, dynamic>;
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: index < farms.length - 1 ? 12 : 0),
-                    child: _buildFarmPreview(farm),
-                  );
-                },
+            // Carrousel horizontal des fermes
+            if (farms.isNotEmpty)
+              SizedBox(
+                height: 200,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: farms.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final farm = farms[index] as Map<String, dynamic>;
+                    return SizedBox(
+                      width: 160,
+                      child: _buildFarmCard(farm),
+                    );
+                  },
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFarmPreview(dynamic farm) {
+  Widget _buildFarmCard(dynamic farm) {
     final farmName = farm['farm_name'] as String? ?? 'Ferme';
     final location = farm['location'] as String? ?? 'Localisation inconnue';
-    final description = farm['description'] as String? ?? '';
+    final farmProfileImage = farm['profile_image_farm'] as String?;
     final specialties = (farm['specialties'] as List?)?.cast<String>() ?? [];
     final farmId = farm['farm_id'] as int;
 
@@ -333,10 +349,9 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: widget.isDarkMode ? Colors.white.withOpacity(0.05) : const Color(0xFFFAFAFA),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: widget.isDarkMode ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02),
           ),
@@ -344,85 +359,107 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.agriculture_outlined, size: 14, color: const Color(0xFF6B8E23)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    farmName,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: widget.isDarkMode ? Colors.white : Colors.black87,
+            // Photo de la ferme
+            if (farmProfileImage != null && farmProfileImage.isNotEmpty)
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                child: Image.network(
+                  farmProfileImage,
+                  height: 100,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 100,
+                    color: const Color(0xFF6B8E23).withOpacity(0.1),
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported, color: Color(0xFF6B8E23)),
                     ),
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Color(0xFF6B8E23)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.location_on_outlined, size: 12, color: const Color(0xFF6B8E23)),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    location,
+              )
+            else
+              Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6B8E23).withOpacity(0.1),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: const Center(
+                  child: Icon(Icons.agriculture_outlined, color: Color(0xFF6B8E23), size: 36),
+                ),
+              ),
+            
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Nom de la ferme
+                  Text(
+                    farmName,
                     style: TextStyle(
-                      fontSize: 11,
-                      color: widget.isDarkMode ? Colors.white60 : Colors.black54,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: widget.isDarkMode ? Colors.white : Colors.black87,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-            if (description.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: widget.isDarkMode ? Colors.white70 : Colors.black54,
-                    height: 1.3,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            if (specialties.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: specialties.take(2).map((spec) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6B8E23).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        spec.trim(),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF6B8E23),
+                  const SizedBox(height: 4),
+                  
+                  // Localisation
+                  Row(
+                    children: [
+                      Icon(Icons.location_on_outlined, size: 12, color: const Color(0xFF6B8E23)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          location,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: widget.isDarkMode ? Colors.white60 : Colors.black54,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    );
-                  }).toList(),
-                ),
+                    ],
+                  ),
+                  
+                  if (specialties.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: specialties.take(1).map((spec) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6B8E23).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              spec.trim(),
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF6B8E23),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                ],
               ),
+            ),
           ],
         ),
       ),
     );
   }
+
 
   Widget _buildPostCard(dynamic post) {
     final farmName = post['farm_name'] as String? ?? 'Ferme';
@@ -840,3 +877,4 @@ class __FarmSearchWidgetState extends State<_FarmSearchWidget> {
     );
   }
 }
+
