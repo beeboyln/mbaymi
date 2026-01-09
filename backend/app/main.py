@@ -12,17 +12,25 @@ app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "https://*.vercel.app",
-        "https://*.koyeb.app",
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:5000",
+        "http://localhost:8000",
+        "http://localhost:62436",  # Flutter Web
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5000",
+        "http://127.0.0.1:8000",
+        "https://mbaymi.vercel.app",  # Main Vercel domain
+        "https://mbaymi-staging.vercel.app",
         "https://mbaymi.com",
         "https://www.mbaymi.com",
+        "https://cuddly-lil-bigboyllmnd-9965fc8f.koyeb.app",  # Self origin for internal calls
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
-    max_age=86400,  # 24 hours
+    max_age=3600,  # 1 hour
 )
 
 print("✅ CORS configured with regex (production-ready)")
