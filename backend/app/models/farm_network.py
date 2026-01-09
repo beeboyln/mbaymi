@@ -69,17 +69,3 @@ class FarmFollowing(Base):
     # Métadonnées
     created_at = Column(DateTime, default=datetime.utcnow)
 
-
-class UserFollowing(Base):
-    """
-    Relation de suivi entre utilisateurs.
-    Un agriculteur peut suivre un autre agriculteur.
-    """
-    __tablename__ = "user_following"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Qui suit
-    following_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Quel utilisateur suit-on
-    
-    # Métadonnées
-    created_at = Column(DateTime, default=datetime.utcnow)
