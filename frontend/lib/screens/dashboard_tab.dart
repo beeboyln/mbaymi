@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class DashboardTab extends StatefulWidget {
   final bool isDarkMode;
@@ -17,12 +19,72 @@ class DashboardTab extends StatefulWidget {
 class _DashboardTabState extends State<DashboardTab> {
   String _selectedNewsFilter = 'Local';
   late Future<Map<String, dynamic>> _countsFuture;
+  late Future<Map<String, dynamic>> _weatherFuture;
   int _currentNewsPage = 0;
+  bool _isWeatherExpanded = false;
 
   @override
   void initState() {
     super.initState();
     _countsFuture = _loadCounts();
+    _weatherFuture = _loadWeather();
+  }
+
+  Future<Map<String, dynamic>> _loadWeather() async {
+    try {
+      // Coordonnées du Sénégal (Dakar)
+      final latitude = 14.6667;
+      final longitude = -17.0382;
+      
+      final response = await http.get(
+        Uri.parse(
+          'https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Africa/Dakar',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'current_temp': data['current']['temperature_2m'],
+          'weather_code': data['current']['weather_code'],
+          'max_temp': data['daily']['temperature_2m_max'][0],
+          'min_temp': data['daily']['temperature_2m_min'][0],
+          'daily_weather_code': data['daily']['weather_code'][0],
+        };
+      } else {
+        throw Exception('Erreur météo');
+      }
+    } catch (e) {
+      return {
+        'current_temp': 22,
+        'weather_code': 0,
+        'max_temp': 26,
+        'min_temp': 18,
+        'daily_weather_code': 0,
+      };
+    }
+  }
+
+  String _getWeatherAdvice(int weatherCode, double maxTemp) {
+    if (weatherCode == 80 || weatherCode == 81 || weatherCode == 82) {
+      return 'Pluies prévues';
+    } else if (maxTemp > 28) {
+      return 'Forte chaleur prévue';
+    } else if (maxTemp < 20) {
+      return 'Temps frais';
+    } else {
+      return 'Ciel dégagé';
+    }
+  }
+
+  String _getWateringAdvice(int weatherCode, double maxTemp) {
+    if (weatherCode == 80 || weatherCode == 81 || weatherCode == 82) {
+      return 'Pluies en cours - Attendez avant d\'arroser';
+    } else if (maxTemp > 28) {
+      return 'Arrosez vos cultures avant 8h pour limiter l\'évaporation';
+    } else {
+      return 'Arrosez le matin entre 7h-9h pour une meilleure absorption';
+    }
   }
 
   Future<Map<String, dynamic>> _loadCounts() async {
@@ -83,118 +145,74 @@ class _DashboardTabState extends State<DashboardTab> {
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Header Section
+          // Date Header - Minimaliste
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 30, 20, 0),
             sliver: SliverToBoxAdapter(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  color: isDarkMode 
-                    ? const Color(0xFF1a1a1a).withOpacity(0.85)
-                    : Colors.white.withOpacity(0.85),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bonjour',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w300,
-                        color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
-                        height: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _getFormattedDate(),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF666666),
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
+              child: Text(
+                _getFormattedDate(),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w300,
+                  color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
                 ),
               ),
             ),
           ),
 
-          // Conseil du jour
+          // Conseil du jour - Collapsible Weather Card
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             sliver: SliverToBoxAdapter(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDarkMode
-                        ? [const Color(0xFF2D5016).withOpacity(0.8), const Color(0xFF3A6122).withOpacity(0.8)]
-                        : [const Color(0xFF2D5016), const Color(0xFF3D6B1F)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2D5016).withOpacity(0.2),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.lightbulb_outline,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'CONSEIL DU JOUR',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withOpacity(0.9),
-                              letterSpacing: 0.8,
-                            ),
+              child: FutureBuilder<Map<String, dynamic>>(
+                future: _weatherFuture,
+                builder: (context, snapshot) {
+                  final weather = snapshot.data ?? {'current_temp': 22, 'max_temp': 26};
+                  final maxTemp = (weather['max_temp'] as num).toDouble();
+                  final weatherCode = (weather['daily_weather_code'] as int?) ?? 0;
+                  final advice = _getWeatherAdvice(weatherCode, maxTemp);
+                  final wateringAdvice = _getWateringAdvice(weatherCode, maxTemp);
+
+                  final isLoading = snapshot.connectionState == ConnectionState.waiting;
+
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _isWeatherExpanded = !_isWeatherExpanded;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      splashColor: Colors.white.withOpacity(0.1),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isDarkMode
+                                ? [const Color(0xFF2D5016).withOpacity(0.7), const Color(0xFF3A6122).withOpacity(0.7)]
+                                : [const Color(0xFF2D5016), const Color(0xFF3D6B1F)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Arrosez vos cultures tôt le matin pour réduire l\'évaporation',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: Colors.white,
-                              height: 1.3,
+                          borderRadius: BorderRadius.circular(5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF2D5016).withOpacity(0.15),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: AnimatedCrossFade(
+                          firstChild: _buildWeatherCompact(maxTemp, advice, isDarkMode, isLoading),
+                          secondChild: _buildWeatherExpanded(maxTemp, weatherCode, advice, wateringAdvice, isDarkMode, isLoading),
+                          crossFadeState: _isWeatherExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                          duration: const Duration(milliseconds: 200),
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -530,6 +548,165 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
+  Widget _buildWeatherCompact(double maxTemp, String advice, bool isDarkMode, bool isLoading) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                maxTemp > 28 ? Icons.wb_sunny : Icons.cloud,
+                color: Colors.white,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Météo',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.8),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isLoading ? 'Chargement...' : '${maxTemp.toStringAsFixed(0)}°C',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Icon(
+            Icons.expand_more,
+            color: Colors.white.withOpacity(0.7),
+            size: 24,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeatherExpanded(double maxTemp, int weatherCode, String advice, String wateringAdvice, bool isDarkMode, bool isLoading) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    maxTemp > 28 ? Icons.wb_sunny : Icons.cloud,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Conseil du jour',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.8),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        advice,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Icon(
+                Icons.expand_less,
+                color: Colors.white.withOpacity(0.7),
+                size: 24,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Température',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.8),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      '${maxTemp.toStringAsFixed(0)}°C',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                Icons.water_drop_outlined,
+                color: Colors.white.withOpacity(0.9),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  wateringAdvice,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatCard({
     required IconData icon,
     required Color iconColor,
@@ -575,7 +752,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   '$count',
                   style: TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w300,
                     color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
                     height: 1,
                   ),
@@ -655,7 +832,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     '${revenue.toStringAsFixed(0)} CFA',
                     style: TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w400,
                       color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
                     ),
                   ),
@@ -730,7 +907,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         article.title,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w300,
                           color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
                           height: 1.2,
                         ),

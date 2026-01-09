@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final bgColor = _isDarkMode ? const Color(0xFF1a1a1a) : const Color(0xFFFAFAFA);
-    final appBarBg = _isDarkMode ? const Color(0xFF2a2a2a) : Colors.white;
+    final appBarBg = _isDarkMode ? const Color(0xFF1a1a1a) : Colors.white;
     final appBarIconColor = _isDarkMode ? const Color(0xFF6B8E23) : const Color(0xFF2D5016);
     
     return Scaffold(
