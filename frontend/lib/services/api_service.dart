@@ -289,6 +289,24 @@ class ApiService {
     }
   }
 
+  static Future<void> addCropPhoto({
+    required int cropId,
+    required String imageUrl,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/crops/$cropId/photo'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'image_url': imageUrl}),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to add crop photo: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error adding crop photo: $e');
+    }
+  }
+
   static Future<List<dynamic>> getFarmPhotos(int farmId) async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/farms/$farmId/photos'));

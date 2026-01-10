@@ -30,5 +30,6 @@ class Crop(Base):
     expected_yield = Column(Float)  # rendement attendu
     status = Column(String(50), default="growing")  # growing, harvested, failed
     notes = Column(String(500))
+    image_url = Column(String(500))  # Photo de profil de la parcelle
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -180,3 +180,26 @@ def add_crop(farm_id: int, crop: CropCreate, db: Session = Depends(get_db)):
 def get_farm_crops(farm_id: int, db: Session = Depends(get_db)):
     crops = db.query(Crop).filter(Crop.farm_id == farm_id).all()
     return crops
+@router.post("/{farm_id}/crops/{crop_id}/photo")
+def add_crop_photo(farm_id: int, crop_id: int, payload: dict, db: Session = Depends(get_db)):
+    """
+    📸 Ajouter une photo de profil à une parcelle.
+    
+    Payload:
+    {
+        "image_url": "https://cloudinary.../image.jpg"
+    }
+    """
+    crop = db.query(Crop).filter(Crop.id == crop_id, Crop.farm_id == farm_id).first()
+    if not crop:
+        raise HTTPException(status_code=404, detail="Crop not found")
+    
+    image_url = payload.get("image_url")
+    if not image_url:
+        raise HTTPException(status_code=400, detail="image_url is required")
+    
+    crop.image_url = image_url
+    db.commit()
+    db.refresh(crop)
+    
+    return {"status": "success", "image_url": crop.image_url}

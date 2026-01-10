@@ -308,6 +308,28 @@ class _ParcelScreenState extends State<ParcelScreen> {
     }
   }
 
+  Future<void> _addParcelPhoto(int cropId) async {
+    HapticFeedback.mediumImpact();
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1600);
+    if (picked == null) return;
+    
+    setState(() => _loadingPhotos = true);
+    try {
+      final url = await ApiService.uploadImageToCloudinary(picked);
+      if (url != null) {
+        await ApiService.addCropPhoto(cropId: cropId, imageUrl: url);
+      }
+      if (!mounted) return;
+      _showSuccessSnackBar('Photo de parcelle ajoutée');
+      _refresh();
+    } catch (e) {
+      _showErrorSnackBar('Erreur: $e');
+    } finally {
+      if (mounted) setState(() => _loadingPhotos = false);
+    }
+  }
+
   int? _toInt(dynamic v) {
     if (v == null) return null;
     if (v is int) return v;
@@ -614,20 +636,55 @@ class _ParcelScreenState extends State<ParcelScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Image - Afficher une image par défaut au lieu de faire un appel API
-                ClipRRect(
-                  borderRadius: const BorderRadius.all(Radius.circular(10)),
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    ),
-                    child: Icon(
-                      Icons.landscape_outlined,
-                      size: 30,
-                      color: _primaryColor,
+                // Image avec bouton d'ajout
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    _addParcelPhoto(_toInt(parcel['id']) ?? 0);
+                  },
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: const BorderRadius.all(Radius.circular(10)),
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Image ou icône par défaut
+                          if (parcel['image_url'] != null && parcel['image_url'].toString().isNotEmpty)
+                            Image.network(
+                              parcel['image_url'] as String,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Icon(
+                                Icons.landscape_outlined,
+                                size: 30,
+                                color: _primaryColor,
+                              ),
+                            )
+                          else
+                            Icon(
+                              Icons.landscape_outlined,
+                              size: 30,
+                              color: _primaryColor,
+                            ),
+                          // Overlay avec icône caméra
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.4),
+                              borderRadius: const BorderRadius.all(Radius.circular(10)),
+                            ),
+                            child: const Icon(
+                              Icons.add_a_photo_outlined,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
