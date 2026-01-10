@@ -563,6 +563,54 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateActivity({
+    required int activityId,
+    required int farmId,
+    int? cropId,
+    required String activityType,
+    DateTime? activityDate,
+    String? notes,
+    List<String>? imageUrls,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/activities/$activityId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'farm_id': farmId,
+          'crop_id': cropId,
+          'activity_type': activityType,
+          'activity_date': activityDate?.toIso8601String(),
+          'notes': notes,
+          'image_urls': imageUrls,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to update activity: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error updating activity: $e');
+    }
+  }
+
+  static Future<void> deleteActivity(int activityId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/activities/$activityId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Failed to delete activity: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error deleting activity: $e');
+    }
+  }
+
   // Harvests
   static Future<List<dynamic>> getHarvestsForFarm(int farmId) async {
     try {

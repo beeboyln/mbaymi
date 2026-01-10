@@ -10,6 +10,7 @@ class ActivityScreen extends StatefulWidget {
   final int cropId;
   final int userId;
   final int? farmOwnerId; // ID du propriétaire de la ferme
+  final bool readOnly; // Mode lecture seul
 
   const ActivityScreen({
     Key? key,
@@ -17,6 +18,7 @@ class ActivityScreen extends StatefulWidget {
     required this.cropId,
     required this.userId,
     this.farmOwnerId,
+    this.readOnly = false,
   }) : super(key: key);
 
   @override
@@ -200,6 +202,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   bool _canEdit() {
+    // Si mode readOnly, pas de modifications possibles
+    if (widget.readOnly) {
+      return false;
+    }
+    
     // Peut éditer UNIQUEMENT si c'est le propriétaire de la ferme
     // Si farmOwnerId est null, c'est une ferme locale (ParcelScreen) → peut éditer
     // Si farmOwnerId != null, c'est une visite publique → peut éditer QUE si propriétaire
@@ -207,6 +214,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     print('🔍 _canEdit check:');
     print('   userId: ${widget.userId}');
     print('   farmOwnerId: ${widget.farmOwnerId}');
+    print('   readOnly: ${widget.readOnly}');
     print('   Can edit: ${widget.farmOwnerId == null || widget.userId == widget.farmOwnerId}');
     
     if (widget.farmOwnerId == null) {
@@ -908,6 +916,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
   ) {
     final imgs = (activity['image_urls'] as List?) ?? [];
     final activityType = activity['activity_type'] ?? 'Activité';
+    final activityId = activity['id'];
+    final userId = activity['user_id'];
+    
+    // Vérifier si l'utilisateur actuel est le créateur de l'activité
+    final isCreator = !widget.readOnly && userId == widget.userId;
     
     // Trouver le type d'activité dans les catégories
     late Map<String, dynamic> typeInfo;
@@ -942,119 +955,141 @@ class _ActivityScreenState extends State<ActivityScreen> {
           borderRadius: const BorderRadius.all(Radius.circular(12)),
           border: Border.all(color: borderColor, width: 1),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header avec type et boutons d'action
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: (typeInfo['color'] as Color).withOpacity(0.1),
-                      borderRadius: const BorderRadius.all(Radius.circular(10)),
-                      border: Border.all(
-                        color: (typeInfo['color'] as Color).withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Icon(
-                        typeInfo['icon'] as IconData,
-                        color: typeInfo['color'] as Color,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          activityType,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: textColor,
-                          ),
-                        ),
-                        if (activityDate != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.access_time_outlined,
-                                size: 14,
-                                color: Color(0xFF6B6B6B),
+                  // Titre et actions
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Type d'activité avec badge couleur
+                            Container(
+                              decoration: BoxDecoration(
+                                color: (typeInfo['color'] as Color).withOpacity(0.15),
+                                borderRadius: const BorderRadius.all(Radius.circular(6)),
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _formatDateSafe(activityDate, pattern: 'd MMM yyyy'),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              child: Text(
+                                activityType,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: secondaryTextColor,
                                   fontWeight: FontWeight.w300,
+                                  color: typeInfo['color'] as Color,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
+                            ),
+                            const SizedBox(height: 10),
+                            // Date
+                            if (activityDate != null) ...[
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 13,
+                                    color: secondaryTextColor,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _formatDateSafe(activityDate, pattern: 'd MMMM yyyy'),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: secondaryTextColor,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
-                          ),
-                        ],
-                      ],
-                    ),
+                          ],
+                        ),
+                      ),
+                      // Boutons d'action (si créateur et pas readOnly)
+                      if (isCreator)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit_outlined, color: secondaryTextColor, size: 18),
+                              onPressed: () => _showEditActivityDialog(activity),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: Icon(Icons.delete_outline, color: Colors.red.shade400, size: 18),
+                              onPressed: () => _showDeleteActivityConfirm(activityId),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ],
               ),
-              
-              if (activity['notes'] != null && activity['notes'].toString().isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
+            ),
+
+            // Notes
+            if (activity['notes'] != null && activity['notes'].toString().isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Text(
                   activity['notes'].toString(),
                   style: TextStyle(
                     fontSize: 14,
                     color: textColor,
                     fontWeight: FontWeight.w300,
-                    height: 1.4,
+                    height: 1.5,
                   ),
                 ),
-              ],
+              ),
+            ],
 
-              if (imgs.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 120,
+            // Images
+            if (imgs.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: SizedBox(
+                  height: 100,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
                     itemCount: imgs.length,
                     itemBuilder: (context, i) => Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.all(Radius.circular(8)),
-                          border: Border.all(color: borderColor, width: 1),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.all(Radius.circular(8)),
+                      padding: const EdgeInsets.only(right: 10),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.all(Radius.circular(8)),
+                        child: Container(
+                          width: 140,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            borderRadius: const BorderRadius.all(Radius.circular(8)),
+                            border: Border.all(color: borderColor, width: 1),
+                          ),
                           child: Image.network(
                             imgs[i] as String,
-                            width: 160,
-                            height: 120,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return SizedBox(
-                                width: 160,
-                                height: 120,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F5),
-                                    borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                  ),
-                                  child: const Icon(
-                                    Icons.broken_image_outlined,
-                                    color: Color(0xFF6B6B6B),
-                                    size: 32,
-                                  ),
+                              return DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF5F5F5),
+                                  borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                ),
+                                child: const Icon(
+                                  Icons.broken_image_outlined,
+                                  color: Color(0xFF6B6B6B),
+                                  size: 24,
                                 ),
                               );
                             },
@@ -1064,10 +1099,203 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     ),
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
+      ),
+    );
+  }
+
+  void _showEditActivityDialog(Map<String, dynamic> activity) {
+    HapticFeedback.lightImpact();
+    
+    final editTypeCtrl = TextEditingController(text: activity['activity_type'] ?? '');
+    final editNotesCtrl = TextEditingController(text: activity['notes'] ?? '');
+    DateTime? editDate = activity['activity_date'] != null 
+        ? DateTime.tryParse(activity['activity_date'].toString())
+        : null;
+    String editSelectedType = activity['activity_type'] ?? '';
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Modifier l\'activité'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Type d'activité
+                  const Text('Type d\'activité', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  DropdownButton<String>(
+                    isExpanded: true,
+                    value: editSelectedType.isNotEmpty ? editSelectedType : null,
+                    items: _activityCategories.values
+                        .expand((category) => category)
+                        .map((item) => DropdownMenuItem<String>(
+                              value: item['value'] as String,
+                              child: Row(
+                                children: [
+                                  Icon(item['icon'] as IconData, size: 16, color: item['color'] as Color),
+                                  const SizedBox(width: 8),
+                                  Text(item['label'] as String),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() {
+                          editSelectedType = value;
+                          editTypeCtrl.text = value;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Date
+                  const Text('Date', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: editDate ?? DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => editDate = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            editDate != null 
+                                ? DateFormat('dd MMM yyyy', 'fr_FR').format(editDate!)
+                                : 'Sélectionner une date',
+                            style: TextStyle(
+                              color: editDate != null ? Colors.black : Colors.grey,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Notes
+                  const Text('Notes', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: editNotesCtrl,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: 'Ajouter des notes...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Annuler'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await _updateActivityAction(
+                    activity['id'],
+                    editSelectedType,
+                    editDate,
+                    editNotesCtrl.text,
+                  );
+                },
+                child: const Text('Enregistrer', style: TextStyle(color: Colors.green)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _updateActivityAction(
+    int activityId,
+    String activityType,
+    DateTime? activityDate,
+    String notes,
+  ) async {
+    if (activityType.isEmpty) {
+      _showErrorSnackBar('Veuillez sélectionner un type');
+      return;
+    }
+    
+    try {
+      setState(() => _loading = true);
+      await ApiService.updateActivity(
+        activityId: activityId,
+        farmId: widget.farmId,
+        cropId: widget.cropId,
+        activityType: activityType,
+        activityDate: activityDate,
+        notes: notes.isEmpty ? null : notes,
+      );
+      _showSuccessSnackBar('Activité mise à jour ✓');
+      await _refreshActivities();
+    } catch (e) {
+      _showErrorSnackBar('Erreur: $e');
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  void _showDeleteActivityConfirm(dynamic activityId) {
+    HapticFeedback.heavyImpact();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer cette activité?'),
+        content: const Text('Cette action est irréversible.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                setState(() => _loading = true);
+                await ApiService.deleteActivity(activityId as int);
+                _showSuccessSnackBar('Activité supprimée ✓');
+                await _refreshActivities();
+              } catch (e) {
+                _showErrorSnackBar('Erreur: $e');
+              } finally {
+                setState(() => _loading = false);
+              }
+            },
+            child: Text('Supprimer', style: TextStyle(color: Colors.red.shade400)),
+          ),
+        ],
       ),
     );
   }

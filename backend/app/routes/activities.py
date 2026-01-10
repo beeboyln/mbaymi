@@ -102,3 +102,74 @@ def list_activities_for_crop(crop_id: int, db: Session = Depends(get_db)):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/{activity_id}", response_model=ActivityResponse)
+def update_activity(activity_id: int, activity: ActivityCreate, db: Session = Depends(get_db)):
+    try:
+        # Find existing activity
+        existing = db.query(Activity).filter(Activity.id == activity_id).first()
+        if not existing:
+            raise HTTPException(status_code=404, detail="Activity not found")
+        
+        # Update fields
+        existing.activity_type = activity.activity_type
+        existing.activity_date = activity.activity_date
+        existing.notes = activity.notes
+        
+        db.commit()
+        db.refresh(existing)
+        
+        # Update images if provided
+        image_urls = getattr(activity, 'image_urls', None)
+        saved_urls = []
+        if image_urls is not None:
+            # Delete existing photos
+            db.query(ActivityPhoto).filter(ActivityPhoto.activity_id == existing.id).delete()
+            # Add new photos
+            for url in image_urls:
+                p = ActivityPhoto(activity_id=existing.id, image_url=url)
+                db.add(p)
+                saved_urls.append(url)
+            db.commit()
+        else:
+            # Keep existing photos if not updating
+            photos = db.query(ActivityPhoto).filter(ActivityPhoto.activity_id == existing.id).all()
+            saved_urls = [p.image_url for p in photos]
+        
+        resp = {
+            'id': existing.id,
+            'farm_id': existing.farm_id,
+            'crop_id': existing.crop_id,
+            'user_id': existing.user_id,
+            'activity_type': existing.activity_type,
+            'activity_date': existing.activity_date,
+            'notes': existing.notes,
+            'created_at': existing.created_at,
+            'image_urls': saved_urls,
+        }
+        return resp
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{activity_id}")
+def delete_activity(activity_id: int, db: Session = Depends(get_db)):
+    try:
+        # Find existing activity
+        existing = db.query(Activity).filter(Activity.id == activity_id).first()
+        if not existing:
+            raise HTTPException(status_code=404, detail="Activity not found")
+        
+        # Delete associated photos
+        db.query(ActivityPhoto).filter(ActivityPhoto.activity_id == existing.id).delete()
+        
+        # Delete activity
+        db.delete(existing)
+        db.commit()
+        
+        return {"message": "Activity deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -135,20 +135,68 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                         letterSpacing: -0.8,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.person_outline, size: 16, color: secondaryTextColor),
-                        const SizedBox(width: 6),
-                        Text(
-                          farmerName,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: secondaryTextColor,
-                            fontWeight: FontWeight.w300,
+                    const SizedBox(height: 12),
+                    
+                    // Proprietaire de la ferme
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _farmDetailsFuture,
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const SizedBox.shrink();
+                        }
+                        
+                        final ownerName = snapshot.data?['owner_name'] ?? 'Agriculteur';
+                        
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: _primaryColor.withOpacity(0.08),
+                            borderRadius: const BorderRadius.all(Radius.circular(10)),
                           ),
-                        ),
-                      ],
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _primaryColor,
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Propriétaire',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: secondaryTextColor,
+                                      fontWeight: FontWeight.w300,
+                                    ),
+                                  ),
+                                  Text(
+                                    ownerName,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     
@@ -579,16 +627,8 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ActivityScreen(
-                                farmId: widget.farmId,
-                                cropId: _toInt(crop['id']) ?? 0,
-                                userId: _userId,
-                              ),
-                            ),
-                          ).then((_) => _refresh());
+                          // Ouvrir les activités dans un modal en mode lecture seul
+                          _showActivitiesModal(crop, textColor, secondaryTextColor, borderColor, isDark);
                         },
                         child: const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
@@ -665,6 +705,95 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showActivitiesModal(
+    Map<String, dynamic> crop,
+    Color textColor,
+    Color secondaryTextColor,
+    Color borderColor,
+    bool isDark,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        decoration: BoxDecoration(
+          color: isDark ? _cardDark : _cardLight,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Handle et titre
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 16),
+              child: Column(
+                children: [
+                  // Handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: secondaryTextColor.withOpacity(0.3),
+                      borderRadius: const BorderRadius.all(Radius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Titre
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Activités - ${crop['crop_name'] ?? 'Parcelle'}',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Mode lecture seul',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: secondaryTextColor,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded, color: secondaryTextColor),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // ActivityScreen en mode readOnly
+            Expanded(
+              child: ActivityScreen(
+                farmId: widget.farmId,
+                cropId: _toInt(crop['id']) ?? 0,
+                userId: _userId,
+                readOnly: true,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
