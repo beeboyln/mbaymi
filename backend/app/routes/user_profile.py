@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import User, Farm, FarmProfile, FarmPost, Crop, Livestock
+from app.models import User, Farm, FarmPost, Crop, Livestock
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,19 +24,10 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
         
         # Récupérer toutes les fermes de l'utilisateur
         farms = db.query(Farm).filter(Farm.user_id == user_id).all()
-        
-        # Récupérer les profils publics de l'utilisateur (via Farm.user_id)
         farm_ids = [f.id for f in farms]
-        profiles = db.query(FarmProfile).filter(FarmProfile.farm_id.in_(farm_ids)).all() if farm_ids else []
-        
-        # Créer un dictionnaire pour accès rapide aux profils
-        profile_map = {p.farm_id: p for p in profiles}
-        
-        # Compter les followers totaux
-        total_followers = sum(p.total_followers for p in profiles)
         
         # Compter les posts totaux
-        total_posts = db.query(FarmPost).filter(FarmPost.user_id == user_id).count()
+        total_posts = db.query(FarmPost).filter(FarmPost.user_id == user_id).count() if farm_ids else 0
         
         # Récupérer tous les crops et livestock d'une seule requête
         all_crops = db.query(Crop).filter(Crop.farm_id.in_(farm_ids)).all() if farm_ids else []
@@ -57,7 +48,7 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
             "phone": getattr(user, 'phone', None),
             "profile_image": getattr(user, 'profile_image', None),
             "total_farms": len(farms),
-            "total_followers": total_followers,
+            "total_followers": 0,
             "total_posts": total_posts,
             "farms": [
                 {
@@ -67,7 +58,7 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
                     "image_url": f.image_url,
                     "crops_count": crops_by_farm.get(f.id, 0),
                     "livestock_count": livestock_by_farm.get(f.id, 0),
-                    "is_public": profile_map.get(f.id, None).is_public if profile_map.get(f.id) else False,
+                    "is_public": False,
                 }
                 for f in farms
             ]
