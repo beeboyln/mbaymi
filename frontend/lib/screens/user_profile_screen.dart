@@ -477,35 +477,42 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             // 🚀 Accès rapide - Fermes & Élevages
                             Row(
                               children: [
-                                Expanded(
-                                  child: _buildQuickAccessButton(
-                                    context: context,
-                                    icon: Icons.landscape_outlined,
-                                    label: 'Mes Fermes',
-                                    color: _primaryColor,
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      _showFarmsModal(context, isDark, cardColor, textColor, secondaryTextColor, borderColor);
-                                    },
-                                    isDark: isDark,
-                                    cardColor: cardColor,
-                                    borderColor: borderColor,
+                                // Carousel des fermes avec images
+                                if (farms.isNotEmpty)
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        _showFarmsModal(context, isDark, cardColor, textColor, secondaryTextColor, borderColor);
+                                      },
+                                      child: _buildFarmsCarousel(farms, isDark, borderColor, textColor, secondaryTextColor),
+                                    ),
+                                  )
+                                else
+                                  Expanded(
+                                    child: _buildQuickAccessButton(
+                                      context: context,
+                                      icon: Icons.landscape_outlined,
+                                      label: 'Mes Fermes',
+                                      color: _primaryColor,
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        _showFarmsModal(context, isDark, cardColor, textColor, secondaryTextColor, borderColor);
+                                      },
+                                      isDark: isDark,
+                                      cardColor: cardColor,
+                                      borderColor: borderColor,
+                                    ),
                                   ),
-                                ),
                                 const SizedBox(width: 12),
+                                // Carousel des élevages (ou bouton par défaut si vide)
                                 Expanded(
-                                  child: _buildQuickAccessButton(
-                                    context: context,
-                                    icon: Icons.pets_outlined,
-                                    label: 'Mes Élevages',
-                                    color: _accentColor,
+                                  child: GestureDetector(
                                     onTap: () {
                                       HapticFeedback.lightImpact();
                                       _showLivestockModal(context, isDark, cardColor, textColor, secondaryTextColor, borderColor);
                                     },
-                                    isDark: isDark,
-                                    cardColor: cardColor,
-                                    borderColor: borderColor,
+                                    child: _buildLivestockCarousel(isDark, borderColor, textColor, secondaryTextColor),
                                   ),
                                 ),
                               ],
@@ -1095,6 +1102,252 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFarmsCarousel(
+    List<dynamic> farms,
+    bool isDark,
+    Color borderColor,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.all(Radius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: borderColor, width: 1),
+        ),
+        child: Stack(
+        children: [
+          // Image de fond de la première ferme
+          SizedBox(
+            height: 140,
+            width: double.infinity,
+            child: _buildFarmImage(farms[0]),
+          ),
+          
+          // Overlay sombre
+          Container(
+            height: 140,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withOpacity(0.4),
+                ],
+              ),
+            ),
+          ),
+          
+          // Contenu - Titre et indicateur
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Nom de la ferme
+                  Row(
+                    children: [
+                      Icon(Icons.landscape_outlined, size: 16, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          farms[0]['name'] ?? 'Ferme',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Indicateur de carousel
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: const BorderRadius.all(Radius.circular(4)),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Text(
+                          '1 / ${farms.length}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      if (farms.length > 1)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: const BorderRadius.all(Radius.circular(4)),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Text(
+                            '+${farms.length - 1} autres',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    ));
+  }
+
+  Widget _buildFarmImage(Map<String, dynamic> farm) {
+    // DEBUG: Afficher les données de la ferme
+    print('DEBUG FARM DATA: $farm');
+    print('DEBUG FARM KEYS: ${farm.keys.toList()}');
+    
+    // Essayer de récupérer une image de ferme
+    String? imageUrl;
+    
+    // Chercher dans l'image_url directement
+    if (farm['image_url'] != null && (farm['image_url'] as String).isNotEmpty) {
+      imageUrl = farm['image_url'] as String;
+      print('DEBUG IMAGE FOUND: $imageUrl');
+    }
+    // Chercher dans les photos de la ferme
+    else if (farm['photos'] != null && (farm['photos'] as List).isNotEmpty) {
+      final photos = farm['photos'] as List;
+      if (photos.isNotEmpty) {
+        final firstPhoto = photos.first;
+        if (firstPhoto is Map<String, dynamic>) {
+          imageUrl = firstPhoto['image_url'] as String?;
+        } else {
+          imageUrl = firstPhoto.toString();
+        }
+      }
+    }
+    
+    // Si pas d'image, afficher une couleur par défaut
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        color: _UserProfileScreenState._primaryColor.withOpacity(0.2),
+        child: Center(
+          child: Icon(
+            Icons.landscape_outlined,
+            size: 48,
+            color: _UserProfileScreenState._primaryColor.withOpacity(0.5),
+          ),
+        ),
+      );
+    }
+    
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: _UserProfileScreenState._primaryColor.withOpacity(0.2),
+        child: Center(
+          child: Icon(
+            Icons.landscape_outlined,
+            size: 48,
+            color: _UserProfileScreenState._primaryColor.withOpacity(0.5),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLivestockCarousel(
+    bool isDark,
+    Color borderColor,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        border: Border.all(color: borderColor, width: 1),
+        color: _accentColor.withOpacity(0.08),
+      ),
+      child: Stack(
+        children: [
+          // Icône et gradient de fond
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _UserProfileScreenState._accentColor.withOpacity(0.1),
+                    _UserProfileScreenState._accentColor.withOpacity(0.05),
+                  ],
+                ),
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.pets_outlined,
+                  size: 40,
+                  color: _accentColor.withOpacity(0.6),
+                ),
+              ),
+            ),
+          ),
+          
+          // Contenu
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 0),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Mes Élevages',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _accentColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Gérez votre bétail',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w300,
+                        color: _accentColor.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

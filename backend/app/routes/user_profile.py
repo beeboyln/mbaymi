@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import User, Farm, FarmProfile, FarmPost
+from app.models import User, Farm, FarmProfile, FarmPost, Crop, Livestock
 import logging
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,9 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
                     "id": f.id,
                     "name": f.name,
                     "location": f.location,
+                    "image_url": f.image_url,
+                    "crops_count": len(db.query(Crop).filter(Crop.farm_id == f.id).all()),
+                    "livestock_count": len(db.query(Livestock).filter(Livestock.farm_id == f.id).all()),
                     "is_public": db.query(FarmProfile).filter(FarmProfile.farm_id == f.id).first().is_public if db.query(FarmProfile).filter(FarmProfile.farm_id == f.id).first() else False,
                 }
                 for f in farms
