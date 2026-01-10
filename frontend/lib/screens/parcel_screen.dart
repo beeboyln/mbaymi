@@ -8,8 +8,14 @@ import 'package:mbaymi/screens/crop_problems_screen.dart';
 class ParcelScreen extends StatefulWidget {
   final int farmId;
   final int userId;
+  final bool readOnly; // Mode lecture seul pour autres utilisateurs
 
-  const ParcelScreen({Key? key, required this.farmId, required this.userId}) : super(key: key);
+  const ParcelScreen({
+    Key? key,
+    required this.farmId,
+    required this.userId,
+    this.readOnly = false,
+  }) : super(key: key);
 
   @override
   State<ParcelScreen> createState() => _ParcelScreenState();
@@ -21,8 +27,6 @@ class _ParcelScreenState extends State<ParcelScreen> {
 
   // Palette de couleurs marron moderne
   static const Color _primaryColor = Color(0xFF8B6B4D);
-  static const Color _primaryLight = Color(0xFFA58A6D);
-  static const Color _primaryDark = Color(0xFF5D4730);
   static const Color _accentColor = Color(0xFFC4A484);
   static const Color _bgLight = Color(0xFFFAF8F5);
   static const Color _bgDark = Color(0xFF121212);
@@ -346,12 +350,6 @@ class _ParcelScreenState extends State<ParcelScreen> {
     }
   }
 
-  String? _firstString(dynamic v) {
-    final l = _toList(v);
-    if (l.isEmpty) return null;
-    return l.first?.toString();
-  }
-
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -386,219 +384,237 @@ class _ParcelScreenState extends State<ParcelScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Header minimaliste
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: cardColor,
-                border: Border(
-                  bottom: BorderSide(
-                    color: borderColor,
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  top: 12,
-                  bottom: 12,
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.pop(context);
-                      },
-                      icon: Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: secondaryTextColor,
-                        size: 20,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Text(
-                        'Mes Parcelles',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w300,
-                          color: textColor,
-                          letterSpacing: -0.8,
-                        ),
-                      ),
-                    ),
-                    // Photo Button
-                    IconButton(
-                      onPressed: _loadingPhotos ? null : _addFarmPhotos,
-                      icon: _loadingPhotos
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFF8B6B4D),
-                              ),
-                            )
-                          : const Icon(
-                              Icons.add_a_photo_outlined,
-                              color: Color(0xFF8B6B4D),
-                              size: 22,
-                            ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Add Parcel Button
-                    IconButton(
-                      onPressed: _showAddParcel,
-                      icon: const Icon(
-                        Icons.add_circle_outline,
-                        color: Color(0xFF8B6B4D),
-                        size: 24,
-                      ),
-                    ),
-                  ],
-                ),
+            // Background image
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/b.png',
+                fit: BoxFit.cover,
+                opacity: const AlwaysStoppedAnimation(0.08),
               ),
             ),
-
+            
             // Contenu principal
-            Expanded(
-              child: FutureBuilder<List<dynamic>>(
-                future: _parcelsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFF8B6B4D),
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Chargement...',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF6B6B6B),
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                        ],
+            Column(
+              children: [
+                // Header minimaliste
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: borderColor,
+                        width: 1,
                       ),
-                    );
-                  }
-
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Color(0xFFFF3B30),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Erreur de chargement',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                              color: textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${snapshot.error}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: secondaryTextColor,
-                              fontWeight: FontWeight.w300,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  final parcels = snapshot.data ?? [];
-                  
-                  if (parcels.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.landscape_outlined,
-                            size: 56,
-                            color: Color(0xFFA58A6D),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            'Aucune parcelle',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w400,
-                              color: textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Commencez par ajouter votre première parcelle',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: secondaryTextColor,
-                              fontWeight: FontWeight.w300,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          TextButton(
-                            onPressed: _showAddParcel,
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              backgroundColor: _primaryColor,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            ),
-                            child: const Text(
-                              'Créer une parcelle',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return RefreshIndicator(
-                    onRefresh: _refresh,
-                    color: _primaryColor,
-                    child: ListView.builder(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      itemCount: parcels.length,
-                      itemBuilder: (context, index) {
-                        final p = parcels[index] as Map<String, dynamic>;
-                        return _buildParcelCard(p, cardColor, textColor, secondaryTextColor, borderColor, isDark);
-                      },
                     ),
-                  );
-                },
-              ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 12,
+                      bottom: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.pop(context);
+                          },
+                          icon: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: secondaryTextColor,
+                            size: 20,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Text(
+                            'Mes Parcelles',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w300,
+                              color: textColor,
+                              letterSpacing: -0.8,
+                            ),
+                          ),
+                        ),
+                        // Photo Button
+                        if (!widget.readOnly) ...[
+                          IconButton(
+                            onPressed: _loadingPhotos ? null : _addFarmPhotos,
+                            icon: _loadingPhotos
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFF8B6B4D),
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.add_a_photo_outlined,
+                                    color: Color(0xFF8B6B4D),
+                                    size: 22,
+                                  ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Add Parcel Button
+                          IconButton(
+                            onPressed: _showAddParcel,
+                            icon: const Icon(
+                              Icons.add_circle_outline,
+                              color: Color(0xFF8B6B4D),
+                              size: 24,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Contenu principal
+                Expanded(
+                  child: FutureBuilder<List<dynamic>>(
+                    future: _parcelsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF8B6B4D),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'Chargement...',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF6B6B6B),
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 48,
+                                color: Color(0xFFFF3B30),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Erreur de chargement',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w400,
+                                  color: textColor,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${snapshot.error}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: secondaryTextColor,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final parcels = snapshot.data ?? [];
+                      
+                      if (parcels.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.landscape_outlined,
+                                size: 56,
+                                color: Color(0xFFA58A6D),
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                'Aucune parcelle',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w400,
+                                  color: textColor,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Commencez par ajouter votre première parcelle',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: secondaryTextColor,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (!widget.readOnly) ...[
+                                const SizedBox(height: 24),
+                                TextButton(
+                                  onPressed: _showAddParcel,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    backgroundColor: _primaryColor,
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  ),
+                                  child: const Text(
+                                    'Créer une parcelle',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w300,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        onRefresh: _refresh,
+                        color: _primaryColor,
+                        child: ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.all(16),
+                          itemCount: parcels.length,
+                          itemBuilder: (context, index) {
+                            final p = parcels[index] as Map<String, dynamic>;
+                            return _buildParcelCard(p, cardColor, textColor, secondaryTextColor, borderColor, isDark);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -627,301 +643,320 @@ class _ParcelScreenState extends State<ParcelScreen> {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
         border: Border.all(color: borderColor, width: 1),
       ),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Image avec bouton d'ajout
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    _addParcelPhoto(_toInt(parcel['id']) ?? 0);
-                  },
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+          // Image Banner - Plus grande et plus visible
+          Stack(
+            children: [
+              // Image de fond
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: Container(
+                  width: double.infinity,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: parcel['image_url'] != null && parcel['image_url'].toString().isNotEmpty
+                      ? Image.network(
+                          parcel['image_url'] as String,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => 
+                              _buildPlaceholderImage(),
+                        )
+                      : _buildPlaceholderImage(),
+                ),
+              ),
+              
+              // Overlay avec info en bas
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.4),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Bouton éditer l'image (si pas readOnly)
+              if (!widget.readOnly)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _addParcelPhoto(_toInt(parcel['id']) ?? 0);
+                    },
                     child: Container(
-                      width: 60,
-                      height: 60,
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: const BorderRadius.all(Radius.circular(10)),
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: const BorderRadius.all(Radius.circular(8)),
                       ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Image ou icône par défaut
-                          if (parcel['image_url'] != null && parcel['image_url'].toString().isNotEmpty)
-                            Image.network(
-                              parcel['image_url'] as String,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Icon(
-                                Icons.landscape_outlined,
-                                size: 30,
-                                color: _primaryColor,
-                              ),
-                            )
-                          else
-                            Icon(
-                              Icons.landscape_outlined,
-                              size: 30,
-                              color: _primaryColor,
-                            ),
-                          // Overlay avec icône caméra
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.4),
-                              borderRadius: const BorderRadius.all(Radius.circular(10)),
-                            ),
-                            child: const Icon(
-                              Icons.add_a_photo_outlined,
-                              size: 18,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+                      child: const Icon(
+                        Icons.add_a_photo_outlined,
+                        size: 18,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                
-                // Info
-                Expanded(
+
+              // Titre et statut en bas
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         parcel['crop_name'] ?? 'Parcelle',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                          color: textColor,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: (statusInfo['color'] as Color).withOpacity(0.1),
-                              borderRadius: const BorderRadius.all(Radius.circular(6)),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    statusInfo['icon'] as IconData,
-                                    size: 14,
-                                    color: statusInfo['color'] as Color,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    status,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w400,
-                                      color: statusInfo['color'] as Color,
-                                    ),
-                                  ),
-                                ],
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: (statusInfo['color'] as Color).withOpacity(0.9),
+                          borderRadius: const BorderRadius.all(Radius.circular(6)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                statusInfo['icon'] as IconData,
+                                size: 14,
+                                color: Colors.white,
                               ),
-                            ),
+                              const SizedBox(width: 6),
+                              Text(
+                                status,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today_outlined,
-                            size: 14,
-                            color: Color(0xFF6B6B6B),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            parcel['planted_date'] ?? 'Non défini',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: secondaryTextColor,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-                
-                // Arrow
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: Color(0xFF6B6B6B),
+              ),
+            ],
+          ),
+
+          // Infos et boutons
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: Color(0xFF6B6B6B),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      parcel['planted_date'] ?? 'Non défini',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: secondaryTextColor,
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
           
           // Action Buttons
-          DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: borderColor, width: 1),
+          if (!widget.readOnly)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: borderColor, width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Bouton Détails
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ActivityScreen(
+                                farmId: widget.farmId,
+                                cropId: _toInt(parcel['id']) ?? 0,
+                                userId: widget.userId,
+                              ),
+                            ),
+                          ).then((_) => _refresh());
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: Text(
+                              'Détails',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(
+                    width: 1,
+                    height: 40,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Color(0xFFE8E2D8),
+                      ),
+                    ),
+                  ),
+                  // Bouton Activité
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ActivityScreen(
+                                farmId: widget.farmId,
+                                cropId: _toInt(parcel['id']) ?? 0,
+                                userId: widget.userId,
+                              ),
+                            ),
+                          ).then((_) => _refresh());
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: Text(
+                              'Activité',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF8B6B4D),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(
+                    width: 1,
+                    height: 40,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Color(0xFFE8E2D8),
+                      ),
+                    ),
+                  ),
+                  // Bouton Problèmes
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CropProblemsScreen(
+                                farmId: widget.farmId,
+                                cropId: _toInt(parcel['id']) ?? 0,
+                                userId: widget.userId,
+                                cropName: parcel['crop_name'] as String? ?? 'Culture',
+                                isDarkMode: false,
+                              ),
+                            ),
+                          ).then((_) => _refresh());
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: Text(
+                              '🚨 Problèmes',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFFE07856),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                // Bouton Détails
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ActivityScreen(
-                              farmId: widget.farmId,
-                              cropId: _toInt(parcel['id']) ?? 0,
-                              userId: widget.userId,
-                            ),
-                          ),
-                        ).then((_) => _refresh());
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: Text(
-                            'Détails',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w300,
-                              color: Color(0xFF1A1A1A),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  width: 1,
-                  height: 40,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color(0xFFE8E2D8),
-                    ),
-                  ),
-                ),
-                // Bouton Activité
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ActivityScreen(
-                              farmId: widget.farmId,
-                              cropId: _toInt(parcel['id']) ?? 0,
-                              userId: widget.userId,
-                            ),
-                          ),
-                        ).then((_) => _refresh());
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: Text(
-                            'Activité',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w300,
-                              color: Color(0xFF8B6B4D),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  width: 1,
-                  height: 40,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color(0xFFE8E2D8),
-                    ),
-                  ),
-                ),
-                // Bouton Problèmes
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CropProblemsScreen(
-                              farmId: widget.farmId,
-                              cropId: _toInt(parcel['id']) ?? 0,
-                              userId: widget.userId,
-                              cropName: parcel['crop_name'] as String? ?? 'Culture',
-                              isDarkMode: false,
-                            ),
-                          ),
-                        ).then((_) => _refresh());
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: Text(
-                            '🚨 Problèmes',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w300,
-                              color: Color(0xFFE07856),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildDefaultImage(bool isDark) {
-    return SizedBox(
-      width: 60,
-      height: 60,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0xFF8B6B4D).withOpacity(0.1),
-          borderRadius: const BorderRadius.all(Radius.circular(10)),
-        ),
-        child: const Icon(
-          Icons.landscape_outlined,
-          color: Color(0xFF8B6B4D),
-          size: 28,
-        ),
+  Widget _buildPlaceholderImage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.landscape_outlined,
+            size: 56,
+            color: _primaryColor.withOpacity(0.5),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Ajouter une photo',
+            style: TextStyle(
+              fontSize: 14,
+              color: _primaryColor.withOpacity(0.6),
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
       ),
     );
   }

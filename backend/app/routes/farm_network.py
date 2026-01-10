@@ -421,22 +421,27 @@ def get_farm_details(farm_id: int, db: Session = Depends(get_db)):
         
         # Récupérer les crops
         crops = db.query(Crop).filter(Crop.farm_id == farm_id).all()
-        crops_data = [
-            {
+        crops_data = []
+        for c in crops:
+            crop_dict = {
                 "id": c.id,
                 "farm_id": c.farm_id,
                 "crop_name": c.crop_name,
-                "planted_date": c.planted_date,
-                "expected_harvest_date": c.expected_harvest_date,
+                "planted_date": c.planted_date.isoformat() if c.planted_date else None,
+                "expected_harvest_date": c.expected_harvest_date.isoformat() if c.expected_harvest_date else None,
                 "quantity_planted": c.quantity_planted,
                 "expected_yield": c.expected_yield,
                 "status": c.status,
                 "notes": c.notes,
-                "created_at": c.created_at,
-                "updated_at": c.updated_at,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None,
             }
-            for c in crops
-        ]
+            # Safely add image_url if it exists
+            try:
+                crop_dict["image_url"] = c.image_url
+            except AttributeError:
+                crop_dict["image_url"] = None
+            crops_data.append(crop_dict)
         
         # Récupérer les photos de la ferme
         from app.models.photo import FarmPhoto

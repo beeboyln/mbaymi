@@ -430,55 +430,78 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     final statusInfo = statusColors[status] ?? const {'color': Colors.grey, 'icon': Icons.help_outline_outlined};
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderRadius: const BorderRadius.all(Radius.circular(16)),
           border: Border.all(color: borderColor, width: 1),
         ),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  // Icon
-                  ClipRRect(
-                    borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: _primaryColor.withOpacity(0.1),
-                        borderRadius: const BorderRadius.all(Radius.circular(10)),
-                      ),
-                      child: Icon(
-                        Icons.landscape_outlined,
-                        size: 30,
-                        color: _primaryColor,
+            // Image Banner - Grande et visible
+            Stack(
+              children: [
+                // Image de fond
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  child: Container(
+                    width: double.infinity,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      color: _primaryColor.withOpacity(0.1),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    child: crop['image_url'] != null && crop['image_url'].toString().isNotEmpty
+                        ? Image.network(
+                            crop['image_url'] as String,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => 
+                                _buildPlaceholderImage(),
+                          )
+                        : _buildPlaceholderImage(),
+                  ),
+                ),
+                
+                // Overlay avec gradient
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.3),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  
-                  // Info
-                  Expanded(
+                ),
+
+                // Titre et statut en bas
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           crop['crop_name'] ?? 'Parcelle',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: textColor,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 8),
                         DecoratedBox(
                           decoration: BoxDecoration(
-                            color: (statusInfo['color'] as Color).withOpacity(0.1),
+                            color: (statusInfo['color'] as Color).withOpacity(0.9),
                             borderRadius: const BorderRadius.all(Radius.circular(6)),
                           ),
                           child: Padding(
@@ -489,15 +512,15 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                                 Icon(
                                   statusInfo['icon'] as IconData,
                                   size: 14,
-                                  color: statusInfo['color'] as Color,
+                                  color: Colors.white,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   status,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w400,
-                                    color: statusInfo['color'] as Color,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
                                   ),
                                 ),
                               ],
@@ -507,12 +530,34 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                       ],
                     ),
                   ),
-                  
-                  // Arrow
-                  const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: Color(0xFF6B6B6B),
+                ),
+              ],
+            ),
+
+            // Infos et boutons
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Date
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 14,
+                        color: Color(0xFF6B6B6B),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        crop['planted_date'] ?? 'Non défini',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: secondaryTextColor,
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -526,6 +571,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       border: Border(
+                        top: BorderSide(color: borderColor, width: 1),
                         right: BorderSide(color: borderColor, width: 1),
                       ),
                     ),
@@ -544,14 +590,14 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                             ),
                           ).then((_) => _refresh());
                         },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
                           child: Center(
                             child: Text(
                               'Activités',
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: FontWeight.w300,
+                                fontWeight: FontWeight.w400,
                                 color: _primaryColor,
                               ),
                             ),
@@ -562,21 +608,28 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                   ),
                 ),
                 Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        // Could show harvest details here
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: Text(
-                            'Récoltes',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w300,
-                              color: _primaryColor,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: borderColor, width: 1),
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          // Could show harvest details here
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: Text(
+                              'Récoltes',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: _primaryColor,
+                              ),
                             ),
                           ),
                         ),
@@ -588,6 +641,30 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.landscape_outlined,
+            size: 48,
+            color: _primaryColor.withOpacity(0.5),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pas de photo',
+            style: TextStyle(
+              fontSize: 12,
+              color: _primaryColor.withOpacity(0.6),
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ],
       ),
     );
   }
