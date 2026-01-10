@@ -473,6 +473,52 @@ class _FarmTabState extends State<FarmTab> {
                 ),
                 Row(
                   children: [
+                    // Bouton Publique/Privée
+                    TextButton.icon(
+                      onPressed: () async {
+                        try {
+                          final isPublic = farm['is_public'] ?? false;
+                          final result = await ApiService.toggleFarmVisibility(
+                            userId: widget.userId!,
+                            farmId: farm['id'] as int,
+                            isPublic: !isPublic,
+                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(result['message'] ?? 'Visibilité mise à jour'),
+                                backgroundColor: const Color(0xFF6B8E23),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            _refreshFarms();
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erreur: $e'),
+                                backgroundColor: Colors.red.shade400,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: Icon(
+                        (farm['is_public'] ?? false) ? Icons.public : Icons.lock_outlined,
+                        size: 16,
+                        color: (farm['is_public'] ?? false) ? const Color(0xFF6B8E23) : Colors.orange,
+                      ),
+                      label: Text(
+                        (farm['is_public'] ?? false) ? 'Publique' : 'Privée',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: (farm['is_public'] ?? false) ? const Color(0xFF6B8E23) : Colors.orange,
+                        ),
+                      ),
+                    ),
                     IconButton(
                       onPressed: () async {
                         final result = await Navigator.push(

@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:mbaymi/screens/farm_screen.dart';
+import 'package:mbaymi/screens/livestock_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final int userId;
@@ -50,38 +52,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _profileFuture = ApiService.getUserProfile(widget.userId);
       _postsFuture = ApiService.getUserPosts(widget.userId);
     });
-  }
-
-  Future<void> _toggleFarmVisibility(int farmId, bool currentVisibility) async {
-    try {
-      HapticFeedback.mediumImpact();
-      final result = await ApiService.toggleFarmVisibility(
-        userId: widget.userId,
-        farmId: farmId,
-        isPublic: !currentVisibility,
-      );
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Visibilité mise à jour'),
-            backgroundColor: _primaryColor,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _refresh();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: Colors.red.shade400,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _pickAndUploadProfileImage() async {
@@ -502,25 +472,66 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 24),
+                            
+                            // 🚀 Accès rapide - Fermes & Élevages
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildQuickAccessButton(
+                                    context: context,
+                                    icon: Icons.landscape_outlined,
+                                    label: 'Mes Fermes',
+                                    color: _primaryColor,
+                                    onTap: () {
+                                      HapticFeedback.lightImpact();
+                                      _showFarmsModal(context, isDark, cardColor, textColor, secondaryTextColor, borderColor);
+                                    },
+                                    isDark: isDark,
+                                    cardColor: cardColor,
+                                    borderColor: borderColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildQuickAccessButton(
+                                    context: context,
+                                    icon: Icons.pets_outlined,
+                                    label: 'Mes Élevages',
+                                    color: _accentColor,
+                                    onTap: () {
+                                      HapticFeedback.lightImpact();
+                                      _showLivestockModal(context, isDark, cardColor, textColor, secondaryTextColor, borderColor);
+                                    },
+                                    isDark: isDark,
+                                    cardColor: cardColor,
+                                    borderColor: borderColor,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
 
-                    // 🌾 Mes fermes (visibilité)
+                    // 🌾 Mes Fermes - Affichée par défaut
                     if (farms.isNotEmpty) ...[
                       Text(
                         'Mes Fermes',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
                           color: textColor,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      ...farms.map((farm) {
+                      const SizedBox(height: 16),
+                      ...farms.asMap().entries.map((entry) {
+                        final farm = entry.value as Map<String, dynamic>;
                         final isPublic = farm['is_public'] ?? false;
+                        
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: DecoratedBox(
@@ -531,66 +542,127 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(16),
-                              child: Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          farm['name'] ?? 'Ferme',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w400,
-                                            color: textColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          farm['location'] ?? 'Localisation inconnue',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: secondaryTextColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: isPublic
-                                                ? Colors.green.withOpacity(0.1)
-                                                : Colors.grey.withOpacity(0.1),
-                                            borderRadius: const BorderRadius.all(Radius.circular(6)),
-                                          ),
-                                          child: Text(
-                                            isPublic ? '✅ Publique' : '🔒 Privée',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w500,
-                                              color: isPublic ? Colors.green : secondaryTextColor,
+                                  // Titre et visibilité
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              farm['name'] ?? 'Ferme',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500,
+                                                color: textColor,
+                                              ),
                                             ),
-                                          ),
+                                            if (farm['location'] != null && (farm['location'] as String).isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                farm['location'] as String,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: secondaryTextColor,
+                                                  fontWeight: FontWeight.w300,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: () => _toggleFarmVisibility(
-                                        farm['id'] as int,
-                                        isPublic,
                                       ),
-                                      borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                        child: Text(
-                                          isPublic ? 'Masquer' : 'Publier',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: _primaryColor,
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: isPublic
+                                              ? Colors.green.withOpacity(0.1)
+                                              : Colors.orange.withOpacity(0.1),
+                                          borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              isPublic ? Icons.public : Icons.lock_outlined,
+                                              size: 14,
+                                              color: isPublic ? Colors.green : Colors.orange,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              isPublic ? 'Publique' : 'Privée',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: isPublic ? Colors.green : Colors.orange,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  
+                                  // Bouton toggle visibilité
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () async {
+                                          try {
+                                            final result = await ApiService.toggleFarmVisibility(
+                                              userId: widget.userId,
+                                              farmId: farm['id'] as int,
+                                              isPublic: !isPublic,
+                                            );
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(result['message'] ?? 'Visibilité mise à jour'),
+                                                  backgroundColor: _primaryColor,
+                                                  behavior: SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                              _refresh();
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Erreur: $e'),
+                                                  backgroundColor: Colors.red.shade400,
+                                                  behavior: SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                        borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 10),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                isPublic ? Icons.visibility : Icons.visibility_off_outlined,
+                                                size: 16,
+                                                color: _primaryColor,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                isPublic ? 'Rendre privée' : 'Rendre publique',
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: _primaryColor,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
@@ -602,7 +674,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ),
                         );
                       }).toList(),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 32),
                     ],
 
                     // 📰 Mes publications
@@ -797,6 +869,231 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           fontSize: 24,
           fontWeight: FontWeight.bold,
           color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickAccessButton({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    required bool isDark,
+    required Color cardColor,
+    required Color borderColor,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.08),
+            borderRadius: const BorderRadius.all(Radius.circular(12)),
+            border: Border.all(color: color.withOpacity(0.3), width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: 28),
+                const SizedBox(height: 10),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: color,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFarmsModal(
+    BuildContext context,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color secondaryTextColor,
+    Color borderColor,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Handle et titre
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 16),
+              child: Column(
+                children: [
+                  // Handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: secondaryTextColor.withOpacity(0.3),
+                      borderRadius: const BorderRadius.all(Radius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Titre
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Icon(Icons.landscape_outlined, color: _primaryColor, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Mes Fermes',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Gérez vos fermes',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: secondaryTextColor,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded, color: secondaryTextColor, size: 24),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Contenu - FarmTab
+            Expanded(
+              child: FarmTab(
+                isDarkMode: isDark,
+                userId: widget.userId,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLivestockModal(
+    BuildContext context,
+    bool isDark,
+    Color cardColor,
+    Color textColor,
+    Color secondaryTextColor,
+    Color borderColor,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Handle et titre
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 16),
+              child: Column(
+                children: [
+                  // Handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: secondaryTextColor.withOpacity(0.3),
+                      borderRadius: const BorderRadius.all(Radius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Titre
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Icon(Icons.pets_outlined, color: _accentColor, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Mes Élevages',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Suivez votre bétail',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: secondaryTextColor,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded, color: secondaryTextColor, size: 24),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Contenu - LivestockTab
+            Expanded(
+              child: LivestockTab(
+                isDarkMode: isDark,
+              ),
+            ),
+          ],
         ),
       ),
     );

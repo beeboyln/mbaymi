@@ -40,7 +40,6 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     super.initState();
     _userId = AuthService.currentSession?.userId ?? 0;
     print('🌾 FarmDetailScreen - farmId: ${widget.farmId}');
-    // Use the new comprehensive endpoint
     _farmDetailsFuture = _getFarmDetails(widget.farmId);
   }
 
@@ -103,156 +102,142 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
             color: textColor,
           ),
         ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, color: borderColor, thickness: 1),
-        ),
+        centerTitle: false,
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: [
-            // Farm Info Card
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: cardColor,
-                border: Border(
-                  bottom: BorderSide(color: borderColor, width: 1),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        color: _primaryColor,
+        backgroundColor: cardColor,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // En-tête minimaliste
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Farm Name & Farmer
+                    // Nom de la ferme
                     Text(
                       farmName,
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 32,
                         fontWeight: FontWeight.w300,
                         color: textColor,
-                        letterSpacing: -0.8,
+                        letterSpacing: -1,
+                        height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     
-                    // Proprietaire de la ferme
+                    // Propriétaire avec avatar compact
                     FutureBuilder<Map<String, dynamic>>(
                       future: _farmDetailsFuture,
                       builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return const SizedBox.shrink();
-                        }
+                        final ownerName = snapshot.data?['owner_name'] ?? farmerName;
                         
-                        final ownerName = snapshot.data?['owner_name'] ?? 'Agriculteur';
-                        
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: _primaryColor.withOpacity(0.08),
-                            borderRadius: const BorderRadius.all(Radius.circular(10)),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: _primaryColor,
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
+                        return Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _primaryColor,
+                                border: Border.all(
+                                  color: cardColor,
+                                  width: 2,
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Column(
+                              child: const Center(
+                                child: Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Text(
+                                    ownerName,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w400,
+                                      color: textColor,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   Text(
                                     'Propriétaire',
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: secondaryTextColor,
                                       fontWeight: FontWeight.w300,
-                                    ),
-                                  ),
-                                  Text(
-                                    ownerName,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: textColor,
+                                      letterSpacing: 0.3,
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
                     
                     // Description
-                    Text(
-                      farmDesc,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: secondaryTextColor,
-                        fontWeight: FontWeight.w300,
-                        height: 1.5,
+                    if (farmDesc.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        farmDesc,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: secondaryTextColor,
+                          fontWeight: FontWeight.w300,
+                          height: 1.6,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                    ],
                   ],
                 ),
               ),
-            ),
-
-            // Photos Section
-            FutureBuilder<Map<String, dynamic>>(
-              future: _farmDetailsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData) {
-                  return const SizedBox.shrink();
-                }
-
-                final photos = (snapshot.data?['photos'] as List?) ?? [];
-                if (photos.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                return DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    border: Border(
-                      bottom: BorderSide(color: borderColor, width: 1),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
+              
+              // Photos Section (si disponibles)
+              FutureBuilder<Map<String, dynamic>>(
+                future: _farmDetailsFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  
+                  final photos = (snapshot.data?['photos'] as List?) ?? [];
+                  if (photos.isEmpty) return const SizedBox.shrink();
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Photos',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w400,
-                            color: textColor,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Text(
+                            'Galerie',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: textColor,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         SizedBox(
-                          height: 150,
+                          height: 120,
                           child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             scrollDirection: Axis.horizontal,
                             itemCount: photos.length,
                             separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -261,21 +246,33 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                               final imageUrl = photo['image_url'] ?? '';
                               
                               return ClipRRect(
-                                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                borderRadius: const BorderRadius.all(Radius.circular(12)),
                                 child: Container(
-                                  width: 150,
+                                  width: 160,
                                   decoration: BoxDecoration(
                                     color: borderColor,
-                                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                    borderRadius: const BorderRadius.all(Radius.circular(12)),
                                   ),
                                   child: imageUrl.isNotEmpty
                                       ? Image.network(
                                           imageUrl,
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) =>
-                                              Icon(Icons.image_not_supported, color: secondaryTextColor),
+                                              Center(
+                                                child: Icon(
+                                                  Icons.photo_outlined,
+                                                  color: secondaryTextColor,
+                                                  size: 40,
+                                                ),
+                                              ),
                                         )
-                                      : Icon(Icons.image_outlined, color: secondaryTextColor),
+                                      : Center(
+                                          child: Icon(
+                                            Icons.photo_outlined,
+                                            color: secondaryTextColor,
+                                            size: 40,
+                                          ),
+                                        ),
                                 ),
                               );
                             },
@@ -283,183 +280,168 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                         ),
                       ],
                     ),
-                  ),
-                );
-              },
-            ),
-
-            // Crops/Parcels Section
-            Padding(
-              padding: const EdgeInsets.only(top: 20, left: 20, right: 20, bottom: 8),
-              child: Row(
-                children: [
-                  Text(
-                    'Parcelles',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w400,
-                      color: textColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            FutureBuilder<Map<String, dynamic>>(
-              future: _farmDetailsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: _primaryColor,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Chargement des parcelles...',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: secondaryTextColor,
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                      ],
-                    ),
                   );
-                }
-
-                if (snapshot.hasError) {
-                  print('❌ Error fetching farm details: ${snapshot.error}');
-                  print('📱 FarmId: ${widget.farmId}');
-                  return Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 48,
-                          color: Colors.red.shade400,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Erreur de chargement',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${snapshot.error}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: secondaryTextColor,
-                            fontWeight: FontWeight.w300,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 40,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: _primaryColor,
-                              borderRadius: const BorderRadius.all(Radius.circular(8)),
+                },
+              ),
+              
+              // Section Parcelles avec titre élégant
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  border: Border.all(color: borderColor, width: 1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // En-tête de section
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Parcelles',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w300,
+                              color: textColor,
+                              letterSpacing: -0.5,
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: _refresh,
-                                borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                child: const Center(
-                                  child: Text(
-                                    'Réessayer',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                          ),
+                          FutureBuilder<Map<String, dynamic>>(
+                            future: _farmDetailsFuture,
+                            builder: (context, snapshot) {
+                              final crops = (snapshot.data?['crops'] as List?) ?? [];
+                              return Text(
+                                '${crops.length}',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w300,
+                                  color: _primaryColor,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Liste des parcelles
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _farmDetailsFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 60),
+                            child: Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: _primaryColor,
                                 ),
                               ),
                             ),
+                          );
+                        }
+                        
+                        if (snapshot.hasError) {
+                          return Padding(
+                            padding: const EdgeInsets.all(40),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 48,
+                                  color: Colors.red.shade400,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Erreur de chargement',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w400,
+                                    color: textColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        
+                        final crops = (snapshot.data?['crops'] as List?) ?? [];
+                        
+                        if (crops.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.landscape_outlined,
+                                  size: 56,
+                                  color: _primaryColor.withOpacity(0.5),
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  'Aucune parcelle',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w300,
+                                    color: textColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Les parcelles apparaîtront ici',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: secondaryTextColor,
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                          child: Column(
+                            children: List.generate(
+                              crops.length,
+                              (index) {
+                                final crop = crops[index] as Map<String, dynamic>;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _buildMinimalistCropCard(
+                                    crop,
+                                    cardColor,
+                                    textColor,
+                                    secondaryTextColor,
+                                    borderColor,
+                                    isDark,
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final crops = (snapshot.data?['crops'] as List?) ?? [];
-                print('🌾 Crops loaded: ${crops.length}');
-
-                if (crops.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.landscape_outlined,
-                          size: 56,
-                          color: Color(0xFFA58A6D),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Aucune parcelle',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w400,
-                            color: textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Cette ferme n\'a pas encore créé de parcelles',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: secondaryTextColor,
-                            fontWeight: FontWeight.w300,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: Column(
-                    children: List.generate(
-                      crops.length,
-                      (index) {
-                        final crop = crops[index] as Map<String, dynamic>;
-                        return _buildCropCard(crop, cardColor, textColor, secondaryTextColor, borderColor, isDark);
+                        );
                       },
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCropCard(
+  Widget _buildMinimalistCropCard(
     Map<String, dynamic> crop,
     Color cardColor,
     Color textColor,
@@ -468,218 +450,190 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     bool isDark,
   ) {
     final Map<String, Map<String, dynamic>> statusColors = const {
-      'En préparation': {'color': Colors.orange, 'icon': Icons.construction_outlined},
-      'Semé': {'color': Colors.green, 'icon': Icons.grass_outlined},
-      'En croissance': {'color': Colors.blue, 'icon': Icons.trending_up_outlined},
-      'Récolté': {'color': Colors.purple, 'icon': Icons.check_circle_outlined},
+      'En préparation': {'color': Color(0xFFFFA726), 'icon': Icons.construction_outlined},
+      'Semé': {'color': Color(0xFF66BB6A), 'icon': Icons.grass_outlined},
+      'En croissance': {'color': Color(0xFF42A5F5), 'icon': Icons.trending_up_outlined},
+      'Récolté': {'color': Color(0xFFAB47BC), 'icon': Icons.check_circle_outlined},
     };
 
     final status = crop['status'] ?? 'En préparation';
     final statusInfo = statusColors[status] ?? const {'color': Colors.grey, 'icon': Icons.help_outline_outlined};
+    final statusColor = statusInfo['color'] as Color;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: const BorderRadius.all(Radius.circular(16)),
-          border: Border.all(color: borderColor, width: 1),
-        ),
-        child: Column(
-          children: [
-            // Image Banner - Grande et visible
-            Stack(
-              children: [
-                // Image de fond
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: Container(
-                    width: double.infinity,
-                    height: 160,
-                    decoration: BoxDecoration(
-                      color: _primaryColor.withOpacity(0.1),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () {
+          _showActivitiesModal(crop, textColor, secondaryTextColor, borderColor, isDark);
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: borderColor, width: 1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image avec overlay minimal
+              Stack(
+                children: [
+                  // Image
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    child: Container(
+                      width: double.infinity,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: _primaryColor.withOpacity(0.1),
+                      ),
+                      child: crop['image_url'] != null && crop['image_url'].toString().isNotEmpty
+                          ? Image.network(
+                              crop['image_url'] as String,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => 
+                                  _buildPlaceholderImage(),
+                            )
+                          : _buildPlaceholderImage(),
                     ),
-                    child: crop['image_url'] != null && crop['image_url'].toString().isNotEmpty
-                        ? Image.network(
-                            crop['image_url'] as String,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => 
-                                _buildPlaceholderImage(),
-                          )
-                        : _buildPlaceholderImage(),
                   ),
-                ),
-                
-                // Overlay avec gradient
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.3),
+                  
+                  // Badge de statut flottant
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.95),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            statusInfo['icon'] as IconData,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            status,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
-                ),
-
-                // Titre et statut en bas
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                ],
+              ),
+              
+              // Contenu texte
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Nom de la parcelle
+                    Text(
+                      crop['crop_name'] ?? 'Parcelle',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: textColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    // Détails secondaires
+                    Row(
                       children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 14,
+                          color: secondaryTextColor,
+                        ),
+                        const SizedBox(width: 6),
                         Text(
-                          crop['crop_name'] ?? 'Parcelle',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                          crop['planted_date'] ?? 'Date non définie',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: secondaryTextColor,
+                            fontWeight: FontWeight.w300,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: (statusInfo['color'] as Color).withOpacity(0.9),
-                            borderRadius: const BorderRadius.all(Radius.circular(6)),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  statusInfo['icon'] as IconData,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  status,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
+                        const SizedBox(width: 16),
+                        Icon(
+                          Icons.agriculture_outlined,
+                          size: 14,
+                          color: secondaryTextColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            crop['crop_type'] ?? 'Type non spécifié',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: secondaryTextColor,
+                              fontWeight: FontWeight.w300,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ],
-            ),
-
-            // Infos et boutons
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Date
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 14,
-                        color: Color(0xFF6B6B6B),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        crop['planted_date'] ?? 'Non défini',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: secondaryTextColor,
-                          fontWeight: FontWeight.w300,
+                    
+                    // Indicateur d'action
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: borderColor, width: 0.5),
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Voir les activités',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _primaryColor,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 12,
+                            color: _primaryColor,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            
-            // Action Buttons
-            Row(
-              children: [
-                // Détails Button
-                Expanded(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: borderColor, width: 1),
-                        right: BorderSide(color: borderColor, width: 1),
-                      ),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          // Ouvrir les activités dans un modal en mode lecture seul
-                          _showActivitiesModal(crop, textColor, secondaryTextColor, borderColor, isDark);
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: Text(
-                              'Activités',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: _primaryColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: borderColor, width: 1),
-                      ),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          // Could show harvest details here
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: Text(
-                              'Récoltes',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: _primaryColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -692,17 +646,8 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
         children: [
           Icon(
             Icons.landscape_outlined,
-            size: 48,
-            color: _primaryColor.withOpacity(0.5),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Pas de photo',
-            style: TextStyle(
-              fontSize: 12,
-              color: _primaryColor.withOpacity(0.6),
-              fontWeight: FontWeight.w300,
-            ),
+            size: 40,
+            color: _primaryColor.withOpacity(0.3),
           ),
         ],
       ),
@@ -721,69 +666,64 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.9,
+        height: MediaQuery.of(context).size.height * 0.85,
         decoration: BoxDecoration(
           color: isDark ? _cardDark : _cardLight,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           children: [
-            // Handle et titre
+            // Handle
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: secondaryTextColor.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // En-tête modal
             Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 16),
-              child: Column(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
                 children: [
-                  // Handle
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: secondaryTextColor.withOpacity(0.3),
-                      borderRadius: const BorderRadius.all(Radius.circular(2)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Titre
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Activités - ${crop['crop_name'] ?? 'Parcelle'}',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Mode lecture seul',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: secondaryTextColor,
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ),
-                            ],
+                        Text(
+                          crop['crop_name'] ?? 'Parcelle',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w400,
+                            color: textColor,
                           ),
                         ),
-                        IconButton(
-                          icon: Icon(Icons.close_rounded, color: secondaryTextColor),
-                          onPressed: () => Navigator.pop(context),
+                        Text(
+                          'Activités',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: secondaryTextColor,
+                            fontWeight: FontWeight.w300,
+                          ),
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, color: secondaryTextColor),
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
             ),
             
-            // ActivityScreen en mode readOnly
+            const SizedBox(height: 16),
+            
+            // ActivityScreen
             Expanded(
               child: ActivityScreen(
                 farmId: widget.farmId,
