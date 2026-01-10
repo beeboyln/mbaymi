@@ -23,6 +23,7 @@ class UserProfileScreen extends StatefulWidget {
 class _UserProfileScreenState extends State<UserProfileScreen> {
   late Future<Map<String, dynamic>> _profileFuture;
   late Future<List<dynamic>> _postsFuture;
+  late Future<List<dynamic>> _livestockFuture;
   final ImagePicker _imagePicker = ImagePicker();
 
   // Couleurs
@@ -45,12 +46,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     super.initState();
     _profileFuture = ApiService.getUserProfile(widget.userId);
     _postsFuture = ApiService.getUserPosts(widget.userId);
+    _livestockFuture = ApiService.getUserLivestock(widget.userId);
   }
 
   Future<void> _refresh() async {
     setState(() {
       _profileFuture = ApiService.getUserProfile(widget.userId);
       _postsFuture = ApiService.getUserPosts(widget.userId);
+      _livestockFuture = ApiService.getUserLivestock(widget.userId);
     });
   }
 
@@ -547,136 +550,147 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               borderRadius: const BorderRadius.all(Radius.circular(12)),
                               border: Border.all(color: borderColor, width: 1),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Titre et visibilité
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Image de la ferme
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                                  child: _buildFarmImageForCard(farm['image_url'] as String?),
+                                ),
+                                
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              farm['name'] ?? 'Ferme',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w500,
-                                                color: textColor,
-                                              ),
-                                            ),
-                                            if (farm['location'] != null && (farm['location'] as String).isNotEmpty) ...[
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                farm['location'] as String,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: secondaryTextColor,
-                                                  fontWeight: FontWeight.w300,
+                                      // Titre et visibilité
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  farm['name'] ?? 'Ferme',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: textColor,
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
+                                                if (farm['location'] != null && (farm['location'] as String).isNotEmpty) ...[
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    farm['location'] as String,
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: secondaryTextColor,
+                                                      fontWeight: FontWeight.w300,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: isPublic
+                                                  ? Colors.green.withOpacity(0.1)
+                                                  : Colors.orange.withOpacity(0.1),
+                                              borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  isPublic ? Icons.public : Icons.lock_outlined,
+                                                  size: 14,
+                                                  color: isPublic ? Colors.green : Colors.orange,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  isPublic ? 'Publique' : 'Privée',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: isPublic ? Colors.green : Colors.orange,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: isPublic
-                                              ? Colors.green.withOpacity(0.1)
-                                              : Colors.orange.withOpacity(0.1),
-                                          borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              isPublic ? Icons.public : Icons.lock_outlined,
-                                              size: 14,
-                                              color: isPublic ? Colors.green : Colors.orange,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              isPublic ? 'Publique' : 'Privée',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                                color: isPublic ? Colors.green : Colors.orange,
+                                      const SizedBox(height: 12),
+                                      
+                                      // Bouton toggle visibilité
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () async {
+                                              try {
+                                                final result = await ApiService.toggleFarmVisibility(
+                                                  userId: widget.userId,
+                                                  farmId: farm['id'] as int,
+                                                  isPublic: !isPublic,
+                                                );
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(result['message'] ?? 'Visibilité mise à jour'),
+                                                      backgroundColor: _primaryColor,
+                                                      behavior: SnackBarBehavior.floating,
+                                                    ),
+                                                  );
+                                                  _refresh();
+                                                }
+                                              } catch (e) {
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text('Erreur: $e'),
+                                                      backgroundColor: Colors.red.shade400,
+                                                      behavior: SnackBarBehavior.floating,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                            borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(vertical: 10),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    isPublic ? Icons.visibility : Icons.visibility_off_outlined,
+                                                    size: 16,
+                                                    color: _primaryColor,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    isPublic ? 'Rendre privée' : 'Rendre publique',
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: _primaryColor,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
-                                  
-                                  // Bouton toggle visibilité
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () async {
-                                          try {
-                                            final result = await ApiService.toggleFarmVisibility(
-                                              userId: widget.userId,
-                                              farmId: farm['id'] as int,
-                                              isPublic: !isPublic,
-                                            );
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(result['message'] ?? 'Visibilité mise à jour'),
-                                                  backgroundColor: _primaryColor,
-                                                  behavior: SnackBarBehavior.floating,
-                                                ),
-                                              );
-                                              _refresh();
-                                            }
-                                          } catch (e) {
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text('Erreur: $e'),
-                                                  backgroundColor: Colors.red.shade400,
-                                                  behavior: SnackBarBehavior.floating,
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
-                                        borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 10),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                isPublic ? Icons.visibility : Icons.visibility_off_outlined,
-                                                size: 16,
-                                                color: _primaryColor,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                isPublic ? 'Rendre privée' : 'Rendre publique',
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: _primaryColor,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         );
@@ -684,7 +698,162 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       const SizedBox(height: 32),
                     ],
 
-                    // 📰 Mes publications
+                    // � Mes Élevages - Affichée si non vide
+                    FutureBuilder<List<dynamic>>(
+                      future: _livestockFuture,
+                      builder: (context, livestockSnap) {
+                        final livestock = livestockSnap.data ?? [];
+                        if (livestock.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mes Élevages',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: textColor,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ...livestock.asMap().entries.map((entry) {
+                              final animal = entry.value as Map<String, dynamic>;
+                              final animalType = animal['animal_type'] ?? 'Animal';
+                              final breed = animal['breed'] ?? '';
+                              final quantity = animal['quantity'] ?? 1;
+                              final healthStatus = animal['health_status'] ?? 'Non spécifié';
+                              final imageUrl = animal['image_url'] as String?;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: cardColor,
+                                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                                    border: Border.all(color: borderColor, width: 1),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Image de l'animal (Instagram-style)
+                                      ClipRRect(
+                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                                        child: Container(
+                                          height: 200,
+                                          width: double.infinity,
+                                          color: _accentColor.withOpacity(0.1),
+                                          child: imageUrl != null && imageUrl.isNotEmpty
+                                              ? Image.network(
+                                                  imageUrl,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) => Center(
+                                                    child: Icon(
+                                                      Icons.pets_outlined,
+                                                      size: 48,
+                                                      color: _accentColor.withOpacity(0.6),
+                                                    ),
+                                                  ),
+                                                )
+                                              : Center(
+                                                  child: Icon(
+                                                    Icons.pets_outlined,
+                                                    size: 48,
+                                                    color: _accentColor.withOpacity(0.6),
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
+                                      
+                                      // Infos de l'animal
+                                      Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // Titre et quantité
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        animalType,
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: textColor,
+                                                        ),
+                                                      ),
+                                                      if (breed.isNotEmpty) ...[
+                                                        const SizedBox(height: 4),
+                                                        Text(
+                                                          breed,
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: secondaryTextColor,
+                                                            fontWeight: FontWeight.w300,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ),
+                                                Container(
+                                                  decoration: BoxDecoration(
+                                                    color: _accentColor.withOpacity(0.1),
+                                                    borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                                  ),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                  child: Text(
+                                                    'x$quantity',
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: _accentColor,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 12),
+                                            
+                                            // Statut santé
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: _getHealthColor(healthStatus).withOpacity(0.1),
+                                                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                              ),
+                                              child: Text(
+                                                healthStatus,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: _getHealthColor(healthStatus),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            const SizedBox(height: 32),
+                          ],
+                        );
+                      },
+                    ),
+
+                    // �📰 Mes publications
                     Text(
                       'Mes Publications',
                       style: TextStyle(
@@ -1113,163 +1282,185 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     Color textColor,
     Color secondaryTextColor,
   ) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.all(Radius.circular(12)),
-      child: Container(
+    if (farms.isEmpty) {
+      return Container(
+        height: 140,
         decoration: BoxDecoration(
+          color: _primaryColor.withOpacity(0.1),
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
           border: Border.all(color: borderColor, width: 1),
         ),
-        child: Stack(
-        children: [
-          // Image de fond de la première ferme
-          SizedBox(
-            height: 140,
-            width: double.infinity,
-            child: _buildFarmImage(farms[0]),
-          ),
-          
-          // Overlay sombre
-          Container(
-            height: 140,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withOpacity(0.4),
-                ],
-              ),
-            ),
-          ),
-          
-          // Contenu - Titre et indicateur
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Nom de la ferme
-                  Row(
-                    children: [
-                      Icon(Icons.landscape_outlined, size: 16, color: Colors.white),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          farms[0]['name'] ?? 'Ferme',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  
-                  // Indicateur de carousel
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          borderRadius: const BorderRadius.all(Radius.circular(4)),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        child: Text(
-                          '1 / ${farms.length}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                      if (farms.length > 1)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: const BorderRadius.all(Radius.circular(4)),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Text(
-                            '+${farms.length - 1} autres',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    ));
-  }
-
-  Widget _buildFarmImage(Map<String, dynamic> farm) {
-    // DEBUG: Afficher les données de la ferme
-    print('DEBUG FARM DATA: $farm');
-    print('DEBUG FARM KEYS: ${farm.keys.toList()}');
-    
-    // Essayer de récupérer une image de ferme
-    String? imageUrl;
-    
-    // Chercher dans l'image_url directement
-    if (farm['image_url'] != null && (farm['image_url'] as String).isNotEmpty) {
-      imageUrl = farm['image_url'] as String;
-      print('DEBUG IMAGE FOUND: $imageUrl');
-    }
-    // Chercher dans les photos de la ferme
-    else if (farm['photos'] != null && (farm['photos'] as List).isNotEmpty) {
-      final photos = farm['photos'] as List;
-      if (photos.isNotEmpty) {
-        final firstPhoto = photos.first;
-        if (firstPhoto is Map<String, dynamic>) {
-          imageUrl = firstPhoto['image_url'] as String?;
-        } else {
-          imageUrl = firstPhoto.toString();
-        }
-      }
-    }
-    
-    // Si pas d'image, afficher une couleur par défaut
-    if (imageUrl == null || imageUrl.isEmpty) {
-      return Container(
-        color: _UserProfileScreenState._primaryColor.withOpacity(0.2),
         child: Center(
-          child: Icon(
-            Icons.landscape_outlined,
-            size: 48,
-            color: _UserProfileScreenState._primaryColor.withOpacity(0.5),
+          child: Text(
+            'Aucune ferme',
+            style: TextStyle(color: secondaryTextColor),
           ),
         ),
       );
     }
-    
+
+    return SizedBox(
+      height: 160,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: farms.length,
+        itemBuilder: (context, index) {
+          final farm = farms[index] as Map<String, dynamic>;
+          return Padding(
+            padding: EdgeInsets.only(
+              left: index == 0 ? 0 : 8,
+              right: index == farms.length - 1 ? 0 : 8,
+            ),
+            child: _buildFarmCard(farm, borderColor),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFarmCard(Map<String, dynamic> farm, Color borderColor) {
+    final imageUrl = farm['image_url'] as String?;
+    final farmName = farm['name'] ?? 'Ferme';
+    final cropsCount = farm['crops_count'] ?? 0;
+    final livestockCount = farm['livestock_count'] ?? 0;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.all(Radius.circular(12)),
+      child: Container(
+        width: 160,
+        decoration: BoxDecoration(
+          border: Border.all(color: borderColor, width: 1),
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+        ),
+        child: Stack(
+          children: [
+            // Image de fond
+            SizedBox.expand(
+              child: _buildFarmImageForCard(imageUrl),
+            ),
+
+            // Overlay sombre
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.5),
+                  ],
+                ),
+              ),
+            ),
+
+            // Contenu
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Nom de la ferme
+                    Text(
+                      farmName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      maxLines: 1,
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Stats
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (cropsCount > 0)
+                          Flexible(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.85),
+                                borderRadius:
+                                    const BorderRadius.all(Radius.circular(3)),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 2),
+                              child: Text(
+                                '🌱 $cropsCount',
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                              ),
+                            ),
+                          ),
+                        if (cropsCount > 0 && livestockCount > 0)
+                          const SizedBox(width: 4),
+                        if (livestockCount > 0)
+                          Flexible(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.85),
+                                borderRadius:
+                                    const BorderRadius.all(Radius.circular(3)),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 2),
+                              child: Text(
+                                '🐄 $livestockCount',
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFarmImageForCard(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        color: _primaryColor.withOpacity(0.2),
+        child: Center(
+          child: Icon(
+            Icons.landscape_outlined,
+            size: 40,
+            color: _primaryColor.withOpacity(0.5),
+          ),
+        ),
+      );
+    }
+
     return Image.network(
       imageUrl,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) => Container(
-        color: _UserProfileScreenState._primaryColor.withOpacity(0.2),
+        color: _primaryColor.withOpacity(0.2),
         child: Center(
           child: Icon(
             Icons.landscape_outlined,
-            size: 48,
-            color: _UserProfileScreenState._primaryColor.withOpacity(0.5),
+            size: 40,
+            color: _primaryColor.withOpacity(0.5),
           ),
         ),
       ),
@@ -1282,73 +1473,196 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     Color textColor,
     Color secondaryTextColor,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
-        border: Border.all(color: borderColor, width: 1),
-        color: _accentColor.withOpacity(0.08),
-      ),
-      child: Stack(
-        children: [
-          // Icône et gradient de fond
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _UserProfileScreenState._accentColor.withOpacity(0.1),
-                    _UserProfileScreenState._accentColor.withOpacity(0.05),
-                  ],
-                ),
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.pets_outlined,
-                  size: 40,
-                  color: _accentColor.withOpacity(0.6),
-                ),
-              ),
+    // Load livestock data
+    return FutureBuilder<List<dynamic>>(
+      future: _livestockFuture,
+      builder: (context, snapshot) {
+        final livestock = snapshot.data ?? [];
+
+        if (livestock.isEmpty) {
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.all(Radius.circular(12)),
+              border: Border.all(color: borderColor, width: 1),
+              color: _accentColor.withOpacity(0.08),
             ),
-          ),
-          
-          // Contenu
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                const SizedBox(height: 0),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Mes Élevages',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _accentColor,
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          _accentColor.withOpacity(0.1),
+                          _accentColor.withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: const BorderRadius.all(Radius.circular(12)),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.pets_outlined,
+                        size: 40,
+                        color: _accentColor.withOpacity(0.6),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Gérez votre bétail',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w300,
-                        color: _accentColor.withOpacity(0.7),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 0),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mes Élevages',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: _accentColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Gérez votre bétail',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w300,
+                              color: _accentColor.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
+          );
+        }
+
+        // Show carousel with livestock images
+        return SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: livestock.length,
+            itemBuilder: (context, index) {
+              final animal = livestock[index] as Map<String, dynamic>;
+              final animalType = animal['animal_type'] ?? 'Animal';
+              final imageUrl = animal['image_url'] as String?;
+              final quantity = animal['quantity'] ?? 1;
+
+              return Padding(
+                padding: EdgeInsets.only(right: index == livestock.length - 1 ? 0 : 12),
+                child: Container(
+                  width: 280,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                    border: Border.all(
+                      color: borderColor,
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                        child: Container(
+                          height: 80,
+                          width: double.infinity,
+                          color: _accentColor.withOpacity(0.1),
+                          child: imageUrl != null && imageUrl.isNotEmpty
+                              ? Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Center(
+                                    child: Icon(
+                                      Icons.pets_outlined,
+                                      size: 28,
+                                      color: _accentColor.withOpacity(0.6),
+                                    ),
+                                  ),
+                                )
+                              : Center(
+                                  child: Icon(
+                                    Icons.pets_outlined,
+                                    size: 28,
+                                    color: _accentColor.withOpacity(0.6),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      
+                      // Info
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              animalType,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: textColor,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              maxLines: 1,
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: _accentColor.withOpacity(0.1),
+                                borderRadius: const BorderRadius.all(Radius.circular(6)),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              child: Text(
+                                'x$quantity',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: _accentColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Color _getHealthColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'sain':
+      case 'healthy':
+        return Colors.green;
+      case 'malade':
+      case 'sick':
+        return Colors.red;
+      case 'vacciné':
+      case 'vaccinated':
+        return Colors.blue;
+      default:
+        return Colors.orange;
+    }
   }
 }

@@ -47,7 +47,7 @@ if os.path.exists(uploads_dir):
 
 # Lazy import routes to avoid circular imports
 def include_routes():
-    from app.routes import auth, farmers, livestock, market, advice, news, activities, harvests, sales, crops
+    from app.routes import auth, farmers, livestock, market, advice, news, activities, harvests, sales, crops, pasture, animal_photos
     app.include_router(auth.router)
     app.include_router(farmers.router)
     app.include_router(livestock.router)
@@ -58,6 +58,8 @@ def include_routes():
     app.include_router(harvests.router)
     app.include_router(sales.router)
     app.include_router(crops.router)
+    app.include_router(pasture.router)
+    app.include_router(animal_photos.router)
     
     # 🌾 Agricultural features
     from app.routes import crop_problems, farm_network, user_profile

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
+import 'package:mbaymi/screens/animal_detail_screen.dart';
 
 class FarmNetworkScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -29,6 +30,325 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
         ? ApiService.getFarmFeed(_userId)
         : Future.value([]);
     _publicFarmsFuture = ApiService.getPublicFarms();
+  }
+
+  // MÉTHODES POUR LA SECTION ANIMAUX - DÉFINIES AU DÉBUT DE LA CLASSE
+  Widget _buildAnimalsSection() {
+    return FutureBuilder<List<dynamic>>(
+      future: ApiService.getAllLivestockWithPhotos(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(color: const Color(0xFF8B6B4D)),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Erreur de chargement',
+              style: TextStyle(color: widget.isDarkMode ? Colors.white60 : Colors.black45),
+            ),
+          );
+        }
+
+        final animals = snapshot.data ?? [];
+        if (animals.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Aucun animal à découvrir',
+              style: TextStyle(color: widget.isDarkMode ? Colors.white60 : Colors.black45),
+            ),
+          );
+        }
+
+        // Grouper les animaux par utilisateur
+        Map<int, Map<String, dynamic>> breederGroups = {};
+        for (var animal in animals) {
+          final userId = animal['user_id'] as int? ?? 0;
+          if (userId > 0) {
+            if (!breederGroups.containsKey(userId)) {
+              breederGroups[userId] = {
+                'user_id': userId,
+                'breeder_name': 'Éleveur ${userId}',
+                'profile_image': null,
+                'animals': <dynamic>[],
+              };
+            }
+            breederGroups[userId]?['animals'].add(animal);
+          }
+        }
+
+        return Column(
+          children: breederGroups.values
+              .map((breeder) => _buildBreederCard(breeder))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildBreederCard(Map<String, dynamic> breeder) {
+    final userId = breeder['user_id'] as int? ?? 0;
+    final animals = breeder['animals'] as List? ?? [];
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: userId > 0 ? ApiService.getUserProfile(userId) : Future.value({}),
+      builder: (context, snapshot) {
+        // Récupérer les infos utilisateur
+        final userProfile = snapshot.data ?? {};
+        final breederName = userProfile['full_name'] as String? ?? userProfile['name'] as String? ?? 'Éleveur $userId';
+        final profileImage = userProfile['profile_image'] as String?;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: widget.isDarkMode
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // En-tête éleveur
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF8B6B4D),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: profileImage != null && profileImage.isNotEmpty
+                          ? ClipOval(
+                              child: Image.network(
+                                profileImage,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _buildDefaultBreederAvatar(breederName),
+                              ),
+                            )
+                          : _buildDefaultBreederAvatar(breederName),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            breederName,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: widget.isDarkMode ? Colors.white : Colors.black87,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${animals.length} animal${animals.length > 1 ? 'x' : ''}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Carousel horizontal des animaux
+                if (animals.isNotEmpty)
+                  SizedBox(
+                    height: 180,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: animals.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      itemBuilder: (context, index) {
+                        final animal = animals[index] as Map<String, dynamic>;
+                        return SizedBox(
+                          width: 140,
+                          child: _buildAnimalCard(animal),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDefaultBreederAvatar(String name) {
+    return CircleAvatar(
+      backgroundColor: const Color(0xFF8B6B4D),
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileInfo(String label, String value) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: widget.isDarkMode ? Colors.white60 : Colors.black54,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: widget.isDarkMode ? Colors.white : Colors.black87,
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAnimalCard(Map<String, dynamic> animal) {
+    final animalType = animal['animal_type'] as String? ?? 'Animal';
+    final breed = animal['breed'] as String? ?? 'Race';
+    final quantity = animal['quantity'] as int? ?? 1;
+    final livestockId = animal['livestock_id'] as int? ?? 0;
+    final photos = animal['photos'] as List? ?? [];
+    final firstPhoto = photos.isNotEmpty ? photos[0]['image_url'] : null;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AnimalDetailScreen(
+              livestockId: livestockId,
+              animal: animal,
+              isDarkMode: widget.isDarkMode,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(widget.isDarkMode ? 0.3 : 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Photo de l'animal - Minimaliste
+            Container(
+              height: 105,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                color: const Color(0xFF8B6B4D).withOpacity(0.1),
+              ),
+              child: firstPhoto != null && firstPhoto.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                      child: Image.network(
+                        firstPhoto,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Icon(Icons.pets_outlined, color: const Color(0xFF8B6B4D), size: 32),
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: Icon(Icons.pets_outlined, color: const Color(0xFF8B6B4D), size: 32),
+                    ),
+            ),
+
+            // Infos minimalistes
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Type et race
+                  Text(
+                    animalType,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: widget.isDarkMode ? Colors.white : Colors.black87,
+                      height: 1.0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    breed,
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: widget.isDarkMode ? Colors.white60 : Colors.black54,
+                      height: 1.0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  
+                  // Quantité simple
+                  Text(
+                    'Qté: $quantity',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF8B6B4D),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -201,6 +521,27 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
           ),
         ),
         ...farmerGroups.values.map((farmer) => _buildFarmerCard(farmer)).toList(),
+
+        // Section Élevage
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 4, 0, 12),
+          child: Row(
+            children: [
+              const Icon(Icons.pets_outlined, color: Color(0xFF8B6B4D), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Animaux du réseau',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w300,
+                  color: widget.isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildAnimalsSection(),
       ],
     );
   }
@@ -340,86 +681,76 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? Colors.white.withOpacity(0.03) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: widget.isDarkMode ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
-            width: 0.5,
-          ),
-          boxShadow: widget.isDarkMode
-              ? null
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+          color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(widget.isDarkMode ? 0.3 : 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Photo de la ferme - PLUS GRANDE et sans espace inutile
+            // Photo de la ferme - GRANDE ET PROMINENT
             Container(
-              height: 100, // Augmenté pour meilleure visibilité
+              height: 110,
               width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                color: const Color(0xFF6B8E23).withOpacity(0.1),
+              ),
               child: farmProfileImage != null && farmProfileImage.isNotEmpty
                   ? ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                       child: Image.network(
                         farmProfileImage,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: const Color(0xFF6B8E23).withOpacity(0.1),
-                          child: const Center(
-                            child: Icon(Icons.image_not_supported, color: Color(0xFF6B8E23), size: 24),
-                          ),
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.agriculture_outlined, color: Color(0xFF6B8E23), size: 32),
                         ),
                       ),
                     )
-                  : Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6B8E23).withOpacity(0.1),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.agriculture_outlined, color: Color(0xFF6B8E23), size: 28),
-                      ),
+                  : const Center(
+                      child: Icon(Icons.agriculture_outlined, color: Color(0xFF6B8E23), size: 32),
                     ),
             ),
-            
-            // Contenu - plus compact
+
+            // Contenu - Bien organisé
             Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Nom de la ferme
+                  // Nom et localisation
                   Text(
                     farmName,
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                       color: widget.isDarkMode ? Colors.white : Colors.black87,
-                      height: 1.2,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  
-                  // Localisation
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.location_on_outlined, size: 10, color: const Color(0xFF6B8E23)),
-                      const SizedBox(width: 2),
+                      Icon(
+                        Icons.location_on_rounded,
+                        size: 12,
+                        color: const Color(0xFF6B8E23),
+                      ),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           location,
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 11,
                             color: widget.isDarkMode ? Colors.white60 : Colors.black54,
-                            height: 1.2,
+                            fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -427,25 +758,29 @@ class _FarmNetworkScreenState extends State<FarmNetworkScreen> {
                       ),
                     ],
                   ),
-                  
-                  // Spécialités - plus compact
+
+                  // Spécialités en badges
                   if (specialties.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Wrap(
-                      spacing: 2,
-                      runSpacing: 2,
+                      spacing: 4,
+                      runSpacing: 4,
                       children: specialties.take(2).map((spec) {
+                        final specTrimmed = spec.trim();
+                        final displayText = specTrimmed.length > 12
+                            ? '${specTrimmed.substring(0, 12)}...'
+                            : specTrimmed;
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF6B8E23).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(2),
+                            color: const Color(0xFF6B8E23).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            spec.trim().length > 10 ? '${spec.trim().substring(0, 10)}...' : spec.trim(),
+                            displayText,
                             style: const TextStyle(
-                              fontSize: 7.5,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
                               color: Color(0xFF6B8E23),
                             ),
                           ),

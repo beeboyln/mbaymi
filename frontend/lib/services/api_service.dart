@@ -695,6 +695,7 @@ class ApiService {
     String? feedingType,
     String? location,
     String? notes,
+    String? imageUrl,
   }) async {
     try {
       final response = await http.post(
@@ -710,6 +711,7 @@ class ApiService {
           'feeding_type': feedingType,
           'location': location,
           'notes': notes,
+          'image_url': imageUrl,
         }),
       );
 
@@ -736,6 +738,128 @@ class ApiService {
         throw Exception('Failed to get livestock');
       }
     } catch (e) {
+      throw Exception('Error getting livestock: $e');
+    }
+  }
+
+  // Alias for addLivestock
+  static Future<Map<String, dynamic>> createLivestock({
+    required int userId,
+    required String animalType,
+    String? breed,
+    int? quantity,
+    int? ageMonths,
+    double? weightKg,
+    String? healthStatus,
+    String? feedingType,
+    String? location,
+    String? notes,
+    String? imageUrl,
+  }) =>
+      addLivestock(
+        userId: userId,
+        animalType: animalType,
+        breed: breed,
+        quantity: quantity ?? 1,
+        ageMonths: ageMonths,
+        weightKg: weightKg,
+        healthStatus: healthStatus,
+        feedingType: feedingType,
+        location: location,
+        notes: notes,
+        imageUrl: imageUrl,
+      );
+
+  static Future<Map<String, dynamic>> updateLivestock({
+    required int livestockId,
+    required String animalType,
+    String? breed,
+    int? quantity,
+    int? ageMonths,
+    double? weightKg,
+    String? healthStatus,
+    String? feedingType,
+    String? location,
+    String? notes,
+    String? imageUrl,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/livestock/$livestockId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'animal_type': animalType,
+          'breed': breed,
+          'quantity': quantity,
+          'age_months': ageMonths,
+          'weight_kg': weightKg,
+          'health_status': healthStatus,
+          'feeding_type': feedingType,
+          'location': location,
+          'notes': notes,
+          'image_url': imageUrl,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to update livestock: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error updating livestock: $e');
+    }
+  }
+
+  static Future<void> deleteLivestock(int livestockId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/livestock/$livestockId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Failed to delete livestock: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error deleting livestock: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getAllLivestockWithPhotos() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/livestock/public'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> allLivestock = jsonDecode(response.body) as List;
+        
+        // Charger les photos pour chaque animal
+        final List<dynamic> livestockWithPhotos = [];
+        for (var animal in allLivestock) {
+          final livestockId = animal['id'] as int?;
+          if (livestockId != null) {
+            try {
+              final photos = await getAnimalPhotos(livestockId);
+              animal['photos'] = photos;
+              livestockWithPhotos.add(animal);
+            } catch (e) {
+              // Si erreur photos, garder l'animal sans photos
+              debugPrint('⚠️ Error fetching photos for livestock $livestockId: $e');
+              animal['photos'] = [];
+              livestockWithPhotos.add(animal);
+            }
+          }
+        }
+        
+        return livestockWithPhotos;
+      } else {
+        throw Exception('Failed to get livestock: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error getting livestock: $e');
       throw Exception('Error getting livestock: $e');
     }
   }
@@ -1344,4 +1468,187 @@ class ApiService {
       throw Exception('Error updating profile: $e');
     }
   }
+
+  // ========== PASTURE IMAGES ==========
+  
+  static Future<Map<String, dynamic>> addPastureImage({
+    required int userId,
+    required String imageUrl,
+    String? title,
+    String? description,
+  }) async {
+    return _withRetry(() async {
+      final body = {
+        'image_url': imageUrl,
+        if (title != null && title.isNotEmpty) 'title': title,
+        if (description != null && description.isNotEmpty) 'description': description,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/pasture/images?user_id=$userId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await TokenStorage.getAccessToken()}',
+        },
+        body: jsonEncode(body),
+      ).timeout(_requestTimeout);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to add pasture image: ${response.statusCode}');
+      }
+    });
+  }
+
+  static Future<List<Map<String, dynamic>>> getPastureImages(int userId) async {
+    return _withRetry(() async {
+      final cacheKey = 'pasture_images_$userId';
+      
+      // Check cache first
+      final cached = _getCache.get(cacheKey);
+      if (cached != null) {
+        return List<Map<String, dynamic>>.from(cached);
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/pasture/images/user/$userId'),
+        headers: {'Authorization': 'Bearer ${await TokenStorage.getAccessToken()}'},
+      ).timeout(_requestTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        final images = List<Map<String, dynamic>>.from(
+          data.map((item) => Map<String, dynamic>.from(item as Map))
+        );
+        _getCache.set(cacheKey, images);
+        return images;
+      } else {
+        throw Exception('Failed to fetch pasture images: ${response.statusCode}');
+      }
+    });
+  }
+
+  static Future<Map<String, dynamic>> updatePastureImage({
+    required int imageId,
+    required String imageUrl,
+    String? title,
+    String? description,
+  }) async {
+    return _withRetry(() async {
+      final body = {
+        'image_url': imageUrl,
+        if (title != null && title.isNotEmpty) 'title': title,
+        if (description != null && description.isNotEmpty) 'description': description,
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/pasture/images/$imageId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await TokenStorage.getAccessToken()}',
+        },
+        body: jsonEncode(body),
+      ).timeout(_requestTimeout);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to update pasture image: ${response.statusCode}');
+      }
+    });
+  }
+
+  static Future<void> deletePastureImage(int imageId) async {
+    return _withRetry(() async {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/pasture/images/$imageId'),
+        headers: {'Authorization': 'Bearer ${await TokenStorage.getAccessToken()}'},
+      ).timeout(_requestTimeout);
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete pasture image: ${response.statusCode}');
+      }
+    });
+  }
+
+  // ========== ANIMAL PHOTOS ==========
+  
+  static Future<Map<String, dynamic>> addAnimalPhoto({
+    required int livestockId,
+    required String imageUrl,
+    String? caption,
+  }) async {
+    return _withRetry(() async {
+      final body = {
+        'livestock_id': livestockId,
+        'image_url': imageUrl,
+        if (caption != null && caption.isNotEmpty) 'caption': caption,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/animal-photos/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await TokenStorage.getAccessToken()}',
+        },
+        body: jsonEncode(body),
+      ).timeout(_requestTimeout);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to add animal photo: ${response.statusCode}');
+      }
+    });
+  }
+
+  static Future<List<Map<String, dynamic>>> getAnimalPhotos(int livestockId) async {
+    return _withRetry(() async {
+      final cacheKey = 'animal_photos_$livestockId';
+      
+      // Check cache first
+      final cached = _getCache.get(cacheKey);
+      if (cached != null) {
+        return List<Map<String, dynamic>>.from(cached);
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/animal-photos/livestock/$livestockId'),
+        headers: {'Authorization': 'Bearer ${await TokenStorage.getAccessToken()}'},
+      ).timeout(_requestTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        final photos = List<Map<String, dynamic>>.from(
+          data.map((item) => Map<String, dynamic>.from(item as Map))
+        );
+        _getCache.set(cacheKey, photos);
+        return photos;
+      } else {
+        throw Exception('Failed to fetch animal photos: ${response.statusCode}');
+      }
+    });
+  }
+
+  static Future<void> deleteAnimalPhoto(int photoId) async {
+    debugPrint('🗑️ Deleting animal photo with id: $photoId');
+    return _withRetry(() async {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/animal-photos/$photoId'),
+        headers: {'Authorization': 'Bearer ${await TokenStorage.getAccessToken()}'},
+      ).timeout(_requestTimeout);
+
+      debugPrint('Delete response status: ${response.statusCode}');
+      debugPrint('Delete response body: ${response.body}');
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete animal photo: ${response.statusCode}');
+      }
+      
+      // Invalidate all animal photos cache since we don't know which livestock this belonged to
+      _getCache.clear();
+    });
+  }
 }
+

@@ -8,6 +8,7 @@ import 'package:mbaymi/screens/news_detail_screen.dart';
 import 'package:mbaymi/screens/farm_screen.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/screens/livestock_screen.dart';
+import 'package:mbaymi/screens/livestock_management_screen.dart';
 import 'package:mbaymi/screens/market_screen.dart';
 import 'package:mbaymi/screens/advice_screen.dart';
 import 'package:mbaymi/screens/dashboard_tab.dart';
@@ -222,7 +223,20 @@ class _HomeScreenState extends State<HomeScreen> {
       child: InkWell(
         onTap: () {
           HapticFeedback.lightImpact();
-          setState(() => _selectedIndex = index);
+          // Special navigation for Élevage tab
+          if (index == 3 && userId != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LivestockManagementScreen(
+                  userId: userId!,
+                  isDarkMode: _isDarkMode,
+                ),
+              ),
+            );
+          } else {
+            setState(() => _selectedIndex = index);
+          }
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -331,9 +345,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ajouter un animal - Bientôt disponible')),
-                  );
+                  if (userId != null) {
+                    Navigator.push(
+                      this.context,
+                      MaterialPageRoute(
+                        builder: (_) => LivestockManagementScreen(
+                          userId: userId!,
+                          isDarkMode: _isDarkMode,
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 12),

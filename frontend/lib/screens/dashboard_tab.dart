@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
+import 'package:mbaymi/screens/create_livestock_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -21,7 +22,6 @@ class _DashboardTabState extends State<DashboardTab> {
   late Future<Map<String, dynamic>> _countsFuture;
   late Future<Map<String, dynamic>> _weatherFuture;
   int _currentNewsPage = 0;
-  bool _isWeatherExpanded = false;
 
   @override
   void initState() {
@@ -160,7 +160,7 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ),
 
-          // Conseil du jour - Collapsible Weather Card
+          // Conseil du jour - Simplifié
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             sliver: SliverToBoxAdapter(
@@ -175,41 +175,86 @@ class _DashboardTabState extends State<DashboardTab> {
 
                   final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _isWeatherExpanded = !_isWeatherExpanded;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      splashColor: Colors.white.withOpacity(0.1),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isDarkMode
-                                ? [const Color(0xFF2D5016).withOpacity(0.7), const Color(0xFF3A6122).withOpacity(0.7)]
-                                : [const Color(0xFF2D5016), const Color(0xFF3D6B1F)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF2D5016).withOpacity(0.15),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDarkMode
+                            ? [const Color(0xFF2D5016).withOpacity(0.7), const Color(0xFF3A6122).withOpacity(0.7)]
+                            : [const Color(0xFF2D5016), const Color(0xFF3D6B1F)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2D5016).withOpacity(0.15),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '☀️ Aujourd\'hui',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  '${maxTemp.toStringAsFixed(0)}°C - $advice',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
                             ),
+                            if (!isLoading)
+                              Text(
+                                '${maxTemp.toStringAsFixed(0)}°',
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                           ],
                         ),
-                        child: AnimatedCrossFade(
-                          firstChild: _buildWeatherCompact(maxTemp, advice, isDarkMode, isLoading),
-                          secondChild: _buildWeatherExpanded(maxTemp, weatherCode, advice, wateringAdvice, isDarkMode, isLoading),
-                          crossFadeState: _isWeatherExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                          duration: const Duration(milliseconds: 200),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.water_drop_outlined, color: Colors.white70, size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  wateringAdvice,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   );
                 },
@@ -217,85 +262,28 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ),
 
-          // Stats Cards
+          // 📊 STATS RAPIDES
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
             sliver: SliverToBoxAdapter(
-              child: Column(
+              child: Row(
                 children: [
-                  // First Row - Fermes & Animaux
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: Icons.agriculture,
-                          iconColor: const Color(0xFF6B8E23),
-                          valueKey: 'farms',
-                          label: 'Fermes',
-                          subtitle: '🔴 À surveiller',
-                          subtitleColor: const Color(0xFFE07856),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: Icons.pets,
-                          iconColor: const Color(0xFFD2691E),
-                          valueKey: 'livestock',
-                          label: 'Animaux',
-                          subtitle: '💉 Vaccination',
-                          subtitleColor: const Color(0xFFF39C12),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Second Row - Parcelles & Récoltes
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: Icons.grass,
-                          iconColor: const Color(0xFF8B7355),
-                          valueKey: 'parcels',
-                          label: 'Parcelles',
-                          subtitle: '🌱 En croissance',
-                          subtitleColor: const Color(0xFF2D5016),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: Icons.emoji_nature,
-                          iconColor: const Color(0xFFF39C12),
-                          valueKey: 'harvests',
-                          label: 'Récoltes',
-                          subtitle: '📅 Prévues',
-                          subtitleColor: const Color(0xFF8B7355),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Revenue Card - Conteneur avec fond
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDarkMode 
-                        ? const Color(0xFF1a1a1a).withOpacity(0.85)
-                        : Colors.white.withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.agriculture,
+                      iconColor: const Color(0xFF6B8E23),
+                      valueKey: 'farms',
+                      label: 'Fermes',
                     ),
-                    child: _buildRevenueCard(),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.pets,
+                      iconColor: const Color(0xFFD2691E),
+                      valueKey: 'livestock',
+                      label: 'Animaux',
+                    ),
                   ),
                 ],
               ),
@@ -548,165 +536,6 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
-  Widget _buildWeatherCompact(double maxTemp, String advice, bool isDarkMode, bool isLoading) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(
-                maxTemp > 28 ? Icons.wb_sunny : Icons.cloud,
-                color: Colors.white,
-                size: 28,
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Météo',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.8),
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    isLoading ? 'Chargement...' : '${maxTemp.toStringAsFixed(0)}°C',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Icon(
-            Icons.expand_more,
-            color: Colors.white.withOpacity(0.7),
-            size: 24,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeatherExpanded(double maxTemp, int weatherCode, String advice, String wateringAdvice, bool isDarkMode, bool isLoading) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    maxTemp > 28 ? Icons.wb_sunny : Icons.cloud,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Conseil du jour',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withOpacity(0.8),
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        advice,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Icon(
-                Icons.expand_less,
-                color: Colors.white.withOpacity(0.7),
-                size: 24,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Température',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.8),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      '${maxTemp.toStringAsFixed(0)}°C',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(
-                Icons.water_drop_outlined,
-                color: Colors.white.withOpacity(0.9),
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  wateringAdvice,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStatCard({
     required IconData icon,
     required Color iconColor,
@@ -714,9 +543,10 @@ class _DashboardTabState extends State<DashboardTab> {
     required String label,
     String? subtitle,
     Color? subtitleColor,
+    VoidCallback? onTap,
   }) {
     return GestureDetector(
-      onTap: () => HapticFeedback.lightImpact(),
+      onTap: onTap ?? () => HapticFeedback.lightImpact(),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -790,63 +620,6 @@ class _DashboardTabState extends State<DashboardTab> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildRevenueCard() {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _countsFuture,
-      builder: (context, snapshot) {
-        final revenue = snapshot.data?['revenue'] ?? 0.0;
-        return Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: widget.isDarkMode 
-                  ? const Color(0xFF2D5016).withOpacity(0.3)
-                  : const Color(0xFF2D5016).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.monetization_on_outlined,
-                color: Color(0xFF6B8E23),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Revenu total',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: widget.isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${revenue.toStringAsFixed(0)} CFA',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w400,
-                      color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.trending_up,
-              color: const Color(0xFF6B8E23),
-              size: 20,
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -1202,6 +975,22 @@ class _DashboardTabState extends State<DashboardTab> {
     final monthName = months[now.month - 1];
     
     return '$dayName ${now.day} $monthName ${now.year}';
+  }
+
+  Color _getHealthColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'sain':
+      case 'healthy':
+        return Colors.green;
+      case 'malade':
+      case 'sick':
+        return Colors.red;
+      case 'vacciné':
+      case 'vaccinated':
+        return Colors.blue;
+      default:
+        return Colors.orange;
+    }
   }
 
   @override

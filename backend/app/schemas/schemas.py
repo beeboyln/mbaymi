@@ -88,11 +88,25 @@ class LivestockCreate(BaseModel):
     feeding_type: Optional[str] = None
     location: Optional[str] = None
     notes: Optional[str] = None
+    image_url: Optional[str] = None
 
 class LivestockResponse(LivestockCreate):
     id: int
     user_id: int
     last_vaccination_date: Optional[datetime]
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Animal Photo Schemas
+class AnimalPhotoCreate(BaseModel):
+    livestock_id: int
+    image_url: str
+    caption: Optional[str] = None
+
+class AnimalPhotoResponse(AnimalPhotoCreate):
+    id: int
     created_at: datetime
     
     class Config:
@@ -175,3 +189,17 @@ class AdviceResponse(BaseModel):
     advice: str
     tips: list[str]
     warnings: Optional[list[str]] = None
+
+# Pasture Image Schemas
+class PastureImageCreate(BaseModel):
+    image_url: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+class PastureImageResponse(PastureImageCreate):
+    id: int
+    user_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True

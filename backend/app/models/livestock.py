@@ -17,5 +17,6 @@ class Livestock(Base):
     feeding_type = Column(String(100))  # grass, grains, mixed
     location = Column(String(200))
     notes = Column(String(500))
+    image_url = Column(String(500))  # Cloudinary image URL
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
