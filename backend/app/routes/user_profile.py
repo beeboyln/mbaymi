@@ -29,17 +29,19 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
         # Compter les posts totaux
         total_posts = db.query(FarmPost).filter(FarmPost.user_id == user_id).count() if farm_ids else 0
         
-        # Récupérer tous les crops et livestock d'une seule requête
+        # Récupérer tous les crops d'une seule requête
         all_crops = db.query(Crop).filter(Crop.farm_id.in_(farm_ids)).all() if farm_ids else []
-        all_livestock = db.query(Livestock).filter(Livestock.farm_id.in_(farm_ids)).all() if farm_ids else []
+        
+        # Récupérer tous les livestock par user_id
+        all_livestock = db.query(Livestock).filter(Livestock.user_id == user_id).all()
         
         # Créer des dictionnaires pour compter
         crops_by_farm = {}
-        livestock_by_farm = {}
         for crop in all_crops:
             crops_by_farm[crop.farm_id] = crops_by_farm.get(crop.farm_id, 0) + 1
-        for animal in all_livestock:
-            livestock_by_farm[animal.farm_id] = livestock_by_farm.get(animal.farm_id, 0) + 1
+        
+        # Pour livestock, on met juste le total (pas associé à une ferme spécifique)
+        livestock_count = len(all_livestock)
         
         return {
             "id": user.id,
@@ -57,7 +59,7 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
                     "location": f.location,
                     "image_url": f.image_url,
                     "crops_count": crops_by_farm.get(f.id, 0),
-                    "livestock_count": livestock_by_farm.get(f.id, 0),
+                    "livestock_count": livestock_count,
                     "is_public": False,
                 }
                 for f in farms
