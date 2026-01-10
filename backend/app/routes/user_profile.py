@@ -29,11 +29,26 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
         farm_ids = [f.id for f in farms]
         profiles = db.query(FarmProfile).filter(FarmProfile.farm_id.in_(farm_ids)).all() if farm_ids else []
         
+        # Créer un dictionnaire pour accès rapide aux profils
+        profile_map = {p.farm_id: p for p in profiles}
+        
         # Compter les followers totaux
         total_followers = sum(p.total_followers for p in profiles)
         
         # Compter les posts totaux
         total_posts = db.query(FarmPost).filter(FarmPost.user_id == user_id).count()
+        
+        # Récupérer tous les crops et livestock d'une seule requête
+        all_crops = db.query(Crop).filter(Crop.farm_id.in_(farm_ids)).all() if farm_ids else []
+        all_livestock = db.query(Livestock).filter(Livestock.farm_id.in_(farm_ids)).all() if farm_ids else []
+        
+        # Créer des dictionnaires pour compter
+        crops_by_farm = {}
+        livestock_by_farm = {}
+        for crop in all_crops:
+            crops_by_farm[crop.farm_id] = crops_by_farm.get(crop.farm_id, 0) + 1
+        for animal in all_livestock:
+            livestock_by_farm[animal.farm_id] = livestock_by_farm.get(animal.farm_id, 0) + 1
         
         return {
             "id": user.id,
@@ -50,14 +65,15 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
                     "name": f.name,
                     "location": f.location,
                     "image_url": f.image_url,
-                    "crops_count": len(db.query(Crop).filter(Crop.farm_id == f.id).all()),
-                    "livestock_count": len(db.query(Livestock).filter(Livestock.farm_id == f.id).all()),
-                    "is_public": db.query(FarmProfile).filter(FarmProfile.farm_id == f.id).first().is_public if db.query(FarmProfile).filter(FarmProfile.farm_id == f.id).first() else False,
+                    "crops_count": crops_by_farm.get(f.id, 0),
+                    "livestock_count": livestock_by_farm.get(f.id, 0),
+                    "is_public": profile_map.get(f.id, None).is_public if profile_map.get(f.id) else False,
                 }
                 for f in farms
             ]
         }
     except Exception as e:
+        logger.error(f"Erreur dans get_user_profile pour user_id={user_id}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 
