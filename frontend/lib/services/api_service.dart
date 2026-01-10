@@ -115,8 +115,8 @@ class ApiService {
 
   // For local development on Windows/Web: use localhost
   // For Android Emulator: use 'http://10.0.2.2:8000/api'
-  // Read from .env (API_BASE_URL) if provided; otherwise default to localhost
-  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000/api';
+  // Read from .env (API_BASE_URL) if provided; otherwise use production URL
+  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'https://cuddly-lil-bigboyllmnd-9965fc8f.koyeb.app/api';
 
   /// Helper: Get auth headers with access token.
   static Future<Map<String, String>> _getAuthHeaders() async {
