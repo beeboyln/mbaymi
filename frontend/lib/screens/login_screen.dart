@@ -48,11 +48,19 @@ class _LoginScreenState extends State<LoginScreen> {
       final userId = result['id'] ?? result['user_id'];
       if (userId == null) throw Exception('ID utilisateur manquant');
 
+      final accessToken = result['access_token'] as String?;
+      final refreshToken = result['refresh_token'] as String?;
+      if (accessToken == null || refreshToken == null) {
+        throw Exception('Tokens JWT manquants du serveur');
+      }
+
       await AuthService.login(
         userId: userId is int ? userId : int.parse(userId.toString()),
         email: _emailController.text.trim(),
         name: result['name'] ?? 'User',
         role: result['role'] ?? 'farmer',
+        accessToken: accessToken,
+        refreshToken: refreshToken,
       );
 
       Navigator.of(context).pushReplacementNamed('/home');

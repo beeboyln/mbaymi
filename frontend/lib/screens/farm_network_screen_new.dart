@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/screens/social_feed_screen.dart';
 
-/// 🌾 FarmNetworkScreen - Nouvel écran réseau social style Instagram
-/// Maintient la compatibilité avec l'ancien code mais utilise SocialFeedScreen
+/// 🌾 Wrapper - FarmNetworkScreen maintient la compatibilité avec l'ancien code
+/// mais utilise maintenant le nouveau SocialFeedScreen en arrière-plan
 class FarmNetworkScreen extends StatelessWidget {
   final bool isDarkMode;
 

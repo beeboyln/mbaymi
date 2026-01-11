@@ -37,7 +37,8 @@ class UserLoginResponse(BaseModel):
     email: str
     name: str
     role: str
-    token: Optional[str] = None
+    access_token: str
+    refresh_token: str
     message: str
 
 # Farm Schemas

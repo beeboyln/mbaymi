@@ -39,20 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _userId = widget.userId;
 
-    // If no userId provided by route, try to restore from storage
-    if (_userId == null) {
-      TokenStorage.getUserId().then((v) {
-        if (v != null && mounted) {
-          setState(() {
-            _userId = v;
-            // rebuild screens with user context
-            _screens[0] = DashboardTab(isDarkMode: _isDarkMode, userId: _userId);
-            _screens[1] = FarmTab(isDarkMode: _isDarkMode, userId: _userId);
-          });
-        }
-      });
-    }
-
     _screens = [
       DashboardTab(isDarkMode: _isDarkMode, userId: userId),
       FarmTab(isDarkMode: _isDarkMode, userId: userId),
@@ -61,6 +47,17 @@ class _HomeScreenState extends State<HomeScreen> {
       MarketTab(isDarkMode: _isDarkMode),
       AdviceTab(isDarkMode: _isDarkMode),
     ];
+
+    // If no userId provided by route, try to restore from storage
+    if (_userId == null) {
+      TokenStorage.getUserId().then((v) {
+        if (v != null && mounted) {
+          setState(() {
+            _userId = v;
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -96,13 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
               HapticFeedback.lightImpact();
               setState(() {
                 _isDarkMode = !_isDarkMode;
-                // Rebuild screens with new theme
-                _screens[0] = DashboardTab(isDarkMode: _isDarkMode, userId: userId);
-                _screens[1] = FarmTab(isDarkMode: _isDarkMode, userId: userId);
-                _screens[2] = FarmNetworkScreen(isDarkMode: _isDarkMode);
-                _screens[3] = LivestockTab(isDarkMode: _isDarkMode);
-                _screens[4] = MarketTab(isDarkMode: _isDarkMode);
-                _screens[5] = AdviceTab(isDarkMode: _isDarkMode);
               });
             },
           ),
@@ -131,9 +121,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (!mounted) return;
                 setState(() {
                   _userId = null;
-                  // rebuild screens without user
-                  _screens[0] = DashboardTab(isDarkMode: _isDarkMode, userId: null);
-                  _screens[1] = FarmTab(isDarkMode: _isDarkMode, userId: null);
                 });
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Déconnecté')));
               } else {
@@ -148,7 +135,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: _screens[_selectedIndex],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: appBarBg,

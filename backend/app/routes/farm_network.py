@@ -1,15 +1,51 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from datetime import datetime
 from typing import Optional
 from app.database import get_db
 from app.models import Farm, FarmProfile, FarmPost, FarmFollowing, UserFollowing, User, Crop
+from app.services.jwt_service import verify_token
 import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 router = APIRouter(prefix="/api/farm-network", tags=["Farm Network"])
+
+# Helper function to extract user_id from Authorization header
+def get_current_user(authorization: Optional[str] = Header(None)) -> int:
+    """Extract user_id from JWT token in Authorization header."""
+    if not authorization:
+        logger.error("No authorization header provided")
+        raise HTTPException(status_code=401, detail="Unauthorized - No authorization header")
+    
+    try:
+        # Format: "Bearer <token>"
+        parts = authorization.split()
+        if len(parts) != 2:
+            logger.error(f"Invalid authorization header format: {len(parts)} parts")
+            raise HTTPException(status_code=401, detail="Invalid authorization header format")
+        
+        if parts[0].lower() != "bearer":
+            logger.error(f"Invalid authorization scheme: {parts[0]}")
+            raise HTTPException(status_code=401, detail="Invalid authorization scheme")
+        
+        token = parts[1]
+        logger.debug(f"Attempting to verify token: {token[:20]}...")
+        
+        user_id = verify_token(token)
+        if user_id is None:
+            logger.error(f"Token verification failed for token: {token[:20]}...")
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        
+        logger.debug(f"✅ User {user_id} authenticated successfully")
+        return user_id
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Auth error: {str(e)}")
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 # ═══════════════════════════════════════════════════════════════════════════
 # FARM PROFILES (Profils publics des fermes)
@@ -264,22 +300,30 @@ def get_farm_feed(user_id: int, skip: int = 0, limit: int = 20, db: Session = De
             .limit(limit)\
             .all()
         
+        posts_list = []
+        for post, farm, user in posts:
+            # Check if current user liked this post
+            is_liked = db.execute(text(f"SELECT id FROM post_likes WHERE post_id = {post.id} AND user_id = {user_id}")).fetchone() is not None
+            
+            posts_list.append({
+                "id": post.id,
+                "farm_id": post.farm_id,
+                "farm_name": farm.name,
+                "owner_name": user.name,
+                "title": post.title,
+                "description": post.description,
+                "photo_url": post.photo_url,
+                "post_type": post.post_type,
+                "created_at": post.created_at.isoformat(),
+                "likes_count": post.likes_count or 0,
+                "comments_count": post.comments_count or 0,
+                "shares_count": post.shares_count or 0,
+                "is_liked": is_liked,
+            })
+        
         return {
-            "count": len(posts),
-            "posts": [
-                {
-                    "id": post.id,
-                    "farm_id": post.farm_id,
-                    "farm_name": farm.name,
-                    "owner_name": user.name,
-                    "title": post.title,
-                    "description": post.description,
-                    "photo_url": post.photo_url,
-                    "post_type": post.post_type,
-                    "created_at": post.created_at.isoformat(),
-                }
-                for post, farm, user in posts
-            ]
+            "count": len(posts_list),
+            "posts": posts_list
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
@@ -553,4 +597,273 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
         
     except Exception as e:
         logger.error(f"❌ [get_public_farms] ERREUR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SOCIAL INTERACTIONS - Likes, Comments, Shares
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/posts/{post_id}/like")
+def like_post(post_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    ❤️ Aimer un post.
+    """
+    try:
+        # Vérifier que le post existe
+        post = db.query(FarmPost).filter(FarmPost.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post non trouvé")
+        
+        # Vérifier qu'on n'a pas déjà aimé
+        existing_like = db.execute(
+            f"SELECT id FROM post_likes WHERE post_id = {post_id} AND user_id = {user_id}"
+        ).first()
+        
+        if existing_like:
+            return {"message": "✅ Déjà aimé"}
+        
+        # Ajouter le like
+        db.execute(
+            f"INSERT INTO post_likes (post_id, user_id, created_at) VALUES ({post_id}, {user_id}, NOW())"
+        )
+        
+        # Incrémenter le compteur
+        db.query(FarmPost).filter(FarmPost.id == post_id).update(
+            {FarmPost.likes_count: FarmPost.likes_count + 1}
+        )
+        
+        db.commit()
+        return {"message": "❤️ Vous aimez ce post"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error liking post: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.delete("/posts/{post_id}/like")
+def unlike_post(post_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    🤍 Retirer un like d'un post.
+    """
+    try:
+        # Vérifier que le post existe
+        post = db.query(FarmPost).filter(FarmPost.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post non trouvé")
+        
+        # Supprimer le like
+        db.execute(
+            f"DELETE FROM post_likes WHERE post_id = {post_id} AND user_id = {user_id}"
+        )
+        
+        # Décrémenter le compteur
+        db.query(FarmPost).filter(FarmPost.id == post_id).update(
+            {FarmPost.likes_count: FarmPost.likes_count - 1}
+        )
+        
+        db.commit()
+        return {"message": "🤍 Like retiré"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error unliking post: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.get("/posts/{post_id}/comments")
+def get_post_comments(post_id: int, db: Session = Depends(get_db)):
+    """
+    💬 Récupérer les commentaires d'un post.
+    """
+    try:
+        # Vérifier que le post existe
+        post = db.query(FarmPost).filter(FarmPost.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post non trouvé")
+        
+        # Récupérer les commentaires
+        comments = db.execute(
+            f"""
+            SELECT c.id, c.content, c.user_id, u.name as user_name, c.created_at
+            FROM post_comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.post_id = {post_id}
+            ORDER BY c.created_at DESC
+            """
+        ).fetchall()
+        
+        comments_data = [
+            {
+                "id": c[0],
+                "content": c[1],
+                "user_id": c[2],
+                "user_name": c[3],
+                "created_at": c[4].isoformat() if c[4] else None,
+            }
+            for c in comments
+        ]
+        
+        return {"count": len(comments_data), "comments": comments_data}
+        
+    except Exception as e:
+        logger.error(f"❌ Error getting comments: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.post("/posts/{post_id}/comment")
+def comment_on_post(
+    post_id: int,
+    request_body: dict,
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    💬 Commenter un post.
+    Expects: {"content": "Votre commentaire"}
+    """
+    try:
+        content = request_body.get("content", "").strip()
+        if not content:
+            raise HTTPException(status_code=400, detail="Contenu du commentaire vide")
+        
+        # Vérifier que le post existe
+        post = db.query(FarmPost).filter(FarmPost.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post non trouvé")
+        
+        # Ajouter le commentaire
+        db.execute(
+            f"INSERT INTO post_comments (post_id, user_id, content, created_at) VALUES ({post_id}, {user_id}, '{content.replace(chr(39), chr(39)*2)}', NOW())"
+        )
+        
+        # Incrémenter le compteur
+        db.query(FarmPost).filter(FarmPost.id == post_id).update(
+            {FarmPost.comments_count: FarmPost.comments_count + 1}
+        )
+        
+        db.commit()
+        return {"message": "💬 Commentaire ajouté"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error commenting: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.post("/posts/{post_id}/share")
+def share_post(post_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    📤 Partager un post.
+    """
+    try:
+        # Vérifier que le post existe
+        post = db.query(FarmPost).filter(FarmPost.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post non trouvé")
+        
+        # Ajouter le partage
+        db.execute(
+            f"INSERT INTO post_shares (post_id, user_id, created_at) VALUES ({post_id}, {user_id}, NOW())"
+        )
+        
+        # Incrémenter le compteur
+        db.query(FarmPost).filter(FarmPost.id == post_id).update(
+            {FarmPost.shares_count: FarmPost.shares_count + 1}
+        )
+        
+        db.commit()
+        return {"message": "📤 Post partagé"}
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error sharing post: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# LIVESTOCK SOCIAL INTERACTIONS - Likes, Comments, Shares for Animals
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/livestock/{livestock_id}/like")
+def like_livestock(livestock_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    ❤️ Aimer un animal (livestock).
+    """
+    try:
+        # Import here to avoid circular imports
+        from app.models.livestock import Livestock
+        
+        # Vérifier que l'animal existe
+        livestock = db.query(Livestock).filter(Livestock.id == livestock_id).first()
+        if not livestock:
+            raise HTTPException(status_code=404, detail="Animal non trouvé")
+        
+        # Vérifier qu'on n'a pas déjà aimé
+        existing_like = db.execute(
+            text(f"SELECT id FROM livestock_likes WHERE livestock_id = {livestock_id} AND user_id = {user_id}")
+        ).first()
+        
+        if existing_like:
+            return {"message": "✅ Déjà aimé"}
+        
+        # Ajouter le like
+        db.execute(
+            text(f"INSERT INTO livestock_likes (livestock_id, user_id, created_at) VALUES ({livestock_id}, {user_id}, NOW())")
+        )
+        
+        # Incrémenter le compteur
+        db.query(Livestock).filter(Livestock.id == livestock_id).update(
+            {Livestock.likes_count: Livestock.likes_count + 1}
+        )
+        
+        db.commit()
+        return {"message": "❤️ Vous aimez cet animal"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error liking livestock: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.delete("/livestock/{livestock_id}/like")
+def unlike_livestock(livestock_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    🤍 Retirer un like d'un animal.
+    """
+    try:
+        from app.models.livestock import Livestock
+        
+        # Vérifier que l'animal existe
+        livestock = db.query(Livestock).filter(Livestock.id == livestock_id).first()
+        if not livestock:
+            raise HTTPException(status_code=404, detail="Animal non trouvé")
+        
+        # Supprimer le like
+        db.execute(
+            text(f"DELETE FROM livestock_likes WHERE livestock_id = {livestock_id} AND user_id = {user_id}")
+        )
+        
+        # Décrémenter le compteur
+        db.query(Livestock).filter(Livestock.id == livestock_id).update(
+            {Livestock.likes_count: Livestock.likes_count - 1}
+        )
+        
+        db.commit()
+        return {"message": "🤍 Like retiré"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error unliking livestock: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")

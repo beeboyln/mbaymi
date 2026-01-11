@@ -826,10 +826,14 @@ class ApiService {
     }
   }
 
-  static Future<List<dynamic>> getAllLivestockWithPhotos() async {
+  static Future<List<dynamic>> getAllLivestockWithPhotos({int? userId}) async {
     try {
+      final url = userId != null 
+        ? '$baseUrl/livestock/public?user_id=$userId'
+        : '$baseUrl/livestock/public';
+        
       final response = await http.get(
-        Uri.parse('$baseUrl/livestock/public'),
+        Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -1649,6 +1653,216 @@ class ApiService {
       // Invalidate all animal photos cache since we don't know which livestock this belonged to
       _getCache.clear();
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SOCIAL INTERACTIONS - Likes, Comments, Shares
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static Future<void> likePost(int postId) async {
+    try {
+      return await _withRetry(() async {
+        final headers = await _getAuthHeaders();
+        final response = await http.post(
+          Uri.parse('$baseUrl/farm-network/posts/$postId/like'),
+          headers: headers,
+        ).timeout(_requestTimeout);
+
+        // Handle 401 by refreshing token
+        if (response.statusCode == 401) {
+          debugPrint('⚠️ 401 Unauthorized for like endpoint, refreshing token...');
+          await _handleUnauthorized(
+            (newHeaders) => http.post(
+              Uri.parse('$baseUrl/farm-network/posts/$postId/like'),
+              headers: newHeaders,
+            ),
+          );
+          return;
+        }
+
+        if (response.statusCode != 200) {
+          throw Exception('Failed to like post: ${response.statusCode}');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error liking post: $e');
+    }
+  }
+
+  static Future<void> unlikePost(int postId) async {
+    try {
+      return await _withRetry(() async {
+        final headers = await _getAuthHeaders();
+        final response = await http.delete(
+          Uri.parse('$baseUrl/farm-network/posts/$postId/like'),
+          headers: headers,
+        ).timeout(_requestTimeout);
+
+        // Handle 401 by refreshing token
+        if (response.statusCode == 401) {
+          debugPrint('⚠️ 401 Unauthorized for unlike endpoint, refreshing token...');
+          await _handleUnauthorized(
+            (newHeaders) => http.delete(
+              Uri.parse('$baseUrl/farm-network/posts/$postId/like'),
+              headers: newHeaders,
+            ),
+          );
+          return;
+        }
+
+        if (response.statusCode != 200) {
+          throw Exception('Failed to unlike post: ${response.statusCode}');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error unliking post: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getPostComments(int postId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farm-network/posts/$postId/comments'),
+          headers: {'Content-Type': 'application/json'},
+        ).timeout(_requestTimeout);
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return (data['comments'] as List?) ?? [];
+        } else {
+          throw Exception('Failed to get comments');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error getting comments: $e');
+    }
+  }
+
+  static Future<void> commentOnPost({
+    required int postId,
+    required String content,
+  }) async {
+    try {
+      return await _withRetry(() async {
+        final headers = await _getAuthHeaders();
+        final response = await http.post(
+          Uri.parse('$baseUrl/farm-network/posts/$postId/comment'),
+          headers: headers,
+          body: jsonEncode({'content': content}),
+        ).timeout(_requestTimeout);
+
+        // Handle 401 by refreshing token
+        if (response.statusCode == 401) {
+          debugPrint('⚠️ 401 Unauthorized for comment endpoint, refreshing token...');
+          await _handleUnauthorized(
+            (newHeaders) => http.post(
+              Uri.parse('$baseUrl/farm-network/posts/$postId/comment'),
+              headers: newHeaders,
+              body: jsonEncode({'content': content}),
+            ),
+          );
+          return;
+        }
+
+        if (response.statusCode != 200 && response.statusCode != 201) {
+          throw Exception('Failed to comment on post: ${response.statusCode}');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error commenting on post: $e');
+    }
+  }
+
+  static Future<void> sharePost(int postId) async {
+    try {
+      return await _withRetry(() async {
+        final headers = await _getAuthHeaders();
+        final response = await http.post(
+          Uri.parse('$baseUrl/farm-network/posts/$postId/share'),
+          headers: headers,
+        ).timeout(_requestTimeout);
+
+        // Handle 401 by refreshing token
+        if (response.statusCode == 401) {
+          debugPrint('⚠️ 401 Unauthorized for share endpoint, refreshing token...');
+          await _handleUnauthorized(
+            (newHeaders) => http.post(
+              Uri.parse('$baseUrl/farm-network/posts/$postId/share'),
+              headers: newHeaders,
+            ),
+          );
+          return;
+        }
+
+        if (response.statusCode != 200) {
+          throw Exception('Failed to share post: ${response.statusCode}');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error sharing post: $e');
+    }
+  }
+
+  // 🐾 Livestock (Animal) Social Interactions
+  static Future<void> likeLivestock(int livestockId) async {
+    try {
+      return await _withRetry(() async {
+        final headers = await _getAuthHeaders();
+        final response = await http.post(
+          Uri.parse('$baseUrl/farm-network/livestock/$livestockId/like'),
+          headers: headers,
+        ).timeout(_requestTimeout);
+
+        // Handle 401 by refreshing token
+        if (response.statusCode == 401) {
+          debugPrint('⚠️ 401 Unauthorized for livestock like endpoint, refreshing token...');
+          await _handleUnauthorized(
+            (newHeaders) => http.post(
+              Uri.parse('$baseUrl/farm-network/livestock/$livestockId/like'),
+              headers: newHeaders,
+            ),
+          );
+          return;
+        }
+
+        if (response.statusCode != 200) {
+          throw Exception('Failed to like livestock: ${response.statusCode}');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error liking livestock: $e');
+    }
+  }
+
+  static Future<void> unlikeLivestock(int livestockId) async {
+    try {
+      return await _withRetry(() async {
+        final headers = await _getAuthHeaders();
+        final response = await http.delete(
+          Uri.parse('$baseUrl/farm-network/livestock/$livestockId/like'),
+          headers: headers,
+        ).timeout(_requestTimeout);
+
+        // Handle 401 by refreshing token
+        if (response.statusCode == 401) {
+          debugPrint('⚠️ 401 Unauthorized for livestock unlike endpoint, refreshing token...');
+          await _handleUnauthorized(
+            (newHeaders) => http.delete(
+              Uri.parse('$baseUrl/farm-network/livestock/$livestockId/like'),
+              headers: newHeaders,
+            ),
+          );
+          return;
+        }
+
+        if (response.statusCode != 200) {
+          throw Exception('Failed to unlike livestock: ${response.statusCode}');
+        }
+      });
+    } catch (e) {
+      throw Exception('Error unliking livestock: $e');
+    }
   }
 }
 

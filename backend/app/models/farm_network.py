@@ -49,6 +49,12 @@ class FarmPost(Base):
     # Type de post
     post_type = Column(String(50), default="crop_update")  # crop_update, harvest_result, problem_report, tip, etc.
     
+    # 📊 Engagement social (likes, commentaires, partages)
+    likes_count = Column(Integer, default=0)  # Nombre de j'aime
+    comments_count = Column(Integer, default=0)  # Nombre de commentaires
+    shares_count = Column(Integer, default=0)  # Nombre de partages
+    views_count = Column(Integer, default=0)  # Nombre de vues
+    
     # Métadonnées
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

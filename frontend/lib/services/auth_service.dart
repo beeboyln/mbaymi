@@ -37,14 +37,11 @@ class AuthService {
     required String email,
     required String name,
     required String role,
+    required String accessToken,
+    required String refreshToken,
   }) async {
     // Clear cache for previous user
     ApiService.clearCache();
-    
-    // For now, use userId as a simple access token.
-    // In production, this would come from backend JWT.
-    final accessToken = 'token_$userId';
-    final refreshToken = 'refresh_$userId';
 
     _currentSession = Session(
       userId: userId,
@@ -63,7 +60,7 @@ class AuthService {
       userEmail: email,
     );
 
-    debugPrint('✅ AuthService.login: Session created for userId=$userId');
+    debugPrint('✅ AuthService.login: Session created for userId=$userId with JWT token');
   }
 
   /// Restore session from localStorage (called on app startup).

@@ -35,11 +35,48 @@ def add_livestock(livestock: LivestockCreate, user_id: int, db: Session = Depend
     return new_livestock
 
 @router.get("/public")
-def get_public_livestock(db: Session = Depends(get_db)):
-    """Get all livestock for network display"""
+def get_public_livestock(db: Session = Depends(get_db), user_id: int = None):
+    """Get all livestock for network display with user info"""
     try:
+        from app.models.user import User
         livestock_list = db.query(Livestock).all()
-        return livestock_list
+        
+        # Enrich with user information
+        enriched = []
+        for animal in livestock_list:
+            user = db.query(User).filter(User.id == animal.user_id).first()
+            
+            # Check if current user liked this animal
+            is_liked = False
+            if user_id:
+                from sqlalchemy import text
+                result = db.execute(text(f"SELECT id FROM livestock_likes WHERE livestock_id = {animal.id} AND user_id = {user_id}"))
+                is_liked = result.fetchone() is not None
+            
+            animal_dict = {
+                'id': animal.id,
+                'user_id': animal.user_id,
+                'user_name': user.name if user else 'Utilisateur',
+                'user_profile_image': user.profile_image if user else None,
+                'animal_type': animal.animal_type,
+                'breed': animal.breed,
+                'quantity': animal.quantity,
+                'age_months': animal.age_months,
+                'weight_kg': animal.weight_kg,
+                'health_status': animal.health_status,
+                'location': animal.location,
+                'notes': animal.notes,
+                'image_url': animal.image_url,
+                'created_at': animal.created_at.isoformat() if animal.created_at else None,
+                'updated_at': animal.updated_at.isoformat() if animal.updated_at else None,
+                'likes_count': animal.likes_count or 0,
+                'comments_count': animal.comments_count or 0,
+                'shares_count': animal.shares_count or 0,
+                'is_liked': is_liked,
+            }
+            enriched.append(animal_dict)
+        
+        return enriched
     except Exception as e:
         print(f"Error fetching all livestock: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching livestock")
