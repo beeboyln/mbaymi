@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/utils/email_validator.dart';
+import 'package:mbaymi/utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -66,13 +68,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Additional validation
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    
+    // Validate email format
+    if (!Validators.isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez entrer une adresse email valide.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate phone (only digits, at least 8 digits)
+    if (!RegExp(r'^\d{8,}$').hasMatch(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Le numéro de téléphone doit contenir au moins 8 chiffres.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       await ApiService.register(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
+        email: email,
+        phone: phone,
         password: _passwordController.text,
         role: _selectedRole,
         region: _regionController.text.trim(),
@@ -88,8 +116,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Navigator.of(context).pushReplacementNamed('/login');
     } catch (e) {
       if (!mounted) return;
+      final errorMessage = ErrorMessages.getHumanReadableError(e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: ${e.toString()}')),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 4),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

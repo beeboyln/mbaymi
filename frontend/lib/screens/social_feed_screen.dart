@@ -58,13 +58,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         backgroundColor: appBarColor,
         elevation: 0.5,
         surfaceTintColor: Colors.transparent,
+        automaticallyImplyLeading: false,
         // Logo corrigé - a.png sans color filter
         title: const Text(
-          'mbaymi',
+          'Mbaymi',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: _primaryColor,
+            color: Color.fromARGB(255, 107, 83, 61),
             letterSpacing: 1,
           ),
         ),
@@ -162,9 +163,24 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       List<dynamic> posts = [];
       List<dynamic> animals = [];
 
-      // Si connecté, charger le feed personnel
+      // Si connecté, charger le feed personnel ET les fermes publiques
       if (_userId > 0) {
         posts = await ApiService.getFarmFeed(_userId);
+        // Ajouter aussi les fermes publiques
+        final publicFarms = await ApiService.getPublicFarms();
+        posts.addAll(publicFarms.map((f) => {
+          'id': f['farm_id'],
+          'farm_name': f['farm_name'],
+          'owner_name': f['owner_name'] ?? 'Agriculteur',
+          'title': f['farm_name'],
+          'description': f['description'] ?? '',
+          'photo_url': f['profile_image_farm'],
+          'post_type': 'farm_update',
+          'created_at': DateTime.now().toIso8601String(),
+          'likes_count': f['followers'] ?? 0,
+          'comments_count': 0,
+          'shares_count': 0,
+        }).toList());
       } else {
         // Sinon, charger les fermes publiques
         final farms = await ApiService.getPublicFarms();

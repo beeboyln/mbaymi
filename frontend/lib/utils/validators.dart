@@ -163,45 +163,98 @@ class FormValidator {
 
 /// Classe helper pour afficher les messages d'erreur user-friendly
 class ErrorMessages {
-  /// Traduit les codes d'erreur API en messages français
+  /// Traduit les codes d'erreur en messages français sécurisés
+  /// NE JAMAIS afficher les détails du backend ou les erreurs brutes
   static String getHumanReadableError(dynamic error) {
-    final errorString = error.toString().toLowerCase();
+    final errorString = error.toString().toUpperCase();
     
-    if (errorString.contains('timeout')) {
-      return 'Connexion lente. Réessayez dans quelques secondes.';
+    // ====== Messages spécifiques à la BASE DE DONNÉES ======
+    if (errorString.contains('DUPLICATE') && errorString.contains('PHONE')) {
+      return 'Ce numéro de téléphone est déjà utilisé.';
     }
     
-    if (errorString.contains('socketexception') || 
-        errorString.contains('no address') ||
-        errorString.contains('failed to connect')) {
-      return 'Vérifiez votre connexion Internet.';
+    if (errorString.contains('UNIQUE') && errorString.contains('PHONE')) {
+      return 'Ce numéro de téléphone est déjà utilisé.';
     }
     
-    if (errorString.contains('401') || 
-        errorString.contains('unauthorized')) {
-      return 'Session expirée. Reconnectez-vous.';
+    if (errorString.contains('DUPLICATE') && errorString.contains('EMAIL')) {
+      return 'Cet email est déjà utilisé.';
     }
     
-    if (errorString.contains('403') || 
-        errorString.contains('forbidden')) {
-      return 'Vous n\'êtes pas autorisé à effectuer cette action.';
+    if (errorString.contains('UNIQUE') && errorString.contains('EMAIL')) {
+      return 'Cet email est déjà utilisé.';
     }
     
-    if (errorString.contains('404') || 
-        errorString.contains('not found')) {
-      return 'La ressource demandée n\'existe pas.';
-    }
-    
-    if (errorString.contains('500') || 
-        errorString.contains('internal server')) {
-      return 'Erreur serveur. Réessayez plus tard.';
-    }
-    
-    if (errorString.contains('already exists')) {
+    if (errorString.contains('UNIQUE') || errorString.contains('DUPLICATE')) {
       return 'Cette ressource existe déjà.';
     }
     
-    // Message par défaut
-    return 'Une erreur s\'est produite. Réessayez.';
-  }
-}
+    // ====== Messages de VALIDATION EMAIL ======
+    if (errorString.contains('NOT A VALID EMAIL') || 
+        errorString.contains('INVALID EMAIL') ||
+        errorString.contains('PART AFTER THE @-SIGN')) {
+      return 'Veuillez entrer une adresse email valide (ex: user@example.com).';
+    }
+    
+    // ====== Messages LOGIN/INSCRIPTION spécifiques ======
+    if (errorString.contains('INVALID_CREDENTIALS')) {
+      return 'Email ou mot de passe incorrect.';
+    }
+    
+    if (errorString.contains('EMAIL_EXISTS')) {
+      return 'Cet email est déjà utilisé.';
+    }
+    
+    if (errorString.contains('INVALID_REQUEST')) {
+      return 'Les informations fournies sont invalides.';
+    }
+    
+    if (errorString.contains('INVALID_REGISTRATION')) {
+      return 'Les informations d\'inscription sont invalides.';
+    }
+    
+    if (errorString.contains('REGISTRATION_FAILED')) {
+      return 'L\'inscription a échoué. Réessayez plus tard.';
+    }
+    
+    if (errorString.contains('LOGIN_FAILED')) {
+      return 'La connexion a échoué. Réessayez plus tard.';
+    }
+    
+    // ====== Messages CONNEXION RÉSEAU ======
+    if (errorString.contains('TIMEOUT') || errorString.contains('TIMEOUTEXCEPTION')) {
+      return 'Connexion lente. Vérifiez votre Internet et réessayez.';
+    }
+    
+    if (errorString.contains('SOCKETEXCEPTION') || 
+        errorString.contains('CONNECTION_ERROR') ||
+        errorString.contains('NO ADDRESS') ||
+        errorString.contains('FAILED TO CONNECT') ||
+        errorString.contains('NETWORK')) {
+      return 'Vérifiez votre connexion Internet et réessayez.';
+    }
+    
+    // ====== Messages HTTP statuts ======
+    if (errorString.contains('401') || errorString.contains('UNAUTHORIZED')) {
+      return 'Session expirée. Reconnectez-vous.';
+    }
+    
+    if (errorString.contains('403') || errorString.contains('FORBIDDEN')) {
+      return 'Vous n\'avez pas accès à cette action.';
+    }
+    
+    if (errorString.contains('404') || errorString.contains('NOT FOUND')) {
+      return 'La ressource demandée n\'existe pas.';
+    }
+    
+    if (errorString.contains('500') || errorString.contains('INTERNAL SERVER')) {
+      return 'Erreur serveur. Réessayez plus tard.';
+    }
+    
+    if (errorString.contains('503') || errorString.contains('UNAVAILABLE')) {
+      return 'Le serveur est temporairement indisponible. Réessayez plus tard.';
+    }
+    
+    // ====== Message par défaut - JAMAIS afficher l'erreur brute ======
+    return 'Une erreur s\'est produite. Réessayez plus tard.';
+  }}

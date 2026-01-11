@@ -21,9 +21,15 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
+  // ✅ STORE DATA IN STATE - NOT RECREATED ON REBUILD
   late Future<Map<String, dynamic>> _profileFuture;
   late Future<List<dynamic>> _postsFuture;
   late Future<List<dynamic>> _livestockFuture;
+  
+  Map<String, dynamic> _profileData = {};
+  List<dynamic> _postsData = [];
+  List<dynamic> _livestockData = [];
+  
   final ImagePicker _imagePicker = ImagePicker();
 
   // Couleurs
@@ -44,6 +50,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   void initState() {
     super.initState();
+    // Load data ONCE
     _profileFuture = ApiService.getUserProfile(widget.userId);
     _postsFuture = ApiService.getUserPosts(widget.userId);
     _livestockFuture = ApiService.getUserLivestock(widget.userId);
@@ -316,7 +323,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 );
               }
 
-              final profile = profileSnap.data ?? {};
+              // Store profile data in state
+              _profileData = profileSnap.data ?? {};
+              
+              final profile = _profileData;
               final name = profile['name'] ?? 'Utilisateur';
               final email = profile['email'] ?? '';
               final profileImage = profile['profile_image'] as String?;
@@ -702,7 +712,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     FutureBuilder<List<dynamic>>(
                       future: _livestockFuture,
                       builder: (context, livestockSnap) {
-                        final livestock = livestockSnap.data ?? [];
+                        // Store livestock data in state
+                        _livestockData = livestockSnap.data ?? [];
+                        
+                        final livestock = _livestockData;
                         if (livestock.isEmpty) {
                           return const SizedBox.shrink();
                         }
@@ -882,7 +895,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           );
                         }
 
-                        final posts = postsSnap.data ?? [];
+                        // Store posts data in state
+                        _postsData = postsSnap.data ?? [];
+                        
+                        final posts = _postsData;
                         if (posts.isEmpty) {
                           return Center(
                             child: Padding(
@@ -1473,11 +1489,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     Color textColor,
     Color secondaryTextColor,
   ) {
-    // Load livestock data
+    // Use stored livestock data from state
     return FutureBuilder<List<dynamic>>(
       future: _livestockFuture,
       builder: (context, snapshot) {
-        final livestock = snapshot.data ?? [];
+        // Store in state for reuse
+        _livestockData = snapshot.data ?? [];
+        
+        final livestock = _livestockData;
 
         if (livestock.isEmpty) {
           return Container(

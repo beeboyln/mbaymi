@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/utils/email_validator.dart';
+import 'package:mbaymi/utils/validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -35,11 +37,23 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    // Validate email format
+    final email = _emailController.text.trim();
+    if (!Validators.isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez entrer une adresse email valide.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final result = await ApiService.login(
-        email: _emailController.text.trim(),
+        email: email,
         password: _passwordController.text,
       );
 
@@ -56,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await AuthService.login(
         userId: userId is int ? userId : int.parse(userId.toString()),
-        email: _emailController.text.trim(),
+        email: email,
         name: result['name'] ?? 'User',
         role: result['role'] ?? 'farmer',
         accessToken: accessToken,
@@ -66,8 +80,13 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.of(context).pushReplacementNamed('/home');
     } catch (e) {
       if (!mounted) return;
+      final errorMessage = ErrorMessages.getHumanReadableError(e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: ${e.toString()}')),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 4),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

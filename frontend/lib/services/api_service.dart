@@ -203,11 +203,20 @@ class ApiService {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 400) {
+        throw Exception('INVALID_REGISTRATION');
+      } else if (response.statusCode == 409) {
+        throw Exception('EMAIL_EXISTS');
       } else {
-        throw Exception('Failed to register: ${response.body}');
+        throw Exception('REGISTRATION_FAILED');
       }
     } catch (e) {
-      throw Exception('Error during registration: $e');
+      if (e.toString().contains('INVALID_REGISTRATION') ||
+          e.toString().contains('EMAIL_EXISTS') ||
+          e.toString().contains('REGISTRATION_FAILED')) {
+        rethrow;
+      }
+      throw Exception('CONNECTION_ERROR');
     }
   }
 
@@ -227,11 +236,20 @@ class ApiService {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        throw Exception('INVALID_CREDENTIALS');
+      } else if (response.statusCode == 400) {
+        throw Exception('INVALID_REQUEST');
       } else {
-        throw Exception('Failed to login: ${response.body}');
+        throw Exception('LOGIN_FAILED');
       }
     } catch (e) {
-      throw Exception('Error during login: $e');
+      if (e.toString().contains('INVALID_CREDENTIALS') ||
+          e.toString().contains('INVALID_REQUEST') ||
+          e.toString().contains('LOGIN_FAILED')) {
+        rethrow;
+      }
+      throw Exception('CONNECTION_ERROR');
     }
   }
 
