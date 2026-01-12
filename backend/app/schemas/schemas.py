@@ -90,12 +90,14 @@ class LivestockCreate(BaseModel):
     location: Optional[str] = None
     notes: Optional[str] = None
     image_url: Optional[str] = None
+    visibility: str = "PRIVATE"
 
 class LivestockResponse(LivestockCreate):
     id: int
     user_id: int
     last_vaccination_date: Optional[datetime]
     created_at: datetime
+    updated_at: datetime
     
     class Config:
         from_attributes = True

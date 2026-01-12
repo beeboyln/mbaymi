@@ -25,7 +25,8 @@ def add_livestock(livestock: LivestockCreate, user_id: int, db: Session = Depend
         feeding_type=livestock.feeding_type,
         location=livestock.location,
         notes=livestock.notes,
-        image_url=getattr(livestock, 'image_url', None)
+        image_url=getattr(livestock, 'image_url', None),
+        visibility=livestock.visibility
     )
     
     db.add(new_livestock)
@@ -67,6 +68,7 @@ def get_public_livestock(db: Session = Depends(get_db), user_id: int = None):
                 'location': animal.location,
                 'notes': animal.notes,
                 'image_url': animal.image_url,
+                'visibility': animal.visibility,
                 'created_at': animal.created_at.isoformat() if animal.created_at else None,
                 'updated_at': animal.updated_at.isoformat() if animal.updated_at else None,
                 'likes_count': animal.likes_count or 0,
