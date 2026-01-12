@@ -71,23 +71,54 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: appBarBg,
-        title: const Text(
-          'Mbaymi',
-          style: TextStyle(
-            fontWeight: FontWeight.w300,
-            letterSpacing: 0.5,
-            color: Color.fromARGB(172, 45, 80, 22),
-            fontSize: 15,
-          ),
-        ),
-        centerTitle: true,
         elevation: 0,
+        titleSpacing: 12,
+        title: IconButton(
+          icon: Icon(
+            Icons.search_rounded,
+            color: appBarIconColor,
+            size: 24,
+          ),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            _showSearchDialog(context);
+          },
+        ),
         actions: [
+          // Notification button
+          IconButton(
+            icon: Stack(
+              children: [
+                Icon(
+                  Icons.notifications_outlined,
+                  color: appBarIconColor,
+                  size: 24,
+                ),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              // TODO: Navigate to notifications
+            },
+          ),
+          // Theme toggle button
           IconButton(
             icon: Icon(
               _isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
               color: appBarIconColor,
-              size: 22,
+              size: 20,
             ),
             onPressed: () {
               HapticFeedback.lightImpact();
@@ -96,12 +127,17 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             },
           ),
-          // Profil button (only if logged in)
-          if (isLoggedIn)
-            IconButton(
-              icon: Icon(Icons.account_circle_outlined, color: appBarIconColor, size: 24),
-              onPressed: () {
-                HapticFeedback.lightImpact();
+          // Profile button (to the right of dark mode)
+          IconButton(
+            tooltip: 'Profil',
+            icon: Icon(
+              Icons.account_circle_outlined,
+              color: appBarIconColor,
+              size: 22,
+            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              if (isLoggedIn && _userId != null) {
                 Navigator.pushNamed(
                   context,
                   '/user-profile/$_userId',
@@ -110,28 +146,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'isDarkMode': _isDarkMode,
                   },
                 );
-              },
-            ),
-          // Single auth button: shows 'Se connecter' or 'Se déconnecter'
-          TextButton(
-            onPressed: () async {
-              if (isLoggedIn) {
-                // logout - clears session and cache
-                await ApiService.logout();
-                if (!mounted) return;
-                setState(() {
-                  _userId = null;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Déconnecté')));
               } else {
-                // navigate to login
-                Navigator.of(context).pushNamed('/login');
+                _showAuthSheet(context);
               }
             },
-            child: Text(
-              isLoggedIn ? 'Se déconnecter' : 'Se connecter',
-              style: TextStyle(color: appBarIconColor, fontWeight: FontWeight.w500),
-            ),
           ),
         ],
       ),
@@ -164,7 +182,46 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildNavItem(Icons.agriculture_outlined, Icons.agriculture, 'Fermes', 1, _isDarkMode),
                     const SizedBox(width: 60), // Space for FAB
                     _buildNavItem(Icons.groups_outlined, Icons.groups, 'Réseau', 2, _isDarkMode),
-                    _buildNavItem(Icons.pets_outlined, Icons.pets, 'Élevage', 3, _isDarkMode),
+                    if (isLoggedIn)
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.pushNamed(
+                              context,
+                              '/user-profile/$_userId',
+                              arguments: {
+                                'userId': _userId,
+                                'isDarkMode': _isDarkMode,
+                              },
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.account_circle_outlined,
+                                  color: _isDarkMode ? const Color(0xFF666666) : const Color(0xFFC0C0C0),
+                                  size: 26,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Profil',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 0.2,
+                                    color: _isDarkMode ? const Color(0xFF888888) : const Color(0xFFA8A8A8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 // Central action button
@@ -505,6 +562,56 @@ class _HomeScreenState extends State<HomeScreen> {
             letterSpacing: 0.2,
           ),
         ),
+      ),
+    );
+  }
+
+  void _showSearchDialog(BuildContext context) {
+    final searchController = TextEditingController();
+    final bgColor = _isDarkMode ? const Color(0xFF1a1a1a) : const Color(0xFFFAFAFA);
+    final cardBg = _isDarkMode ? const Color(0xFF2C2C2C) : Colors.white;
+    final textColor = _isDarkMode ? Colors.white : Colors.black;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardBg,
+        title: TextField(
+          controller: searchController,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Rechercher des fermes...',
+            hintStyle: TextStyle(color: Colors.grey[500]),
+            prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[600]),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          style: TextStyle(color: textColor),
+          onSubmitted: (query) {
+            Navigator.pop(ctx);
+            if (query.isNotEmpty) {
+              // Navigate to social/network screen
+              setState(() => _selectedIndex = 2);
+            }
+          },
+        ),
+        content: const Text('Entrez votre recherche...'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (searchController.text.isNotEmpty) {
+                setState(() => _selectedIndex = 2);
+              }
+            },
+            child: const Text('Rechercher'),
+          ),
+        ],
       ),
     );
   }

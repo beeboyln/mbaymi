@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:intl/intl.dart';
-import 'package:mbaymi/screens/farm_screen.dart';
-import 'package:mbaymi/screens/livestock_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final int userId;
@@ -20,15 +18,13 @@ class UserProfileScreen extends StatefulWidget {
   State<UserProfileScreen> createState() => _UserProfileScreenState();
 }
 
-class _UserProfileScreenState extends State<UserProfileScreen> {
-  // ✅ STORE DATA IN STATE - NOT RECREATED ON REBUILD
-  late Future<Map<String, dynamic>> _profileFuture;
-  late Future<List<dynamic>> _postsFuture;
-  late Future<List<dynamic>> _livestockFuture;
+class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKeepAliveClientMixin {
+  // ✅ Futures créées une seule fois et cachées
+  Future<Map<String, dynamic>>? _profileFuture;
+  Future<List<dynamic>>? _postsFuture;
   
   Map<String, dynamic> _profileData = {};
   List<dynamic> _postsData = [];
-  List<dynamic> _livestockData = [];
   
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -48,20 +44,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   static const Color _textSecondaryDark = Color(0xFF8E8E93);
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
-    // Load data ONCE
-    _profileFuture = ApiService.getUserProfile(widget.userId);
-    _postsFuture = ApiService.getUserPosts(widget.userId);
-    _livestockFuture = ApiService.getUserLivestock(widget.userId);
+    // Créer les futures qu'UNE SEULE FOIS
+    _profileFuture ??= ApiService.getUserProfile(widget.userId);
+    _postsFuture ??= ApiService.getUserPosts(widget.userId);
   }
 
   Future<void> _refresh() async {
-    setState(() {
-      _profileFuture = ApiService.getUserProfile(widget.userId);
-      _postsFuture = ApiService.getUserPosts(widget.userId);
-      _livestockFuture = ApiService.getUserLivestock(widget.userId);
-    });
+    // Recharger UNIQUEMENT si on swipe
+    _profileFuture = ApiService.getUserProfile(widget.userId);
+    _postsFuture = ApiService.getUserPosts(widget.userId);
+    setState(() {});
   }
 
   Future<void> _pickAndUploadProfileImage() async {
@@ -277,6 +274,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    
     final isDark = widget.isDarkMode;
     final bgColor = isDark ? _bgDark : _bgLight;
     final cardColor = isDark ? _cardDark : _cardLight;
@@ -292,6 +291,43 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         title: const Text('Mon Profil', style: TextStyle(fontWeight: FontWeight.w300)),
         centerTitle: true,
         iconTheme: IconThemeData(color: textColor),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout, color: textColor, size: 22),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Se déconnecter'),
+                  content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Annuler'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Déconnecter', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+              
+              if (confirm == true) {
+                await ApiService.logout();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Déconnecté avec succès')),
+                  );
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false,
+                  );
+                }
+              }
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         color: _primaryColor,
@@ -299,7 +335,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: FutureBuilder<Map<String, dynamic>>(
-            future: _profileFuture,
+            future: _profileFuture ?? ApiService.getUserProfile(widget.userId),
             builder: (context, profileSnap) {
               if (profileSnap.connectionState == ConnectionState.waiting) {
                 return Center(
@@ -330,10 +366,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               final name = profile['name'] ?? 'Utilisateur';
               final email = profile['email'] ?? '';
               final profileImage = profile['profile_image'] as String?;
-              final totalFarms = profile['total_farms'] ?? 0;
               final totalFollowers = profile['total_followers'] ?? 0;
               final totalPosts = profile['total_posts'] ?? 0;
-              final farms = (profile['farms'] as List?) ?? [];
 
               return Padding(
                 padding: const EdgeInsets.all(16),
@@ -461,16 +495,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ),
                             const SizedBox(height: 20),
                             
-                            // Stats
+                            // Stats simplifiées (uniquement abonnés et posts)
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                _buildStatWidget(
-                                  icon: Icons.landscape_outlined,
-                                  label: 'Fermes',
-                                  value: '$totalFarms',
-                                  color: _primaryColor,
-                                ),
                                 _buildStatWidget(
                                   icon: Icons.people_outline,
                                   label: 'Abonnés',
@@ -487,48 +515,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ),
                             const SizedBox(height: 24),
                             
-                            // 🚀 Accès rapide - Fermes & Élevages
-                            Row(
-                              children: [
-                                // Carousel des fermes avec images
-                                if (farms.isNotEmpty)
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        _showFarmsModal(context, isDark, cardColor, textColor, secondaryTextColor, borderColor);
-                                      },
-                                      child: _buildFarmsCarousel(farms, isDark, borderColor, textColor, secondaryTextColor),
-                                    ),
-                                  )
-                                else
-                                  Expanded(
-                                    child: _buildQuickAccessButton(
-                                      context: context,
-                                      icon: Icons.landscape_outlined,
-                                      label: 'Mes Fermes',
-                                      color: _primaryColor,
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        _showFarmsModal(context, isDark, cardColor, textColor, secondaryTextColor, borderColor);
-                                      },
-                                      isDark: isDark,
-                                      cardColor: cardColor,
-                                      borderColor: borderColor,
-                                    ),
+                            // Accès rapide - Action pour créer du contenu
+                            _buildQuickActionButton(
+                              context: context,
+                              icon: Icons.add_circle_outline,
+                              label: 'Créer du contenu',
+                              color: _primaryColor,
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Fonctionnalité à venir'),
+                                    backgroundColor: _primaryColor,
                                   ),
-                                const SizedBox(width: 12),
-                                // Carousel des élevages (ou bouton par défaut si vide)
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      _showLivestockModal(context, isDark, cardColor, textColor, secondaryTextColor, borderColor);
-                                    },
-                                    child: _buildLivestockCarousel(isDark, borderColor, textColor, secondaryTextColor),
-                                  ),
-                                ),
-                              ],
+                                );
+                              },
+                              isDark: isDark,
+                              cardColor: cardColor,
+                              borderColor: borderColor,
                             ),
                           ],
                         ),
@@ -536,348 +540,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // 🌾 Mes Fermes - Affichée par défaut
-                    if (farms.isNotEmpty) ...[
-                      Text(
-                        'Mes Fermes',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: textColor,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ...farms.asMap().entries.map((entry) {
-                        final farm = entry.value as Map<String, dynamic>;
-                        final isPublic = farm['is_public'] ?? false;
-                        
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: const BorderRadius.all(Radius.circular(12)),
-                              border: Border.all(color: borderColor, width: 1),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Image de la ferme
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-                                  child: _buildFarmImageForCard(farm['image_url'] as String?),
-                                ),
-                                
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Titre et visibilité
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  farm['name'] ?? 'Ferme',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: textColor,
-                                                  ),
-                                                ),
-                                                if (farm['location'] != null && (farm['location'] as String).isNotEmpty) ...[
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    farm['location'] as String,
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      color: secondaryTextColor,
-                                                      fontWeight: FontWeight.w300,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              color: isPublic
-                                                  ? Colors.green.withOpacity(0.1)
-                                                  : Colors.orange.withOpacity(0.1),
-                                              borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  isPublic ? Icons.public : Icons.lock_outlined,
-                                                  size: 14,
-                                                  color: isPublic ? Colors.green : Colors.orange,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  isPublic ? 'Publique' : 'Privée',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: isPublic ? Colors.green : Colors.orange,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      
-                                      // Bouton toggle visibilité
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            onTap: () async {
-                                              try {
-                                                final result = await ApiService.toggleFarmVisibility(
-                                                  userId: widget.userId,
-                                                  farmId: farm['id'] as int,
-                                                  isPublic: !isPublic,
-                                                );
-                                                if (mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(result['message'] ?? 'Visibilité mise à jour'),
-                                                      backgroundColor: _primaryColor,
-                                                      behavior: SnackBarBehavior.floating,
-                                                    ),
-                                                  );
-                                                  _refresh();
-                                                }
-                                              } catch (e) {
-                                                if (mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text('Erreur: $e'),
-                                                      backgroundColor: Colors.red.shade400,
-                                                      behavior: SnackBarBehavior.floating,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            },
-                                            borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 10),
-                                              child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    isPublic ? Icons.visibility : Icons.visibility_off_outlined,
-                                                    size: 16,
-                                                    color: _primaryColor,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    isPublic ? 'Rendre privée' : 'Rendre publique',
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight: FontWeight.w500,
-                                                      color: _primaryColor,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      const SizedBox(height: 32),
-                    ],
-
-                    // � Mes Élevages - Affichée si non vide
-                    FutureBuilder<List<dynamic>>(
-                      future: _livestockFuture,
-                      builder: (context, livestockSnap) {
-                        // Store livestock data in state
-                        _livestockData = livestockSnap.data ?? [];
-                        
-                        final livestock = _livestockData;
-                        if (livestock.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Mes Élevages',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                                color: textColor,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ...livestock.asMap().entries.map((entry) {
-                              final animal = entry.value as Map<String, dynamic>;
-                              final animalType = animal['animal_type'] ?? 'Animal';
-                              final breed = animal['breed'] ?? '';
-                              final quantity = animal['quantity'] ?? 1;
-                              final healthStatus = animal['health_status'] ?? 'Non spécifié';
-                              final imageUrl = animal['image_url'] as String?;
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: cardColor,
-                                    borderRadius: const BorderRadius.all(Radius.circular(12)),
-                                    border: Border.all(color: borderColor, width: 1),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Image de l'animal (Instagram-style)
-                                      ClipRRect(
-                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-                                        child: Container(
-                                          height: 200,
-                                          width: double.infinity,
-                                          color: _accentColor.withOpacity(0.1),
-                                          child: imageUrl != null && imageUrl.isNotEmpty
-                                              ? Image.network(
-                                                  imageUrl,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) => Center(
-                                                    child: Icon(
-                                                      Icons.pets_outlined,
-                                                      size: 48,
-                                                      color: _accentColor.withOpacity(0.6),
-                                                    ),
-                                                  ),
-                                                )
-                                              : Center(
-                                                  child: Icon(
-                                                    Icons.pets_outlined,
-                                                    size: 48,
-                                                    color: _accentColor.withOpacity(0.6),
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                      
-                                      // Infos de l'animal
-                                      Padding(
-                                        padding: const EdgeInsets.all(16),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            // Titre et quantité
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                              children: [
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        animalType,
-                                                        style: TextStyle(
-                                                          fontSize: 16,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: textColor,
-                                                        ),
-                                                      ),
-                                                      if (breed.isNotEmpty) ...[
-                                                        const SizedBox(height: 4),
-                                                        Text(
-                                                          breed,
-                                                          style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: secondaryTextColor,
-                                                            fontWeight: FontWeight.w300,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ],
-                                                  ),
-                                                ),
-                                                Container(
-                                                  decoration: BoxDecoration(
-                                                    color: _accentColor.withOpacity(0.1),
-                                                    borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                                  ),
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                                  child: Text(
-                                                    'x$quantity',
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: _accentColor,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 12),
-                                            
-                                            // Statut santé
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: _getHealthColor(healthStatus).withOpacity(0.1),
-                                                borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                              ),
-                                              child: Text(
-                                                healthStatus,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: _getHealthColor(healthStatus),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            const SizedBox(height: 32),
-                          ],
-                        );
-                      },
-                    ),
-
-                    // �📰 Mes publications
+                    // 📰 Mes publications
                     Text(
                       'Mes Publications',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.w500,
                         color: textColor,
+                        letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 12),
                     FutureBuilder<List<dynamic>>(
-                      future: _postsFuture,
+                      future: _postsFuture ?? ApiService.getUserPosts(widget.userId),
                       builder: (context, postsSnap) {
                         if (postsSnap.connectionState == ConnectionState.waiting) {
                           return Center(
@@ -902,10 +577,32 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         if (posts.isEmpty) {
                           return Center(
                             child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Text(
-                                'Aucune publication',
-                                style: TextStyle(color: secondaryTextColor),
+                              padding: const EdgeInsets.symmetric(vertical: 40),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.newspaper_outlined,
+                                    size: 48,
+                                    color: _primaryColor.withOpacity(0.5),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Aucune publication',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: secondaryTextColor,
+                                      fontWeight: FontWeight.w300,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Créez votre première publication',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: secondaryTextColor.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -1036,6 +733,58 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
+  Widget _buildQuickActionButton({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    required bool isDark,
+    required Color cardColor,
+    required Color borderColor,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withOpacity(0.1),
+                color.withOpacity(0.05),
+              ],
+            ),
+            borderRadius: const BorderRadius.all(Radius.circular(12)),
+            border: Border.all(color: color.withOpacity(0.2), width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   String _getPostTypeEmoji(String postType) {
     switch (postType) {
       case 'crop_update':
@@ -1064,645 +813,5 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildQuickAccessButton({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-    required bool isDark,
-    required Color cardColor,
-    required Color borderColor,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
-            borderRadius: const BorderRadius.all(Radius.circular(12)),
-            border: Border.all(color: color.withOpacity(0.3), width: 1),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: color, size: 28),
-                const SizedBox(height: 10),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: color,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showFarmsModal(
-    BuildContext context,
-    bool isDark,
-    Color cardColor,
-    Color textColor,
-    Color secondaryTextColor,
-    Color borderColor,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            // Handle et titre
-            Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 16),
-              child: Column(
-                children: [
-                  // Handle
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: secondaryTextColor.withOpacity(0.3),
-                      borderRadius: const BorderRadius.all(Radius.circular(2)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Titre
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Icon(Icons.landscape_outlined, color: _primaryColor, size: 24),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Mes Fermes',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Gérez vos fermes',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: secondaryTextColor,
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.close_rounded, color: secondaryTextColor, size: 24),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Contenu - FarmTab
-            Expanded(
-              child: FarmTab(
-                isDarkMode: isDark,
-                userId: widget.userId,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showLivestockModal(
-    BuildContext context,
-    bool isDark,
-    Color cardColor,
-    Color textColor,
-    Color secondaryTextColor,
-    Color borderColor,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            // Handle et titre
-            Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 16),
-              child: Column(
-                children: [
-                  // Handle
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: secondaryTextColor.withOpacity(0.3),
-                      borderRadius: const BorderRadius.all(Radius.circular(2)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Titre
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Icon(Icons.pets_outlined, color: _accentColor, size: 24),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Mes Élevages',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Suivez votre bétail',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: secondaryTextColor,
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.close_rounded, color: secondaryTextColor, size: 24),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Contenu - LivestockTab
-            Expanded(
-              child: LivestockTab(
-                isDarkMode: isDark,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFarmsCarousel(
-    List<dynamic> farms,
-    bool isDark,
-    Color borderColor,
-    Color textColor,
-    Color secondaryTextColor,
-  ) {
-    if (farms.isEmpty) {
-      return Container(
-        height: 160,
-        decoration: BoxDecoration(
-          color: _primaryColor.withOpacity(0.1),
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          border: Border.all(color: borderColor, width: 1),
-        ),
-        child: Center(
-          child: Text(
-            'Aucune ferme',
-            style: TextStyle(color: secondaryTextColor),
-          ),
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 160,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: farms.length,
-        itemBuilder: (context, index) {
-          final farm = farms[index] as Map<String, dynamic>;
-          return Padding(
-            padding: EdgeInsets.only(
-              left: index == 0 ? 0 : 8,
-              right: index == farms.length - 1 ? 0 : 8,
-            ),
-            child: _buildFarmCard(farm, borderColor),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildFarmCard(Map<String, dynamic> farm, Color borderColor) {
-    final imageUrl = farm['image_url'] as String?;
-    final farmName = farm['name'] ?? 'Ferme';
-    final cropsCount = farm['crops_count'] ?? 0;
-    final livestockCount = farm['livestock_count'] ?? 0;
-
-    return ClipRRect(
-      borderRadius: const BorderRadius.all(Radius.circular(12)),
-      child: Container(
-        width: 160,
-        decoration: BoxDecoration(
-          border: Border.all(color: borderColor, width: 1),
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-        ),
-        child: Stack(
-          children: [
-            // Image de fond
-            SizedBox.expand(
-              child: _buildFarmImageForCard(imageUrl),
-            ),
-
-            // Overlay sombre
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.5),
-                  ],
-                ),
-              ),
-            ),
-
-            // Contenu
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Nom de la ferme
-                    Text(
-                      farmName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      maxLines: 1,
-                    ),
-                    const SizedBox(height: 6),
-
-                    // Stats
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (cropsCount > 0)
-                          Flexible(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.85),
-                                borderRadius:
-                                    const BorderRadius.all(Radius.circular(3)),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 5, vertical: 2),
-                              child: Text(
-                                '🌱 $cropsCount',
-                                style: const TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                              ),
-                            ),
-                          ),
-                        if (cropsCount > 0 && livestockCount > 0)
-                          const SizedBox(width: 4),
-                        if (livestockCount > 0)
-                          Flexible(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.85),
-                                borderRadius:
-                                    const BorderRadius.all(Radius.circular(3)),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 5, vertical: 2),
-                              child: Text(
-                                '🐄 $livestockCount',
-                                style: const TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFarmImageForCard(String? imageUrl) {
-    if (imageUrl == null || imageUrl.isEmpty) {
-      return Container(
-        color: _primaryColor.withOpacity(0.2),
-        child: Center(
-          child: Icon(
-            Icons.landscape_outlined,
-            size: 40,
-            color: _primaryColor.withOpacity(0.5),
-          ),
-        ),
-      );
-    }
-
-    return Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: _primaryColor.withOpacity(0.2),
-        child: Center(
-          child: Icon(
-            Icons.landscape_outlined,
-            size: 40,
-            color: _primaryColor.withOpacity(0.5),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLivestockCarousel(
-    bool isDark,
-    Color borderColor,
-    Color textColor,
-    Color secondaryTextColor,
-  ) {
-    // Use stored livestock data from state
-    return FutureBuilder<List<dynamic>>(
-      future: _livestockFuture,
-      builder: (context, snapshot) {
-        // Store in state for reuse
-        _livestockData = snapshot.data ?? [];
-        
-        final livestock = _livestockData;
-
-        if (livestock.isEmpty) {
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.all(Radius.circular(12)),
-              border: Border.all(color: borderColor, width: 1),
-              color: _accentColor.withOpacity(0.08),
-            ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          _accentColor.withOpacity(0.1),
-                          _accentColor.withOpacity(0.05),
-                        ],
-                      ),
-                      borderRadius: const BorderRadius.all(Radius.circular(12)),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.pets_outlined,
-                        size: 40,
-                        color: _accentColor.withOpacity(0.6),
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 0),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Mes Élevages',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: _accentColor,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Gérez votre bétail',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w300,
-                              color: _accentColor.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Show carousel with livestock images
-        return SizedBox(
-          height: 160,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: livestock.length,
-            itemBuilder: (context, index) {
-              final animal = livestock[index] as Map<String, dynamic>;
-              final animalType = animal['animal_type'] ?? 'Animal';
-              final imageUrl = animal['image_url'] as String?;
-              final quantity = animal['quantity'] ?? 1;
-
-              return Padding(
-                padding: EdgeInsets.only(
-                  left: index == 0 ? 0 : 8,
-                  right: index == livestock.length - 1 ? 0 : 8,
-                ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.all(Radius.circular(12)),
-                  child: Container(
-                    width: 160,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: borderColor, width: 1),
-                      borderRadius: const BorderRadius.all(Radius.circular(12)),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Image de fond
-                        SizedBox.expand(
-                          child: imageUrl != null && imageUrl.isNotEmpty
-                              ? Image.network(
-                                  imageUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: _accentColor.withOpacity(0.2),
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.pets_outlined,
-                                        size: 40,
-                                        color: _accentColor.withOpacity(0.5),
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  color: _accentColor.withOpacity(0.2),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.pets_outlined,
-                                      size: 40,
-                                      color: _accentColor.withOpacity(0.5),
-                                    ),
-                                  ),
-                                ),
-                        ),
-
-                        // Overlay sombre en bas
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withOpacity(0.7),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // Contenu en bas
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  animalType,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: _accentColor.withOpacity(0.9),
-                                    borderRadius: const BorderRadius.all(Radius.circular(6)),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  child: Text(
-                                    'x$quantity',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  Color _getHealthColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'sain':
-      case 'healthy':
-        return Colors.green;
-      case 'malade':
-      case 'sick':
-        return Colors.red;
-      case 'vacciné':
-      case 'vaccinated':
-        return Colors.blue;
-      default:
-        return Colors.orange;
-    }
   }
 }

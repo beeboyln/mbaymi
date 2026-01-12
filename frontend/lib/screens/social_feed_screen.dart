@@ -15,7 +15,6 @@ class SocialFeedScreen extends StatefulWidget {
 }
 
 class _SocialFeedScreenState extends State<SocialFeedScreen> {
-  int _currentTabIndex = 0;
   int _userId = 0;
   late StreamSubscription<void> _farmPostSub;
   
@@ -65,59 +64,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: appBarColor,
-        elevation: 0.5,
-        surfaceTintColor: Colors.transparent,
-        automaticallyImplyLeading: false,
-        // Logo corrigé - a.png sans color filter
-        title: const Text(
-          'Mbaymi',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Color.fromARGB(255, 107, 83, 61),
-            letterSpacing: 1,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded, color: _primaryColor),
-            onPressed: () => _showSearchDialog(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.favorite_border, color: _primaryColor),
-            onPressed: () => _showLikesDialog(),
-          ),
-        ],
-      ),
-      body: IndexedStack(
-        index: _currentTabIndex,
-        children: [
-          _buildFeedTab(),
-          _buildExploreTab(),
-          _buildTrendingTab(),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        color: appBarColor,
-        child: BottomNavigationBar(
-          backgroundColor: appBarColor,
-          elevation: 0.5,
-          currentIndex: _currentTabIndex,
-          onTap: (index) {
-            setState(() => _currentTabIndex = index);
-          },
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Accueil'),
-            BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Découvrir'),
-            BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: 'Tendance'),
-          ],
-          selectedItemColor: _primaryColor,
-          unselectedItemColor: Colors.grey,
-          type: BottomNavigationBarType.fixed,
-        ),
-      ),
+      body: _buildFeedTab(),
     );
   }
 

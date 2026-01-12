@@ -59,6 +59,7 @@ class MbaymiApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'Mbaymi',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.green,
         useMaterial3: true,

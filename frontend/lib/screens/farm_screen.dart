@@ -7,6 +7,8 @@ import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/farm_profile_screen.dart';
 import 'package:mbaymi/widgets/create_farm_post_dialog.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
+import 'package:mbaymi/screens/create_livestock_screen.dart';
+import 'package:mbaymi/screens/animal_detail_screen.dart';
 
 class FarmTab extends StatefulWidget {
   final bool isDarkMode;
@@ -20,8 +22,9 @@ class FarmTab extends StatefulWidget {
 
 class _FarmTabState extends State<FarmTab> {
   late Future<List<dynamic>> _farmsFuture;
-  // Track which farm cards are expanded to show their posts
   final Set<int> _expandedFarmIds = {};
+  int _selectedSection = 0;
+  Future<List<dynamic>>? _livestockFuture;
 
   @override
   void initState() {
@@ -34,10 +37,75 @@ class _FarmTabState extends State<FarmTab> {
       _farmsFuture = widget.userId != null
           ? ApiService.getUserFarms(widget.userId!)
           : ApiService.getPublicFarms();
-      // Vider le cache d'images pour éviter les problèmes de persistence
       imageCache.clearLiveImages();
       imageCache.clear();
     });
+  }
+
+  Widget _buildSectionTabs() {
+    final selectedColor = const Color(0xFF6B8E23);
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _selectedSection = 0;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: _selectedSection == 0 ? selectedColor.withOpacity(0.12) : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  'Fermes',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: _selectedSection == 0 ? FontWeight.w600 : FontWeight.w300,
+                    color: _selectedSection == 0 ? selectedColor : (widget.isDarkMode ? Colors.white70 : Colors.black54),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: InkWell(
+            onTap: () {
+              if (widget.userId == null) {
+                _showAuthSheet(context);
+                return;
+              }
+              setState(() {
+                _selectedSection = 1;
+                _livestockFuture ??= ApiService.getUserLivestock(widget.userId!);
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: _selectedSection == 1 ? selectedColor.withOpacity(0.12) : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  'Bétail',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: _selectedSection == 1 ? FontWeight.w600 : FontWeight.w300,
+                    color: _selectedSection == 1 ? selectedColor : (widget.isDarkMode ? Colors.white70 : Colors.black54),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -50,7 +118,6 @@ class _FarmTabState extends State<FarmTab> {
         onRefresh: _refreshFarms,
         child: CustomScrollView(
           slivers: [
-            // Header fixe minimaliste
             SliverAppBar(
               backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
               elevation: 0,
@@ -76,7 +143,7 @@ class _FarmTabState extends State<FarmTab> {
                   ),
                 ),
                 child: Text(
-                  'Mes Fermes',
+                  'Gestion',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w300,
@@ -86,8 +153,6 @@ class _FarmTabState extends State<FarmTab> {
                 ),
               ),
             ),
-
-            // Contenu principal
             SliverPadding(
               padding: const EdgeInsets.only(top: 8),
               sliver: SliverToBoxAdapter(
@@ -104,13 +169,30 @@ class _FarmTabState extends State<FarmTab> {
               ),
               child: FloatingActionButton(
                 onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CreateFarmScreen(userId: widget.userId),
-                    ),
-                  );
-                  if (result != null) setState(() {});
+                  if (_selectedSection == 1) {
+                    // Section Bétail - ouvrir la page d'ajout d'animal
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CreateLivestockScreen(userId: widget.userId),
+                      ),
+                    );
+                    if (result != null) {
+                      // Recharger le bétail après ajout
+                      setState(() {
+                        _livestockFuture = ApiService.getUserLivestock(widget.userId!);
+                      });
+                    }
+                  } else {
+                    // Section Fermes - créer une ferme
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CreateFarmScreen(userId: widget.userId),
+                      ),
+                    );
+                    if (result != null) setState(() {});
+                  }
                 },
                 backgroundColor: widget.isDarkMode 
                     ? const Color(0xFF2C2C2E) 
@@ -241,54 +323,99 @@ class _FarmTabState extends State<FarmTab> {
         }
 
         final farms = snapshot.data ?? [];
-        if (farms.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: buildEmptyState(
-              icon: Icons.agriculture_outlined,
-              title: 'Aucune ferme',
-              description:
-                  'Commencez par créer votre première ferme',
-              buttonLabel: 'Créer une ferme',
-              color: const Color(0xFF6B8E23),
-              isDarkMode: widget.isDarkMode,
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => CreateFarmScreen(userId: widget.userId)),
-                );
-                if (result != null) setState(() {});
-              },
-            ),
-          );
-        }
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16, left: 4),
-                child: Text(
-                  '${farms.length} ferme${farms.length > 1 ? 's' : ''}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w300,
-                    color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+              _buildSectionTabs(),
+              const SizedBox(height: 12),
+              if (_selectedSection == 0) ...[
+                if (farms.isEmpty)
+                  Text(
+                    'Aucune ferme',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w300,
+                      color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16, left: 4),
+                    child: Text(
+                      '${farms.length} ferme${farms.length > 1 ? 's' : ''}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w300,
+                        color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                      ),
+                    ),
                   ),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: farms.length,
+                  itemBuilder: (context, index) {
+                    final farm = farms[index] as Map<String, dynamic>;
+                    return _buildFarmCard(context, farm);
+                  },
                 ),
-              ),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: farms.length,
-                itemBuilder: (context, index) {
-                  final farm = farms[index] as Map<String, dynamic>;
-                  return _buildFarmCard(context, farm);
-                },
-              ),
+              ] else ...[
+                FutureBuilder<List<dynamic>>(
+                  future: _livestockFuture,
+                  builder: (context, lsnap) {
+                    if (lsnap.connectionState == ConnectionState.waiting) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 24),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF6B8E23),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Chargement du bétail...',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w300,
+                                  fontSize: 14,
+                                  color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    if (lsnap.hasError) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Text('Erreur de chargement', style: TextStyle(color: widget.isDarkMode ? Colors.white70 : Colors.black87)),
+                      );
+                    }
+                    final animals = lsnap.data ?? [];
+                    if (animals.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Text('Aucun animal répertorié', style: TextStyle(color: widget.isDarkMode ? Colors.white60 : Colors.black45)),
+                      );
+                    }
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: animals.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final animal = animals[index] as Map<String, dynamic>;
+                        return _buildAnimalCard(animal);
+                      },
+                    );
+                  },
+                ),
+              ],
             ],
           ),
         );
@@ -315,16 +442,12 @@ class _FarmTabState extends State<FarmTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header avec informations principales
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Avatar de la ferme
                 _buildFarmAvatar(farm),
                 const SizedBox(width: 16),
-
-                // Informations principales
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,8 +525,6 @@ class _FarmTabState extends State<FarmTab> {
                     ],
                   ),
                 ),
-
-                // Bouton d'accès rapide
                 IconButton(
                   onPressed: () {
                     Navigator.push(
@@ -431,11 +552,7 @@ class _FarmTabState extends State<FarmTab> {
               ],
             ),
           ),
-
-          // Galerie de photos
           if (hasPhotos) _buildPhotoGallery(farm),
-
-          // Séparateur et actions
           Container(
             height: 1,
             margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -476,7 +593,6 @@ class _FarmTabState extends State<FarmTab> {
                       ),
                     ),
                   ),
-                  // 📸 Bouton Poster une image
                   TextButton.icon(
                     onPressed: () {
                       showDialog(
@@ -504,7 +620,6 @@ class _FarmTabState extends State<FarmTab> {
                       ),
                     ),
                   ),
-                  // Bouton Publique/Privée
                   TextButton.icon(
                     onPressed: () async {
                       try {
@@ -572,7 +687,6 @@ class _FarmTabState extends State<FarmTab> {
               ),
             ),
           ),
-          // Posts preview / management — toggle to load posts inline
           Builder(builder: (context) {
             final farmId = farm['id'] as int;
             final isExpanded = _expandedFarmIds.contains(farmId);
@@ -586,7 +700,6 @@ class _FarmTabState extends State<FarmTab> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Post count badge (loads lazily)
                         FutureBuilder<List<dynamic>>(
                           future: ApiService.getFarmPosts(farmId),
                           builder: (context, snap) {
@@ -608,8 +721,6 @@ class _FarmTabState extends State<FarmTab> {
                             );
                           },
                         ),
-
-                        // Toggle button with animated icon
                         TextButton.icon(
                           onPressed: () {
                             setState(() {
@@ -634,8 +745,6 @@ class _FarmTabState extends State<FarmTab> {
                       ],
                     ),
                   ),
-
-                  // Animated expansion area
                   AnimatedSize(
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
@@ -766,6 +875,134 @@ class _FarmTabState extends State<FarmTab> {
     );
   }
 
+  Widget _buildAnimalCard(Map<String, dynamic> animal) {
+    final animalType = animal['animal_type'] as String? ?? 'Animal';
+    final breed = animal['breed'] as String? ?? '';
+    final quantity = animal['quantity'] as int? ?? 1;
+    final photo = animal['image_url'] ?? animal['imageUrl'] ?? (animal['photos'] is List && (animal['photos'] as List).isNotEmpty ? (animal['photos'] as List).first : null);
+    final livestockId = animal['id'] as int?;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: livestockId != null
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AnimalDetailScreen(
+                      livestockId: livestockId,
+                      animal: animal,
+                      isDarkMode: widget.isDarkMode,
+                    ),
+                  ),
+                );
+              }
+            : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: widget.isDarkMode ? Colors.white10 : Colors.black12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: widget.isDarkMode ? Colors.white10 : Colors.black12,
+                  image: photo != null ? DecorationImage(image: NetworkImage(photo), fit: BoxFit.cover) : null,
+                ),
+                child: photo == null ? Icon(Icons.pets, color: const Color(0xFF6B8E23)) : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      animalType,
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: widget.isDarkMode ? Colors.white : Colors.black87),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      breed.isNotEmpty ? breed : 'Race inconnue',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w300, color: widget.isDarkMode ? Colors.white60 : Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+              Text('x$quantity', style: TextStyle(fontWeight: FontWeight.w600, color: const Color(0xFF6B8E23))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAuthSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Connexion requise',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Connectez-vous pour voir votre bétail',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/login');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6B8E23),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Se connecter', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPopupMenu(BuildContext context, Map<String, dynamic> farm) {
     return PopupMenuButton<String>(
       icon: Icon(
@@ -778,7 +1015,7 @@ class _FarmTabState extends State<FarmTab> {
       color: widget.isDarkMode ? const Color(0xFF2C2C2E) : Colors.white,
       onSelected: (v) async {
         if (v == 'profile') {
-          final result = await Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => FarmProfileScreen(
@@ -788,7 +1025,6 @@ class _FarmTabState extends State<FarmTab> {
               ),
             ),
           );
-          if (result != null && mounted) setState(() {});
         } else if (v == 'edit') {
           final result = await Navigator.push(
             context,
@@ -803,35 +1039,16 @@ class _FarmTabState extends State<FarmTab> {
             builder: (_) => AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               backgroundColor: widget.isDarkMode ? const Color(0xFF2C2C2E) : Colors.white,
-              title: Text(
-                'Supprimer la ferme',
-                style: TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 16,
-                  color: widget.isDarkMode ? Colors.white : Colors.black87,
-                ),
-              ),
-              content: Text(
-                'Êtes-vous sûr de vouloir supprimer "${farm['name']}" ?',
-                style: TextStyle(
-                  fontWeight: FontWeight.w300,
-                  fontSize: 14,
-                  color: widget.isDarkMode ? Colors.white70 : Colors.black54,
-                ),
-              ),
+              title: const Text('Supprimer la ferme'),
+              content: Text('Êtes-vous sûr?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  style: TextButton.styleFrom(
-                    foregroundColor: widget.isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
                   child: const Text('Annuler'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context, true),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
-                  ),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
                   child: const Text('Supprimer'),
                 ),
               ],
@@ -841,89 +1058,26 @@ class _FarmTabState extends State<FarmTab> {
             try {
               await ApiService.deleteFarm(farm['id'] as int);
               if (!mounted) return;
-              // Vider le cache d'images
               imageCache.clearLiveImages();
               imageCache.clear();
-              // Rafraîchir la liste
               await _refreshFarms();
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Row(
-                    children: [
-                      Icon(Icons.check_circle_outline,
-                          color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text('Ferme supprimée',
-                          style: TextStyle(fontWeight: FontWeight.w400)),
-                    ],
-                  ),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  backgroundColor: const Color(0xFF4CAF50),
-                ),
+                const SnackBar(content: Text('Ferme supprimée')),
               );
-              Navigator.pop(context);
             } catch (e) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(Icons.error_outline,
-                          color: Colors.white, size: 20),
-                      const SizedBox(width: 8),
-                      Text('Erreur: $e',
-                          style: const TextStyle(fontWeight: FontWeight.w400)),
-                    ],
-                  ),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  backgroundColor: Colors.red.shade400,
-                ),
+                SnackBar(content: Text('Erreur: $e')),
               );
             }
           }
         }
       },
       itemBuilder: (_) => [
-        PopupMenuItem(
-          value: 'profile',
-          child: Text(
-            'Profil public',
-            style: TextStyle(
-              fontWeight: FontWeight.w300,
-              fontSize: 14,
-              color: const Color(0xFF6B8E23),
-            ),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'edit',
-          child: Text(
-            'Modifier',
-            style: TextStyle(
-              fontWeight: FontWeight.w300,
-              fontSize: 14,
-              color: widget.isDarkMode ? Colors.white : Colors.black87,
-            ),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'delete',
-          child: Text(
-            'Supprimer',
-            style: TextStyle(
-              fontWeight: FontWeight.w300,
-              fontSize: 14,
-              color: Colors.red.shade400,
-            ),
-          ),
-        ),
+        const PopupMenuItem(value: 'profile', child: Text('Profil public')),
+        const PopupMenuItem(value: 'edit', child: Text('Modifier')),
+        const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
       ],
     );
   }
 }
-
-// Widget stateless pour éviter les reconstructions inutiles
