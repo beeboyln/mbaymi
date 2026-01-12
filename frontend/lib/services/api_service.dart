@@ -720,6 +720,7 @@ class ApiService {
     String? location,
     String? notes,
     String? imageUrl,
+    String visibility = 'PRIVATE',
   }) async {
     try {
       final response = await http.post(
@@ -736,6 +737,7 @@ class ApiService {
           'location': location,
           'notes': notes,
           'image_url': imageUrl,
+          'visibility': visibility,
         }),
       );
 
@@ -779,6 +781,7 @@ class ApiService {
     String? location,
     String? notes,
     String? imageUrl,
+    String visibility = 'PRIVATE',
   }) =>
       addLivestock(
         userId: userId,
@@ -792,6 +795,7 @@ class ApiService {
         location: location,
         notes: notes,
         imageUrl: imageUrl,
+        visibility: visibility,
       );
 
   static Future<Map<String, dynamic>> updateLivestock({
@@ -806,6 +810,7 @@ class ApiService {
     String? location,
     String? notes,
     String? imageUrl,
+    String? visibility,
   }) async {
     try {
       final response = await http.put(
@@ -822,6 +827,7 @@ class ApiService {
           'location': location,
           'notes': notes,
           'image_url': imageUrl,
+          'visibility': visibility,
         }),
       );
 

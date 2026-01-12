@@ -4,6 +4,8 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/post_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
+import 'package:mbaymi/screens/profile_detail_screen.dart';
+import 'package:mbaymi/screens/animal_detail_screen.dart';
 
 class SocialFeedScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -243,6 +245,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final caption = post['caption'] as String? ?? '';
     final imageUrl = post['image_url'] as String?;
     final postId = post['id'] as int? ?? 0;
+    final farmId = post['farm_id'] as int? ?? 0;
+    final userId = post['user_id'] as int? ?? 0;
     final likesCount = post['likes_count'] ?? 0;
     final commentsCount = post['comments_count'] ?? 0;
     final sharesCount = post['shares_count'] ?? 0;
@@ -266,58 +270,91 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 👤 En-tête
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                    backgroundColor: _primaryColor,
-                    backgroundImage: (post['owner_profile_image'] != null && (post['owner_profile_image'] as String).isNotEmpty)
-                        ? NetworkImage(post['owner_profile_image'] as String)
-                        : null,
-                    child: (post['owner_profile_image'] == null || (post['owner_profile_image'] as String).isEmpty)
-                        ? Text(
-                            ownerName.isNotEmpty ? ownerName[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          )
-                        : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              farmName,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Text('🌾', style: TextStyle(fontSize: 16)),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'par $ownerName • $timeText',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: widget.isDarkMode ? Colors.white54 : Colors.black54,
-                        ),
-                      ),
-                    ],
+          // 👤 En-tête (clickable profil et ferme)
+          GestureDetector(
+            onTap: () {
+              // Clicking anywhere in the header navigates to owner profile (read-only)
+              if (userId > 0) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileDetailScreen(
+                      userId: userId,
+                      isDarkMode: widget.isDarkMode,
+                    ),
                   ),
-                ),
-              ],
+                );
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                      backgroundColor: _primaryColor,
+                      backgroundImage: (post['owner_profile_image'] != null && (post['owner_profile_image'] as String).isNotEmpty)
+                          ? NetworkImage(post['owner_profile_image'] as String)
+                          : null,
+                      child: (post['owner_profile_image'] == null || (post['owner_profile_image'] as String).isEmpty)
+                          ? Text(
+                              ownerName.isNotEmpty ? ownerName[0].toUpperCase() : '?',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            )
+                          : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  // Click on farm name navigates to farm detail
+                                  if (farmId > 0) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => FarmDetailScreen(
+                                          farmId: farmId,
+                                          farmData: post,
+                                          isDarkMode: widget.isDarkMode,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Text(
+                                  farmName,
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF8B6B4D)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            const Text('🌾', style: TextStyle(fontSize: 16)),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'par $ownerName • $timeText',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: widget.isDarkMode ? Colors.white54 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -725,6 +762,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final quantity = animal['quantity'] as int? ?? 1;
     final userName = animal['user_name'] as String? ?? 'Éleveur';
     final userProfileImage = animal['user_profile_image'] as String?;
+    final userId = animal['user_id'] as int? ?? 0;
+    final animalId = animal['id'] as int? ?? 0;
     final photos = animal['photos'] as List? ?? [];
     final firstPhotoUrl = photos.isNotEmpty ? photos[0]['image_url'] : null;
     final healthStatus = animal['health_status'] as String? ?? 'Sain';
@@ -749,37 +788,73 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: _primaryColor,
-                  backgroundImage: userProfileImage != null && userProfileImage.isNotEmpty
-                      ? NetworkImage(userProfileImage)
-                      : null,
-                  child: (userProfileImage == null || userProfileImage.isEmpty)
-                      ? Text(userName.isNotEmpty ? userName[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: Text('$animalType - $breed', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                          Text(emoji, style: const TextStyle(fontSize: 16)),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text('par $userName • $timeText', style: TextStyle(fontSize: 12, color: widget.isDarkMode ? Colors.white54 : Colors.black54)),
-                    ],
+          // 👤 En-tête (clickable profil et animal)
+          GestureDetector(
+            onTap: () {
+              // Clicking anywhere in the header navigates to owner profile (read-only)
+              if (userId > 0) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileDetailScreen(
+                      userId: userId,
+                      isDarkMode: widget.isDarkMode,
+                    ),
                   ),
-                ),
-              ],
+                );
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: _primaryColor,
+                    backgroundImage: userProfileImage != null && userProfileImage.isNotEmpty
+                        ? NetworkImage(userProfileImage)
+                        : null,
+                    child: (userProfileImage == null || userProfileImage.isEmpty)
+                        ? Text(userName.isNotEmpty ? userName[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  // Click on animal name navigates to animal detail
+                                  if (animalId > 0) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => AnimalDetailScreen(
+                                          livestockId: animalId,
+                                          animal: animal,
+                                          isDarkMode: widget.isDarkMode,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Text('$animalType - $breed', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF8B6B4D)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                            ),
+                            Text(emoji, style: const TextStyle(fontSize: 16)),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text('par $userName • $timeText', style: TextStyle(fontSize: 12, color: widget.isDarkMode ? Colors.white54 : Colors.black54)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           if (firstPhotoUrl != null && firstPhotoUrl.isNotEmpty)

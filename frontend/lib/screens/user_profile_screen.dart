@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:intl/intl.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -277,6 +278,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
     super.build(context);
     
     final isDark = widget.isDarkMode;
+    final isOwnProfile = widget.userId == (AuthService.currentSession?.userId ?? 0);
     final bgColor = isDark ? _bgDark : _bgLight;
     final cardColor = isDark ? _cardDark : _cardLight;
     final textColor = isDark ? _textDark : _textLight;
@@ -390,7 +392,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                             Row(
                               children: [
                                 GestureDetector(
-                                  onTap: _pickAndUploadProfileImage,
+                                  onTap: isOwnProfile ? _pickAndUploadProfileImage : null,
                                   child: Stack(
                                     children: [
                                       profileImage != null && profileImage.isNotEmpty
@@ -415,27 +417,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                               ),
                                             )
                                           : _buildDefaultAvatar(name),
-                                      // Bouton d'édition
-                                      Positioned(
-                                        bottom: 0,
-                                        right: 0,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: _primaryColor,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: cardColor,
-                                              width: 2,
+                                      // Bouton d'édition (seulement si mon profil)
+                                      if (isOwnProfile)
+                                        Positioned(
+                                          bottom: 0,
+                                          right: 0,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: _primaryColor,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: cardColor,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            padding: const EdgeInsets.all(6),
+                                            child: const Icon(
+                                              Icons.camera_alt,
+                                              color: Colors.white,
+                                              size: 16,
                                             ),
                                           ),
-                                          padding: const EdgeInsets.all(6),
-                                          child: const Icon(
-                                            Icons.camera_alt,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
                                         ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -445,7 +448,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       GestureDetector(
-                                        onTap: () => _showEditProfileDialog(name, email),
+                                        onTap: isOwnProfile ? () => _showEditProfileDialog(name, email) : null,
                                         child: Row(
                                           children: [
                                             Expanded(
@@ -458,17 +461,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                                 ),
                                               ),
                                             ),
-                                            Icon(
-                                              Icons.edit_outlined,
-                                              size: 16,
-                                              color: _primaryColor,
-                                            ),
+                                            if (isOwnProfile)
+                                              Icon(
+                                                Icons.edit_outlined,
+                                                size: 16,
+                                                color: _primaryColor,
+                                              ),
                                           ],
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       GestureDetector(
-                                        onTap: () => _showEditProfileDialog(name, email),
+                                        onTap: isOwnProfile ? () => _showEditProfileDialog(name, email) : null,
                                         child: Row(
                                           children: [
                                             Expanded(
@@ -480,11 +484,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                                 ),
                                               ),
                                             ),
-                                            Icon(
-                                              Icons.edit_outlined,
-                                              size: 14,
-                                              color: secondaryTextColor,
-                                            ),
+                                            if (isOwnProfile)
+                                              Icon(
+                                                Icons.edit_outlined,
+                                                size: 14,
+                                                color: secondaryTextColor,
+                                              ),
                                           ],
                                         ),
                                       ),

@@ -36,6 +36,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
   bool _loading = false;
   List<XFile> _imageFiles = [];
   List<Uint8List> _imageBytes = [];
+  String _visibility = 'PRIVATE'; // PRIVATE, PUBLIC, PARTIAL
 
   // Palette de couleurs
   static const Color _primaryColor = Color(0xFF8B6B4D);
@@ -138,6 +139,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
         feedingType: _feedingCtrl.text.trim(),
         notes: _notesCtrl.text.trim(),
         imageUrl: imageUrl,
+        visibility: _visibility,
       );
 
       // Upload les photos supplémentaires (toutes sauf la première)
@@ -326,6 +328,16 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
                           textColor: textColor,
                           borderColor: borderColor,
                           icon: Icons.restaurant_outlined,
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Visibilité
+                        _buildSectionTitle('Visibilité'),
+                        const SizedBox(height: 16),
+                        _buildVisibilitySelector(
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          borderColor: borderColor,
                         ),
                         const SizedBox(height: 32),
 
@@ -607,6 +619,103 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildVisibilitySelector({
+    required Color cardColor,
+    required Color textColor,
+    required Color borderColor,
+  }) {
+    final visibilityOptions = [
+      {
+        'value': 'PRIVATE',
+        'label': 'Privé',
+        'icon': Icons.lock_outlined,
+        'description': 'Visible uniquement par vous',
+        'color': Colors.red.shade400,
+      },
+      {
+        'value': 'PARTIAL',
+        'label': 'Partagé',
+        'icon': Icons.people_outline,
+        'description': 'Visible via les posts uniquement',
+        'color': Colors.orange.shade400,
+      },
+      {
+        'value': 'PUBLIC',
+        'label': 'Public',
+        'icon': Icons.public_outlined,
+        'description': 'Visible par tous',
+        'color': const Color(0xFF6B8E23),
+      },
+    ];
+
+    return Column(
+      children: visibilityOptions.map((option) {
+        final isSelected = _visibility == option['value'];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => setState(() => _visibility = option['value'] as String),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? (option['color'] as Color).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected ? (option['color'] as Color) : borderColor,
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      option['icon'] as IconData,
+                      color: option['color'] as Color,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            option['label'] as String,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              color: textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            option['description'] as String,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w300,
+                              color: textColor.withOpacity(0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(
+                        Icons.check_circle,
+                        color: option['color'] as Color,
+                        size: 24,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

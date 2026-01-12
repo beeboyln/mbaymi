@@ -9,6 +9,7 @@ import 'package:mbaymi/widgets/create_farm_post_dialog.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/screens/create_livestock_screen.dart';
 import 'package:mbaymi/screens/animal_detail_screen.dart';
+import 'package:mbaymi/screens/edit_livestock_screen.dart';
 
 class FarmTab extends StatefulWidget {
   final bool isDarkMode;
@@ -20,26 +21,34 @@ class FarmTab extends StatefulWidget {
   State<FarmTab> createState() => _FarmTabState();
 }
 
-class _FarmTabState extends State<FarmTab> {
-  late Future<List<dynamic>> _farmsFuture;
+class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
+  Future<List<dynamic>>? _farmsFuture;
+  Future<List<dynamic>>? _livestockFuture;
   final Set<int> _expandedFarmIds = {};
   int _selectedSection = 0;
-  Future<List<dynamic>>? _livestockFuture;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _refreshFarms();
+    _farmsFuture ??= (widget.userId != null
+        ? ApiService.getUserFarms(widget.userId!)
+        : ApiService.getPublicFarms());
   }
 
   Future<void> _refreshFarms() async {
-    setState(() {
+    if (_selectedSection == 0) {
       _farmsFuture = widget.userId != null
           ? ApiService.getUserFarms(widget.userId!)
           : ApiService.getPublicFarms();
-      imageCache.clearLiveImages();
-      imageCache.clear();
-    });
+    } else if (widget.userId != null) {
+      _livestockFuture = ApiService.getUserLivestock(widget.userId!);
+    }
+    setState(() {});
+    imageCache.clearLiveImages();
+    imageCache.clear();
   }
 
   Widget _buildSectionTabs() {
@@ -110,6 +119,8 @@ class _FarmTabState extends State<FarmTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    
     return Scaffold(
       backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
       body: RefreshIndicator(
@@ -248,7 +259,9 @@ class _FarmTabState extends State<FarmTab> {
     }
 
     return FutureBuilder<List<dynamic>>(
-      future: _farmsFuture,
+      future: _farmsFuture ?? (widget.userId != null
+          ? ApiService.getUserFarms(widget.userId!)
+          : ApiService.getPublicFarms()),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Padding(
@@ -364,11 +377,11 @@ class _FarmTabState extends State<FarmTab> {
                 ),
               ] else ...[
                 FutureBuilder<List<dynamic>>(
-                  future: _livestockFuture,
+                  future: _livestockFuture ?? (widget.userId != null ? ApiService.getUserLivestock(widget.userId!) : Future.value([])),
                   builder: (context, lsnap) {
                     if (lsnap.connectionState == ConnectionState.waiting) {
                       return Padding(
-                        padding: const EdgeInsets.only(top: 24),
+                        padding: const EdgeInsets.only(top: 80),
                         child: Center(
                           child: Column(
                             children: [
@@ -376,7 +389,7 @@ class _FarmTabState extends State<FarmTab> {
                                 strokeWidth: 2,
                                 color: Color(0xFF6B8E23),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 20),
                               Text(
                                 'Chargement du bétail...',
                                 style: TextStyle(
@@ -392,15 +405,34 @@ class _FarmTabState extends State<FarmTab> {
                     }
                     if (lsnap.hasError) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Text('Erreur de chargement', style: TextStyle(color: widget.isDarkMode ? Colors.white70 : Colors.black87)),
+                        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+                        child: Column(
+                          children: [
+                            Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+                            const SizedBox(height: 16),
+                            Text('Erreur de chargement', style: TextStyle(fontWeight: FontWeight.w500, color: widget.isDarkMode ? Colors.white70 : Colors.black87, fontSize: 16)),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: _refreshFarms,
+                              child: const Text('Réessayer', style: TextStyle(color: Color(0xFF6B8E23))),
+                            ),
+                          ],
+                        ),
                       );
                     }
                     final animals = lsnap.data ?? [];
                     if (animals.isEmpty) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Text('Aucun animal répertorié', style: TextStyle(color: widget.isDarkMode ? Colors.white60 : Colors.black45)),
+                        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+                        child: Column(
+                          children: [
+                            Icon(Icons.pets_outlined, size: 48, color: const Color(0xFF6B8E23).withOpacity(0.5)),
+                            const SizedBox(height: 16),
+                            Text('Aucun animal répertorié', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16, color: widget.isDarkMode ? Colors.white70 : Colors.black87)),
+                            const SizedBox(height: 8),
+                            Text('Cliquez sur + pour ajouter votre premier animal', style: TextStyle(fontWeight: FontWeight.w300, fontSize: 13, color: widget.isDarkMode ? Colors.white60 : Colors.black45)),
+                          ],
+                        ),
                       );
                     }
                     return ListView.separated(
@@ -890,10 +922,9 @@ class _FarmTabState extends State<FarmTab> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AnimalDetailScreen(
+                    builder: (_) => EditLivestockScreen(
                       livestockId: livestockId,
-                      animal: animal,
-                      isDarkMode: widget.isDarkMode,
+                      livestock: animal,
                     ),
                   ),
                 );

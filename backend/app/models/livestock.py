@@ -18,6 +18,7 @@ class Livestock(Base):
     location = Column(String(200))
     notes = Column(String(500))
     image_url = Column(String(500))  # Cloudinary image URL
+    visibility = Column(String(20), default="PRIVATE")  # PRIVATE, PARTIAL, PUBLIC
     likes_count = Column(Integer, default=0)
     comments_count = Column(Integer, default=0)
     shares_count = Column(Integer, default=0)
