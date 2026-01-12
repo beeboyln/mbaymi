@@ -6,7 +6,7 @@ from app.models.photo import FarmPhoto
 from app.models.user import User
 from app.schemas.schemas import FarmCreate, FarmResponse, CropCreate, CropResponse
 
-router = APIRouter(prefix="/api/farms", tags=["farms"])
+router = APIRouter(prefix="/farms", tags=["farms"])
 
 @router.post("/", response_model=FarmResponse)
 def create_farm(farm: FarmCreate, user_id: int, db: Session = Depends(get_db)):
@@ -33,16 +33,27 @@ def create_farm(farm: FarmCreate, user_id: int, db: Session = Depends(get_db)):
     
     return new_farm
 
-@router.get("/{farm_id}", response_model=FarmResponse)
+@router.get("/{farm_id}")
 def get_farm(farm_id: int, db: Session = Depends(get_db)):
     farm = db.query(Farm).filter(Farm.id == farm_id).first()
     if not farm:
         raise HTTPException(status_code=404, detail="Farm not found")
     # attach photo URLs
     photos = db.query(FarmPhoto).filter(FarmPhoto.farm_id == farm_id).all()
-    farm_dict = farm.__dict__.copy()
-    farm_dict['photos'] = [{'id': p.id, 'image_url': p.image_url} for p in photos]
-    return farm_dict
+    return {
+        'id': farm.id,
+        'user_id': farm.user_id,
+        'name': farm.name,
+        'location': farm.location,
+        'size_hectares': farm.size_hectares,
+        'soil_type': farm.soil_type,
+        'image_url': farm.image_url,
+        'latitude': farm.latitude,
+        'longitude': farm.longitude,
+        'created_at': farm.created_at,
+        'updated_at': farm.updated_at,
+        'photos': [{'id': p.id, 'image_url': p.image_url} for p in photos]
+    }
 
 @router.get("/user/{user_id}")
 def get_user_farms(user_id: int, db: Session = Depends(get_db)):
@@ -50,13 +61,25 @@ def get_user_farms(user_id: int, db: Session = Depends(get_db)):
     result = []
     for f in farms:
         photos = db.query(FarmPhoto).filter(FarmPhoto.farm_id == f.id).all()
-        d = f.__dict__.copy()
-        d['photos'] = [{'id': p.id, 'image_url': p.image_url} for p in photos]
+        d = {
+            'id': f.id,
+            'user_id': f.user_id,
+            'name': f.name,
+            'location': f.location,
+            'size_hectares': f.size_hectares,
+            'soil_type': f.soil_type,
+            'image_url': f.image_url,
+            'latitude': f.latitude,
+            'longitude': f.longitude,
+            'created_at': f.created_at,
+            'updated_at': f.updated_at,
+            'photos': [{'id': p.id, 'image_url': p.image_url} for p in photos]
+        }
         result.append(d)
     return result
 
 
-@router.put("/{farm_id}", response_model=FarmResponse)
+@router.put("/{farm_id}")
 def update_farm(farm_id: int, farm: FarmCreate, db: Session = Depends(get_db)):
     existing = db.query(Farm).filter(Farm.id == farm_id).first()
     if not existing:
@@ -72,9 +95,20 @@ def update_farm(farm_id: int, farm: FarmCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(existing)
     photos = db.query(FarmPhoto).filter(FarmPhoto.farm_id == farm_id).all()
-    d = existing.__dict__.copy()
-    d['photos'] = [p.image_url for p in photos]
-    return d
+    return {
+        'id': existing.id,
+        'user_id': existing.user_id,
+        'name': existing.name,
+        'location': existing.location,
+        'size_hectares': existing.size_hectares,
+        'soil_type': existing.soil_type,
+        'image_url': existing.image_url,
+        'latitude': existing.latitude,
+        'longitude': existing.longitude,
+        'created_at': existing.created_at,
+        'updated_at': existing.updated_at,
+        'photos': [{'id': p.id, 'image_url': p.image_url} for p in photos]
+    }
 
 
 @router.delete("/{farm_id}")

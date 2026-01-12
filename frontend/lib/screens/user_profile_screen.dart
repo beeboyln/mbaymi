@@ -1300,7 +1300,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   ) {
     if (farms.isEmpty) {
       return Container(
-        height: 140,
+        height: 160,
         decoration: BoxDecoration(
           color: _primaryColor.withOpacity(0.1),
           borderRadius: const BorderRadius.all(Radius.circular(12)),
@@ -1568,7 +1568,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
         // Show carousel with livestock images
         return SizedBox(
-          height: 140,
+          height: 160,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             physics: const AlwaysScrollableScrollPhysics(),
@@ -1580,85 +1580,106 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               final quantity = animal['quantity'] ?? 1;
 
               return Padding(
-                padding: EdgeInsets.only(right: index == livestock.length - 1 ? 0 : 12),
-                child: Container(
-                  width: 280,
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
-                    borderRadius: const BorderRadius.all(Radius.circular(12)),
-                    border: Border.all(
-                      color: borderColor,
-                      width: 1,
+                padding: EdgeInsets.only(
+                  left: index == 0 ? 0 : 8,
+                  right: index == livestock.length - 1 ? 0 : 8,
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.all(Radius.circular(12)),
+                  child: Container(
+                    width: 160,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: borderColor, width: 1),
+                      borderRadius: const BorderRadius.all(Radius.circular(12)),
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Image
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-                        child: Container(
-                          height: 80,
-                          width: double.infinity,
-                          color: _accentColor.withOpacity(0.1),
+                    child: Stack(
+                      children: [
+                        // Image de fond
+                        SizedBox.expand(
                           child: imageUrl != null && imageUrl.isNotEmpty
                               ? Image.network(
                                   imageUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Center(
-                                    child: Icon(
-                                      Icons.pets_outlined,
-                                      size: 28,
-                                      color: _accentColor.withOpacity(0.6),
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: _accentColor.withOpacity(0.2),
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.pets_outlined,
+                                        size: 40,
+                                        color: _accentColor.withOpacity(0.5),
+                                      ),
                                     ),
                                   ),
                                 )
-                              : Center(
-                                  child: Icon(
-                                    Icons.pets_outlined,
-                                    size: 28,
-                                    color: _accentColor.withOpacity(0.6),
+                              : Container(
+                                  color: _accentColor.withOpacity(0.2),
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.pets_outlined,
+                                      size: 40,
+                                      color: _accentColor.withOpacity(0.5),
+                                    ),
                                   ),
                                 ),
                         ),
-                      ),
-                      
-                      // Info
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              animalType,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: textColor,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              maxLines: 1,
+
+                        // Overlay sombre en bas
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.7),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: _accentColor.withOpacity(0.1),
-                                borderRadius: const BorderRadius.all(Radius.circular(6)),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              child: Text(
-                                'x$quantity',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: _accentColor,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+
+                        // Contenu en bas
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  animalType,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: _accentColor.withOpacity(0.9),
+                                    borderRadius: const BorderRadius.all(Radius.circular(6)),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  child: Text(
+                                    'x$quantity',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );

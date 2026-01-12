@@ -50,6 +50,8 @@ def include_routes():
     from app.routes import auth, farmers, livestock, market, advice, news, activities, harvests, sales, crops, pasture, animal_photos
     app.include_router(auth.router)
     app.include_router(farmers.router)
+    # Also expose farmers routes under legacy `/api` prefix to support older frontends
+    app.include_router(farmers.router, prefix="/api")
     app.include_router(livestock.router)
     app.include_router(market.router)
     app.include_router(advice.router)
@@ -62,11 +64,21 @@ def include_routes():
     app.include_router(animal_photos.router)
     
     # 🌾 Agricultural features
-    from app.routes import crop_problems, farm_network, user_profile, social
+    from app.routes import crop_problems, farm_network, user_profile, social, farm_posts
     app.include_router(crop_problems.router)
     app.include_router(farm_network.router)
+    # Also expose farm_network routes under legacy `/api` prefix to support older frontends
+    app.include_router(farm_network.router, prefix="/api")
     app.include_router(user_profile.router)
     app.include_router(social.router)  # ✨ Nouvelles interactions sociales
+    app.include_router(farm_posts.router)  # 📸 Farm image posts with likes/comments/shares
+    # Also expose legacy `/api` prefixed routes to support frontends using `/api/...`
+    app.include_router(farm_posts.router, prefix="/api")
+    
+    print("🔴 DEBUG: farm_posts.router routes:")
+    for route in app.routes:
+        if "farm-posts" in str(route.path):
+            print(f"  {route.methods} {route.path}")
 
 @app.on_event("startup")
 def startup():

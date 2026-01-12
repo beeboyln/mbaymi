@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
@@ -16,6 +17,7 @@ class SocialFeedScreen extends StatefulWidget {
 class _SocialFeedScreenState extends State<SocialFeedScreen> {
   int _currentTabIndex = 0;
   int _userId = 0;
+  late StreamSubscription<void> _farmPostSub;
   
   // ✅ STORE FEED DATA IN STATE - NOT REBUILT ON EACH setState()
   late Future<Map<String, dynamic>> _feedFuture;
@@ -39,10 +41,19 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     _feedFuture = _loadCombinedFeed();
     _exploreFuture = ApiService.getPublicFarms();
     _trendingFuture = ApiService.getPublicFarms(); // Same data for now
+    // Listen for farm post creations and refresh feed
+    _farmPostSub = ApiService.onFarmPostCreated.listen((_) {
+      if (mounted) {
+        setState(() {
+          _feedFuture = _loadCombinedFeed();
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _farmPostSub.cancel();
     super.dispose();
   }
 
@@ -132,7 +143,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           }
 
           final data = snapshot.data ?? {};
-          _combinedItems = data['items'] as List<Map<String, dynamic>>? ?? [];
+          final rawItems = data['items'] as List<dynamic>? ?? [];
+          _combinedItems = rawItems.cast<Map<String, dynamic>>();
           final combinedItems = _combinedItems;
 
           if (combinedItems.isEmpty) {
@@ -145,8 +157,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             itemCount: combinedItems.length,
             itemBuilder: (context, index) {
               final item = combinedItems[index];
-              if (item['type'] == 'post') {
-                return _buildPostCard(item['data'], item);
+              if (item['type'] == 'farm_post') {
+                return _buildFarmPostCard(item['data'], item);
               } else if (item['type'] == 'animal') {
                 return _buildAnimalCard(item['data'], item);
               }
@@ -160,71 +172,36 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   Future<Map<String, dynamic>> _loadCombinedFeed() async {
     try {
-      List<dynamic> posts = [];
-      List<dynamic> animals = [];
+      List<dynamic> items = [];
 
-      // Si connecté, charger le feed personnel ET les fermes publiques
-      if (_userId > 0) {
-        posts = await ApiService.getFarmFeed(_userId);
-        // Ajouter aussi les fermes publiques
-        final publicFarms = await ApiService.getPublicFarms();
-        posts.addAll(publicFarms.map((f) => {
-          'id': f['farm_id'],
-          'farm_name': f['farm_name'],
-          'owner_name': f['owner_name'] ?? 'Agriculteur',
-          'title': f['farm_name'],
-          'description': f['description'] ?? '',
-          'photo_url': f['profile_image_farm'],
-          'post_type': 'farm_update',
-          'created_at': DateTime.now().toIso8601String(),
-          'likes_count': f['followers'] ?? 0,
-          'comments_count': 0,
-          'shares_count': 0,
-        }).toList());
-      } else {
-        // Sinon, charger les fermes publiques
-        final farms = await ApiService.getPublicFarms();
-        posts = farms.map((f) => {
-          'id': f['farm_id'],
-          'farm_name': f['farm_name'],
-          'owner_name': f['owner_name'] ?? 'Agriculteur',
-          'title': f['farm_name'],
-          'description': f['description'] ?? '',
-          'photo_url': f['profile_image_farm'],
-          'post_type': 'farm_update',
-          'created_at': DateTime.now().toIso8601String(),
-          'likes_count': f['followers'] ?? 0,
-          'comments_count': 0,
-          'shares_count': 0,
-        }).toList();
+      // Charger les posts d'images des fermes (farm posts)
+      try {
+        final farmPosts = await ApiService.getFarmPostsFeed(userId: _userId);
+        items.addAll(farmPosts.map((post) => {
+          'type': 'farm_post',
+          'data': post,
+          'timestamp': DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now(),
+        }));
+      } catch (e) {
+        print('Erreur chargement farm posts: $e');
       }
 
       // Charger les animaux
-      animals = await ApiService.getAllLivestockWithPhotos(userId: _userId);
-
-      // Combiner
-      List<Map<String, dynamic>> combinedItems = [];
-
-      for (var post in posts) {
-        combinedItems.add({
-          'type': 'post',
-          'data': post,
-          'timestamp': DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now(),
-        });
-      }
-
-      for (var animal in animals) {
-        combinedItems.add({
+      try {
+        final animals = await ApiService.getAllLivestockWithPhotos(userId: _userId);
+        items.addAll(animals.map((animal) => {
           'type': 'animal',
           'data': animal,
           'timestamp': DateTime.tryParse(animal['created_at'] ?? '') ?? DateTime.now(),
-        });
+        }));
+      } catch (e) {
+        print('Erreur chargement animaux: $e');
       }
 
       // Trier par date décroissante
-      combinedItems.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
+      items.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
 
-      return {'items': combinedItems};
+      return {'items': items};
     } catch (e) {
       throw Exception('Erreur chargement: $e');
     }
@@ -308,6 +285,232 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             itemBuilder: (context, index) => _buildTrendingFarmCard(farms[index]),
           );
         },
+      ),
+    );
+  }
+
+  // 🏞️ FARM POST CARD (Images avec caption)
+  Widget _buildFarmPostCard(dynamic post, Map<String, dynamic> itemWrapper) {
+    final farmName = post['farm_name'] as String? ?? 'Ferme';
+    final ownerName = post['owner_name'] as String? ?? 'Agriculteur';
+    final caption = post['caption'] as String? ?? '';
+    final imageUrl = post['image_url'] as String?;
+    final postId = post['id'] as int? ?? 0;
+    final likesCount = post['likes_count'] ?? 0;
+    final commentsCount = post['comments_count'] ?? 0;
+    final sharesCount = post['shares_count'] ?? 0;
+    final createdAt = DateTime.tryParse(post['created_at'] as String? ?? '') ?? DateTime.now();
+    final daysAgo = DateTime.now().difference(createdAt).inDays;
+    final timeText = daysAgo == 0 ? 'Aujourd\'hui' : daysAgo == 1 ? 'Hier' : '$daysAgo j';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(widget.isDarkMode ? 0.2 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 👤 En-tête
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                    backgroundColor: _primaryColor,
+                    backgroundImage: (post['owner_profile_image'] != null && (post['owner_profile_image'] as String).isNotEmpty)
+                        ? NetworkImage(post['owner_profile_image'] as String)
+                        : null,
+                    child: (post['owner_profile_image'] == null || (post['owner_profile_image'] as String).isEmpty)
+                        ? Text(
+                            ownerName.isNotEmpty ? ownerName[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          )
+                        : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              farmName,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const Text('🌾', style: TextStyle(fontSize: 16)),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'par $ownerName • $timeText',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: widget.isDarkMode ? Colors.white54 : Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 🖼️ Image
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            Container(
+              height: 300,
+              width: double.infinity,
+              color: Colors.grey[300],
+              child: Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => Icon(Icons.image, size: 40, color: Colors.grey[400])),
+            )
+          else
+            Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_primaryColor.withOpacity(0.2), _accentColor.withOpacity(0.2)],
+                ),
+              ),
+              child: Center(child: Icon(Icons.image_outlined, size: 48, color: widget.isDarkMode ? Colors.white30 : Colors.black12)),
+            ),
+
+          // ❤️ Actions
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () async {
+                    try {
+                      final isLiked = post['is_liked'] ?? false;
+                      final currentLikes = likesCount;
+                      
+                      // Update both post object AND stored list
+                      post['is_liked'] = !isLiked;
+                      post['likes_count'] = isLiked ? currentLikes - 1 : currentLikes + 1;
+                      itemWrapper['data'] = post;
+                      
+                      // Trigger minimal rebuild
+                      setState(() {});
+                      
+                      // API call in background
+                      if (isLiked) {
+                        await ApiService.unlikeFarmPost(postId);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('🤍 Like retiré'), backgroundColor: _primaryColor, duration: Duration(milliseconds: 600)),
+                        );
+                      } else {
+                        await ApiService.likeFarmPost(postId);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('❤️ J\'aime!'), backgroundColor: _primaryColor, duration: Duration(milliseconds: 600)),
+                        );
+                      }
+                    } catch (e) {
+                      // Revert on error
+                      final isLiked = post['is_liked'] ?? false;
+                      final currentLikes = post['likes_count'] ?? 0;
+                      post['is_liked'] = !isLiked;
+                      post['likes_count'] = isLiked ? currentLikes - 1 : currentLikes + 1;
+                      itemWrapper['data'] = post;
+                      setState(() {});
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      Icon(
+                        (post['is_liked'] ?? false) ? Icons.favorite : Icons.favorite_border,
+                        size: 20,
+                        color: (post['is_liked'] ?? false) ? Colors.red : _primaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text('${post['likes_count'] ?? 0}'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('💬 Commentaires'), backgroundColor: _primaryColor),
+                    );
+                  },
+                  child: Row(children: [Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('$commentsCount')]),
+                ),
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: () async {
+                    try {
+                      final currentShares = sharesCount;
+                      
+                      // Update both post object AND stored list
+                      post['shares_count'] = currentShares + 1;
+                      itemWrapper['data'] = post;
+                      
+                      // Trigger minimal rebuild
+                      setState(() {});
+                      
+                      // API call in background
+                      await ApiService.shareFarmPost(postId);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('📤 Partagé!'), backgroundColor: _primaryColor, duration: Duration(milliseconds: 600)),
+                      );
+                    } catch (e) {
+                      // Revert on error
+                      post['shares_count'] = (post['shares_count'] ?? 0) - 1;
+                      itemWrapper['data'] = post;
+                      setState(() {});
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  },
+                  child: Row(children: [Icon(Icons.share_outlined, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('${post['shares_count'] ?? 0}')]),
+                ),
+                const Spacer(),
+                Icon(Icons.bookmark_border, size: 20, color: _primaryColor),
+              ],
+            ),
+          ),
+
+          // 📝 Caption
+          if (caption.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                caption,
+                style: TextStyle(fontSize: 13, color: widget.isDarkMode ? Colors.white70 : Colors.black87, height: 1.4),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
@@ -762,6 +965,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             builder: (context) => FarmDetailScreen(
               farmId: farmId,
               farmData: farm,
+              isDarkMode: widget.isDarkMode,
             ),
           ),
         );
@@ -829,6 +1033,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             builder: (context) => FarmDetailScreen(
               farmId: farmId,
               farmData: farm,
+              isDarkMode: widget.isDarkMode,
             ),
           ),
         );
@@ -1053,6 +1258,7 @@ class _SearchWidgetState extends State<_SearchWidget> {
                             builder: (context) => FarmDetailScreen(
                               farmId: farm['farm_id'] ?? 0,
                               farmData: farm,
+                              isDarkMode: widget.isDarkMode,
                             ),
                           ),
                         );

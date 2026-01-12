@@ -157,6 +157,7 @@ def search_farm_profiles(
     
     Exemple : /profiles/search?q=tomate
     """
+    logger.info(f"🔍 search_farm_profiles called with q='{q}'")
     try:
         query = db.query(FarmProfile, Farm).join(Farm, FarmProfile.farm_id == Farm.id).filter(FarmProfile.is_public == True)
         

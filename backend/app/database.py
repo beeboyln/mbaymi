@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from app.config import settings
 from app.models.base import Base
 # Import model modules so they register with Base.metadata
@@ -12,13 +11,20 @@ import app.models.activity  # noqa: F401
 import app.models.harvest  # noqa: F401
 import app.models.sale  # noqa: F401
 import app.models.photo  # noqa: F401
+import app.models.farm_post  # noqa: F401
+import app.models.farm_network  # noqa: F401
 from sqlalchemy import text
 
 # Create engine
 engine = create_engine(
     settings.DATABASE_URL,
-    poolclass=StaticPool,
-    echo=settings.DEBUG
+    # Use SQLAlchemy's default pooling with pre-ping to recover closed/idle connections.
+    # StaticPool is unsuitable for a remote PostgreSQL server and may reuse a connection
+    # that the server closed (causing SSL connection closed unexpectedly).
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    echo=settings.DEBUG,
 )
 
 # Create all tables

@@ -4,15 +4,18 @@ import 'dart:convert';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/activity_screen.dart';
+import 'package:mbaymi/widgets/farm_posts_widget.dart';
 
 class FarmDetailScreen extends StatefulWidget {
   final int farmId;
   final Map<String, dynamic> farmData;
+  final bool isDarkMode;
 
   const FarmDetailScreen({
     Key? key,
     required this.farmId,
     required this.farmData,
+    this.isDarkMode = false,
   }) : super(key: key);
 
   @override
@@ -73,7 +76,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = widget.isDarkMode;
     final bgColor = isDark ? _bgDark : _bgLight;
     final cardColor = isDark ? _cardDark : _cardLight;
     final textColor = isDark ? _textDark : _textLight;
@@ -427,6 +430,26 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                                 );
                               },
                             ),
+                          ),
+                        );
+                      },
+                    ),
+                    
+                    // 📸 Farm Posts Section
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _farmDetailsFuture,
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const SizedBox.shrink();
+                        
+                        final farmName = widget.farmData['farm_name'] ?? 'Ferme';
+                        final isOwner = _userId == widget.farmData['user_id'];
+                        
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 16, 0, 20),
+                          child: FarmPostsWidget(
+                            farmId: widget.farmId,
+                            farmName: farmName,
+                            isOwner: isOwner,
                           ),
                         );
                       },

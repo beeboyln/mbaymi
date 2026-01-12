@@ -204,3 +204,8 @@ class PastureImageResponse(PastureImageCreate):
     
     class Config:
         from_attributes = True
+
+class FarmPostCreate(BaseModel):
+    farm_id: int
+    image_url: str
+    caption: Optional[str] = None

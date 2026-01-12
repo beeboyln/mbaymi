@@ -11,6 +11,7 @@ import 'package:mbaymi/services/token_storage.dart';
 import 'package:mbaymi/services/simple_cache.dart';
 import 'package:mbaymi/services/connectivity_service.dart';
 import 'package:mbaymi/services/network_exception.dart';
+import 'dart:async' as _async_for_api;
 
 class ApiService {
   // 🔄 Retry configuration
@@ -23,6 +24,11 @@ class ApiService {
   
   // 📡 Service de connectivité
   static final ConnectivityService _connectivity = ConnectivityService();
+
+  // 🔔 Stream pour notifier la création d'un farm post afin que l'UI puisse se rafraîchir
+  static final _async_for_api.StreamController<void> _farmPostController = _async_for_api.StreamController<void>.broadcast();
+  static Stream<void> get onFarmPostCreated => _farmPostController.stream;
+  static void notifyFarmPostCreated() => _farmPostController.add(null);
 
   /// 🔄 Retry helper with exponential backoff et timeout global
   /// Handles transient network errors (timeouts, connection issues)
@@ -1198,10 +1204,13 @@ class ApiService {
         if (specialty != null && specialty.isNotEmpty) params['specialty'] = specialty;
 
         final uri = params.isEmpty ? Uri.parse(url) : Uri.parse(url).replace(queryParameters: params);
+        debugPrint('🔍 Searching profiles: ${uri.toString()}');
+        
         final response = await http.get(
           uri,
           headers: {'Content-Type': 'application/json'},
         );
+        debugPrint('📥 Search response: ${response.statusCode}');
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -1215,60 +1224,7 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> createFarmPost({
-    required int farmId,
-    required int userId,
-    required String title,
-    String description = '',
-    String? photoUrl,
-    String postType = 'crop_update',
-    int? cropId,
-  }) async {
-    try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/farm-network/posts'),
-        headers: headers,
-        body: jsonEncode({
-          'farm_id': farmId,
-          'user_id': userId,
-          'title': title,
-          'description': description,
-          'photo_url': photoUrl,
-          'post_type': postType,
-          'crop_id': cropId,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Failed to create post');
-      }
-    } catch (e) {
-      throw Exception('Error creating post: $e');
-    }
-  }
-
-  static Future<List<dynamic>> getFarmPosts(int farmId) async {
-    try {
-      return await _withRetry(() async {
-        final response = await http.get(
-          Uri.parse('$baseUrl/farm-network/posts/farm/$farmId'),
-          headers: {'Content-Type': 'application/json'},
-        );
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          return data['posts'] as List;
-        } else {
-          throw Exception('Failed to get posts');
-        }
-      });
-    } catch (e) {
-      throw Exception('Error getting posts: $e');
-    }
-  }
+  // DEPRECATED: Old farm-network method removed - use new farm-posts endpoint below
 
   static Future<List<dynamic>> getFarmFeed(int userId) async {
     try {
@@ -1880,6 +1836,185 @@ class ApiService {
       });
     } catch (e) {
       throw Exception('Error unliking livestock: $e');
+    }
+  }
+
+  // ====== FARM POSTS (Images avec description) ======
+  
+  static Future<Map<String, dynamic>> createFarmPost({
+    required int farmId,
+    required int userId,
+    required String imageUrl,
+    required String caption,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/farm-posts/?user_id=$userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'farm_id': farmId,
+          'image_url': imageUrl,
+          'caption': caption,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to create farm post: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error creating farm post: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getFarmPostsFeed({int? userId}) async {
+    try {
+      final url = userId != null && userId > 0
+          ? '$baseUrl/farm-posts/feed?user_id=$userId'
+          : '$baseUrl/farm-posts/feed';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Erreur lecture posts: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur: $e');
+    }
+  }
+
+  static Future<void> likeFarmPost(int postId) async {
+    try {
+      final token = AuthService.currentSession?.accessToken;
+      debugPrint('🔍 likeFarmPost: token = ${token == null ? "NULL" : "EXISTS (${token.substring(0, 20)}...)"}');
+      if (token == null) throw Exception('Token manquant');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/farm-posts/$postId/like'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      debugPrint('📤 POST /farm-posts/$postId/like → ${response.statusCode}');
+
+      if (response.statusCode == 401) {
+        debugPrint('❌ 401 Unauthorized - Token may be invalid or expired');
+        // Handle 401 with token refresh and retry
+        await _handleUnauthorized((headers) async {
+          return await http.post(
+            Uri.parse('$baseUrl/farm-posts/$postId/like'),
+            headers: headers,
+          );
+        });
+      } else if (response.statusCode != 200) {
+        throw Exception('Failed to like farm post: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error liking farm post: $e');
+    }
+  }
+
+  static Future<void> unlikeFarmPost(int postId) async {
+    try {
+      final token = AuthService.currentSession?.accessToken;
+      debugPrint('🔍 unlikeFarmPost: token = ${token == null ? "NULL" : "EXISTS (${token.substring(0, 20)}...)"}');
+      if (token == null) throw Exception('Token manquant');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/farm-posts/$postId/like'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      debugPrint('📤 DELETE /farm-posts/$postId/like → ${response.statusCode}');
+
+      if (response.statusCode == 401) {
+        debugPrint('❌ 401 Unauthorized - Token may be invalid or expired');
+        // Handle 401 with token refresh and retry
+        await _handleUnauthorized((headers) async {
+          return await http.delete(
+            Uri.parse('$baseUrl/farm-posts/$postId/like'),
+            headers: headers,
+          );
+        });
+      } else if (response.statusCode != 200) {
+        throw Exception('Failed to unlike farm post: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error unliking farm post: $e');
+    }
+  }
+
+  static Future<void> shareFarmPost(int postId) async {
+    try {
+      final token = AuthService.currentSession?.accessToken;
+      if (token == null) throw Exception('Token manquant');
+
+      await http.post(
+        Uri.parse('$baseUrl/farm-posts/$postId/share'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+    } catch (e) {
+      throw Exception('Error sharing farm post: $e');
+    }
+  }
+
+  static Future<void> deleteFarmPost(int postId, int userId) async {
+    try {
+      final token = AuthService.currentSession?.accessToken;
+      final url = '$baseUrl/farm-posts/$postId?user_id=$userId';
+
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: token != null
+            ? {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              }
+            : {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 401) {
+        await _handleUnauthorized((headers) async {
+          return await http.delete(Uri.parse(url), headers: headers);
+        });
+      } else if (response.statusCode != 200) {
+        throw Exception('Failed to delete farm post: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error deleting farm post: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getFarmPosts(int farmId, {int? userId}) async {
+    try {
+      final url = userId != null && userId > 0
+          ? '$baseUrl/farm-posts/$farmId?user_id=$userId'
+          : '$baseUrl/farm-posts/$farmId';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur: $e');
     }
   }
 }

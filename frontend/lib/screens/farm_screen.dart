@@ -5,6 +5,8 @@ import 'package:mbaymi/screens/edit_farm_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/farm_profile_screen.dart';
+import 'package:mbaymi/widgets/create_farm_post_dialog.dart';
+import 'package:mbaymi/widgets/farm_posts_widget.dart';
 
 class FarmTab extends StatefulWidget {
   final bool isDarkMode;
@@ -18,6 +20,8 @@ class FarmTab extends StatefulWidget {
 
 class _FarmTabState extends State<FarmTab> {
   late Future<List<dynamic>> _farmsFuture;
+  // Track which farm cards are expanded to show their posts
+  final Set<int> _expandedFarmIds = {};
 
   @override
   void initState() {
@@ -29,7 +33,7 @@ class _FarmTabState extends State<FarmTab> {
     setState(() {
       _farmsFuture = widget.userId != null
           ? ApiService.getUserFarms(widget.userId!)
-          : Future.value([]);
+          : ApiService.getPublicFarms();
       // Vider le cache d'images pour éviter les problèmes de persistence
       imageCache.clearLiveImages();
       imageCache.clear();
@@ -84,10 +88,10 @@ class _FarmTabState extends State<FarmTab> {
             ),
 
             // Contenu principal
-            const SliverPadding(
-              padding: EdgeInsets.only(top: 8),
+            SliverPadding(
+              padding: const EdgeInsets.only(top: 8),
               sliver: SliverToBoxAdapter(
-                child: _ContentBuilder(),
+                child: _buildContent(),
               ),
             ),
           ],
@@ -441,107 +445,218 @@ class _FarmTabState extends State<FarmTab> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ParcelScreen(
-                          farmId: farm['id'] as int,
-                          userId: widget.userId!,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ParcelScreen(
+                            farmId: farm['id'] as int,
+                            userId: widget.userId!,
+                          ),
                         ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: widget.isDarkMode
+                          ? Colors.white70
+                          : Colors.black54,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                    ),
+                    child: const Text(
+                      'Voir parcelles',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
                       ),
-                    );
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: widget.isDarkMode
-                        ? Colors.white70
-                        : Colors.black54,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                  ),
-                  child: const Text(
-                    'Voir parcelles',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
                     ),
                   ),
-                ),
-                Row(
-                  children: [
-                    // Bouton Publique/Privée
-                    TextButton.icon(
-                      onPressed: () async {
-                        try {
-                          final isPublic = farm['is_public'] ?? false;
-                          final result = await ApiService.toggleFarmVisibility(
-                            userId: widget.userId!,
-                            farmId: farm['id'] as int,
-                            isPublic: !isPublic,
-                          );
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(result['message'] ?? 'Visibilité mise à jour'),
-                                backgroundColor: const Color(0xFF6B8E23),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                  // 📸 Bouton Poster une image
+                  TextButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => CreateFarmPostDialog(
+                          farmId: farm['id'] as int,
+                          farmName: farm['name'] ?? 'Ferme',
+                          onPostCreated: () {
                             _refreshFarms();
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Erreur: $e'),
-                                backgroundColor: Colors.red.shade400,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
+                          },
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.photo_camera_outlined,
+                      size: 16,
+                      color: Color(0xFF8B6B4D),
+                    ),
+                    label: const Text(
+                      'Poster',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF8B6B4D),
+                      ),
+                    ),
+                  ),
+                  // Bouton Publique/Privée
+                  TextButton.icon(
+                    onPressed: () async {
+                      try {
+                        final isPublic = farm['is_public'] ?? false;
+                        final result = await ApiService.toggleFarmVisibility(
+                          userId: widget.userId!,
+                          farmId: farm['id'] as int,
+                          isPublic: !isPublic,
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result['message'] ?? 'Visibilité mise à jour'),
+                              backgroundColor: const Color(0xFF6B8E23),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          _refreshFarms();
                         }
-                      },
-                      icon: Icon(
-                        (farm['is_public'] ?? false) ? Icons.public : Icons.lock_outlined,
-                        size: 16,
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Erreur: $e'),
+                              backgroundColor: Colors.red.shade400,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    icon: Icon(
+                      (farm['is_public'] ?? false) ? Icons.public : Icons.lock_outlined,
+                      size: 16,
+                      color: (farm['is_public'] ?? false) ? const Color(0xFF6B8E23) : Colors.orange,
+                    ),
+                    label: Text(
+                      (farm['is_public'] ?? false) ? 'Publique' : 'Privée',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                         color: (farm['is_public'] ?? false) ? const Color(0xFF6B8E23) : Colors.orange,
                       ),
-                      label: Text(
-                        (farm['is_public'] ?? false) ? 'Publique' : 'Privée',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: (farm['is_public'] ?? false) ? const Color(0xFF6B8E23) : Colors.orange,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              EditFarmScreen(farm: farm as Map<String, dynamic>, userId: widget.userId, isDarkMode: widget.isDarkMode),
                         ),
-                      ),
+                      );
+                      if (result != null && mounted) setState(() {});
+                    },
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: Color(0xFF6B8E23),
                     ),
-                    IconButton(
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                EditFarmScreen(farm: farm, userId: widget.userId),
-                          ),
-                        );
-                        if (result != null && mounted) setState(() {});
-                      },
-                      icon: const Icon(
-                        Icons.edit_outlined,
-                        size: 18,
-                        color: Color(0xFF6B8E23),
-                      ),
-                    ),
-                    _buildPopupMenu(context, farm),
-                  ],
-                ),
-              ],
+                  ),
+                  _buildPopupMenu(context, farm),
+                ],
+              ),
             ),
           ),
+          // Posts preview / management — toggle to load posts inline
+          Builder(builder: (context) {
+            final farmId = farm['id'] as int;
+            final isExpanded = _expandedFarmIds.contains(farmId);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Post count badge (loads lazily)
+                        FutureBuilder<List<dynamic>>(
+                          future: ApiService.getFarmPosts(farmId),
+                          builder: (context, snap) {
+                            final count = (snap.data ?? []).length;
+                            return Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6B8E23).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.image_outlined, size: 14, color: Color(0xFF6B8E23)),
+                                  const SizedBox(width: 6),
+                                  Text('$count', style: const TextStyle(color: Color(0xFF6B8E23), fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+
+                        // Toggle button with animated icon
+                        TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              if (isExpanded) {
+                                _expandedFarmIds.remove(farmId);
+                              } else {
+                                _expandedFarmIds.add(farmId);
+                              }
+                            });
+                          },
+                          icon: AnimatedRotation(
+                            turns: isExpanded ? 0.5 : 0.0,
+                            duration: const Duration(milliseconds: 300),
+                            child: Icon(Icons.expand_more, color: const Color(0xFF6B8E23)),
+                          ),
+                          label: Text(isExpanded ? 'Masquer les posts' : 'Voir les posts', style: const TextStyle(color: Color(0xFF6B8E23))),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            foregroundColor: const Color(0xFF6B8E23),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Animated expansion area
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: ConstrainedBox(
+                      constraints: isExpanded ? const BoxConstraints() : const BoxConstraints(maxHeight: 0),
+                      child: isExpanded
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: FarmPostsWidget(
+                                farmId: farmId,
+                                farmName: farm['name'] ?? 'Ferme',
+                                isOwner: widget.userId != null && (farm['user_id'] as int? ?? 0) == widget.userId,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -678,7 +793,7 @@ class _FarmTabState extends State<FarmTab> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => EditFarmScreen(farm: farm, userId: widget.userId),
+              builder: (_) => EditFarmScreen(farm: farm, userId: widget.userId, isDarkMode: widget.isDarkMode),
             ),
           );
           if (result != null && mounted) setState(() {});
@@ -812,12 +927,3 @@ class _FarmTabState extends State<FarmTab> {
 }
 
 // Widget stateless pour éviter les reconstructions inutiles
-class _ContentBuilder extends StatelessWidget {
-  const _ContentBuilder();
-
-  @override
-  Widget build(BuildContext context) {
-    final farmTab = context.findAncestorStateOfType<_FarmTabState>();
-    return farmTab?._buildContent() ?? const SizedBox.shrink();
-  }
-}

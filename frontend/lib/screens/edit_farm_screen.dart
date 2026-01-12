@@ -6,8 +6,9 @@ import 'dart:typed_data';
 class EditFarmScreen extends StatefulWidget {
   final Map<String, dynamic> farm;
   final int? userId;
+  final bool isDarkMode;
 
-  const EditFarmScreen({Key? key, required this.farm, this.userId}) : super(key: key);
+  const EditFarmScreen({Key? key, required this.farm, this.userId, this.isDarkMode = false}) : super(key: key);
 
   @override
   State<EditFarmScreen> createState() => _EditFarmScreenState();
@@ -30,7 +31,20 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
     _nameCtrl = TextEditingController(text: widget.farm['name'] ?? '');
     _locationCtrl = TextEditingController(text: widget.farm['location'] ?? '');
     _sizeCtrl = TextEditingController(text: widget.farm['size_hectares']?.toString() ?? '');
-    if ((widget.farm['soil_type'] ?? '').isNotEmpty) _type = widget.farm['soil_type'];
+    
+    final soilType = (widget.farm['soil_type'] ?? '').toString().trim();
+    if (soilType.isNotEmpty) {
+      // Normalize soil type - ensure it has emoji
+      if (soilType.contains('Agricole') && !soilType.contains('🌱')) {
+        _type = '🌱 Agricole';
+      } else if (soilType.contains('Élevage') && !soilType.contains('🐄')) {
+        _type = '🐄 Élevage';
+      } else if (soilType.contains('Mixte') && !soilType.contains('🌾')) {
+        _type = '🌾 Mixte';
+      } else {
+        _type = soilType;
+      }
+    }
   }
 
   @override
@@ -95,9 +109,21 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
   @override
   Widget build(BuildContext context) {
     final photos = (widget.farm['photos'] as List?) ?? [];
+    final isDark = widget.isDarkMode;
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFFAFAFA);
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final labelColor = isDark ? Colors.grey[400] : Colors.grey[700];
+    
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      appBar: AppBar(title: const Text('Éditer la ferme')),
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        title: const Text('Éditer la ferme'),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        elevation: 0,
+        foregroundColor: textColor,
+      ),
       body: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.only(
@@ -110,21 +136,61 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
           key: _formKey,
           child: Column(
             children: [
-              TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Nom'), validator: (v) => (v==null||v.trim().isEmpty)?'Nom requis':null),
+              TextFormField(
+                controller: _nameCtrl,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Nom',
+                  labelStyle: TextStyle(color: labelColor),
+                  filled: true,
+                  fillColor: cardBg,
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                ),
+                validator: (v) => (v==null||v.trim().isEmpty)?'Nom requis':null,
+              ),
               const SizedBox(height: 12),
-              TextFormField(controller: _locationCtrl, decoration: const InputDecoration(labelText: 'Localisation')),
+              TextFormField(
+                controller: _locationCtrl,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Localisation',
+                  labelStyle: TextStyle(color: labelColor),
+                  filled: true,
+                  fillColor: cardBg,
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                ),
+              ),
               const SizedBox(height: 12),
-              TextFormField(controller: _sizeCtrl, decoration: const InputDecoration(labelText: 'Superficie (ha)'), keyboardType: TextInputType.numberWithOptions(decimal: true)),
+              TextFormField(
+                controller: _sizeCtrl,
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  labelText: 'Superficie (ha)',
+                  labelStyle: TextStyle(color: labelColor),
+                  filled: true,
+                  fillColor: cardBg,
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                ),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+              ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _type,
+                style: TextStyle(color: textColor),
+                dropdownColor: cardBg,
                 items: const [
                   DropdownMenuItem(value: '🌱 Agricole', child: Text('🌱 Agricole')),
                   DropdownMenuItem(value: '🐄 Élevage', child: Text('🐄 Élevage')),
                   DropdownMenuItem(value: '🌾 Mixte', child: Text('🌾 Mixte')),
                 ],
                 onChanged: (v) => setState(() => _type = v ?? _type),
-                decoration: const InputDecoration(labelText: 'Type de ferme'),
+                decoration: InputDecoration(
+                  labelText: 'Type de ferme',
+                  labelStyle: TextStyle(color: labelColor),
+                  filled: true,
+                  fillColor: cardBg,
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -162,98 +228,117 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: photos.map<Widget>((p) {
-                    final id = p is Map ? p['id'] : null;
-                    final url = p is Map ? p['image_url'] : p;
+                    final id = p is Map ? (p['id'] ?? p['photo_id'] ?? p['farm_photo_id']) : null;
+                    final url = p is Map ? (p['image_url'] as String?) : (p as String?);
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: Stack(
-                        children: [
-                          ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(url, width: 120, height: 80, fit: BoxFit.cover)),
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: GestureDetector(
-                              onTap: () async {
-                                final ok = await showDialog<bool>(
-                                  context: context,
-                                  builder: (_) => AlertDialog(
-                                    title: const Text('Supprimer la photo'),
-                                    content: const Text('Supprimer cette photo de la galerie ?'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
-                                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer')),
-                                    ],
-                                  ),
-                                );
-                                if (ok == true && id != null) {
-                                  try {
-                                    await ApiService.deleteFarmPhoto(farmId: widget.farm['id'] as int, photoId: id as int);
-                                    if (!mounted) return;
-                                    // Vider le cache d'images
-                                    imageCache.clearLiveImages();
-                                    imageCache.clear();
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo supprimée')));
-                                    // Refresh the screen by popping and returning an update, or simply reload
-                                    final updated = await ApiService.getFarm(widget.farm['id'] as int);
-                                    if (!mounted) return;
-                                            Navigator.pop(context);
-                                            Navigator.push(context, MaterialPageRoute(builder: (_) => EditFarmScreen(farm: updated, userId: widget.userId)));
-                                  } catch (e) {
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur suppression: $e')));
-                                  }
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(12)),
-                                child: const Icon(Icons.delete, color: Colors.white, size: 16),
-                              ),
-                            ),
-                          ),
-                                  Positioned(
-                                    bottom: 4,
-                                    right: 4,
-                                    child: GestureDetector(
-                                      onTap: () async {
+                      child: url != null
+                          ? Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(url, width: 120, height: 80, fit: BoxFit.cover),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      final ok = await showDialog<bool>(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          title: const Text('Supprimer la photo'),
+                                          content: const Text('Supprimer cette photo de la galerie ?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+                                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer')),
+                                          ],
+                                        ),
+                                      );
+                                      if (ok == true) {
+                                        if (id == null) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('Impossible de supprimer : ID de photo non trouvé'),
+                                                backgroundColor: Colors.orange,
+                                              ),
+                                            );
+                                          }
+                                          return;
+                                        }
                                         try {
-                                          final farmId = widget.farm['id'] as int;
-                                          final name = widget.farm['name'] ?? '';
-                                          final location = widget.farm['location'] ?? '';
-                                          final sizeVal = widget.farm['size_hectares'];
-                                          final size = sizeVal != null ? double.tryParse(sizeVal.toString()) : null;
-                                          final soil = widget.farm['soil_type'] ?? widget.farm['soilType'];
-                                          final updated = await ApiService.updateFarm(
-                                            farmId: farmId,
-                                            name: name,
-                                            location: location,
-                                            sizeHectares: size,
-                                            soilType: soil,
-                                            imageUrl: url,
-                                          );
-                                          // Update local farm map and UI
-                                          widget.farm['image_url'] = url;
-                                          widget.farm['imageUrl'] = url;
-                                          setState(() {
-                                            _profileBytes = null;
-                                            _profileFile = null;
-                                          });
+                                          await ApiService.deleteFarmPhoto(farmId: widget.farm['id'] as int, photoId: id as int);
                                           if (!mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo définie comme profil')));
+                                          // Vider le cache d'images
+                                          imageCache.clearLiveImages();
+                                          imageCache.clear();
+                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo supprimée')));
+                                          // Refresh the farm data
+                                          final updated = await ApiService.getFarm(widget.farm['id'] as int);
+                                          if (!mounted) return;
+                                          // Update the farm data and rebuild
+                                          setState(() {
+                                            widget.farm.clear();
+                                            widget.farm.addAll(updated);
+                                          });
                                         } catch (e) {
                                           if (!mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur suppression: $e')));
                                         }
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(12)),
-                                        child: const Icon(Icons.person, color: Colors.white, size: 16),
-                                      ),
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(12)),
+                                      child: const Icon(Icons.delete, color: Colors.white, size: 16),
                                     ),
                                   ),
-                        ],
-                      ),
+                                ),
+                                Positioned(
+                                  bottom: 4,
+                                  right: 4,
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      try {
+                                        final farmId = widget.farm['id'] as int;
+                                        final name = widget.farm['name'] ?? '';
+                                        final location = widget.farm['location'] ?? '';
+                                        final sizeVal = widget.farm['size_hectares'];
+                                        final size = sizeVal != null ? double.tryParse(sizeVal.toString()) : null;
+                                        final soil = widget.farm['soil_type'] ?? widget.farm['soilType'];
+                                        final updated = await ApiService.updateFarm(
+                                          farmId: farmId,
+                                          name: name,
+                                          location: location,
+                                          sizeHectares: size,
+                                          soilType: soil,
+                                          imageUrl: url,
+                                        );
+                                        // Update local farm map and UI
+                                        widget.farm['image_url'] = url;
+                                        widget.farm['imageUrl'] = url;
+                                        setState(() {
+                                          _profileBytes = null;
+                                          _profileFile = null;
+                                        });
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo définie comme profil')));
+                                      } catch (e) {
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(12)),
+                                      child: const Icon(Icons.person, color: Colors.white, size: 16),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const SizedBox(width: 120, height: 80, child: Center(child: Icon(Icons.image_not_supported))),
                     );
                   }).toList(),
                 ),
@@ -273,8 +358,25 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
   }
 
   Widget _buildProfileDisplay() {
-    final url = (widget.farm['photos'] != null && (widget.farm['photos'] as List).isNotEmpty) ? (widget.farm['photos'] as List).first : (widget.farm['image_url'] ?? widget.farm['imageUrl']);
+    String? url;
+    
+    // Essayer d'obtenir l'URL depuis les photos
+    if (widget.farm['photos'] != null && (widget.farm['photos'] as List).isNotEmpty) {
+      final firstPhoto = (widget.farm['photos'] as List).first;
+      if (firstPhoto is Map) {
+        url = firstPhoto['image_url'] as String?;
+      } else if (firstPhoto is String) {
+        url = firstPhoto;
+      }
+    }
+    
+    // Sinon utiliser image_url ou imageUrl
+    if (url == null) {
+      url = widget.farm['image_url'] as String? ?? widget.farm['imageUrl'] as String?;
+    }
+    
     if (url == null) return const Text('Aucune image');
+    
     return Stack(
       children: [
         Image.network(url, height: 80, width: double.infinity, fit: BoxFit.cover),
