@@ -6,6 +6,7 @@ import 'package:mbaymi/screens/post_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:mbaymi/screens/animal_detail_screen.dart';
+import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 
 class SocialFeedScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -438,8 +439,13 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                 const SizedBox(width: 16),
                 GestureDetector(
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('💬 Commentaires'), backgroundColor: _primaryColor),
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (context) => CommentsBottomSheet(
+                        postId: post['id'],
+                        currentUserId: _userId,
+                      ),
                     );
                   },
                   child: Row(children: [Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('$commentsCount')]),
@@ -505,13 +511,18 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final ownerName = post['owner_name'] as String? ?? 'Agriculteur';
     final title = post['title'] as String? ?? '';
     final description = post['description'] as String?;
-    final photoUrl = post['photo_url'] as String?;
+    final photoUrl = post['photo_url'] as String? ?? post['image_url'] as String?;
     final postType = post['post_type'] as String? ?? 'crop_update';
     final createdAt = DateTime.tryParse(post['created_at'] as String? ?? '') ?? DateTime.now();
     final postId = post['id'] as int? ?? 0;
     final likesCount = post['likes_count'] ?? 0;
     final commentsCount = post['comments_count'] ?? 0;
     final sharesCount = post['shares_count'] ?? 0;
+    
+    // Pricing info
+    final postIntent = post['post_intent'] as String? ?? 'share';
+    final price = post['price'] as num?;
+    final unit = post['unit'] as String? ?? 'kg';
 
     final postTypeEmoji = {
       'crop_update': '🌱',
@@ -604,13 +615,51 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               ),
             ),
 
-            // 🖼️ Image
+            // Image
             if (photoUrl != null && photoUrl.isNotEmpty)
-              Container(
-                height: 300,
-                width: double.infinity,
-                color: Colors.grey[300],
-                child: Image.network(photoUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => Icon(Icons.image, size: 40, color: Colors.grey[400])),
+              Stack(
+                children: [
+                  Container(
+                    height: 300,
+                    width: double.infinity,
+                    color: Colors.grey[300],
+                    child: Image.network(photoUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => Icon(Icons.image, size: 40, color: Colors.grey[400])),
+                  ),
+                  // Price badge
+                  if (postIntent == 'sell' && price != null)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _primaryColor,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.local_atm, color: Colors.white, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${price.toStringAsFixed(0)} CFA/$unit',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               )
             else
               Container(
@@ -684,8 +733,13 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('💬 Commentaires'), backgroundColor: _primaryColor),
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (context) => CommentsBottomSheet(
+                          postId: post['id'],
+                          currentUserId: _userId,
+                        ),
                       );
                     },
                     child: Row(children: [Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('$commentsCount')]),
@@ -921,10 +975,10 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                 GestureDetector(
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('💬 Commentaires'), backgroundColor: _primaryColor),
+                      const SnackBar(content: Text('Les commentaires ne sont pas disponibles pour les animaux'), backgroundColor: _primaryColor),
                     );
                   },
-                  child: Row(children: [Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('${animal['comments_count'] ?? 0}')]),
+                  child: Row(children: [Icon(Icons.chat_bubble_outline, size: 20, color: Colors.grey[400]), const SizedBox(width: 4), Text('${animal['comments_count'] ?? 0}')]),
                 ),
                 const SizedBox(width: 16),
                 GestureDetector(

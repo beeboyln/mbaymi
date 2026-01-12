@@ -56,19 +56,42 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> int:
 
 @router.post("/", response_model=dict)
 def create_farm_post(farm_post: FarmPostCreate, user_id: int, db: Session = Depends(get_db)):
-    """Créer un nouveau post image pour une ferme"""
-    farm = db.query(Farm).filter(Farm.id == farm_post.farm_id).first()
-    if not farm:
-        raise HTTPException(status_code=404, detail="Ferme non trouvée")
+    """Créer un nouveau post image pour une ferme ou un animal"""
     
-    if farm.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Vous n'êtes pas le propriétaire de cette ferme")
+    # Vérifier farm_id OU livestock_id
+    farm_id = getattr(farm_post, 'farm_id', None)
+    livestock_id = getattr(farm_post, 'livestock_id', None)
+    
+    if farm_id:
+        farm = db.query(Farm).filter(Farm.id == farm_id).first()
+        if not farm:
+            raise HTTPException(status_code=404, detail="Ferme non trouvée")
+        
+        if farm.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Vous n'êtes pas le propriétaire de cette ferme")
+    
+    if livestock_id:
+        from app.models.livestock import Livestock
+        livestock = db.query(Livestock).filter(Livestock.id == livestock_id).first()
+        if not livestock:
+            raise HTTPException(status_code=404, detail="Animal non trouvé")
+        
+        if livestock.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Vous n'êtes pas le propriétaire de cet animal")
+    
+    if not farm_id and not livestock_id:
+        raise HTTPException(status_code=400, detail="farm_id ou livestock_id requis")
     
     new_post = FarmImagePost(
-        farm_id=farm_post.farm_id,
+        farm_id=farm_id,
+        livestock_id=livestock_id,
         user_id=user_id,
         image_url=farm_post.image_url,
         caption=farm_post.caption,
+        post_intent=getattr(farm_post, 'post_intent', 'share'),
+        price=getattr(farm_post, 'price', None),
+        product_name=getattr(farm_post, 'product_name', None),
+        unit=getattr(farm_post, 'unit', 'kg'),
     )
     
     db.add(new_post)
@@ -78,8 +101,12 @@ def create_farm_post(farm_post: FarmPostCreate, user_id: int, db: Session = Depe
     return {
         "id": new_post.id,
         "farm_id": new_post.farm_id,
+        "livestock_id": new_post.livestock_id,
         "image_url": new_post.image_url,
         "caption": new_post.caption,
+        "post_intent": new_post.post_intent,
+        "price": new_post.price,
+        "unit": new_post.unit,
         "likes_count": 0,
         "comments_count": 0,
         "shares_count": 0,
@@ -119,6 +146,9 @@ def get_farm_posts_feed(user_id: int = None, db: Session = Depends(get_db)):
             "shares_count": post.shares_count,
             "created_at": post.created_at.isoformat(),
             "is_liked": is_liked,
+            "post_intent": post.post_intent,
+            "price": post.price,
+            "unit": post.unit,
         })
     
     return result
@@ -144,6 +174,42 @@ def get_farm_posts(farm_id: int, user_id: int = None, db: Session = Depends(get_
         result.append({
             "id": post.id,
             "farm_id": post.farm_id,
+            "owner_name": user.name if user else "Utilisateur",
+            "owner_profile_image": user.profile_image if user else None,
+            "user_id": post.user_id,
+            "image_url": post.image_url,
+            "caption": post.caption,
+            "likes_count": post.likes_count,
+            "comments_count": post.comments_count,
+            "shares_count": post.shares_count,
+            "created_at": post.created_at.isoformat(),
+            "is_liked": is_liked,
+        })
+    
+    return result
+
+
+@router.get("/livestock/{livestock_id}")
+def get_livestock_posts(livestock_id: int, user_id: int = None, db: Session = Depends(get_db)):
+    """Récupérer tous les posts d'un animal (livestock) spécifique"""
+    posts = db.query(FarmImagePost).filter(FarmImagePost.livestock_id == livestock_id).order_by(desc(FarmImagePost.created_at)).all()
+    
+    result = []
+    for post in posts:
+        is_liked = False
+        if user_id and user_id > 0:
+            like = db.query(FarmPostLike).filter(
+                FarmPostLike.farm_post_id == post.id,
+                FarmPostLike.user_id == user_id
+            ).first()
+            is_liked = like is not None
+
+        user = db.query(User).filter(User.id == post.user_id).first()
+
+        result.append({
+            "id": post.id,
+            "farm_id": post.farm_id,
+            "livestock_id": post.livestock_id,
             "owner_name": user.name if user else "Utilisateur",
             "owner_profile_image": user.profile_image if user else None,
             "user_id": post.user_id,
@@ -242,3 +308,96 @@ def delete_farm_post(post_id: int, user_id: int, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erreur suppression: {e}")
 
+
+# ===== COMMENTAIRES =====
+
+@router.get("/{post_id}/comments")
+def get_post_comments(post_id: int, db: Session = Depends(get_db)):
+    """Récupérer tous les commentaires d'un post"""
+    comments = db.query(FarmPostComment).filter(
+        FarmPostComment.farm_post_id == post_id
+    ).order_by(FarmPostComment.created_at).all()
+    
+    result = []
+    for comment in comments:
+        user = db.query(User).filter(User.id == comment.user_id).first()
+        result.append({
+            "id": comment.id,
+            "farm_post_id": comment.farm_post_id,
+            "user_id": comment.user_id,
+            "user_name": user.name if user else "Utilisateur",
+            "user_profile_image": user.profile_image if user else None,
+            "comment": comment.comment,
+            "created_at": comment.created_at.isoformat(),
+        })
+    
+    return result
+
+
+@router.post("/{post_id}/comments")
+def add_comment(post_id: int, comment_text: str, user_id: int, db: Session = Depends(get_db)):
+    """Ajouter un commentaire à un post"""
+    # Vérifier que le post existe
+    post = db.query(FarmImagePost).filter(FarmImagePost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post non trouvé")
+    
+    # Créer le commentaire
+    try:
+        new_comment = FarmPostComment(
+            farm_post_id=post_id,
+            user_id=user_id,
+            comment=comment_text.strip()
+        )
+        db.add(new_comment)
+        
+        # Incrémenter le compteur
+        post.comments_count = (post.comments_count or 0) + 1
+        
+        db.commit()
+        db.refresh(new_comment)
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        return {
+            "id": new_comment.id,
+            "farm_post_id": new_comment.farm_post_id,
+            "user_id": new_comment.user_id,
+            "user_name": user.name if user else "Utilisateur",
+            "user_profile_image": user.profile_image if user else None,
+            "comment": new_comment.comment,
+            "created_at": new_comment.created_at.isoformat(),
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erreur ajout commentaire: {e}")
+
+
+@router.delete("/{post_id}/comments/{comment_id}")
+def delete_comment(post_id: int, comment_id: int, user_id: int, db: Session = Depends(get_db)):
+    """Supprimer un commentaire"""
+    # Vérifier que le commentaire existe
+    comment = db.query(FarmPostComment).filter(
+        FarmPostComment.id == comment_id,
+        FarmPostComment.farm_post_id == post_id
+    ).first()
+    
+    if not comment:
+        raise HTTPException(status_code=404, detail="Commentaire non trouvé")
+    
+    # Autoriser si user est l'auteur du commentaire
+    if comment.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Non autorisé à supprimer ce commentaire")
+    
+    try:
+        # Récupérer le post pour décrémenter le compteur
+        post = db.query(FarmImagePost).filter(FarmImagePost.id == post_id).first()
+        if post:
+            post.comments_count = max(0, (post.comments_count or 1) - 1)
+        
+        db.delete(comment)
+        db.commit()
+        
+        return {"success": True, "message": "Commentaire supprimé"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erreur suppression: {e}")

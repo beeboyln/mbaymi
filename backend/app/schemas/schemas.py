@@ -208,6 +208,11 @@ class PastureImageResponse(PastureImageCreate):
         from_attributes = True
 
 class FarmPostCreate(BaseModel):
-    farm_id: int
+    farm_id: Optional[int] = None
+    livestock_id: Optional[int] = None
     image_url: str
     caption: Optional[str] = None
+    post_intent: str = "share"  # "sell" ou "share"
+    price: Optional[float] = None  # Prix si vente
+    product_name: Optional[str] = None  # Produit vendu
+    unit: str = "kg"  # Unité de mesure

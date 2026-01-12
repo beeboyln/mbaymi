@@ -7,12 +7,14 @@ class CreateFarmPostDialog extends StatefulWidget {
   final int farmId;
   final String farmName;
   final VoidCallback onPostCreated;
+  final int? livestockId;
 
   const CreateFarmPostDialog({
     Key? key,
     required this.farmId,
     required this.farmName,
     required this.onPostCreated,
+    this.livestockId,
   }) : super(key: key);
 
   @override
@@ -22,15 +24,20 @@ class CreateFarmPostDialog extends StatefulWidget {
 class _CreateFarmPostDialogState extends State<CreateFarmPostDialog> {
   final _imagePicker = ImagePicker();
   final _captionController = TextEditingController();
+  final _priceController = TextEditingController();
   
   String? _selectedImageUrl;
   bool _isLoading = false;
+  String _postIntent = "share";  // "share" ou "sell"
+  String _unit = "kg";  // kg, litre, pièce, etc.
 
   static const Color _primaryColor = Color(0xFF8B6B4D);
+  static const List<String> UNITS = ['kg', 'litre', 'pièce', 'panier', 'sac'];
 
   @override
   void dispose() {
     _captionController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
@@ -100,6 +107,10 @@ class _CreateFarmPostDialogState extends State<CreateFarmPostDialog> {
         userId: userId,
         imageUrl: _selectedImageUrl!,
         caption: _captionController.text.trim(),
+        postIntent: _postIntent,
+        price: _postIntent == "sell" ? double.tryParse(_priceController.text) : null,
+        unit: _unit,
+        livestockId: widget.livestockId,
       );
 
       // Invalidate cached API data so the social feed picks up the new post
@@ -135,44 +146,29 @@ class _CreateFarmPostDialogState extends State<CreateFarmPostDialog> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: SingleChildScrollView(
-        child: Container(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Nouveau Post'),
+        backgroundColor: _primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Nouveau Post',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
+                // Farm name
+                Text(
+                  'Ferme: ${widget.farmName}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Farm name
-              Text(
-                'Ferme: ${widget.farmName}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
               // Image picker
               GestureDetector(
@@ -248,6 +244,138 @@ class _CreateFarmPostDialogState extends State<CreateFarmPostDialog> {
                   fillColor: isDark ? Colors.grey[900] : Colors.grey[50],
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // POST INTENT SELECTOR
+              Text(
+                'Type de post',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _postIntent = "share"),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: _postIntent == "share" ? _primaryColor : Colors.grey[300]!,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          color: _postIntent == "share"
+                              ? _primaryColor.withOpacity(0.1)
+                              : Colors.transparent,
+                        ),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.image,
+                                size: 28,
+                                color: _primaryColor,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Je partage',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _postIntent = "sell"),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: _postIntent == "sell" ? _primaryColor : Colors.grey[300]!,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          color: _postIntent == "sell"
+                              ? _primaryColor.withOpacity(0.1)
+                              : Colors.transparent,
+                        ),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.local_atm,
+                                size: 28,
+                                color: _primaryColor,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Je vends',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Show pricing fields only if selling
+              if (_postIntent == "sell") ...[
+                const SizedBox(height: 20),
+                // Price and unit row
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _priceController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Prix',
+                          hintText: '5000',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          prefixIcon: const Icon(Icons.local_atm, color: _primaryColor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _unit,
+                        items: UNITS.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _unit = value);
+                          }
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Unité',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Buttons

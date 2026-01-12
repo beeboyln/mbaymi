@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:mbaymi/screens/animal_photo_carousel_screen.dart';
+import 'package:mbaymi/widgets/farm_posts_widget.dart';
 
 class EditLivestockScreen extends StatefulWidget {
   final int livestockId;
@@ -30,38 +32,20 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   late TextEditingController _feedingCtrl;
   late TextEditingController _notesCtrl;
 
-  late FocusNode _animalTypeFocus;
-  late FocusNode _breedFocus;
-  late FocusNode _quantityFocus;
-  late FocusNode _ageFocus;
-  late FocusNode _weightFocus;
-  late FocusNode _healthFocus;
-  late FocusNode _feedingFocus;
-  late FocusNode _notesFocus;
-
   bool _loading = false;
   XFile? _imageFile;
   Uint8List? _imageBytes;
   String? _existingImageUrl;
   late Future<List<dynamic>> _photosFuture;
-  List<dynamic> _animalPhotos = [];
-  Map<String, dynamic>? _userProfile;
   late String _visibility;
+  late int _userId;
+  bool _showPosts = false;
 
-  // Palette de couleurs
-  static const Color _primaryColor = Color(0xFF8B6B4D);
-  static const Color _primaryLight = Color(0xFFA58A6D);
-  static const Color _accentColor = Color(0xFFC4A484);
-  static const Color _bgLight = Color(0xFFFAF8F5);
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = Colors.white;
-  static const Color _cardDark = Color(0xFF1E1E1E);
-  static const Color _borderLight = Color(0xFFE8E2D8);
-  static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _textLight = Color(0xFF1A1A1A);
-  static const Color _textDark = Colors.white;
-  static const Color _textSecondaryLight = Color(0xFF6B6B6B);
-  static const Color _textSecondaryDark = Color(0xFF8E8E93);
+  static const Color _primaryColor = Color(0xFF6B8E23);
+  static const Color _bgLight = Color(0xFFF8F9FA);
+  static const Color _bgDark = Color(0xFF0A0A0A);
+  static const Color _cardLight = Color(0xFFFFFFFF);
+  static const Color _cardDark = Color(0xFF1A1A1A);
 
   final List<String> _animalTypes = ['Bovins', 'Chèvres', 'Moutons', 'Porcs', 'Volailles', 'Autre'];
   final List<String> _healthStatuses = ['Sain', 'Malade', 'Vacciné', 'À surveiller'];
@@ -70,9 +54,9 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   @override
   void initState() {
     super.initState();
+    _userId = AuthService.currentSession?.userId ?? 0;
     _existingImageUrl = widget.livestock['image_url'];
     _photosFuture = ApiService.getAnimalPhotos(widget.livestockId);
-    _loadUserProfile();
     _visibility = widget.livestock['visibility'] ?? 'PRIVATE';
     
     _animalTypeCtrl = TextEditingController(text: widget.livestock['animal_type'] ?? '');
@@ -83,27 +67,6 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     _healthCtrl = TextEditingController(text: widget.livestock['health_status'] ?? '');
     _feedingCtrl = TextEditingController(text: widget.livestock['feeding_type'] ?? '');
     _notesCtrl = TextEditingController(text: widget.livestock['notes'] ?? '');
-
-    _animalTypeFocus = FocusNode();
-    _breedFocus = FocusNode();
-    _quantityFocus = FocusNode();
-    _ageFocus = FocusNode();
-    _weightFocus = FocusNode();
-    _healthFocus = FocusNode();
-    _feedingFocus = FocusNode();
-    _notesFocus = FocusNode();
-  }
-
-  Future<void> _loadUserProfile() async {
-    try {
-      final userId = widget.livestock['user_id'] ?? 0;
-      final profile = await ApiService.getUserProfile(userId);
-      if (mounted) {
-        setState(() => _userProfile = profile);
-      }
-    } catch (e) {
-      debugPrint('Error loading user profile: $e');
-    }
   }
 
   Future<void> _pickImage() async {
@@ -134,15 +97,6 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     _healthCtrl.dispose();
     _feedingCtrl.dispose();
     _notesCtrl.dispose();
-
-    _animalTypeFocus.dispose();
-    _breedFocus.dispose();
-    _quantityFocus.dispose();
-    _ageFocus.dispose();
-    _weightFocus.dispose();
-    _healthFocus.dispose();
-    _feedingFocus.dispose();
-    _notesFocus.dispose();
     super.dispose();
   }
 
@@ -160,7 +114,6 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     try {
       String? imageUrl = _existingImageUrl;
       
-      // Upload image to Cloudinary if new image selected
       if (_imageFile != null) {
         imageUrl = await ApiService.uploadImageToCloudinary(_imageFile!);
       }
@@ -179,11 +132,11 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
         visibility: _visibility,
       );
 
-      _showSuccessSnackBar('Animal modifié avec succès !');
+      _showSnackBar('Animal modifié avec succès', isError: false);
       await Future.delayed(const Duration(milliseconds: 500));
       Navigator.pop(context, res);
     } catch (e) {
-      _showErrorSnackBar('Erreur: ${e.toString()}');
+      _showSnackBar('Erreur: ${e.toString()}', isError: true);
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -195,8 +148,9 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Supprimer cet animal?'),
-        content: const Text('Cette action ne peut pas être annulée.'),
+        content: const Text('Cette action est irréversible.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -214,38 +168,21 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
       setState(() => _loading = true);
       try {
         await ApiService.deleteLivestock(widget.livestockId);
-        _showSuccessSnackBar('Animal supprimé');
+        _showSnackBar('Animal supprimé', isError: false);
         await Future.delayed(const Duration(milliseconds: 500));
         Navigator.pop(context, {'deleted': true});
       } catch (e) {
-        _showErrorSnackBar('Erreur: ${e.toString()}');
+        _showSnackBar('Erreur: ${e.toString()}', isError: true);
         setState(() => _loading = false);
       }
     }
   }
 
-  void _showSuccessSnackBar(String message) {
+  void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.w300),
-        ),
-        backgroundColor: _primaryColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.w300),
-        ),
-        backgroundColor: Colors.red.shade400,
+        content: Text(message),
+        backgroundColor: isError ? Colors.red.shade400 : _primaryColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -257,295 +194,272 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? _bgDark : _bgLight;
     final cardColor = isDark ? _cardDark : _cardLight;
-    final textColor = isDark ? _textDark : _textLight;
-    final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
-    final borderColor = isDark ? _borderDark : _borderLight;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDark ? Colors.white60 : Colors.black54;
 
     return Scaffold(
       backgroundColor: bgColor,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(cardColor, textColor, secondaryTextColor, borderColor),
-
-            // Formulaire
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                child: GestureDetector(
-                  onTap: () => FocusScope.of(context).unfocus(),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 🖼️ GALERIE DE PHOTOS EN PREMIER (priorité visuelle)
-                        _buildImageSection(
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                        ),
-                        const SizedBox(height: 32),
-
-                        // 🐾 INFOS DE BASE
-                        _buildSectionTitle('Information de l\'animal'),
-                        const SizedBox(height: 16),
-                        _buildDropdown(
-                          label: 'Type',
-                          value: _animalTypeCtrl.text.isEmpty ? null : _animalTypeCtrl.text,
-                          items: _animalTypes,
-                          onChanged: (value) => setState(() => _animalTypeCtrl.text = value ?? ''),
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          icon: Icons.pets_outlined,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _breedCtrl,
-                          label: 'Race/Variété',
-                          hint: 'Ex: Race locale',
-                          icon: Icons.info_outlined,
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          secondaryTextColor: secondaryTextColor,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _quantityCtrl,
-                                label: 'Quantité',
-                                hint: '1',
-                                icon: Icons.numbers,
-                                keyboardType: TextInputType.number,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                borderColor: borderColor,
-                                secondaryTextColor: secondaryTextColor,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _ageCtrl,
-                                label: 'Âge (mois)',
-                                hint: 'Mois',
-                                icon: Icons.calendar_month,
-                                keyboardType: TextInputType.number,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                borderColor: borderColor,
-                                secondaryTextColor: secondaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _weightCtrl,
-                          label: 'Poids (kg)',
-                          hint: 'Kilos',
-                          icon: Icons.scale,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          secondaryTextColor: secondaryTextColor,
-                        ),
-                        const SizedBox(height: 32),
-
-                        // 💊 SANTÉ & ALIMENTATION
-                        _buildSectionTitle('Santé & Alimentation'),
-                        const SizedBox(height: 16),
-                        _buildDropdown(
-                          label: 'État de santé',
-                          value: _healthCtrl.text.isEmpty ? null : _healthCtrl.text,
-                          items: _healthStatuses,
-                          onChanged: (value) => setState(() => _healthCtrl.text = value ?? ''),
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          icon: Icons.health_and_safety_outlined,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildDropdown(
-                          label: 'Type d\'alimentation',
-                          value: _feedingCtrl.text.isEmpty ? null : _feedingCtrl.text,
-                          items: _feedingTypes,
-                          onChanged: (value) => setState(() => _feedingCtrl.text = value ?? ''),
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          icon: Icons.restaurant_outlined,
-                        ),
-                        const SizedBox(height: 32),
-
-                        // 📝 NOTES & OBSERVATIONS
-                        _buildSectionTitle('Notes & Observations'),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _notesCtrl,
-                          label: 'Observations',
-                          hint: 'Remarques importantes...',
-                          icon: Icons.note_outlined,
-                          maxLines: 3,
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          secondaryTextColor: secondaryTextColor,
-                        ),
-                        const SizedBox(height: 32),
-
-                        // 👁️ VISIBILITÉ
-                        _buildSectionTitle('Visibilité'),
-                        const SizedBox(height: 16),
-                        _buildVisibilitySelector(
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                        ),
-                        const SizedBox(height: 40),
-
-                        // 🔘 ACTIONS (en dernier)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildDeleteButton(),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 2,
-                              child: _buildSubmitButton(),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-                ),
+      appBar: AppBar(
+        backgroundColor: cardColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Modifier l\'animal',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => setState(() => _showPosts = !_showPosts),
+            icon: Icon(
+              _showPosts ? Icons.close : Icons.photo_library_outlined,
+              color: _primaryColor,
+              size: 20,
+            ),
+            label: Text(
+              _showPosts ? 'Fermer' : 'Publications',
+              style: TextStyle(
+                color: _primaryColor,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            onPressed: _delete,
+            tooltip: 'Supprimer',
+          ),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: _showPosts
+            ? _buildPostsSection(cardColor, textColor)
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Photo principale
+              _buildPhotoSection(cardColor, textColor, secondaryTextColor),
+              
+              const SizedBox(height: 32),
+
+              // Informations de base
+              _buildSectionTitle('Informations'),
+              const SizedBox(height: 16),
+              
+              _buildDropdown(
+                label: 'Type d\'animal',
+                value: _animalTypeCtrl.text.isEmpty ? null : _animalTypeCtrl.text,
+                items: _animalTypes,
+                onChanged: (value) => setState(() => _animalTypeCtrl.text = value ?? ''),
+                icon: Icons.pets,
+                cardColor: cardColor,
+                textColor: textColor,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              _buildTextField(
+                controller: _breedCtrl,
+                label: 'Race',
+                hint: 'Ex: Race locale',
+                icon: Icons.info_outline,
+                cardColor: cardColor,
+                textColor: textColor,
+                secondaryTextColor: secondaryTextColor,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _quantityCtrl,
+                      label: 'Quantité',
+                      hint: '1',
+                      icon: Icons.format_list_numbered,
+                      keyboardType: TextInputType.number,
+                      cardColor: cardColor,
+                      textColor: textColor,
+                      secondaryTextColor: secondaryTextColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _ageCtrl,
+                      label: 'Âge (mois)',
+                      hint: '12',
+                      icon: Icons.calendar_today,
+                      keyboardType: TextInputType.number,
+                      cardColor: cardColor,
+                      textColor: textColor,
+                      secondaryTextColor: secondaryTextColor,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              _buildTextField(
+                controller: _weightCtrl,
+                label: 'Poids (kg)',
+                hint: '250',
+                icon: Icons.monitor_weight_outlined,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                cardColor: cardColor,
+                textColor: textColor,
+                secondaryTextColor: secondaryTextColor,
+              ),
+
+              const SizedBox(height: 32),
+
+              // Santé
+              _buildSectionTitle('Santé & Alimentation'),
+              const SizedBox(height: 16),
+              
+              _buildDropdown(
+                label: 'État de santé',
+                value: _healthCtrl.text.isEmpty ? null : _healthCtrl.text,
+                items: _healthStatuses,
+                onChanged: (value) => setState(() => _healthCtrl.text = value ?? ''),
+                icon: Icons.favorite_outline,
+                cardColor: cardColor,
+                textColor: textColor,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              _buildDropdown(
+                label: 'Alimentation',
+                value: _feedingCtrl.text.isEmpty ? null : _feedingCtrl.text,
+                items: _feedingTypes,
+                onChanged: (value) => setState(() => _feedingCtrl.text = value ?? ''),
+                icon: Icons.restaurant_outlined,
+                cardColor: cardColor,
+                textColor: textColor,
+              ),
+
+              const SizedBox(height: 32),
+
+              // Notes
+              _buildSectionTitle('Notes'),
+              const SizedBox(height: 16),
+              
+              _buildTextField(
+                controller: _notesCtrl,
+                label: 'Observations',
+                hint: 'Remarques importantes...',
+                icon: Icons.note_outlined,
+                maxLines: 4,
+                cardColor: cardColor,
+                textColor: textColor,
+                secondaryTextColor: secondaryTextColor,
+              ),
+
+              const SizedBox(height: 32),
+
+              // Visibilité
+              _buildSectionTitle('Visibilité'),
+              const SizedBox(height: 16),
+              
+              _buildVisibilityOptions(cardColor, textColor, secondaryTextColor),
+
+              const SizedBox(height: 40),
+
+              // Bouton enregistrer
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Enregistrer',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(Color cardColor, Color textColor, Color secondaryTextColor, Color borderColor) {
-    final userImage = _userProfile?['profile_image'] as String?;
-    final userName = _userProfile?['username'] as String? ?? 'Utilisateur';
-    
+  Widget _buildPostsSection(Color cardColor, Color textColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        border: Border(bottom: BorderSide(color: borderColor, width: 1)),
+      color: Theme.of(context).brightness == Brightness.dark ? _bgDark : _bgLight,
+      child: FarmPostsWidget(
+        farmId: widget.livestock['farm_id'] ?? 0,
+        farmName: '${widget.livestock['animal_type'] ?? 'Animal'} - ${widget.livestock['breed'] ?? ''}',
+        isOwner: _userId == widget.livestock['user_id'],
+        livestockId: widget.livestock['id'],
       ),
-      child: Row(
-        children: [
-          // Close button with enhanced styling
-          Container(
-            decoration: BoxDecoration(
-              color: _primaryColor.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(8),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black87,
+      ),
+    );
+  }
+
+  Widget _buildPhotoSection(Color cardColor, Color textColor, Color secondaryTextColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Photo',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
             ),
-            child: IconButton(
+            TextButton.icon(
               onPressed: () {
-                HapticFeedback.lightImpact();
-                Navigator.pop(context);
-              },
-              icon: Icon(Icons.close_rounded, color: _primaryColor),
-              padding: const EdgeInsets.all(8),
-              constraints: const BoxConstraints(),
-            ),
-          ),
-          const SizedBox(width: 16),
-          
-          // User avatar
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: _accentColor, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: _primaryColor.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: userImage != null && userImage.isNotEmpty
-                  ? Image.network(
-                      userImage,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: _accentColor.withOpacity(0.2),
-                        child: Icon(
-                          Icons.person_outline,
-                          color: _primaryColor,
-                          size: 24,
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: _accentColor.withOpacity(0.2),
-                      child: Icon(
-                        Icons.person_outline,
-                        color: _primaryColor,
-                        size: 24,
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          
-          // Title and user info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Modifier l\'animal',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'par $userName',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: secondaryTextColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Gallery button with enhanced styling
-          Container(
-            decoration: BoxDecoration(
-              color: _accentColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              onPressed: () {
-                HapticFeedback.lightImpact();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -558,26 +472,91 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
                   ),
                 );
               },
-              icon: Icon(Icons.image_outlined, color: _accentColor),
-              padding: const EdgeInsets.all(8),
-              constraints: const BoxConstraints(),
-              tooltip: 'Galerie de photos',
+              icon: const Icon(Icons.photo_library, size: 18),
+              label: const Text('Galerie'),
+              style: TextButton.styleFrom(
+                foregroundColor: _primaryColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: _pickImage,
+          child: Container(
+            width: double.infinity,
+            height: 200,
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white12
+                    : Colors.black12,
+              ),
+            ),
+            child: _imageBytes != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.memory(
+                      _imageBytes!,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : _existingImageUrl != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          _existingImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildPlaceholder(textColor, secondaryTextColor),
+                        ),
+                      )
+                    : _buildPlaceholder(textColor, secondaryTextColor),
+          ),
+        ),
+        if (_imageBytes != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: TextButton.icon(
+              onPressed: () => setState(() {
+                _imageFile = null;
+                _imageBytes = null;
+              }),
+              icon: const Icon(Icons.close, size: 16),
+              label: const Text('Annuler'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w400,
-        color: _primaryColor,
-        letterSpacing: -0.3,
-      ),
+  Widget _buildPlaceholder(Color textColor, Color secondaryTextColor) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.add_photo_alternate_outlined, size: 48, color: _primaryColor),
+        const SizedBox(height: 12),
+        Text(
+          'Ajouter une photo',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: textColor,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Appuyez pour sélectionner',
+          style: TextStyle(
+            fontSize: 13,
+            color: secondaryTextColor,
+          ),
+        ),
+      ],
     );
   }
 
@@ -588,7 +567,6 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     required IconData icon,
     required Color cardColor,
     required Color textColor,
-    required Color borderColor,
     required Color secondaryTextColor,
     TextInputType? keyboardType,
     int maxLines = 1,
@@ -596,23 +574,26 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor, width: 1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white12
+              : Colors.black12,
+        ),
       ),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        minLines: maxLines == 1 ? 1 : 3,
-        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
+        style: TextStyle(fontSize: 15, color: textColor),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          hintStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w300),
-          labelStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w400),
+          hintStyle: TextStyle(color: secondaryTextColor),
+          labelStyle: TextStyle(color: secondaryTextColor),
           prefixIcon: Icon(icon, color: _primaryColor, size: 20),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.all(16),
         ),
       ),
     );
@@ -623,446 +604,125 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     required String? value,
     required List<String> items,
     required Function(String?) onChanged,
+    required IconData icon,
     required Color cardColor,
     required Color textColor,
-    required Color borderColor,
-    required IconData icon,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor, width: 1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white12
+              : Colors.black12,
+        ),
       ),
       child: DropdownButtonFormField<String>(
         value: value,
         items: items.map((item) {
-          return DropdownMenuItem(
-            value: item,
-            child: Text(item),
-          );
+          return DropdownMenuItem(value: item, child: Text(item));
         }).toList(),
         onChanged: onChanged,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: _primaryColor, size: 20),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          labelStyle: TextStyle(color: Color(0xFF6B6B6B), fontWeight: FontWeight.w400),
+          contentPadding: const EdgeInsets.all(16),
         ),
-        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
+        style: TextStyle(fontSize: 15, color: textColor),
         dropdownColor: cardColor,
         isExpanded: true,
       ),
     );
   }
 
-  Widget _buildImageSection({
-    required Color cardColor,
-    required Color textColor,
-    required Color borderColor,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Galerie de photos'),
-        const SizedBox(height: 16),
-        
-        // Section galerie existante
-        FutureBuilder<List<dynamic>>(
-          future: _photosFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: CircularProgressIndicator(color: _primaryColor),
-                ),
-              );
-            }
-
-            final photos = snapshot.data ?? [];
-            _animalPhotos = photos;
-            
-            // Debug: Afficher les IDs des photos
-            if (photos.isNotEmpty) {
-              debugPrint('📸 Photos loaded: ${photos.map((p) => "id:${p['id']}").toList()}');
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (photos.isNotEmpty) ...[
-                  Text(
-                    '${photos.length} photo${photos.length > 1 ? 's' : ''}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF6B6B6B),
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    itemCount: photos.length,
-                    itemBuilder: (context, index) {
-                      final photo = photos[index] as Map<String, dynamic>;
-                      final photoId = photo['id'] as int?;
-                      final imageUrl = photo['image_url'] as String?;
-
-                      return Stack(
-                        children: [
-                          // Photo
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: borderColor, width: 1),
-                            ),
-                            child: imageUrl != null && imageUrl.isNotEmpty
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      imageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        color: Color(0xFF8B6B4D).withOpacity(0.1),
-                                        child: Icon(Icons.image_not_supported, color: _primaryColor),
-                                      ),
-                                    ),
-                                  )
-                                : Container(
-                                    color: Color(0xFF8B6B4D).withOpacity(0.1),
-                                    child: Icon(Icons.image_outlined, color: _primaryColor),
-                                  ),
-                          ),
-                          
-                          // Bouton supprimer
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: GestureDetector(
-                              onTap: () => _deleteAnimalPhoto(photoId, index),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade600,
-                                  shape: BoxShape.circle,
-                                ),
-                                padding: const EdgeInsets.all(4),
-                                child: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                ] else ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: borderColor, width: 1),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Aucune photo pour cet animal',
-                        style: TextStyle(
-                          color: Color(0xFF6B6B6B),
-                          fontWeight: FontWeight.w400,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ],
-            );
-          },
-        ),
-
-        // Section ajouter une nouvelle photo
-        Text(
-          'Ajouter une photo',
-          style: TextStyle(
-            fontSize: 14,
-            color: Color(0xFF6B6B6B),
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: _loading ? null : _pickImage,
-          child: Container(
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: borderColor, width: 1),
-            ),
-            child: _imageBytes != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.memory(
-                      _imageBytes!,
-                      fit: BoxFit.cover,
-                      height: 200,
-                      width: double.infinity,
-                    ),
-                  )
-                : _buildPlaceholder(textColor),
-          ),
-        ),
-        if (_imageBytes != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: GestureDetector(
-              onTap: () => setState(() {
-                _imageFile = null;
-                _imageBytes = null;
-              }),
-              child: Text(
-                'Annuler la sélection',
-                style: TextStyle(
-                  color: _primaryColor,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Future<void> _deleteAnimalPhoto(int? photoId, int index) async {
-    if (photoId == null) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer cette photo?'),
-        content: const Text('Cette action ne peut pas être annulée.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        debugPrint('🗑️ Attempting to delete photo id: $photoId');
-        await ApiService.deleteAnimalPhoto(photoId);
-        
-        // Refresh the photos list from server
-        setState(() {
-          _photosFuture = ApiService.getAnimalPhotos(widget.livestockId);
-        });
-        
-        _showSuccessSnackBar('Photo supprimée');
-      } catch (e) {
-        debugPrint('❌ Error deleting photo: $e');
-        _showErrorSnackBar('Erreur: ${e.toString()}');
-      }
-    }
-  }
-
-  Widget _buildPlaceholder(Color textColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.image_outlined,
-            size: 48,
-            color: _primaryColor,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Ajouter une photo',
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w400,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Appuyez pour sélectionner une image',
-            style: TextStyle(
-              color: _textSecondaryLight,
-              fontWeight: FontWeight.w300,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return SizedBox(
-      height: 52,
-      child: Material(
-        borderRadius: BorderRadius.circular(10),
-        color: _primaryColor,
-        child: InkWell(
-          onTap: _loading ? null : _submit,
-          borderRadius: BorderRadius.circular(10),
-          child: Center(
-            child: _loading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      strokeWidth: 2.5,
-                    ),
-                  )
-                : const Text(
-                    'Modifier',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeleteButton() {
-    return SizedBox(
-      height: 52,
-      child: Material(
-        borderRadius: BorderRadius.circular(10),
-        color: Colors.red.shade100,
-        child: InkWell(
-          onTap: _loading ? null : _delete,
-          borderRadius: BorderRadius.circular(10),
-          child: Center(
-            child: Icon(
-              Icons.delete_outline,
-              color: Colors.red.shade700,
-              size: 20,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVisibilitySelector({
-    required Color cardColor,
-    required Color textColor,
-    required Color borderColor,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final visibilityOptions = [
+  Widget _buildVisibilityOptions(Color cardColor, Color textColor, Color secondaryTextColor) {
+    final options = [
       {
         'value': 'PRIVATE',
         'label': 'Privé',
-        'icon': Icons.lock_outlined,
-        'description': 'Visible uniquement par vous',
+        'icon': Icons.lock_outline,
+        'desc': 'Visible uniquement par vous',
         'color': Colors.red.shade400,
       },
       {
         'value': 'PARTIAL',
         'label': 'Partagé',
         'icon': Icons.people_outline,
-        'description': 'Visible via les posts uniquement',
+        'desc': 'Visible via les posts',
         'color': Colors.orange.shade400,
       },
       {
         'value': 'PUBLIC',
         'label': 'Public',
-        'icon': Icons.public_outlined,
-        'description': 'Visible par tous',
-        'color': const Color(0xFF6B8E23),
+        'icon': Icons.public,
+        'desc': 'Visible par tous',
+        'color': _primaryColor,
       },
     ];
 
     return Column(
-      children: visibilityOptions.map((option) {
+      children: options.map((option) {
         final isSelected = _visibility == option['value'];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => setState(() => _visibility = option['value'] as String),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isSelected ? (option['color'] as Color).withOpacity(0.1) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isSelected ? (option['color'] as Color) : borderColor,
-                    width: isSelected ? 2 : 1,
-                  ),
+          child: GestureDetector(
+            onTap: () => setState(() => _visibility = option['value'] as String),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? (option['color'] as Color).withOpacity(0.1)
+                    : cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected
+                      ? (option['color'] as Color)
+                      : (Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white12
+                          : Colors.black12),
+                  width: isSelected ? 2 : 1,
                 ),
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    option['icon'] as IconData,
+                    color: option['color'] as Color,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          option['label'] as String,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          option['desc'] as String,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: secondaryTextColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isSelected)
                     Icon(
-                      option['icon'] as IconData,
+                      Icons.check_circle,
                       color: option['color'] as Color,
                       size: 24,
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            option['label'] as String,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            option['description'] as String,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w300,
-                              color: textColor.withOpacity(0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (isSelected)
-                      Icon(
-                        Icons.check_circle,
-                        color: option['color'] as Color,
-                        size: 24,
-                      ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),

@@ -13,6 +13,7 @@ import app.models.sale  # noqa: F401
 import app.models.photo  # noqa: F401
 import app.models.farm_post  # noqa: F401
 import app.models.farm_network  # noqa: F401
+import app.models.market_trends  # noqa: F401
 from sqlalchemy import text
 
 # Create engine

@@ -1699,7 +1699,7 @@ class ApiService {
     }
   }
 
-  static Future<List<dynamic>> getPostComments(int postId) async {
+  static Future<List<dynamic>> getNetworkPostComments(int postId) async {
     try {
       return await _withRetry(() async {
         final response = await http.get(
@@ -1852,16 +1852,32 @@ class ApiService {
     required int userId,
     required String imageUrl,
     required String caption,
+    String postIntent = "share",
+    double? price,
+    String unit = "kg",
+    int? livestockId,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'farm_id': livestockId == null ? farmId : null,
+        'livestock_id': livestockId,
+        'image_url': imageUrl,
+        'caption': caption,
+        'post_intent': postIntent,
+        'unit': unit,
+      };
+      
+      // Remove null values
+      body.removeWhere((key, value) => value == null);
+      
+      if (postIntent == "sell" && price != null) {
+        body['price'] = price;
+      }
+      
       final response = await http.post(
         Uri.parse('$baseUrl/farm-posts/?user_id=$userId'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'farm_id': farmId,
-          'image_url': imageUrl,
-          'caption': caption,
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
@@ -1897,26 +1913,24 @@ class ApiService {
 
   static Future<void> likeFarmPost(int postId) async {
     try {
-      final token = AuthService.currentSession?.accessToken;
-      debugPrint('🔍 likeFarmPost: token = ${token == null ? "NULL" : "EXISTS (${token.substring(0, 20)}...)"}');
-      if (token == null) throw Exception('Token manquant');
+      final headers = await _getAuthHeaders();
+      debugPrint('🔍 likeFarmPost: token = ${headers['Authorization'] == null ? "NULL" : "EXISTS"}');
+      
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
 
       final response = await http.post(
         Uri.parse('$baseUrl/farm-posts/$postId/like'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: headers,
       );
       debugPrint('📤 POST /farm-posts/$postId/like → ${response.statusCode}');
 
       if (response.statusCode == 401) {
         debugPrint('❌ 401 Unauthorized - Token may be invalid or expired');
         // Handle 401 with token refresh and retry
-        await _handleUnauthorized((headers) async {
+        await _handleUnauthorized((newHeaders) async {
           return await http.post(
             Uri.parse('$baseUrl/farm-posts/$postId/like'),
-            headers: headers,
+            headers: newHeaders,
           );
         });
       } else if (response.statusCode != 200) {
@@ -1929,26 +1943,24 @@ class ApiService {
 
   static Future<void> unlikeFarmPost(int postId) async {
     try {
-      final token = AuthService.currentSession?.accessToken;
-      debugPrint('🔍 unlikeFarmPost: token = ${token == null ? "NULL" : "EXISTS (${token.substring(0, 20)}...)"}');
-      if (token == null) throw Exception('Token manquant');
+      final headers = await _getAuthHeaders();
+      debugPrint('🔍 unlikeFarmPost: token = ${headers['Authorization'] == null ? "NULL" : "EXISTS"}');
+      
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
 
       final response = await http.delete(
         Uri.parse('$baseUrl/farm-posts/$postId/like'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: headers,
       );
       debugPrint('📤 DELETE /farm-posts/$postId/like → ${response.statusCode}');
 
       if (response.statusCode == 401) {
         debugPrint('❌ 401 Unauthorized - Token may be invalid or expired');
         // Handle 401 with token refresh and retry
-        await _handleUnauthorized((headers) async {
+        await _handleUnauthorized((newHeaders) async {
           return await http.delete(
             Uri.parse('$baseUrl/farm-posts/$postId/like'),
-            headers: headers,
+            headers: newHeaders,
           );
         });
       } else if (response.statusCode != 200) {
@@ -2023,5 +2035,175 @@ class ApiService {
       throw Exception('Erreur: $e');
     }
   }
-}
 
+  static Future<List<dynamic>> getLivestockPosts(int livestockId, {int? userId}) async {
+    try {
+      final url = userId != null && userId > 0
+          ? '$baseUrl/farm-posts/livestock/$livestockId?user_id=$userId'
+          : '$baseUrl/farm-posts/livestock/$livestockId';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur: $e');
+    }
+  }
+
+  // ====== MARKET PRICES ======
+  
+  static Future<List<dynamic>> getMarketTrends({
+    String? product,
+    String? region,
+  }) async {
+    try {
+      String url = '$baseUrl/market-prices/trends';
+      List<String> params = [];
+      
+      if (product != null && product.isNotEmpty) {
+        params.add('product=$product');
+      }
+      if (region != null && region.isNotEmpty) {
+        params.add('region=$region');
+      }
+      
+      if (params.isNotEmpty) {
+        url += '?${params.join('&')}';
+      }
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'] ?? [];
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getProductTrends(String product, {String? region}) async {
+    try {
+      String url = '$baseUrl/market-prices/trends/$product';
+      if (region != null && region.isNotEmpty) {
+        url += '?region=$region';
+      }
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'] ?? [];
+      } else {
+        throw Exception('Produit non trouvé');
+      }
+    } catch (e) {
+      throw Exception('Erreur: $e');
+    }
+  }
+
+  static Future<List<String>> getAvailableProducts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/market-prices/products'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return List<String>.from(data['products'] ?? []);
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur: $e');
+    }
+  }
+
+  // ====== FARM POST COMMENTS ======
+
+  static Future<List<dynamic>> getPostComments(int postId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/farm-posts/$postId/comments'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> addComment(int postId, String commentText, int userId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/farm-posts/$postId/comments?comment_text=$commentText&user_id=$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await _handleUnauthorized((newHeaders) async {
+          return await http.post(
+            Uri.parse('$baseUrl/farm-posts/$postId/comments?comment_text=$commentText&user_id=$userId'),
+            headers: newHeaders,
+          );
+        });
+        return await addComment(postId, commentText, userId);
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur ajout commentaire: $e');
+    }
+  }
+
+  static Future<void> deleteComment(int postId, int commentId, int userId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/farm-posts/$postId/comments/$commentId?user_id=$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 401) {
+        await _handleUnauthorized((newHeaders) async {
+          return await http.delete(
+            Uri.parse('$baseUrl/farm-posts/$postId/comments/$commentId?user_id=$userId'),
+            headers: newHeaders,
+          );
+        });
+      } else if (response.statusCode != 200) {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur suppression commentaire: $e');
+    }
+  }
+}

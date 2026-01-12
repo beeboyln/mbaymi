@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func, Float
 from datetime import datetime
 from app.models.base import Base
 
@@ -7,13 +7,21 @@ class FarmImagePost(Base):
     __tablename__ = "farm_image_posts"
 
     id = Column(Integer, primary_key=True)
-    farm_id = Column(Integer, ForeignKey("farms.id", ondelete="CASCADE"), nullable=False)
+    farm_id = Column(Integer, ForeignKey("farms.id", ondelete="CASCADE"), nullable=True)
+    livestock_id = Column(Integer, ForeignKey("livestock.id", ondelete="CASCADE"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     image_url = Column(String(500))
     caption = Column(Text)
     likes_count = Column(Integer, default=0)
     comments_count = Column(Integer, default=0)
     shares_count = Column(Integer, default=0)
+    
+    # 💰 PRIX & VENTE
+    post_intent = Column(String(20), default="share")  # "sell" ou "share"
+    price = Column(Float, nullable=True)  # Prix optionnel
+    product_name = Column(String(100), nullable=True)  # Nom du produit vendu
+    unit = Column(String(20), default="kg")  # kg, litre, pièce, etc.
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

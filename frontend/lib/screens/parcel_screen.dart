@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/screens/activity_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
+import 'package:mbaymi/widgets/farm_posts_widget.dart';
 
 class ParcelScreen extends StatefulWidget {
   final int farmId;
   final int userId;
-  final bool readOnly; // Mode lecture seul pour autres utilisateurs
+  final bool readOnly;
 
   const ParcelScreen({
     Key? key,
@@ -23,25 +25,19 @@ class ParcelScreen extends StatefulWidget {
 
 class _ParcelScreenState extends State<ParcelScreen> {
   late Future<List<dynamic>> _parcelsFuture;
-  bool _loadingPhotos = false;
+  bool _showPosts = false;
+  late int _userId;
 
-  // Palette de couleurs marron moderne
-  static const Color _primaryColor = Color(0xFF8B6B4D);
-  static const Color _accentColor = Color(0xFFC4A484);
-  static const Color _bgLight = Color(0xFFFAF8F5);
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = Colors.white;
-  static const Color _cardDark = Color(0xFF1E1E1E);
-  static const Color _borderLight = Color(0xFFE8E2D8);
-  static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _textLight = Color(0xFF1A1A1A);
-  static const Color _textDark = Colors.white;
-  static const Color _textSecondaryLight = Color(0xFF6B6B6B);
-  static const Color _textSecondaryDark = Color(0xFF8E8E93);
+  static const Color _primaryColor = Color(0xFF6B8E23);
+  static const Color _bgLight = Color(0xFFF8F9FA);
+  static const Color _bgDark = Color(0xFF0A0A0A);
+  static const Color _cardLight = Color(0xFFFFFFFF);
+  static const Color _cardDark = Color(0xFF1A1A1A);
 
   @override
   void initState() {
     super.initState();
+    _userId = AuthService.currentSession?.userId ?? 0;
     _parcelsFuture = ApiService.getFarmCrops(widget.farmId);
   }
 
@@ -52,9 +48,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
   }
 
   void _showAddParcel() {
-    HapticFeedback.mediumImpact();
     final nameCtrl = TextEditingController();
-    final sizeCtrl = TextEditingController();
     String status = 'En préparation';
 
     showModalBottomSheet(
@@ -65,153 +59,137 @@ class _ParcelScreenState extends State<ParcelScreen> {
         builder: (context, setModalState) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           final cardColor = isDark ? _cardDark : _cardLight;
-          final textColor = isDark ? _textDark : _textLight;
-          final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
-          final borderColor = isDark ? _borderDark : _borderLight;
+          final textColor = isDark ? Colors.white : Colors.black87;
+          final secondaryTextColor = isDark ? Colors.white60 : Colors.black54;
 
           return Container(
             decoration: BoxDecoration(
               color: cardColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              left: 24,
+              right: 24,
+              top: 20,
             ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // Title
+                Text(
+                  'Nouvelle parcelle',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Name Field
+                TextField(
+                  controller: nameCtrl,
+                  autofocus: true,
+                  style: TextStyle(fontSize: 16, color: textColor),
+                  decoration: InputDecoration(
+                    labelText: 'Nom de la parcelle',
+                    hintText: 'Ex: Parcelle Nord',
+                    labelStyle: TextStyle(color: secondaryTextColor),
+                    hintStyle: TextStyle(color: secondaryTextColor),
+                    prefixIcon: Icon(Icons.landscape_outlined, color: _primaryColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white12 : Colors.black12,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white12 : Colors.black12,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: _primaryColor, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Status
+                Text(
+                  'Statut',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    // Handle
-                    const Center(
-                      child: SizedBox(
-                        width: 40,
-                        height: 4,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Color(0xFFD1D1D6),
-                            borderRadius: BorderRadius.all(Radius.circular(2)),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    // Title
-                    Text(
-                      'Nouvelle parcelle',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w400,
-                        color: textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Name Field
-                    _buildModalTextField(
-                      controller: nameCtrl,
-                      label: 'Nom de la parcelle',
-                      hint: 'Ex: Parcelle Nord',
-                      icon: Icons.edit_outlined,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      secondaryTextColor: secondaryTextColor,
-                      borderColor: borderColor,
-                      isDark: isDark,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Size Field
-                    _buildModalTextField(
-                      controller: sizeCtrl,
-                      label: 'Superficie (hectares)',
-                      hint: 'Ex: 2.5',
-                      icon: Icons.square_foot_outlined,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      secondaryTextColor: secondaryTextColor,
-                      borderColor: borderColor,
-                      isDark: isDark,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      textInputAction: TextInputAction.done,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Status Selector
-                    Text(
-                      'Statut',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _buildStatusChip('En préparation', 'En préparation', status, (v) => setModalState(() => status = v), cardColor, borderColor, textColor, isDark),
-                        _buildStatusChip('Semé', 'Semé', status, (v) => setModalState(() => status = v), cardColor, borderColor, textColor, isDark),
-                        _buildStatusChip('En croissance', 'En croissance', status, (v) => setModalState(() => status = v), cardColor, borderColor, textColor, isDark),
-                        _buildStatusChip('Récolté', 'Récolté', status, (v) => setModalState(() => status = v), cardColor, borderColor, textColor, isDark),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: DecoratedBox(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF8B6B4D),
-                          borderRadius: BorderRadius.all(Radius.circular(10)),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              final name = nameCtrl.text.trim();
-                              if (name.isEmpty) {
-                                HapticFeedback.heavyImpact();
-                                return;
-                              }
-                              HapticFeedback.mediumImpact();
-                              await ApiService.addCrop(farmId: widget.farmId, cropName: name, status: status);
-                              Navigator.pop(context);
-                              _refresh();
-                              _showSuccessSnackBar('Parcelle ajoutée avec succès');
-                            },
-                            borderRadius: const BorderRadius.all(Radius.circular(10)),
-                            child: const Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add_circle_outline, color: Colors.white, size: 20),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Créer la parcelle',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w300,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    _buildStatusChip('En préparation', status, (v) => setModalState(() => status = v), cardColor, textColor),
+                    _buildStatusChip('Semé', status, (v) => setModalState(() => status = v), cardColor, textColor),
+                    _buildStatusChip('En croissance', status, (v) => setModalState(() => status = v), cardColor, textColor),
+                    _buildStatusChip('Récolté', status, (v) => setModalState(() => status = v), cardColor, textColor),
                   ],
                 ),
-              ),
+                const SizedBox(height: 28),
+
+                // Submit Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final name = nameCtrl.text.trim();
+                      if (name.isEmpty) return;
+                      
+                      await ApiService.addCrop(
+                        farmId: widget.farmId,
+                        cropName: name,
+                        status: status,
+                      );
+                      Navigator.pop(context);
+                      _refresh();
+                      _showSnackBar('Parcelle créée avec succès', isError: false);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Créer la parcelle',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         },
@@ -219,118 +197,46 @@ class _ParcelScreenState extends State<ParcelScreen> {
     );
   }
 
-  Widget _buildModalTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    required Color cardColor,
-    required Color textColor,
-    required Color secondaryTextColor,
-    required Color borderColor,
-    required bool isDark,
-    TextInputType? keyboardType,
-    TextInputAction textInputAction = TextInputAction.next,
-  }) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: const BorderRadius.all(Radius.circular(10)),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: TextField(
-        controller: controller,
-        autofocus: false,
-        keyboardType: keyboardType,
-        textInputAction: textInputAction,
-        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          hintStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w300),
-          labelStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w400, fontSize: 14),
-          prefixIcon: Icon(icon, color: _primaryColor, size: 20),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(String label, String value, String currentStatus, Function(String) onTap, Color cardColor, Color borderColor, Color textColor, bool isDark) {
-    final isSelected = currentStatus == value;
+  Widget _buildStatusChip(String label, String currentStatus, Function(String) onTap, Color cardColor, Color textColor) {
+    final isSelected = currentStatus == label;
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap(value);
-      },
-      child: DecoratedBox(
+      onTap: () => onTap(label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? _primaryColor : cardColor,
-          borderRadius: const BorderRadius.all(Radius.circular(8)),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? _primaryColor : borderColor,
-            width: 1,
+            color: isSelected ? _primaryColor : (Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.black12),
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w300,
-              color: isSelected ? Colors.white : textColor,
-            ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: isSelected ? Colors.white : textColor,
           ),
         ),
       ),
     );
-  }
-
-  Future<void> _addFarmPhotos() async {
-    HapticFeedback.mediumImpact();
-    final picker = ImagePicker();
-    final picked = await picker.pickMultiImage(maxWidth: 1600);
-    if (picked.isEmpty) return;
-    
-    setState(() => _loadingPhotos = true);
-    try {
-      for (final file in picked) {
-        final url = await ApiService.uploadImageToCloudinary(file);
-        if (url != null) {
-          await ApiService.addFarmPhoto(farmId: widget.farmId, imageUrl: url);
-        }
-      }
-      if (!mounted) return;
-      _showSuccessSnackBar('${picked.length} photo(s) ajoutée(s)');
-      _refresh();
-    } catch (e) {
-      _showErrorSnackBar('Erreur: $e');
-    } finally {
-      if (mounted) setState(() => _loadingPhotos = false);
-    }
   }
 
   Future<void> _addParcelPhoto(int cropId) async {
-    HapticFeedback.mediumImpact();
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1600);
     if (picked == null) return;
     
-    setState(() => _loadingPhotos = true);
     try {
       final url = await ApiService.uploadImageToCloudinary(picked);
       if (url != null) {
         await ApiService.addCropPhoto(cropId: cropId, imageUrl: url);
       }
       if (!mounted) return;
-      _showSuccessSnackBar('Photo de parcelle ajoutée');
+      _showSnackBar('Photo ajoutée', isError: false);
       _refresh();
     } catch (e) {
-      _showErrorSnackBar('Erreur: $e');
-    } finally {
-      if (mounted) setState(() => _loadingPhotos = false);
+      _showSnackBar('Erreur: $e', isError: true);
     }
   }
 
@@ -340,34 +246,13 @@ class _ParcelScreenState extends State<ParcelScreen> {
     return int.tryParse(v.toString());
   }
 
-  List<dynamic> _toList(dynamic v) {
-    if (v == null) return const [];
-    if (v is List<dynamic>) return v;
-    try {
-      return List<dynamic>.from(v as Iterable);
-    } catch (e) {
-      return const [];
-    }
-  }
-
-  void _showSuccessSnackBar(String message) {
+  void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w300)),
-        backgroundColor: _primaryColor,
+        content: Text(message),
+        backgroundColor: isError ? Colors.red.shade400 : _primaryColor,
         behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-      ),
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w300)),
-        backgroundColor: Colors.red.shade400,
-        behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -377,248 +262,169 @@ class _ParcelScreenState extends State<ParcelScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? _bgDark : _bgLight;
     final cardColor = isDark ? _cardDark : _cardLight;
-    final textColor = isDark ? _textDark : _textLight;
-    final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
-    final borderColor = isDark ? _borderDark : _borderLight;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDark ? Colors.white60 : Colors.black54;
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Background image
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/b.png',
-                fit: BoxFit.cover,
-                opacity: const AlwaysStoppedAnimation(0.08),
+      appBar: AppBar(
+        backgroundColor: cardColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Parcelles',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => setState(() => _showPosts = !_showPosts),
+            icon: Icon(
+              _showPosts ? Icons.close : Icons.photo_library_outlined,
+              color: _primaryColor,
+              size: 20,
+            ),
+            label: Text(
+              _showPosts ? 'Fermer' : 'Posts',
+              style: TextStyle(
+                color: _primaryColor,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            
-            // Contenu principal
-            Column(
+          ),
+          if (!widget.readOnly)
+            IconButton(
+              icon: Icon(Icons.add, color: _primaryColor),
+              onPressed: _showAddParcel,
+              tooltip: 'Ajouter une parcelle',
+            ),
+        ],
+      ),
+      body: _showPosts
+          ? FarmPostsWidget(
+              farmId: widget.farmId,
+              farmName: 'Posts de la ferme',
+              isOwner: _userId == widget.userId,
+            )
+          : _buildParcelsSection(cardColor, textColor, secondaryTextColor, isDark),
+    );
+  }
+
+  Widget _buildParcelsSection(
+    Color cardColor,
+    Color textColor,
+    Color secondaryTextColor,
+    bool isDark,
+  ) {
+    return FutureBuilder<List<dynamic>>(
+      future: _parcelsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: _primaryColor,
+            ),
+          );
+        }
+        
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Header minimaliste
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: borderColor,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 20,
-                      right: 20,
-                      top: 12,
-                      bottom: 12,
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            HapticFeedback.lightImpact();
-                            Navigator.pop(context);
-                          },
-                          icon: Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: secondaryTextColor,
-                            size: 20,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Text(
-                            'Mes Parcelles',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w300,
-                              color: textColor,
-                              letterSpacing: -0.8,
-                            ),
-                          ),
-                        ),
-                        // Photo Button
-                        if (!widget.readOnly) ...[
-                          IconButton(
-                            onPressed: _loadingPhotos ? null : _addFarmPhotos,
-                            icon: _loadingPhotos
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Color(0xFF8B6B4D),
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.add_a_photo_outlined,
-                                    color: Color(0xFF8B6B4D),
-                                    size: 22,
-                                  ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Add Parcel Button
-                          IconButton(
-                            onPressed: _showAddParcel,
-                            icon: const Icon(
-                              Icons.add_circle_outline,
-                              color: Color(0xFF8B6B4D),
-                              size: 24,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Contenu principal
-                Expanded(
-                  child: FutureBuilder<List<dynamic>>(
-                    future: _parcelsFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFF8B6B4D),
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'Chargement...',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF6B6B6B),
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                size: 48,
-                                color: Color(0xFFFF3B30),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Erreur de chargement',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w400,
-                                  color: textColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '${snapshot.error}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: secondaryTextColor,
-                                  fontWeight: FontWeight.w300,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      final parcels = snapshot.data ?? [];
-                      
-                      if (parcels.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.landscape_outlined,
-                                size: 56,
-                                color: Color(0xFFA58A6D),
-                              ),
-                              const SizedBox(height: 24),
-                              Text(
-                                'Aucune parcelle',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w400,
-                                  color: textColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Commencez par ajouter votre première parcelle',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: secondaryTextColor,
-                                  fontWeight: FontWeight.w300,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              if (!widget.readOnly) ...[
-                                const SizedBox(height: 24),
-                                TextButton(
-                                  onPressed: _showAddParcel,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    backgroundColor: _primaryColor,
-                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                  ),
-                                  child: const Text(
-                                    'Créer une parcelle',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w300,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      }
-
-                      return RefreshIndicator(
-                        onRefresh: _refresh,
-                        color: _primaryColor,
-                        child: ListView.builder(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.all(16),
-                          itemCount: parcels.length,
-                          itemBuilder: (context, index) {
-                            final p = parcels[index] as Map<String, dynamic>;
-                            return _buildParcelCard(p, cardColor, textColor, secondaryTextColor, borderColor, isDark);
-                          },
-                        ),
-                      );
-                    },
-                  ),
+                Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+                const SizedBox(height: 16),
+                Text(
+                  'Erreur de chargement',
+                  style: TextStyle(color: secondaryTextColor),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          );
+        }
+        
+        final parcels = snapshot.data ?? [];
+        
+        if (parcels.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.landscape_outlined,
+                  size: 64,
+                  color: _primaryColor.withOpacity(0.3),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Aucune parcelle',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Créez votre première parcelle',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: secondaryTextColor,
+                  ),
+                ),
+                if (!widget.readOnly) ...[
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _showAddParcel,
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    label: const Text(
+                      'Créer une parcelle',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+        
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          color: _primaryColor,
+          child: ListView.separated(
+            padding: const EdgeInsets.all(20),
+            itemCount: parcels.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              final parcel = parcels[index] as Map<String, dynamic>;
+              return _buildParcelCard(
+                parcel,
+                cardColor,
+                textColor,
+                secondaryTextColor,
+                isDark,
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -627,307 +433,218 @@ class _ParcelScreenState extends State<ParcelScreen> {
     Color cardColor,
     Color textColor,
     Color secondaryTextColor,
-    Color borderColor,
     bool isDark,
   ) {
-    final Map<String, Map<String, dynamic>> statusColors = const {
-      'En préparation': {'color': Colors.orange, 'icon': Icons.construction_outlined},
-      'Semé': {'color': Colors.green, 'icon': Icons.grass_outlined},
-      'En croissance': {'color': Colors.blue, 'icon': Icons.trending_up_outlined},
-      'Récolté': {'color': Colors.purple, 'icon': Icons.check_circle_outlined},
+    final Map<String, Map<String, dynamic>> statusConfig = {
+      'En préparation': {
+        'color': const Color(0xFFFFA726),
+        'icon': Icons.construction_outlined,
+      },
+      'Semé': {
+        'color': const Color(0xFF66BB6A),
+        'icon': Icons.grass_outlined,
+      },
+      'En croissance': {
+        'color': const Color(0xFF42A5F5),
+        'icon': Icons.trending_up_outlined,
+      },
+      'Récolté': {
+        'color': const Color(0xFFAB47BC),
+        'icon': Icons.check_circle_outlined,
+      },
     };
 
     final status = parcel['status'] ?? 'En préparation';
-    final statusInfo = statusColors[status] ?? const {'color': Colors.grey, 'icon': Icons.help_outline_outlined};
+    final config = statusConfig[status] ?? statusConfig['En préparation']!;
+    final statusColor = config['color'] as Color;
+    final statusIcon = config['icon'] as IconData;
 
-    return DecoratedBox(
+    return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: const BorderRadius.all(Radius.circular(16)),
-        border: Border.all(color: borderColor, width: 1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black12,
+        ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image Banner - Plus grande et plus visible
+          // Image avec overlay
           Stack(
             children: [
-              // Image de fond
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
                 child: Container(
-                  width: double.infinity,
                   height: 180,
-                  decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  ),
-                  child: parcel['image_url'] != null && parcel['image_url'].toString().isNotEmpty
+                  width: double.infinity,
+                  color: _primaryColor.withOpacity(0.1),
+                  child: parcel['image_url'] != null &&
+                          parcel['image_url'].toString().isNotEmpty
                       ? Image.network(
                           parcel['image_url'] as String,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => 
-                              _buildPlaceholderImage(),
+                          errorBuilder: (_, __, ___) => _buildPlaceholder(),
                         )
-                      : _buildPlaceholderImage(),
+                      : _buildPlaceholder(),
                 ),
               ),
               
-              // Overlay avec info en bas
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.4),
-                      ],
-                    ),
+              // Gradient overlay
+              Container(
+                height: 180,
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.5),
+                    ],
                   ),
                 ),
               ),
 
-              // Bouton éditer l'image (si pas readOnly)
+              // Bouton ajouter photo
               if (!widget.readOnly)
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      _addParcelPhoto(_toInt(parcel['id']) ?? 0);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        borderRadius: const BorderRadius.all(Radius.circular(8)),
-                      ),
-                      child: const Icon(
-                        Icons.add_a_photo_outlined,
-                        size: 18,
-                        color: Colors.white,
-                      ),
+                  child: IconButton(
+                    onPressed: () => _addParcelPhoto(_toInt(parcel['id']) ?? 0),
+                    icon: const Icon(Icons.add_photo_alternate, color: Colors.white),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black.withOpacity(0.6),
                     ),
                   ),
                 ),
 
-              // Titre et statut en bas
+              // Titre et statut
               Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        parcel['crop_name'] ?? 'Parcelle',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
+                bottom: 16,
+                left: 16,
+                right: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      parcel['crop_name'] ?? 'Parcelle',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
                       ),
-                      const SizedBox(height: 8),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: (statusInfo['color'] as Color).withOpacity(0.9),
-                          borderRadius: const BorderRadius.all(Radius.circular(6)),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                statusInfo['icon'] as IconData,
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                status,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, size: 14, color: Colors.white),
+                          const SizedBox(width: 6),
+                          Text(
+                            status,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
 
-          // Infos et boutons
+          // Informations
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                // Date
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 14,
-                      color: Color(0xFF6B6B6B),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      parcel['planted_date'] ?? 'Non défini',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: secondaryTextColor,
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                  ],
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 14,
+                  color: secondaryTextColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  parcel['planted_date'] ?? 'Non défini',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: secondaryTextColor,
+                  ),
                 ),
               ],
             ),
           ),
-          
-          // Action Buttons
+
+          // Actions
           if (!widget.readOnly)
-            DecoratedBox(
+            Container(
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: borderColor, width: 1),
+                  top: BorderSide(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                  ),
                 ),
               ),
               child: Row(
                 children: [
-                  // Bouton Détails
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ActivityScreen(
-                                farmId: widget.farmId,
-                                cropId: _toInt(parcel['id']) ?? 0,
-                                userId: widget.userId,
-                              ),
-                            ),
-                          ).then((_) => _refresh());
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: Text(
-                              'Détails',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
+                  _buildActionButton(
+                    label: 'Activités',
+                    icon: Icons.timeline,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ActivityScreen(
+                            farmId: widget.farmId,
+                            cropId: _toInt(parcel['id']) ?? 0,
+                            userId: widget.userId,
                           ),
                         ),
-                      ),
-                    ),
+                      ).then((_) => _refresh());
+                    },
                   ),
-                  const SizedBox(
+                  Container(
                     width: 1,
                     height: 40,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Color(0xFFE8E2D8),
-                      ),
-                    ),
+                    color: isDark ? Colors.white12 : Colors.black12,
                   ),
-                  // Bouton Activité
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ActivityScreen(
-                                farmId: widget.farmId,
-                                cropId: _toInt(parcel['id']) ?? 0,
-                                userId: widget.userId,
-                              ),
-                            ),
-                          ).then((_) => _refresh());
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: Text(
-                              'Activité',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF8B6B4D),
-                              ),
-                            ),
+                  _buildActionButton(
+                    label: 'Problèmes',
+                    icon: Icons.warning_outlined,
+                    color: Colors.orange,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CropProblemsScreen(
+                            farmId: widget.farmId,
+                            cropId: _toInt(parcel['id']) ?? 0,
+                            userId: widget.userId,
+                            cropName: parcel['crop_name'] as String? ?? 'Culture',
+                            isDarkMode: isDark,
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 1,
-                    height: 40,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Color(0xFFE8E2D8),
-                      ),
-                    ),
-                  ),
-                  // Bouton Problèmes
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CropProblemsScreen(
-                                farmId: widget.farmId,
-                                cropId: _toInt(parcel['id']) ?? 0,
-                                userId: widget.userId,
-                                cropName: parcel['crop_name'] as String? ?? 'Culture',
-                                isDarkMode: false,
-                              ),
-                            ),
-                          ).then((_) => _refresh());
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: Text(
-                              '🚨 Problèmes',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFFE07856),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                      ).then((_) => _refresh());
+                    },
                   ),
                 ],
               ),
@@ -937,23 +654,56 @@ class _ParcelScreenState extends State<ParcelScreen> {
     );
   }
 
-  Widget _buildPlaceholderImage() {
+  Widget _buildActionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 16, color: color ?? _primaryColor),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: color ?? _primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.landscape_outlined,
-            size: 56,
-            color: _primaryColor.withOpacity(0.5),
+            size: 48,
+            color: _primaryColor.withOpacity(0.3),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             'Ajouter une photo',
             style: TextStyle(
-              fontSize: 14,
-              color: _primaryColor.withOpacity(0.6),
-              fontWeight: FontWeight.w300,
+              fontSize: 13,
+              color: _primaryColor.withOpacity(0.5),
             ),
           ),
         ],

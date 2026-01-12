@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
-import 'package:mbaymi/widgets/create_farm_post_dialog.dart';
+import 'package:mbaymi/screens/create_farm_post_dialog.dart';
+import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 
 class FarmPostsWidget extends StatefulWidget {
   final int farmId;
   final String farmName;
   final bool isOwner;
+  final int? livestockId;
 
   const FarmPostsWidget({
     Key? key,
     required this.farmId,
     required this.farmName,
     required this.isOwner,
+    this.livestockId,
   }) : super(key: key);
 
   @override
@@ -35,7 +38,9 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
 
   Future<List<dynamic>> _loadPosts() async {
     try {
-      final posts = await ApiService.getFarmPosts(widget.farmId, userId: _userId);
+      final posts = widget.livestockId != null
+          ? await ApiService.getLivestockPosts(widget.livestockId!, userId: _userId)
+          : await ApiService.getFarmPosts(widget.farmId, userId: _userId);
       setState(() => _posts = List<Map<String, dynamic>>.from(posts));
       return posts;
     } catch (e) {
@@ -51,8 +56,9 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       children: [
         // Header avec bouton +
         Padding(
@@ -148,6 +154,11 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
     final sharesCount = post['shares_count'] ?? 0;
     final isLiked = post['is_liked'] ?? false;
     final postId = post['id'] as int;
+    
+    // Pricing info
+    final postIntent = post['post_intent'] as String? ?? 'share';
+    final price = post['price'] as num?;
+    final unit = post['unit'] as String? ?? 'kg';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -165,40 +176,84 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image
-          if (imageUrl != null && imageUrl.isNotEmpty)
-            Container(
-              height: 250,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
+          // Image with price badge
+          Stack(
+            children: [
+              if (imageUrl != null && imageUrl.isNotEmpty)
+                Container(
+                  height: 250,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                    color: Colors.grey[300],
+                  ),
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, s) => Icon(
+                      Icons.image,
+                      size: 40,
+                      color: Colors.grey[400],
+                    ),
+                  ),
                 ),
-                color: Colors.grey[300],
-              ),
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => Icon(
-                  Icons.image,
-                  size: 40,
-                  color: Colors.grey[400],
+              
+              // Price badge
+              if (postIntent == 'sell' && price != null)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _primaryColor,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_atm, color: Colors.white, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${price.toStringAsFixed(0)} CFA/$unit',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
+            ],
+          ),
 
-          // Caption
-          if (caption.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                caption,
-                style: TextStyle(fontSize: 14, height: 1.4, color: textColor),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
+          // Caption and product info
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (caption.isNotEmpty)
+                  Text(
+                    caption,
+                    style: TextStyle(fontSize: 14, height: 1.4, color: textColor),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
             ),
+          ),
 
           // Actions
           Padding(
@@ -219,17 +274,26 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
                     ],
                   ),
                 ),
-                  const SizedBox(width: 8),
-                  // Delete button for owner of farm or author of post
-                  if (widget.isOwner || (post['user_id'] != null && post['user_id'] == _userId))
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
-                      onPressed: () => _confirmDelete(postId, index),
-                      tooltip: 'Supprimer',
-                    ),
+                const SizedBox(width: 8),
+                // Delete button for owner of farm or author of post
+                if (widget.isOwner || (post['user_id'] != null && post['user_id'] == _userId))
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                    onPressed: () => _confirmDelete(postId, index),
+                    tooltip: 'Supprimer',
+                  ),
                 const SizedBox(width: 16),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (context) => CommentsBottomSheet(
+                        postId: postId,
+                        currentUserId: _userId,
+                      ),
+                    );
+                  },
                   child: Row(
                     children: [
                       Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor),
@@ -336,16 +400,19 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
   }
 
   void _showCreatePostDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => CreateFarmPostDialog(
-        farmId: widget.farmId,
-        farmName: widget.farmName,
-        onPostCreated: () {
-          setState(() {
-            _postsFuture = _loadPosts();
-          });
-        },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateFarmPostDialog(
+          farmId: widget.farmId,
+          farmName: widget.farmName,
+          onPostCreated: () {
+            setState(() {
+              _postsFuture = _loadPosts();
+            });
+          },
+          livestockId: widget.livestockId,
+        ),
       ),
     );
   }
