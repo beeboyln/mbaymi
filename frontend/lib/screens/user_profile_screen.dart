@@ -55,6 +55,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
     _postsFuture ??= ApiService.getUserPosts(widget.userId);
   }
 
+  @override
+  void didUpdateWidget(UserProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Ne recharger que si l'userId change
+    if (oldWidget.userId != widget.userId) {
+      _profileFuture = ApiService.getUserProfile(widget.userId);
+      _postsFuture = ApiService.getUserPosts(widget.userId);
+      setState(() {});
+    }
+  }
+
   Future<void> _refresh() async {
     // Recharger UNIQUEMENT si on swipe
     _profileFuture = ApiService.getUserProfile(widget.userId);
@@ -337,7 +348,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: FutureBuilder<Map<String, dynamic>>(
-            future: _profileFuture ?? ApiService.getUserProfile(widget.userId),
+            future: _profileFuture!,
             builder: (context, profileSnap) {
               if (profileSnap.connectionState == ConnectionState.waiting) {
                 return Center(
@@ -557,7 +568,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                     ),
                     const SizedBox(height: 12),
                     FutureBuilder<List<dynamic>>(
-                      future: _postsFuture ?? ApiService.getUserPosts(widget.userId),
+                      future: _postsFuture!,
                       builder: (context, postsSnap) {
                         if (postsSnap.connectionState == ConnectionState.waiting) {
                           return Center(

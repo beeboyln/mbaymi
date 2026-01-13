@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:mbaymi/widgets/empty_state.dart';
+import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
-import 'package:mbaymi/screens/edit_farm_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/parcel_screen.dart';
-import 'package:mbaymi/screens/farm_profile_screen.dart';
-import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/screens/create_livestock_screen.dart';
-import 'package:mbaymi/screens/animal_detail_screen.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
 
 class FarmTab extends StatefulWidget {
-  final bool isDarkMode;
   final int? userId;
 
-  const FarmTab({Key? key, this.isDarkMode = false, this.userId}) : super(key: key);
+  const FarmTab({Key? key, this.userId}) : super(key: key);
+
 
   @override
   State<FarmTab> createState() => _FarmTabState();
@@ -23,7 +21,6 @@ class FarmTab extends StatefulWidget {
 class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
   Future<List<dynamic>>? _farmsFuture;
   Future<List<dynamic>>? _livestockFuture;
-  final Set<int> _expandedFarmIds = {};
   int _selectedSection = 0;
 
   @override
@@ -35,6 +32,16 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
     _farmsFuture ??= (widget.userId != null
         ? ApiService.getUserFarms(widget.userId!)
         : ApiService.getPublicFarms());
+  }
+
+  @override
+  void didUpdateWidget(FarmTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Recharger les fermes si l'utilisateur vient de se connecter
+    if (oldWidget.userId != widget.userId && widget.userId != null) {
+      _farmsFuture = ApiService.getUserFarms(widget.userId!);
+      setState(() {});
+    }
   }
 
   Future<void> _refreshFarms() async {
@@ -50,7 +57,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
     imageCache.clear();
   }
 
-  Widget _buildSectionTabs() {
+  Widget _buildSectionTabs(bool isDarkMode) {
     final selectedColor = const Color(0xFF6B8E23);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -74,7 +81,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: _selectedSection == 0 ? selectedColor : (widget.isDarkMode ? Colors.white60 : Colors.black45),
+                    color: _selectedSection == 0 ? selectedColor : (isDarkMode ? Colors.white60 : Colors.black45),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -108,7 +115,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: _selectedSection == 1 ? selectedColor : (widget.isDarkMode ? Colors.white60 : Colors.black45),
+                    color: _selectedSection == 1 ? selectedColor : (isDarkMode ? Colors.white60 : Colors.black45),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -123,17 +130,19 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    // Lire le mode sombre directement du ThemeProvider
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     
     return Scaffold(
-      backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
       body: RefreshIndicator(
         color: const Color(0xFF6B8E23),
-        backgroundColor: widget.isDarkMode ? const Color(0xFF1C1C1E) : Colors.white,
+        backgroundColor: isDarkMode ? const Color(0xFF1C1C1E) : Colors.white,
         onRefresh: _refreshFarms,
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+              backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
               elevation: 0,
               pinned: true,
               floating: false,
@@ -149,7 +158,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: widget.isDarkMode 
+                      color: isDarkMode 
                           ? Colors.white.withOpacity(0.08) 
                           : Colors.black.withOpacity(0.06),
                       width: 1,
@@ -162,7 +171,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                     fontSize: 28,
                     fontWeight: FontWeight.w300,
                     letterSpacing: -0.8,
-                    color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
+                    color: isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
                   ),
                 ),
               ),
@@ -170,7 +179,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
             SliverPadding(
               padding: const EdgeInsets.only(top: 8),
               sliver: SliverToBoxAdapter(
-                child: _buildContent(),
+                child: _buildContent(isDarkMode),
               ),
             ),
           ],
@@ -208,7 +217,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                     if (result != null) setState(() {});
                   }
                 },
-                backgroundColor: widget.isDarkMode 
+                backgroundColor: isDarkMode 
                     ? const Color(0xFF2C2C2E) 
                     : Colors.white,
                 foregroundColor: const Color(0xFF6B8E23),
@@ -221,7 +230,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(bool isDarkMode) {
     if (widget.userId == null) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -231,7 +240,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
           description: 'Créez et gérez vos parcelles agricoles',
           buttonLabel: 'Commencer',
           color: const Color(0xFF6B8E23),
-          isDarkMode: widget.isDarkMode,
+          isDarkMode: isDarkMode,
           onPressed: () async {
             final result = await Navigator.push(
               context,
@@ -282,7 +291,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                     style: TextStyle(
                       fontWeight: FontWeight.w300,
                       fontSize: 14,
-                      color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                      color: isDarkMode ? Colors.white60 : Colors.black45,
                     ),
                   ),
                 ],
@@ -307,7 +316,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                   style: TextStyle(
                     fontWeight: FontWeight.w400,
                     fontSize: 16,
-                    color: widget.isDarkMode ? Colors.white : Colors.black87,
+                    color: isDarkMode ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -319,7 +328,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                     style: TextStyle(
                       fontWeight: FontWeight.w300,
                       fontSize: 14,
-                      color: widget.isDarkMode ? Colors.white60 : Colors.black54,
+                      color: isDarkMode ? Colors.white60 : Colors.black54,
                     ),
                   ),
                 ),
@@ -345,7 +354,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionTabs(),
+              _buildSectionTabs(isDarkMode),
               const SizedBox(height: 16),
               if (_selectedSection == 0) ...[
                 if (farms.isEmpty)
@@ -356,7 +365,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                         children: [
                           Icon(Icons.agriculture_outlined, size: 48, color: const Color(0xFF6B8E23).withOpacity(0.4)),
                           const SizedBox(height: 12),
-                          Text('Aucune ferme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: widget.isDarkMode ? Colors.white60 : Colors.black45)),
+                          Text('Aucune ferme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: isDarkMode ? Colors.white60 : Colors.black45)),
                         ],
                       ),
                     ),
@@ -366,7 +375,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: farms.length,
-                    itemBuilder: (context, index) => _buildFarmCard(context, farms[index] as Map<String, dynamic>),
+                    itemBuilder: (context, index) => _buildFarmCard(context, farms[index] as Map<String, dynamic>, isDarkMode),
                   ),
               ] else ...[
                 FutureBuilder<List<dynamic>>(
@@ -380,7 +389,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                             children: [
                               const CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6B8E23)),
                               const SizedBox(height: 16),
-                              Text('Chargement...', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w300, color: widget.isDarkMode ? Colors.white60 : Colors.black45)),
+                              Text('Chargement...', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w300, color: isDarkMode ? Colors.white60 : Colors.black45)),
                             ],
                           ),
                         ),
@@ -394,7 +403,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                             children: [
                               Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
                               const SizedBox(height: 12),
-                              Text('Erreur de chargement', style: TextStyle(fontSize: 14, color: widget.isDarkMode ? Colors.white60 : Colors.black45)),
+                              Text('Erreur de chargement', style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white60 : Colors.black45)),
                             ],
                           ),
                         ),
@@ -409,7 +418,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                             children: [
                               Icon(Icons.pets_outlined, size: 48, color: const Color(0xFF6B8E23).withOpacity(0.4)),
                               const SizedBox(height: 12),
-                              Text('Aucun animal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: widget.isDarkMode ? Colors.white60 : Colors.black45)),
+                              Text('Aucun animal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: isDarkMode ? Colors.white60 : Colors.black45)),
                             ],
                           ),
                         ),
@@ -420,7 +429,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: animals.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) => _buildAnimalCard(animals[index] as Map<String, dynamic>),
+                      itemBuilder: (context, index) => _buildAnimalCard(animals[index] as Map<String, dynamic>, isDarkMode),
                     );
                   },
                 ),
@@ -432,7 +441,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildFarmCard(BuildContext context, Map<String, dynamic> farm) {
+  Widget _buildFarmCard(BuildContext context, Map<String, dynamic> farm, bool isDarkMode) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -449,10 +458,10 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: widget.isDarkMode
+            color: isDarkMode
                 ? Colors.white.withOpacity(0.08)
                 : Colors.black.withOpacity(0.06),
             width: 1,
@@ -460,7 +469,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
         ),
         child: Row(
           children: [
-            _buildFarmAvatar(farm),
+            _buildFarmAvatar(farm, isDarkMode),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -471,7 +480,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: widget.isDarkMode ? Colors.white : Colors.black87,
+                      color: isDarkMode ? Colors.white : Colors.black87,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -483,7 +492,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                         farm['location'],
                         style: TextStyle(
                           fontSize: 12,
-                          color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                          color: isDarkMode ? Colors.white60 : Colors.black45,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -495,7 +504,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
             Icon(
               Icons.arrow_forward_ios_rounded,
               size: 16,
-              color: widget.isDarkMode ? Colors.white30 : Colors.black26,
+              color: isDarkMode ? Colors.white30 : Colors.black26,
             ),
           ],
         ),
@@ -503,7 +512,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildFarmAvatar(Map<String, dynamic> farm) {
+  Widget _buildFarmAvatar(Map<String, dynamic> farm, bool isDarkMode) {
     final hasPhotos = farm['photos'] != null && (farm['photos'] as List).isNotEmpty;
 
     if (hasPhotos) {
@@ -544,7 +553,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
       width: 60,
       height: 60,
       decoration: BoxDecoration(
-        color: widget.isDarkMode
+        color: isDarkMode
             ? Colors.white.withOpacity(0.05)
             : const Color(0xFF6B8E23).withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -557,57 +566,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildPhotoGallery(Map<String, dynamic> farm) {
-    final photos = farm['photos'] as List;
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-      child: SizedBox(
-        height: 100,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: photos.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            final photo = photos[index];
-            final url = photo is String ? photo : (photo['image_url'] ?? photo['imageUrl']);
-
-            return Container(
-              width: 140,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  url,
-                  width: 140,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 140,
-                    height: 100,
-                    color: widget.isDarkMode
-                        ? Colors.white.withOpacity(0.05)
-                        : Colors.black.withOpacity(0.03),
-                    child: Icon(
-                      Icons.image_outlined,
-                      size: 32,
-                      color: widget.isDarkMode
-                          ? Colors.white30
-                          : Colors.black26,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAnimalCard(Map<String, dynamic> animal) {
+  Widget _buildAnimalCard(Map<String, dynamic> animal, bool isDarkMode) {
     final animalType = animal['animal_type'] as String? ?? 'Animal';
     final breed = animal['breed'] as String? ?? '';
     final quantity = animal['quantity'] as int? ?? 1;
@@ -632,9 +591,9 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: widget.isDarkMode ? Colors.white10 : Colors.black12),
+          border: Border.all(color: isDarkMode ? Colors.white10 : Colors.black12),
         ),
         child: Row(
           children: [
@@ -643,7 +602,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
               height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                color: widget.isDarkMode ? Colors.white10 : Colors.black12,
+                color: isDarkMode ? Colors.white10 : Colors.black12,
                 image: photo != null ? DecorationImage(image: NetworkImage(photo), fit: BoxFit.cover) : null,
               ),
               child: photo == null ? const Icon(Icons.pets, color: Color(0xFF6B8E23), size: 24) : null,
@@ -655,12 +614,12 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                 children: [
                   Text(
                     animalType,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: widget.isDarkMode ? Colors.white : Colors.black87),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDarkMode ? Colors.white : Colors.black87),
                   ),
                   if (breed.isNotEmpty)
                     Text(
                       breed,
-                      style: TextStyle(fontSize: 12, color: widget.isDarkMode ? Colors.white60 : Colors.black54),
+                      style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white60 : Colors.black54),
                     ),
                 ],
               ),
@@ -735,65 +694,6 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildPopupMenu(BuildContext context, Map<String, dynamic> farm) {
-    return PopupMenuButton<String>(
-      icon: Icon(
-        Icons.more_vert_rounded,
-        size: 18,
-        color: widget.isDarkMode ? Colors.white60 : Colors.black45,
-      ),
-      offset: const Offset(0, 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      color: widget.isDarkMode ? const Color(0xFF2C2C2E) : Colors.white,
-      onSelected: (v) async {
-        if (v == 'edit') {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => EditFarmScreen(farm: farm, userId: widget.userId, isDarkMode: widget.isDarkMode),
-            ),
-          );
-          if (result != null && mounted) setState(() {});
-        } else if (v == 'delete') {
-          final ok = await showDialog<bool>(
-            context: context,
-            builder: (_) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              backgroundColor: widget.isDarkMode ? const Color(0xFF2C2C2E) : Colors.white,
-              title: const Text('Supprimer la ferme?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Non'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                  child: const Text('Oui'),
-                ),
-              ],
-            ),
-          );
-          if (ok == true) {
-            try {
-              await ApiService.deleteFarm(farm['id'] as int);
-              if (!mounted) return;
-              await _refreshFarms();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ferme supprimée')));
-            } catch (e) {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-            }
-          }
-        }
-      },
-      itemBuilder: (_) => [
-        const PopupMenuItem(value: 'edit', child: Text('Modifier')),
-        const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
-      ],
     );
   }
 }

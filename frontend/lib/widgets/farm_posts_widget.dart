@@ -41,7 +41,9 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
       final posts = widget.livestockId != null
           ? await ApiService.getLivestockPosts(widget.livestockId!, userId: _userId)
           : await ApiService.getFarmPosts(widget.farmId, userId: _userId);
-      setState(() => _posts = List<Map<String, dynamic>>.from(posts));
+      if (mounted) {
+        setState(() => _posts = List<Map<String, dynamic>>.from(posts));
+      }
       return posts;
     } catch (e) {
       print('Erreur chargement posts: $e');

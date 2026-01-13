@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mbaymi/services/api_service.dart';
+import 'package:provider/provider.dart';
 import 'package:mbaymi/services/token_storage.dart';
-// moved: market UI moved to separate screen
-import 'package:mbaymi/models/news_model.dart';
-import 'package:mbaymi/screens/news_detail_screen.dart';
+import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/screens/farm_screen.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/screens/livestock_screen.dart';
@@ -13,7 +11,6 @@ import 'package:mbaymi/screens/market_screen.dart';
 import 'package:mbaymi/screens/advice_screen.dart';
 import 'package:mbaymi/screens/dashboard_tab.dart';
 import 'package:mbaymi/screens/farm_network_screen.dart';
-// shared empty state is now in widgets/empty_state.dart
 
 class HomeScreen extends StatefulWidget {
   final int? userId;
@@ -38,17 +35,28 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _userId = widget.userId;
+    
+    // Synchroniser _isDarkMode avec le ThemeProvider au démarrage
+    Future.microtask(() {
+      final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+      setState(() {
+        _isDarkMode = themeProvider.isDarkMode;
+      });
+    });
 
     _screens = [
       DashboardTab(isDarkMode: _isDarkMode, userId: userId),
-      FarmTab(isDarkMode: _isDarkMode, userId: userId),
+      FarmTab(userId: userId),
       FarmNetworkScreen(isDarkMode: _isDarkMode),
       LivestockTab(isDarkMode: _isDarkMode),
       MarketTab(isDarkMode: _isDarkMode),
       AdviceTab(isDarkMode: _isDarkMode),
     ];
 
-    // If no userId provided by route, try to restore from storage
+    if (isLoggedIn) {
+      // Profile sync will happen automatically via auth service
+    }
+
     if (_userId == null) {
       TokenStorage.getUserId().then((v) {
         if (v != null && mounted) {
@@ -62,12 +70,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = _isDarkMode ? const Color(0xFF1a1a1a) : const Color(0xFFFAFAFA);
-    final appBarBg = _isDarkMode ? const Color(0xFF1a1a1a) : Colors.white;
-    final appBarIconColor = _isDarkMode ? const Color(0xFF6B8E23) : const Color(0xFF2D5016);
+    // Utiliser le ThemeProvider pour savoir si on est en mode sombre
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
+    final appBarBg = isDarkMode ? const Color(0xFF1a1a1a) : Colors.white;
+    final appBarIconColor = isDarkMode ? const Color(0xFF6B8E23) : const Color(0xFF2D5016);
     
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: isDarkMode ? const Color(0xFF0A0A0A) : const Color(0xFFFAFAFA),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: appBarBg,
@@ -85,7 +96,6 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         actions: [
-          // Notification button
           IconButton(
             icon: Stack(
               children: [
@@ -110,24 +120,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             onPressed: () {
               HapticFeedback.lightImpact();
-              // TODO: Navigate to notifications
             },
           ),
-          // Theme toggle button
           IconButton(
             icon: Icon(
-              _isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
               color: appBarIconColor,
               size: 20,
             ),
             onPressed: () {
               HapticFeedback.lightImpact();
+              // Toggle theme via ThemeProvider (s'applique globalement)
+              Provider.of<ThemeProvider>(context, listen: false).toggleDarkMode();
               setState(() {
                 _isDarkMode = !_isDarkMode;
               });
             },
           ),
-          // Profile button (to the right of dark mode)
           IconButton(
             tooltip: 'Profil',
             icon: Icon(
@@ -170,88 +179,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Stack(
-              alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                // Bottom nav items
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(Icons.home_outlined, Icons.home, 'Accueil', 0, _isDarkMode),
-                    _buildNavItem(Icons.agriculture_outlined, Icons.agriculture, 'Fermes', 1, _isDarkMode),
-                    const SizedBox(width: 60), // Space for FAB
-                    _buildNavItem(Icons.groups_outlined, Icons.groups, 'Réseau', 2, _isDarkMode),
-                    if (isLoggedIn)
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            Navigator.pushNamed(
-                              context,
-                              '/user-profile/$_userId',
-                              arguments: {
-                                'userId': _userId,
-                                'isDarkMode': _isDarkMode,
-                              },
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.account_circle_outlined,
-                                  color: _isDarkMode ? const Color(0xFF666666) : const Color(0xFFC0C0C0),
-                                  size: 26,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Profil',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w300,
-                                    letterSpacing: 0.2,
-                                    color: _isDarkMode ? const Color(0xFF888888) : const Color(0xFFA8A8A8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                // Central action button
-                GestureDetector(
-                  onTap: () => _showActionMenu(context),
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3D6B1F), Color(0xFF2D5016)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF2D5016).withOpacity(0.35),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.add,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  ),
-                ),
+                _buildNavItem(Icons.home_outlined, Icons.home, 'Accueil', 0, _isDarkMode),
+                _buildNavItem(Icons.agriculture_outlined, Icons.agriculture, 'Fermes', 1, _isDarkMode),
+                _buildCentralActionButton(),
+                _buildNavItem(Icons.groups_outlined, Icons.groups, 'Réseau', 2, _isDarkMode),
+                _buildNavItem(Icons.shopping_bag_outlined, Icons.shopping_bag, 'Marché', 4, _isDarkMode),
               ],
             ),
           ),
@@ -266,48 +202,66 @@ class _HomeScreenState extends State<HomeScreen> {
     final inactiveColor = isDarkMode ? const Color(0xFF666666) : const Color(0xFFC0C0C0);
     final inactiveTextColor = isDarkMode ? const Color(0xFF888888) : const Color(0xFFA8A8A8);
     
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          // Special navigation for Élevage tab
-          if (index == 3 && userId != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => LivestockManagementScreen(
-                  userId: userId!,
-                  isDarkMode: _isDarkMode,
-                ),
+    return InkWell(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        setState(() => _selectedIndex = index);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? activeIcon : icon,
+              color: isSelected ? activeColor : inactiveColor,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                letterSpacing: 0.1,
+                color: isSelected ? activeColor : inactiveTextColor,
               ),
-            );
-          } else {
-            setState(() => _selectedIndex = index);
-          }
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isSelected ? activeIcon : icon,
-                color: isSelected ? activeColor : inactiveColor,
-                size: 26,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.w300,
-                  letterSpacing: 0.2,
-                  color: isSelected ? activeColor : inactiveTextColor,
-                ),
-              ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCentralActionButton() {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        _showActionMenu(context);
+      },
+      child: Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF3D6B1F), Color(0xFF2D5016)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2D5016).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.add_rounded,
+          color: Colors.white,
+          size: 28,
         ),
       ),
     );
@@ -319,9 +273,9 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: _isDarkMode ? const Color(0xFF2C2C2C) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
@@ -337,12 +291,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Nouvelle action',
                 style: TextStyle(
                   fontSize: 22,
-                  fontWeight: FontWeight.w300,
-                  color: Color(0xFF2D5016),
+                  fontWeight: FontWeight.w600,
+                  color: _isDarkMode ? Colors.white : const Color(0xFF2D5016),
                   letterSpacing: -0.5,
                 ),
               ),
@@ -365,8 +319,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'Ajouter une ferme',
                 color: const Color(0xFF2D5016),
                 onTap: () async {
-                  // Capture the state context so we don't try to use the bottom-sheet's
-                  // (possibly disposed) context after awaiting navigation.
                   final rootContext = this.context;
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
@@ -377,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (result != null) {
                     if (!mounted) return;
                     setState(() {
-                      _screens[1] = FarmTab(isDarkMode: _isDarkMode, userId: userId);
+                      _screens[1] = FarmTab(userId: userId);
                       _screens[0] = DashboardTab(isDarkMode: _isDarkMode, userId: userId);
                     });
                     ScaffoldMessenger.of(rootContext).showSnackBar(const SnackBar(content: Text('Ferme créée')));
@@ -470,8 +422,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 label,
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w300,
-                  color: color,
+                  fontWeight: FontWeight.w500,
+                  color: _isDarkMode ? Colors.white : color,
                 ),
               ),
             ),
@@ -488,9 +440,9 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: _isDarkMode ? const Color(0xFF2C2C2C) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -505,12 +457,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Rejoignez Mbaymi',
               style: TextStyle(
                 fontSize: 22,
-                fontWeight: FontWeight.w300,
-                color: Color(0xFF2C2416),
+                fontWeight: FontWeight.w600,
+                color: _isDarkMode ? Colors.white : const Color(0xFF2C2416),
                 letterSpacing: -0.5,
               ),
             ),
@@ -558,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
           label,
           style: const TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w500,
             letterSpacing: 0.2,
           ),
         ),
@@ -568,7 +520,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showSearchDialog(BuildContext context) {
     final searchController = TextEditingController();
-    final bgColor = _isDarkMode ? const Color(0xFF1a1a1a) : const Color(0xFFFAFAFA);
     final cardBg = _isDarkMode ? const Color(0xFF2C2C2C) : Colors.white;
     final textColor = _isDarkMode ? Colors.white : Colors.black;
 
@@ -591,12 +542,14 @@ class _HomeScreenState extends State<HomeScreen> {
           onSubmitted: (query) {
             Navigator.pop(ctx);
             if (query.isNotEmpty) {
-              // Navigate to social/network screen
               setState(() => _selectedIndex = 2);
             }
           },
         ),
-        content: const Text('Entrez votre recherche...'),
+        content: Text(
+          'Entrez votre recherche...',
+          style: TextStyle(color: textColor),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -616,6 +569,5 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
 
 

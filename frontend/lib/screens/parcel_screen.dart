@@ -25,8 +25,8 @@ class ParcelScreen extends StatefulWidget {
 
 class _ParcelScreenState extends State<ParcelScreen> {
   late Future<List<dynamic>> _parcelsFuture;
-  bool _showPosts = false;
   late int _userId;
+  int _selectedSection = 0; // 0: Parcelles, 1: Posts
 
   static const Color _primaryColor = Color(0xFF6B8E23);
   static const Color _bgLight = Color(0xFFF8F9FA);
@@ -38,12 +38,16 @@ class _ParcelScreenState extends State<ParcelScreen> {
   void initState() {
     super.initState();
     _userId = AuthService.currentSession?.userId ?? 0;
+    _loadData();
+  }
+
+  void _loadData() {
     _parcelsFuture = ApiService.getFarmCrops(widget.farmId);
   }
 
   Future<void> _refresh() async {
     setState(() {
-      _parcelsFuture = ApiService.getFarmCrops(widget.farmId);
+      _loadData();
     });
   }
 
@@ -178,6 +182,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 0,
+                      splashFactory: NoSplash.splashFactory,
                     ),
                     child: const Text(
                       'Créer la parcelle',
@@ -240,6 +245,11 @@ class _ParcelScreenState extends State<ParcelScreen> {
     }
   }
 
+  Future<void> _addPost() async {
+    // Implémentez la logique pour ajouter un post
+    _showSnackBar('Fonctionnalité d\'ajout de post à implémenter', isError: false);
+  }
+
   int? _toInt(dynamic v) {
     if (v == null) return null;
     if (v is int) return v;
@@ -273,9 +283,10 @@ class _ParcelScreenState extends State<ParcelScreen> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => Navigator.pop(context),
+          splashRadius: 1,
         ),
         title: Text(
-          'Parcelles',
+          _selectedSection == 0 ? 'Parcelles' : 'Posts',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -284,35 +295,132 @@ class _ParcelScreenState extends State<ParcelScreen> {
         ),
         actions: [
           TextButton.icon(
-            onPressed: () => setState(() => _showPosts = !_showPosts),
+            onPressed: () => setState(() {
+              // Navigation vers la vue Photos
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FarmPostsWidget(
+                    farmId: widget.farmId,
+                    farmName: 'Photos de la ferme',
+                    isOwner: _userId == widget.userId,
+                  ),
+                ),
+              );
+            }),
             icon: Icon(
-              _showPosts ? Icons.close : Icons.photo_library_outlined,
+              Icons.photo_library_outlined,
               color: _primaryColor,
               size: 20,
             ),
             label: Text(
-              _showPosts ? 'Fermer' : 'Posts',
+              'Photos',
               style: TextStyle(
                 color: _primaryColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          if (!widget.readOnly)
+          if (!widget.readOnly && _selectedSection == 0)
             IconButton(
               icon: Icon(Icons.add, color: _primaryColor),
               onPressed: _showAddParcel,
               tooltip: 'Ajouter une parcelle',
+              splashRadius: 1,
+            ),
+          if (!widget.readOnly && _selectedSection == 1)
+            IconButton(
+              icon: Icon(Icons.add_circle_outline, color: _primaryColor),
+              onPressed: _addPost,
+              tooltip: 'Ajouter un post',
+              splashRadius: 1,
             ),
         ],
       ),
-      body: _showPosts
-          ? FarmPostsWidget(
-              farmId: widget.farmId,
-              farmName: 'Posts de la ferme',
-              isOwner: _userId == widget.userId,
-            )
-          : _buildParcelsSection(cardColor, textColor, secondaryTextColor, isDark),
+      body: Column(
+        children: [
+          // Onglets de sections
+          Container(
+            decoration: BoxDecoration(
+              color: cardColor,
+              border: Border(
+                bottom: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildSectionTab(
+                    index: 0,
+                    label: 'Parcelles',
+                    icon: Icons.landscape_outlined,
+                  ),
+                ),
+                Expanded(
+                  child: _buildSectionTab(
+                    index: 1,
+                    label: 'Posts',
+                    icon: Icons.chat_bubble_outline,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _selectedSection == 0
+                ? _buildParcelsSection(cardColor, textColor, secondaryTextColor, isDark)
+                : _buildPostsSection(cardColor, textColor, secondaryTextColor, isDark),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTab({
+    required int index,
+    required String label,
+    required IconData icon,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSelected = _selectedSection == index;
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _selectedSection = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: isSelected ? _primaryColor : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected ? _primaryColor : (isDark ? Colors.white60 : Colors.black54),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? _primaryColor : (isDark ? Colors.white60 : Colors.black54),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -353,54 +461,61 @@ class _ParcelScreenState extends State<ParcelScreen> {
         final parcels = snapshot.data ?? [];
         
         if (parcels.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.landscape_outlined,
-                  size: 64,
-                  color: _primaryColor.withOpacity(0.3),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Aucune parcelle',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: textColor,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Créez votre première parcelle',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: secondaryTextColor,
-                  ),
-                ),
-                if (!widget.readOnly) ...[
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: _showAddParcel,
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text(
-                      'Créer une parcelle',
-                      style: TextStyle(color: Colors.white),
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.landscape_outlined,
+                      size: 64,
+                      color: _primaryColor.withOpacity(0.3),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Aucune parcelle',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: textColor,
                       ),
                     ),
-                  ),
-                ],
-              ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Créez votre première parcelle',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                    if (!widget.readOnly) ...[
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _showAddParcel,
+                        icon: const Icon(Icons.add, color: Colors.white),
+                        label: const Text(
+                          'Créer une parcelle',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryColor,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          splashFactory: NoSplash.splashFactory,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           );
         }
@@ -409,6 +524,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
           onRefresh: _refresh,
           color: _primaryColor,
           child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
             itemCount: parcels.length,
             separatorBuilder: (_, __) => const SizedBox(height: 16),
@@ -425,6 +541,22 @@ class _ParcelScreenState extends State<ParcelScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPostsSection(
+    Color cardColor,
+    Color textColor,
+    Color secondaryTextColor,
+    bool isDark,
+  ) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: FarmPostsWidget(
+        farmId: widget.farmId,
+        farmName: 'Posts de la ferme',
+        isOwner: _userId == widget.userId,
+      ),
     );
   }
 

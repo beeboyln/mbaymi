@@ -4,14 +4,14 @@ import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:mbaymi/screens/home_screen.dart';
-import 'package:mbaymi/services/auth_storage.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/screens/login_screen.dart';
 import 'package:mbaymi/screens/register_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
 import 'package:mbaymi/screens/farm_profile_screen.dart';
-import 'package:mbaymi/screens/farm_network_screen.dart';
 import 'package:mbaymi/screens/user_profile_screen.dart';
 
 Future<void> main() async {
@@ -34,6 +34,9 @@ Future<void> main() async {
     debugPrint('🔄 Restoring session from localStorage...');
     await AuthService.restoreSession();
 
+    // Initialiser le ThemeProvider
+    await ThemeProvider().init();
+
     // Global error handling so uncaught Flutter errors are logged in console
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.dumpErrorToConsole(details);
@@ -54,75 +57,102 @@ class MbaymiApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Always show HomeScreen (read-only mode for guests, full access for authenticated users)
-    final userId = AuthService.currentSession?.userId;
+    return ChangeNotifierProvider<ThemeProvider>(
+      create: (_) => ThemeProvider(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          // Always show HomeScreen (read-only mode for guests, full access for authenticated users)
+          final userId = AuthService.currentSession?.userId;
 
-    return MaterialApp(
-      title: 'Mbaymi',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        useMaterial3: true,
-        brightness: Brightness.light,
+          return MaterialApp(
+            title: 'Mbaymi',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              primarySwatch: Colors.green,
+              useMaterial3: true,
+              brightness: Brightness.light,
+              scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black87,
+                elevation: 0,
+                surfaceTintColor: Colors.transparent,
+              ),
+            ),
+            darkTheme: ThemeData(
+              primarySwatch: Colors.green,
+              useMaterial3: true,
+              brightness: Brightness.dark,
+              scaffoldBackgroundColor: const Color(0xFF0A0A0A),
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Color(0xFF1A1A1A),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                surfaceTintColor: Colors.transparent,
+              ),
+            ),
+            themeMode: themeProvider.themeMode,
+            home: SplashScreen(userId: userId),
+            onGenerateRoute: (settings) {
+              if (settings.name == '/home') {
+                final arg = settings.arguments;
+                int? routeUserId;
+                if (arg is int) routeUserId = arg;
+                if (arg is Map && arg['id'] != null) {
+                  final raw = arg['id'];
+                  if (raw is int) {
+                    routeUserId = raw;
+                  } else {
+                    routeUserId = int.tryParse(raw.toString());
+                  }
+                }
+                return MaterialPageRoute(
+                  builder: (context) => HomeScreen(userId: routeUserId ?? userId),
+                );
+              }
+              // 🌾 Crop Problems Screen
+              if (settings.name?.startsWith('/crop-problems/') == true) {
+                final args = settings.arguments as Map<String, dynamic>;
+                return MaterialPageRoute(
+                  builder: (context) => CropProblemsScreen(
+                    farmId: args['farmId'] as int,
+                    cropId: args['cropId'] as int,
+                    userId: args['userId'] as int,
+                    cropName: args['cropName'] as String,
+                    isDarkMode: args['isDarkMode'] as bool? ?? false,
+                  ),
+                );
+              }
+              // 🌾 Farm Profile Screen
+              if (settings.name?.startsWith('/farm-profile/') == true) {
+                final args = settings.arguments as Map<String, dynamic>;
+                return MaterialPageRoute(
+                  builder: (context) => FarmProfileScreen(
+                    farmId: args['farmId'] as int,
+                    userId: args['userId'] as int,
+                    isDarkMode: args['isDarkMode'] as bool? ?? false,
+                  ),
+                );
+              }
+              // 👤 User Profile Screen
+              if (settings.name?.startsWith('/user-profile/') == true) {
+                final args = settings.arguments as Map<String, dynamic>;
+                return MaterialPageRoute(
+                  builder: (context) => UserProfileScreen(
+                    userId: args['userId'] as int,
+                    isDarkMode: args['isDarkMode'] as bool? ?? false,
+                  ),
+                );
+              }
+              return null;
+            },
+            routes: {
+              '/login': (context) => const LoginScreen(),
+              '/register': (context) => const RegisterScreen(),
+            },
+          );
+        },
       ),
-      home: SplashScreen(userId: userId),
-      onGenerateRoute: (settings) {
-        if (settings.name == '/home') {
-          final arg = settings.arguments;
-          int? routeUserId;
-          if (arg is int) routeUserId = arg;
-          if (arg is Map && arg['id'] != null) {
-            final raw = arg['id'];
-            if (raw is int) {
-              routeUserId = raw;
-            } else {
-              routeUserId = int.tryParse(raw.toString());
-            }
-          }
-          return MaterialPageRoute(
-            builder: (context) => HomeScreen(userId: routeUserId ?? userId),
-          );
-        }
-        // 🌾 Crop Problems Screen
-        if (settings.name?.startsWith('/crop-problems/') == true) {
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (context) => CropProblemsScreen(
-              farmId: args['farmId'] as int,
-              cropId: args['cropId'] as int,
-              userId: args['userId'] as int,
-              cropName: args['cropName'] as String,
-              isDarkMode: args['isDarkMode'] as bool? ?? false,
-            ),
-          );
-        }
-        // 🌾 Farm Profile Screen
-        if (settings.name?.startsWith('/farm-profile/') == true) {
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (context) => FarmProfileScreen(
-              farmId: args['farmId'] as int,
-              userId: args['userId'] as int,
-              isDarkMode: args['isDarkMode'] as bool? ?? false,
-            ),
-          );
-        }
-        // 👤 User Profile Screen
-        if (settings.name?.startsWith('/user-profile/') == true) {
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (context) => UserProfileScreen(
-              userId: args['userId'] as int,
-              isDarkMode: args['isDarkMode'] as bool? ?? false,
-            ),
-          );
-        }
-        return null;
-      },
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-      },
     );
   }
 }
