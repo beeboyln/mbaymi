@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/screens/post_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
@@ -24,7 +26,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   // ✅ STORE FEED DATA IN STATE - NOT REBUILT ON EACH setState()
   late Future<Map<String, dynamic>> _feedFuture;
   List<Map<String, dynamic>> _combinedItems = [];
-  bool _isLoadingFeed = false;
   
   // ✅ STORE EXPLORE & TRENDING DATA
   late Future<List<dynamic>> _exploreFuture;
@@ -61,18 +62,19 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = widget.isDarkMode;
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    final isDark = isDarkMode;
     final bgColor = isDark ? _bgDark : _bgLight;
-    final appBarColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: _buildFeedTab(),
+      body: _buildFeedTab(isDarkMode),
     );
   }
 
   // 📰 TAB 1: FEED (Connecté ou pas)
-  Widget _buildFeedTab() {
+  Widget _buildFeedTab(bool isDarkMode) {
     return RefreshIndicator(
       onRefresh: () async {
         // Reload the feed from server
@@ -85,11 +87,11 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         future: _feedFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingWidget();
+            return _buildLoadingWidget(isDarkMode);
           }
 
           if (snapshot.hasError) {
-            return _buildErrorWidget(snapshot.error.toString());
+            return _buildErrorWidget(snapshot.error.toString(), isDarkMode);
           }
 
           final data = snapshot.data ?? {};
@@ -98,7 +100,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           final combinedItems = _combinedItems;
 
           if (combinedItems.isEmpty) {
-            return _buildEmptyFeedWidget();
+            return _buildEmptyFeedWidget(isDarkMode);
           }
 
           return ListView.builder(
@@ -108,9 +110,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             itemBuilder: (context, index) {
               final item = combinedItems[index];
               if (item['type'] == 'farm_post') {
-                return _buildFarmPostCard(item['data'], item);
-              } else if (item['type'] == 'animal') {
-                return _buildAnimalCard(item['data'], item);
+                return _buildFarmPostCard(item['data'], item, isDarkMode);
               }
               return const SizedBox();
             },
@@ -136,18 +136,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         print('Erreur chargement farm posts: $e');
       }
 
-      // Charger les animaux
-      try {
-        final animals = await ApiService.getAllLivestockWithPhotos(userId: _userId);
-        items.addAll(animals.map((animal) => {
-          'type': 'animal',
-          'data': animal,
-          'timestamp': DateTime.tryParse(animal['created_at'] ?? '') ?? DateTime.now(),
-        }));
-      } catch (e) {
-        print('Erreur chargement animaux: $e');
-      }
-
       // Trier par date décroissante
       items.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
 
@@ -158,7 +146,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🔍 TAB 2: EXPLORE
-  Widget _buildExploreTab() {
+  Widget _buildExploreTab(bool isDarkMode) {
     return RefreshIndicator(
       onRefresh: () async {
         // Reload explore data on pull-to-refresh
@@ -171,17 +159,17 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         future: _exploreFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingWidget();
+            return _buildLoadingWidget(isDarkMode);
           }
 
           if (snapshot.hasError) {
-            return _buildErrorWidget(snapshot.error.toString());
+            return _buildErrorWidget(snapshot.error.toString(), isDarkMode);
           }
 
           final farms = snapshot.data ?? [];
 
           if (farms.isEmpty) {
-            return _buildEmptyExploreWidget();
+            return _buildEmptyExploreWidget(isDarkMode);
           }
 
           return GridView.builder(
@@ -194,7 +182,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               childAspectRatio: 0.85,
             ),
             itemCount: farms.length,
-            itemBuilder: (context, index) => _buildExploreFarmCard(farms[index]),
+            itemBuilder: (context, index) => _buildExploreFarmCard(farms[index], isDarkMode),
           );
         },
       ),
@@ -202,7 +190,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🔥 TAB 3: TRENDING
-  Widget _buildTrendingTab() {
+  Widget _buildTrendingTab(bool isDarkMode) {
     return RefreshIndicator(
       onRefresh: () async {
         // Reload trending data on pull-to-refresh
@@ -215,24 +203,24 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         future: _trendingFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingWidget();
+            return _buildLoadingWidget(isDarkMode);
           }
 
           if (snapshot.hasError) {
-            return _buildErrorWidget(snapshot.error.toString());
+            return _buildErrorWidget(snapshot.error.toString(), isDarkMode);
           }
 
           final farms = snapshot.data ?? [];
 
           if (farms.isEmpty) {
-            return _buildEmptyTrendingWidget();
+            return _buildEmptyTrendingWidget(isDarkMode);
           }
 
           return ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(8),
             itemCount: farms.length,
-            itemBuilder: (context, index) => _buildTrendingFarmCard(farms[index]),
+            itemBuilder: (context, index) => _buildTrendingFarmCard(farms[index], isDarkMode),
           );
         },
       ),
@@ -240,13 +228,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🏞️ FARM POST CARD (Images avec caption)
-  Widget _buildFarmPostCard(dynamic post, Map<String, dynamic> itemWrapper) {
+  Widget _buildFarmPostCard(dynamic post, Map<String, dynamic> itemWrapper, bool isDarkMode) {
     final farmName = post['farm_name'] as String? ?? 'Ferme';
     final ownerName = post['owner_name'] as String? ?? 'Agriculteur';
     final caption = post['caption'] as String? ?? '';
     final imageUrl = post['image_url'] as String?;
     final postId = post['id'] as int? ?? 0;
     final farmId = post['farm_id'] as int? ?? 0;
+    final livestockId = post['livestock_id'] as int?;
     final userId = post['user_id'] as int? ?? 0;
     final likesCount = post['likes_count'] ?? 0;
     final commentsCount = post['comments_count'] ?? 0;
@@ -258,11 +247,11 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(widget.isDarkMode ? 0.2 : 0.05),
+            color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -281,7 +270,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                   MaterialPageRoute(
                     builder: (context) => ProfileDetailScreen(
                       userId: userId,
-                      isDarkMode: widget.isDarkMode,
+                      isDarkMode: isDarkMode,
                     ),
                   ),
                 );
@@ -318,15 +307,27 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
-                                  // Click on farm name navigates to farm detail
-                                  if (farmId > 0) {
+                                  // Si c'est un animal (livestockId existe), naviguer vers AnimalDetailScreen
+                                  if (livestockId != null && livestockId > 0) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => AnimalDetailScreen(
+                                          livestockId: livestockId,
+                                          animal: post,
+                                          isDarkMode: isDarkMode,
+                                        ),
+                                      ),
+                                    );
+                                  } else if (farmId > 0) {
+                                    // Click on farm name navigates to farm detail
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => FarmDetailScreen(
                                           farmId: farmId,
                                           farmData: post,
-                                          isDarkMode: widget.isDarkMode,
+                                          isDarkMode: isDarkMode,
                                         ),
                                       ),
                                     );
@@ -348,7 +349,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                           'par $ownerName • $timeText',
                           style: TextStyle(
                             fontSize: 12,
-                            color: widget.isDarkMode ? Colors.white54 : Colors.black54,
+                            color: isDarkMode ? Colors.white54 : Colors.black54,
                           ),
                         ),
                       ],
@@ -376,7 +377,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                   colors: [_primaryColor.withOpacity(0.2), _accentColor.withOpacity(0.2)],
                 ),
               ),
-              child: Center(child: Icon(Icons.image_outlined, size: 48, color: widget.isDarkMode ? Colors.white30 : Colors.black12)),
+              child: Center(child: Icon(Icons.image_outlined, size: 48, color: isDarkMode ? Colors.white30 : Colors.black12)),
             ),
 
           // ❤️ Actions
@@ -493,7 +494,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Text(
                 caption,
-                style: TextStyle(fontSize: 13, color: widget.isDarkMode ? Colors.white70 : Colors.black87, height: 1.4),
+                style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white70 : Colors.black87, height: 1.4),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -506,7 +507,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 📱 POST CARD
-  Widget _buildPostCard(dynamic post, Map<String, dynamic> itemWrapper) {
+  Widget _buildPostCard(dynamic post, Map<String, dynamic> itemWrapper, bool isDarkMode) {
     final farmName = post['farm_name'] as String? ?? 'Ferme';
     final ownerName = post['owner_name'] as String? ?? 'Agriculteur';
     final title = post['title'] as String? ?? '';
@@ -544,7 +545,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             builder: (context) => PostDetailScreen(
               postId: postId,
               postData: post,
-              isDarkMode: widget.isDarkMode,
+              isDarkMode: isDarkMode,
             ),
           ),
         );
@@ -552,11 +553,11 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(widget.isDarkMode ? 0.2 : 0.05),
+              color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -605,7 +606,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                           'par $ownerName • $timeText',
                           style: TextStyle(
                             fontSize: 12,
-                            color: widget.isDarkMode ? Colors.white54 : Colors.black54,
+                            color: isDarkMode ? Colors.white54 : Colors.black54,
                           ),
                         ),
                       ],
@@ -670,7 +671,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                     colors: [_primaryColor.withOpacity(0.2), _accentColor.withOpacity(0.2)],
                   ),
                 ),
-                child: Center(child: Icon(Icons.image_outlined, size: 48, color: widget.isDarkMode ? Colors.white30 : Colors.black12)),
+                child: Center(child: Icon(Icons.image_outlined, size: 48, color: isDarkMode ? Colors.white30 : Colors.black12)),
               ),
 
             // ❤️ Actions
@@ -794,7 +795,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                     if (description != null && description.isNotEmpty)
                       Text(
                         description,
-                        style: TextStyle(fontSize: 13, color: widget.isDarkMode ? Colors.white70 : Colors.black87, height: 1.4),
+                        style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white70 : Colors.black87, height: 1.4),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -810,7 +811,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🐄 ANIMAL CARD
-  Widget _buildAnimalCard(dynamic animal, Map<String, dynamic> itemWrapper) {
+  Widget _buildAnimalCard(dynamic animal, Map<String, dynamic> itemWrapper, bool isDarkMode) {
     final animalType = animal['animal_type'] as String? ?? 'Animal';
     final breed = animal['breed'] as String? ?? 'Race';
     final quantity = animal['quantity'] as int? ?? 1;
@@ -835,9 +836,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(widget.isDarkMode ? 0.2 : 0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -852,7 +853,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                   MaterialPageRoute(
                     builder: (context) => ProfileDetailScreen(
                       userId: userId,
-                      isDarkMode: widget.isDarkMode,
+                      isDarkMode: isDarkMode,
                     ),
                   ),
                 );
@@ -890,7 +891,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                                         builder: (context) => AnimalDetailScreen(
                                           livestockId: animalId,
                                           animal: animal,
-                                          isDarkMode: widget.isDarkMode,
+                                          isDarkMode: isDarkMode,
                                         ),
                                       ),
                                     );
@@ -903,7 +904,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                           ],
                         ),
                         const SizedBox(height: 2),
-                        Text('par $userName • $timeText', style: TextStyle(fontSize: 12, color: widget.isDarkMode ? Colors.white54 : Colors.black54)),
+                        Text('par $userName • $timeText', style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white54 : Colors.black54)),
                       ],
                     ),
                   ),
@@ -914,7 +915,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           if (firstPhotoUrl != null && firstPhotoUrl.isNotEmpty)
             Container(height: 300, width: double.infinity, color: Colors.grey[300], child: Image.network(firstPhotoUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => Icon(Icons.image, size: 40, color: Colors.grey[400])))
           else
-            Container(height: 200, width: double.infinity, decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryColor.withOpacity(0.2), _accentColor.withOpacity(0.2)])), child: Center(child: Icon(Icons.pets_outlined, size: 48, color: widget.isDarkMode ? Colors.white30 : Colors.black12))),
+            Container(height: 200, width: double.infinity, decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryColor.withOpacity(0.2), _accentColor.withOpacity(0.2)])), child: Center(child: Icon(Icons.pets_outlined, size: 48, color: isDarkMode ? Colors.white30 : Colors.black12))),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
@@ -1002,7 +1003,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(children: [Text('Qty: $quantity', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: widget.isDarkMode ? Colors.white : Colors.black87)), const SizedBox(width: 16), Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: _getHealthStatusColor(healthStatus).withOpacity(0.2), borderRadius: BorderRadius.circular(8)), child: Text(healthStatus, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _getHealthStatusColor(healthStatus))))]),
+            child: Row(children: [Text('Qty: $quantity', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDarkMode ? Colors.white : Colors.black87)), const SizedBox(width: 16), Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: _getHealthStatusColor(healthStatus).withOpacity(0.2), borderRadius: BorderRadius.circular(8)), child: Text(healthStatus, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _getHealthStatusColor(healthStatus))))]),
           ),
           const SizedBox(height: 8),
         ],
@@ -1027,7 +1028,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🏠 EXPLORE CARD
-  Widget _buildExploreFarmCard(dynamic farm) {
+  Widget _buildExploreFarmCard(dynamic farm, bool isDarkMode) {
     final farmName = farm['farm_name'] as String? ?? 'Ferme';
     final farmId = farm['farm_id'] as int? ?? 0;
     final imageUrl = farm['profile_image_farm'] as String?;
@@ -1041,16 +1042,16 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             builder: (context) => FarmDetailScreen(
               farmId: farmId,
               farmData: farm,
-              isDarkMode: widget.isDarkMode,
+              isDarkMode: isDarkMode,
             ),
           ),
         );
       },
       child: Container(
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(widget.isDarkMode ? 0.2 : 0.05), blurRadius: 6)],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05), blurRadius: 6)],
         ),
         child: Stack(
           children: [
@@ -1094,7 +1095,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🔥 TRENDING CARD
-  Widget _buildTrendingFarmCard(dynamic farm) {
+  Widget _buildTrendingFarmCard(dynamic farm, bool isDarkMode) {
     final farmName = farm['farm_name'] as String? ?? 'Ferme';
     final farmId = farm['farm_id'] as int? ?? 0;
     final ownerName = farm['owner_name'] as String? ?? 'Agriculteur';
@@ -1109,7 +1110,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             builder: (context) => FarmDetailScreen(
               farmId: farmId,
               farmData: farm,
-              isDarkMode: widget.isDarkMode,
+              isDarkMode: isDarkMode,
             ),
           ),
         );
@@ -1117,9 +1118,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(widget.isDarkMode ? 0.2 : 0.05), blurRadius: 6)],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05), blurRadius: 6)],
         ),
         child: Row(
           children: [
@@ -1145,7 +1146,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                         Expanded(child: Text(farmName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
                       ],
                     ),
-                    Text(ownerName, style: TextStyle(fontSize: 12, color: widget.isDarkMode ? Colors.white60 : Colors.black54)),
+                    Text(ownerName, style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white60 : Colors.black54)),
                     Row(children: [const Icon(Icons.favorite, color: Colors.red, size: 14), const SizedBox(width: 4), Text('$followers', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))]),
                   ],
                 ),
@@ -1158,20 +1159,20 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🔧 HELPERS
-  Widget _buildLoadingWidget() {
+  Widget _buildLoadingWidget(bool isDarkMode) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(color: _primaryColor),
           const SizedBox(height: 16),
-          Text('Chargement...', style: TextStyle(color: widget.isDarkMode ? Colors.white60 : Colors.black54)),
+          Text('Chargement...', style: TextStyle(color: isDarkMode ? Colors.white60 : Colors.black54)),
         ],
       ),
     );
   }
 
-  Widget _buildErrorWidget(String error) {
+  Widget _buildErrorWidget(String error, bool isDarkMode) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1182,14 +1183,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             const SizedBox(height: 16),
             const Text('Erreur', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            Text(error, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: widget.isDarkMode ? Colors.white60 : Colors.black54)),
+            Text(error, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white60 : Colors.black54)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEmptyFeedWidget() {
+  Widget _buildEmptyFeedWidget(bool isDarkMode) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1198,13 +1199,13 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           const SizedBox(height: 16),
           const Text('Aucun post', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text('Suivez des agriculteurs pour voir les posts', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: widget.isDarkMode ? Colors.white60 : Colors.black54)),
+          Text('Suivez des agriculteurs pour voir les posts', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white60 : Colors.black54)),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyExploreWidget() {
+  Widget _buildEmptyExploreWidget(bool isDarkMode) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1213,13 +1214,13 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           const SizedBox(height: 16),
           const Text('Aucune ferme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text('Revenez bientôt', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: widget.isDarkMode ? Colors.white60 : Colors.black54)),
+          Text('Revenez bientôt', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white60 : Colors.black54)),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyTrendingWidget() {
+  Widget _buildEmptyTrendingWidget(bool isDarkMode) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1228,27 +1229,31 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           const SizedBox(height: 16),
           const Text('Aucune tendance', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text('Bientôt disponible', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: widget.isDarkMode ? Colors.white60 : Colors.black54)),
+          Text('Bientôt disponible', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white60 : Colors.black54)),
         ],
       ),
     );
   }
 
   void _showSearchDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
     showModalBottomSheet(
       context: context,
-      backgroundColor: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       isScrollControlled: true,
-      builder: (context) => _SearchWidget(isDarkMode: widget.isDarkMode),
+      builder: (context) => _SearchWidget(isDarkMode: isDarkMode),
     );
   }
 
   void _showLikesDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         title: const Text('❤️ Vos aimes'),
         content: const Text('Liste de vos posts aimés'),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer'))],

@@ -16,6 +16,7 @@ class CreateLivestockScreen extends StatefulWidget {
 class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _animalTypeCtrl = TextEditingController();
+  final TextEditingController _customAnimalTypeCtrl = TextEditingController();
   final TextEditingController _breedCtrl = TextEditingController();
   final TextEditingController _quantityCtrl = TextEditingController(text: '1');
   final TextEditingController _ageCtrl = TextEditingController();
@@ -85,6 +86,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
   @override
   void dispose() {
     _animalTypeCtrl.dispose();
+    _customAnimalTypeCtrl.dispose();
     _breedCtrl.dispose();
     _quantityCtrl.dispose();
     _ageCtrl.dispose();
@@ -117,6 +119,16 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
       return;
     }
 
+    // Vérifier que le type d'animal est défini
+    String animalType = _animalTypeCtrl.text.trim();
+    if (animalType == 'Autre') {
+      if (_customAnimalTypeCtrl.text.trim().isEmpty) {
+        _showErrorSnackBar('Veuillez préciser le type d\'animal');
+        return;
+      }
+      animalType = _customAnimalTypeCtrl.text.trim();
+    }
+
     HapticFeedback.mediumImpact();
     setState(() => _loading = true);
 
@@ -130,7 +142,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
 
       final res = await ApiService.createLivestock(
         userId: widget.userId!,
-        animalType: _animalTypeCtrl.text.trim(),
+        animalType: animalType,
         breed: _breedCtrl.text.trim(),
         quantity: int.tryParse(_quantityCtrl.text) ?? 1,
         ageMonths: int.tryParse(_ageCtrl.text),
@@ -231,19 +243,38 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Type d'animal
+                        // Type d'animal avec option personnalisée
                         _buildSectionTitle('Type d\'animal'),
                         const SizedBox(height: 16),
                         _buildDropdown(
                           label: 'Type',
                           value: _animalTypeCtrl.text.isEmpty ? null : _animalTypeCtrl.text,
                           items: _animalTypes,
-                          onChanged: (value) => setState(() => _animalTypeCtrl.text = value ?? ''),
+                          onChanged: (value) {
+                            setState(() => _animalTypeCtrl.text = value ?? '');
+                            if (value == 'Autre') {
+                              _customAnimalTypeCtrl.clear();
+                            }
+                          },
                           cardColor: cardColor,
                           textColor: textColor,
                           borderColor: borderColor,
                           icon: Icons.pets_outlined,
                         ),
+                        // Si "Autre" est sélectionné, afficher un champ texte pour type personnalisé
+                        if (_animalTypeCtrl.text == 'Autre') ...[
+                          const SizedBox(height: 12),
+                          _buildTextField(
+                            controller: _customAnimalTypeCtrl,
+                            label: 'Précisez le type',
+                            hint: 'Ex: Lapins, Chevaux, etc.',
+                            icon: Icons.edit_outlined,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            borderColor: borderColor,
+                            secondaryTextColor: secondaryTextColor,
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         _buildTextField(
                           controller: _breedCtrl,
@@ -438,6 +469,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
     required Color secondaryTextColor,
     TextInputType? keyboardType,
     int maxLines = 1,
+    Function(String)? onChanged,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -450,6 +482,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
         keyboardType: keyboardType,
         maxLines: maxLines,
         minLines: maxLines == 1 ? 1 : 3,
+        onChanged: onChanged,
         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
         decoration: InputDecoration(
           labelText: label,

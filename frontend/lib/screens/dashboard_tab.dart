@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
 import 'package:mbaymi/screens/create_livestock_screen.dart';
@@ -129,7 +131,8 @@ class _DashboardTabState extends State<DashboardTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = widget.isDarkMode;
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
     
     return Container(
       decoration: BoxDecoration(
@@ -270,6 +273,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 children: [
                   Expanded(
                     child: _buildStatCard(
+                      isDarkMode: isDarkMode,
                       icon: Icons.agriculture,
                       iconColor: const Color(0xFF6B8E23),
                       valueKey: 'farms',
@@ -279,6 +283,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildStatCard(
+                      isDarkMode: isDarkMode,
                       icon: Icons.pets,
                       iconColor: const Color(0xFFD2691E),
                       valueKey: 'livestock',
@@ -298,7 +303,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   color: isDarkMode 
-                    ? const Color(0xFF1a1a1a).withOpacity(0.85)
+                    ? const Color(0xFF0D0D0D).withOpacity(0.95)
                     : Colors.white.withOpacity(0.85),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
@@ -350,7 +355,7 @@ class _DashboardTabState extends State<DashboardTab> {
                             ),
                             const SizedBox(width: 8),
                             GestureDetector(
-                              onTap: () => _showFilterMenu(context),
+                              onTap: () => _showFilterMenu(context, isDarkMode),
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
@@ -499,7 +504,7 @@ class _DashboardTabState extends State<DashboardTab> {
                               padding: const EdgeInsets.only(right: 12),
                               child: SizedBox(
                                 width: MediaQuery.of(context).size.width - 80,
-                                child: _buildNewsCard(article, index == _currentNewsPage),
+                                child: _buildNewsCard(article, index == _currentNewsPage, isDarkMode),
                               ),
                             );
                           },
@@ -537,6 +542,7 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Widget _buildStatCard({
+    required bool isDarkMode,
     required IconData icon,
     required Color iconColor,
     required String valueKey,
@@ -550,13 +556,13 @@ class _DashboardTabState extends State<DashboardTab> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: widget.isDarkMode 
-            ? const Color(0xFF1a1a1a)
+          color: isDarkMode 
+            ? const Color(0xFF0D0D0D).withOpacity(0.9)
             : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(widget.isDarkMode ? 0.3 : 0.1),
+              color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -568,7 +574,7 @@ class _DashboardTabState extends State<DashboardTab> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(widget.isDarkMode ? 0.2 : 0.1),
+                color: iconColor.withOpacity(isDarkMode ? 0.2 : 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: iconColor, size: 20),
@@ -583,7 +589,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w300,
-                    color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                    color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
                     height: 1,
                   ),
                 );
@@ -595,7 +601,7 @@ class _DashboardTabState extends State<DashboardTab> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: widget.isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
               ),
             ),
             if (subtitle != null) ...[
@@ -623,7 +629,7 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
-  Widget _buildNewsCard(NewsArticle article, bool isActive) {
+  Widget _buildNewsCard(NewsArticle article, bool isActive, bool isDarkMode) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -635,11 +641,11 @@ class _DashboardTabState extends State<DashboardTab> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF1a1a1a) : Colors.white,
+          color: isDarkMode ? const Color(0xFF0D0D0D).withOpacity(0.9) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(widget.isDarkMode ? 0.3 : 0.1),
+              color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -681,7 +687,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w300,
-                          color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
+                          color: isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
                           height: 1.2,
                         ),
                         maxLines: 2,
@@ -698,7 +704,7 @@ class _DashboardTabState extends State<DashboardTab> {
                             article.description,
                             style: TextStyle(
                               fontSize: 11,
-                              color: widget.isDarkMode ? Colors.grey.shade400 : const Color(0xFF666666),
+                              color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF666666),
                               height: 1.2,
                             ),
                             maxLines: 2,
@@ -723,7 +729,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                   style: TextStyle(
                                     fontSize: 7,
                                     fontWeight: FontWeight.w600,
-                                    color: widget.isDarkMode ? Colors.grey.shade600 : const Color(0xFF888888),
+                                    color: isDarkMode ? Colors.grey.shade600 : const Color(0xFF888888),
                                     letterSpacing: 0.3,
                                   ),
                                 ),
@@ -733,7 +739,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w500,
-                                    color: widget.isDarkMode ? Colors.grey.shade400 : const Color(0xFF444444),
+                                    color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF444444),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -752,7 +758,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                 style: TextStyle(
                                   fontSize: 7,
                                   fontWeight: FontWeight.w600,
-                                  color: widget.isDarkMode ? Colors.grey.shade600 : const Color(0xFF888888),
+                                  color: isDarkMode ? Colors.grey.shade600 : const Color(0xFF888888),
                                   letterSpacing: 0.3,
                                 ),
                               ),
@@ -762,7 +768,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w500,
-                                  color: widget.isDarkMode ? Colors.grey.shade400 : const Color(0xFF444444),
+                                  color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF444444),
                                 ),
                               ),
                             ],
@@ -813,14 +819,14 @@ class _DashboardTabState extends State<DashboardTab> {
     }).toList();
   }
 
-  void _showFilterMenu(BuildContext context) {
+  void _showFilterMenu(BuildContext context, bool isDarkMode) {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: widget.isDarkMode 
+          color: isDarkMode 
             ? const Color(0xFF1a1a1a).withOpacity(0.95)
             : Colors.white.withOpacity(0.95),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -840,7 +846,7 @@ class _DashboardTabState extends State<DashboardTab> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: widget.isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -851,13 +857,13 @@ class _DashboardTabState extends State<DashboardTab> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: widget.isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                  color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
                 ),
               ),
             ),
             const SizedBox(height: 16),
             ...['Local', 'Cultures', 'Élevage', 'International'].map((filter) {
-              return _buildFilterOption(filter);
+              return _buildFilterOption(filter, isDarkMode);
             }).toList(),
             const SizedBox(height: 20),
             Padding(
@@ -891,7 +897,7 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
-  Widget _buildFilterOption(String filter) {
+  Widget _buildFilterOption(String filter, bool isDarkMode) {
     final isSelected = _selectedNewsFilter == filter;
     return GestureDetector(
       onTap: () {
@@ -908,13 +914,13 @@ class _DashboardTabState extends State<DashboardTab> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF2D5016).withOpacity(widget.isDarkMode ? 0.3 : 0.1)
+              ? const Color(0xFF2D5016).withOpacity(isDarkMode ? 0.3 : 0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF2D5016)
-                : widget.isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+                : isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -934,7 +940,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   fontWeight: FontWeight.w500,
                   color: isSelected
                       ? const Color(0xFF2D5016)
-                      : widget.isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                      : isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
                 ),
               ),
             ),

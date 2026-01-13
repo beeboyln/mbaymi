@@ -124,6 +124,16 @@ def get_farm_posts_feed(user_id: int = None, db: Session = Depends(get_db)):
         farm = db.query(Farm).filter(Farm.id == post.farm_id).first()
         user = db.query(User).filter(User.id == post.user_id).first()
         
+        # Get farm or livestock name
+        if farm:
+            farm_name = farm.name
+        elif post.livestock_id:
+            from app.models.livestock import Livestock
+            livestock = db.query(Livestock).filter(Livestock.id == post.livestock_id).first()
+            farm_name = f"{livestock.animal_type.title()} - {livestock.breed or 'Sans race'}" if livestock else "Animal inconnu"
+        else:
+            farm_name = "Ferme inconnue"
+        
         is_liked = False
         if user_id and user_id > 0:
             like = db.query(FarmPostLike).filter(
@@ -135,7 +145,8 @@ def get_farm_posts_feed(user_id: int = None, db: Session = Depends(get_db)):
         result.append({
             "id": post.id,
             "farm_id": post.farm_id,
-            "farm_name": farm.name if farm else "Ferme inconnue",
+            "livestock_id": post.livestock_id,
+            "farm_name": farm_name,
             "owner_name": user.name if user else "Utilisateur",
             "owner_profile_image": user.profile_image if user else None,
             "user_id": post.user_id,
