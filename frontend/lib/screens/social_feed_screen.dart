@@ -442,6 +442,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                       builder: (context) => CommentsBottomSheet(
                         postId: post['id'],
                         currentUserId: _userId,
+                        isDarkMode: isDarkMode,
                       ),
                     );
                   },
@@ -737,6 +738,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                         builder: (context) => CommentsBottomSheet(
                           postId: post['id'],
                           currentUserId: _userId,
+                          isDarkMode: isDarkMode,
                         ),
                       );
                     },

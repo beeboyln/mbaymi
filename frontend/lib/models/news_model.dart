@@ -32,4 +32,7 @@ class NewsArticle {
       return 'Il y a ${(difference.inDays / 7).floor()}s';
     }
   }
+
+  get publishedAt => null;
 }
+

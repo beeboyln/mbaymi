@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/screens/farm_detail_screen.dart';
 
 class ProfileDetailScreen extends StatefulWidget {
   final int userId;
@@ -20,9 +22,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
   // ✅ Futures créées une seule fois et cachées
   Future<Map<String, dynamic>>? _profileFuture;
   Future<List<dynamic>>? _postsFuture;
+  Future<List<dynamic>>? _farmsFuture;
   
   Map<String, dynamic> _profileData = {};
   List<dynamic> _postsData = [];
+  int _userId = 0;
+  int? _followersCount;
+  bool? _isFollowing;
 
   // Couleurs
   static const Color _primaryColor = Color(0xFF8B6B4D);
@@ -45,15 +51,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
   @override
   void initState() {
     super.initState();
+    _userId = AuthService.currentSession?.userId ?? 0;
     // Créer les futures qu'UNE SEULE FOIS
     _profileFuture ??= ApiService.getUserProfile(widget.userId);
     _postsFuture ??= ApiService.getUserPosts(widget.userId);
+    _farmsFuture ??= ApiService.getUserFarms(widget.userId);
   }
 
   Future<void> _refresh() async {
     // Recharger UNIQUEMENT si on swipe
     _profileFuture = ApiService.getUserProfile(widget.userId);
     _postsFuture = ApiService.getUserPosts(widget.userId);
+    _farmsFuture = ApiService.getUserFarms(widget.userId);
     setState(() {});
   }
 
@@ -94,12 +103,24 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        automaticallyImplyLeading: false,
         backgroundColor: bgColor,
         elevation: 0,
         title: const Text('Profil', style: TextStyle(fontWeight: FontWeight.w300)),
         centerTitle: true,
         iconTheme: IconThemeData(color: textColor),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: bgColor.withOpacity(0.95),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back, color: textColor),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ),
         // ❌ Pas de bouton logout - c'est un profil de lecture seule
       ),
       body: RefreshIndicator(
@@ -139,8 +160,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
               final name = profile['name'] ?? 'Utilisateur';
               final email = profile['email'] ?? '';
               final profileImage = profile['profile_image'] as String?;
-              final totalFollowers = profile['total_followers'] ?? 0;
+              final totalFollowers = profile['total_followers'] ?? profile['followers'] ?? 0;
               final totalPosts = profile['total_posts'] ?? 0;
+
+              // initialize follower/following local state once
+              _followersCount ??= totalFollowers;
+              _isFollowing ??= profile['followed_by_user'] ?? profile['is_following'] ?? false;
 
               return Padding(
                 padding: const EdgeInsets.all(16),
@@ -219,18 +244,90 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                _buildStatWidget(
-                                  icon: Icons.people_outline,
-                                  label: 'Abonnés',
-                                  value: '$totalFollowers',
-                                  color: _accentColor,
-                                ),
-                                _buildStatWidget(
-                                  icon: Icons.newspaper,
-                                  label: 'Posts',
-                                  value: '$totalPosts',
-                                  color: _primaryLight,
-                                ),
+                                    // Abonnés + follow button
+                                    Column(
+                                      children: [
+                                        Icon(Icons.people_outline, size: 24, color: _accentColor),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          '${_followersCount ?? 0}',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: _accentColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        SizedBox(
+                                          height: 30,
+                                          child: _userId == 0
+                                              ? OutlinedButton(
+                                                  onPressed: () {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      const SnackBar(content: Text('Veuillez vous connecter pour vous abonner')),
+                                                    );
+                                                  },
+                                                  child: const Text("S'abonner"),
+                                                )
+                                              : (_isFollowing == true
+                                                  ? OutlinedButton(
+                                                      onPressed: () async {
+                                                        // unfollow
+                                                        final prev = _isFollowing;
+                                                        setState(() {
+                                                          _isFollowing = false;
+                                                          _followersCount = (_followersCount ?? 0) - 1;
+                                                        });
+                                                        try {
+                                                          await ApiService.unfollowUser(userIdToUnfollow: widget.userId, userId: _userId);
+                                                        } catch (e) {
+                                                          setState(() {
+                                                            _isFollowing = prev;
+                                                            _followersCount = (_followersCount ?? 0) + 1;
+                                                          });
+                                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                                                        }
+                                                      },
+                                                      child: const Text('Abonné'),
+                                                    )
+                                                  : ElevatedButton(
+                                                      style: ElevatedButton.styleFrom(backgroundColor: _accentColor),
+                                                      onPressed: () async {
+                                                        final prev = _isFollowing;
+                                                        setState(() {
+                                                          _isFollowing = true;
+                                                          _followersCount = (_followersCount ?? 0) + 1;
+                                                        });
+                                                        try {
+                                                          await ApiService.followUser(userIdToFollow: widget.userId, userId: _userId);
+                                                        } catch (e) {
+                                                          setState(() {
+                                                            _isFollowing = prev;
+                                                            _followersCount = (_followersCount ?? 0) - 1;
+                                                          });
+                                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                                                        }
+                                                      },
+                                                      child: const Text("S'abonner"),
+                                                    )),
+                                        ),
+                                      ],
+                                    ),
+
+                                    // Fermes count (replace Posts)
+                                    FutureBuilder<List<dynamic>>(
+                                      future: _farmsFuture ?? ApiService.getUserFarms(widget.userId),
+                                      builder: (context, farmsSnap) {
+                                        final farms = farmsSnap.data ?? [];
+                                        final count = farms.length;
+                                        return _buildStatWidget(
+                                          icon: Icons.landscape_outlined,
+                                          label: 'Fermes',
+                                          value: '$count',
+                                          color: _primaryLight,
+                                        );
+                                      },
+                                    ),
                               ],
                             ),
                             // ❌ Pas de bouton "Créer du contenu" - c'est un profil d'autre utilisateur
@@ -240,169 +337,82 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
                     ),
                     const SizedBox(height: 32),
 
-                    // 📰 Publications - Section regroupée
-                    if (_postsData.isNotEmpty || true) // Show section even while loading
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Publications',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                              color: textColor,
-                              letterSpacing: -0.3,
+                    const SizedBox(height: 16),
+
+                      // 🐄 Fermes du profil (lecture seule)
+                      Text(
+                        'Fermes',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: textColor,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FutureBuilder<List<dynamic>>(
+                        future: _farmsFuture ?? ApiService.getUserFarms(widget.userId),
+                        builder: (context, farmsSnap) {
+                          if (farmsSnap.connectionState == ConnectionState.waiting) {
+                            return Center(child: Padding(padding: const EdgeInsets.all(12), child: CircularProgressIndicator(color: _primaryColor)));
+                          }
+                          if (farmsSnap.hasError) {
+                            return Text('Erreur: ${farmsSnap.error}', style: TextStyle(color: textColor));
+                          }
+
+                          final farms = farmsSnap.data ?? [];
+                          if (farms.isEmpty) {
+                            return Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: 24), child: Text('Aucune ferme', style: TextStyle(color: secondaryTextColor))));
+                          }
+
+                          return DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: const BorderRadius.all(Radius.circular(16)),
+                              border: Border.all(color: borderColor, width: 1),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          FutureBuilder<List<dynamic>>(
-                            future: _postsFuture ?? ApiService.getUserPosts(widget.userId),
-                            builder: (context, postsSnap) {
-                              if (postsSnap.connectionState == ConnectionState.waiting) {
-                                return Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(20),
-                                    child: CircularProgressIndicator(color: _primaryColor),
-                                  ),
-                                );
-                              }
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                children: farms.map<Widget>((f) {
+                                  final farm = f as Map<String, dynamic>;
+                                  final farmName = farm['farm_name'] ?? farm['name'] ?? farm['title'] ?? 'Ferme';
+                                  final location = farm['farm_location'] ?? farm['location'] ?? farm['address'] ?? '';
+                                  final imageUrl = (farm['profile_image_farm'] ?? farm['image_url'] ?? farm['profile_image'] ?? farm['image']) as String?;
+                                  final followers = farm['followers'] ?? farm['total_followers'] ?? 0;
 
-                              if (postsSnap.hasError) {
-                                return Text(
-                                  'Erreur: ${postsSnap.error}',
-                                  style: TextStyle(color: textColor),
-                                );
-                              }
-
-                              // Store posts data in state
-                              _postsData = postsSnap.data ?? [];
-                              
-                              final posts = _postsData;
-                              if (posts.isEmpty) {
-                                return Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 40),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.newspaper_outlined,
-                                          size: 48,
-                                          color: _primaryColor.withOpacity(0.5),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'Aucune publication',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            color: secondaryTextColor,
-                                            fontWeight: FontWeight.w300,
-                                          ),
-                                        ),
-                                      ],
+                                  return ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                                    leading: Container(
+                                      width: 56,
+                                      height: 56,
+                                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[200]),
+                                      child: imageUrl != null && imageUrl.isNotEmpty
+                                          ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(imageUrl, fit: BoxFit.cover))
+                                          : const Icon(Icons.landscape_outlined, size: 32, color: Colors.grey),
                                     ),
-                                  ),
-                                );
-                              }
-
-                              // Conteneur regroupant tous les posts
-                              return DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: cardColor,
-                                  borderRadius: const BorderRadius.all(Radius.circular(16)),
-                                  border: Border.all(color: borderColor, width: 1),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    children: posts.asMap().entries.map((entry) {
-                                      final index = entry.key;
-                                      final post = entry.value;
-                                      final title = post['title'] ?? '';
-                                      final farmName = post['farm_name'] ?? '';
-                                      final createdAt = post['created_at'] ?? '';
-                                      final postType = post['post_type'] ?? 'crop_update';
-                                      
-                                      DateTime? dateTime;
-                                      try {
-                                        dateTime = DateTime.parse(createdAt);
-                                      } catch (_) {}
-                                      
-                                      final formattedDate = dateTime != null
-                                          ? DateFormat('dd/MM/yyyy').format(dateTime)
-                                          : 'Date inconnue';
-
-                                      final postTypeEmoji = _getPostTypeEmoji(postType);
-                                      final isLastPost = index == posts.length - 1;
-
-                                      return Column(
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Text(
-                                                      postTypeEmoji,
-                                                      style: const TextStyle(fontSize: 18),
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Expanded(
-                                                      child: Text(
-                                                        title,
-                                                        style: TextStyle(
-                                                          fontSize: 15,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: textColor,
-                                                        ),
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Row(
-                                                  children: [
-                                                    Icon(Icons.landscape_outlined,
-                                                        size: 14, color: secondaryTextColor),
-                                                    const SizedBox(width: 6),
-                                                    Text(
-                                                      farmName,
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: secondaryTextColor,
-                                                      ),
-                                                    ),
-                                                    const Spacer(),
-                                                    Text(
-                                                      formattedDate,
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        color: secondaryTextColor,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
+                                    title: Text(farmName, style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                                    subtitle: Text(location, style: TextStyle(color: secondaryTextColor)),
+                                    trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.favorite, color: _primaryColor, size: 16), const SizedBox(height: 4), Text('$followers', style: TextStyle(color: _primaryColor))]),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => FarmDetailScreen(
+                                            farmId: farm['farm_id'] ?? farm['id'] ?? farm['farmId'] ?? 0,
+                                            farmData: farm,
+                                            isDarkMode: widget.isDarkMode,
+                                            readOnly: true,
                                           ),
-                                          if (!isLastPost)
-                                            Divider(
-                                              color: borderColor,
-                                              height: 1,
-                                              thickness: 1,
-                                            ),
-                                        ],
+                                        ),
                                       );
-                                    }).toList(),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                   ],
                 ),

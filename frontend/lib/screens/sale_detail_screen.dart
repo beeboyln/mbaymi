@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 
 class SaleDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? sale;
   final int? saleId;
+  final bool? isDarkMode;
 
-  const SaleDetailScreen({Key? key, this.sale, this.saleId}) : super(key: key);
+  const SaleDetailScreen({Key? key, this.sale, this.saleId, this.isDarkMode}) : super(key: key);
 
   @override
   State<SaleDetailScreen> createState() => _SaleDetailScreenState();
@@ -34,7 +36,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = widget.isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       body: FutureBuilder<Map<String, dynamic>>(
@@ -62,12 +64,24 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
             slivers: [
               // AppBar avec image en arrière-plan
               SliverAppBar(
-                automaticallyImplyLeading: false,
                 expandedHeight: 300,
                 pinned: true,
                 backgroundColor: isDark ? Colors.black : Colors.white,
                 foregroundColor: Colors.white,
                 iconTheme: const IconThemeData(color: Colors.white),
+                leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.black : Colors.white).withOpacity(0.9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black87),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                ),
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,
@@ -238,7 +252,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                         _buildInfoCard(
                           icon: Icons.calendar_today,
                           title: 'Publié le',
-                          value: sale['created_at'] ?? 'Non spécifié',
+                          value: _formatDate(sale['created_at']),
                           isDark: isDark,
                         ),
                         const SizedBox(height: 24),
@@ -426,5 +440,16 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
         ],
       ),
     );
+  }
+
+  String _formatDate(dynamic raw) {
+    if (raw == null) return 'Non spécifié';
+    try {
+      final s = raw.toString();
+      final dt = DateTime.parse(s);
+      return DateFormat('dd/MM/yyyy').format(dt);
+    } catch (_) {
+      return raw.toString();
+    }
   }
 }

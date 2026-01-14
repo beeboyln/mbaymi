@@ -4,11 +4,13 @@ import '../services/api_service.dart';
 class CommentsBottomSheet extends StatefulWidget {
   final int postId;
   final int currentUserId;
+  final bool isDarkMode;
 
   const CommentsBottomSheet({
     Key? key,
     required this.postId,
     required this.currentUserId,
+    this.isDarkMode = false,
   }) : super(key: key);
 
   @override
@@ -98,11 +100,17 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = widget.isDarkMode;
+    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final secondaryColor = isDark ? Colors.white60 : Colors.grey[600];
+    final borderColor = isDark ? Colors.white12 : Colors.grey[300];
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
@@ -114,7 +122,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Colors.grey[300]!),
+                bottom: BorderSide(color: borderColor!),
               ),
             ),
             child: Row(
@@ -122,10 +130,10 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               children: [
                 Text(
                   'Commentaires',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(color: textColor),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: Icon(Icons.close, color: textColor),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -135,12 +143,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           // Comments list
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator(color: Theme.of(context).primaryColor))
                 : _comments.isEmpty
                     ? Center(
                         child: Text(
                           'Aucun commentaire',
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: secondaryColor),
                         ),
                       )
                     : ListView.builder(
@@ -160,12 +168,13 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                                 // User avatar
                                 CircleAvatar(
                                   radius: 20,
+                                  backgroundColor: isDark ? Colors.grey[800] : null,
                                   backgroundImage: comment['user_profile_image'] != null
-                                      ? NetworkImage(comment['user_profile_image'])
-                                      : null,
+                                    ? NetworkImage(comment['user_profile_image'])
+                                    : null,
                                   child: comment['user_profile_image'] == null
-                                      ? const Icon(Icons.person)
-                                      : null,
+                                    ? Icon(Icons.person, color: isDark ? Colors.white70 : null)
+                                    : null,
                                 ),
                                 const SizedBox(width: 12),
 
@@ -176,17 +185,18 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                                     children: [
                                       Text(
                                         comment['user_name'] ?? 'Utilisateur',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
+                                          color: textColor,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(comment['comment'] ?? ''),
+                                      Text(comment['comment'] ?? '', style: TextStyle(color: textColor)),
                                       const SizedBox(height: 4),
                                       Text(
                                         _formatTime(comment['created_at']),
                                         style: TextStyle(
-                                          color: Colors.grey[600],
+                                          color: secondaryColor,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -220,8 +230,9 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               bottom: MediaQuery.of(context).viewInsets.bottom + 12,
             ),
             decoration: BoxDecoration(
+              color: bgColor,
               border: Border(
-                top: BorderSide(color: Colors.grey[300]!),
+                top: BorderSide(color: borderColor!),
               ),
             ),
             child: Row(
@@ -231,8 +242,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                     controller: _commentController,
                     decoration: InputDecoration(
                       hintText: 'Votre commentaire...',
+                      hintStyle: TextStyle(color: secondaryColor),
+                      filled: true,
+                      fillColor: isDark ? Colors.white10 : Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(color: borderColor!),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -244,7 +259,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                 ),
                 const SizedBox(width: 8),
                 CircleAvatar(
-                  backgroundColor: Colors.green[600],
+                  backgroundColor: Theme.of(context).primaryColor,
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white),
                     onPressed: _isSubmitting ? null : _submitComment,

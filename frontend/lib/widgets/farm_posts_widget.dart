@@ -292,6 +292,7 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
                       builder: (context) => CommentsBottomSheet(
                         postId: postId,
                         currentUserId: _userId,
+                        isDarkMode: isDark,
                       ),
                     );
                   },

@@ -4,17 +4,20 @@ import 'dart:convert';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/activity_screen.dart';
+import 'package:mbaymi/widgets/farm_posts_widget.dart';
 
 class FarmDetailScreen extends StatefulWidget {
   final int farmId;
   final Map<String, dynamic> farmData;
   final bool isDarkMode;
-
+  final bool readOnly;
+  
   const FarmDetailScreen({
     Key? key,
     required this.farmId,
     required this.farmData,
     this.isDarkMode = false,
+    this.readOnly = false,
   }) : super(key: key);
 
   @override
@@ -76,9 +79,9 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     final secondaryTextColor = isDark ? Colors.white60 : Colors.black54;
     final borderColor = isDark ? _borderDark : _borderLight;
 
-    final farmName = widget.farmData['farm_name'] ?? 'Ferme';
-    final farmerName = widget.farmData['farmer_name'] ?? widget.farmData['user_name'] ?? 'Agriculteur';
-    final farmDesc = widget.farmData['description'] ?? '';
+    final farmName = widget.farmData['farm_name'] ?? widget.farmData['name'] ?? widget.farmData['title'] ?? 'Ferme';
+    final farmerName = widget.farmData['farmer_name'] ?? widget.farmData['user_name'] ?? widget.farmData['owner_name'] ?? widget.farmData['owner'] ?? 'Agriculteur';
+    final farmDesc = widget.farmData['description'] ?? widget.farmData['bio'] ?? '';
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -111,9 +114,9 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                   future: _farmDetailsFuture,
                   builder: (context, snapshot) {
                     final photos = (snapshot.data?['photos'] as List?) ?? [];
-                    final imageUrl = photos.isNotEmpty 
-                        ? (photos.first as Map<String, dynamic>)['image_url'] 
-                        : null;
+                    final photoImage = photos.isNotEmpty ? (photos.first as Map<String, dynamic>)['image_url'] : null;
+                    final profileImage = widget.farmData['profile_image'] ?? widget.farmData['image_url'] ?? widget.farmData['profile_image_farm'] ?? widget.farmData['image'];
+                    final imageUrl = photoImage ?? (profileImage is String && profileImage.isNotEmpty ? profileImage : null);
 
                     if (imageUrl != null) {
                       return Stack(
@@ -248,6 +251,39 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                       cardColor,
                       borderColor,
                       isDark,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Posts de la ferme (lecture seule si demandé)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Publications',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: textColor),
+                          ),
+                          const SizedBox(height: 12),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: const BorderRadius.all(Radius.circular(16)),
+                              border: Border.all(color: borderColor, width: 1),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: FarmPostsWidget(
+                                farmId: widget.farmId,
+                                farmName: farmName,
+                                isOwner: !widget.readOnly && (_toInt(widget.farmData['user_id']) == _userId || _toInt(widget.farmData['owner_id']) == _userId),
+                                livestockId: null,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
