@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/models/market_model.dart';
 import 'package:mbaymi/screens/create_sale_screen.dart';
 import 'package:mbaymi/screens/sale_detail_screen.dart';
+import 'dart:async';
 
 class MarketTab extends StatefulWidget {
   final bool isDarkMode;
@@ -26,26 +28,102 @@ class _MarketTabState extends State<MarketTab> {
   bool _showMyAds = true;
   
   final List<String> _categories = ['Tous', 'Cultures', 'Bétail', 'Légumes', 'Fruits', 'Grains'];
+  
+  // Enhanced cache with all filter parameters
+  List<dynamic> _cachedFilteredSales = [];
+  List<dynamic> _cachedAllSales = [];
+  String _cachedSearchQuery = '';
+  String _cachedCategory = 'Tous';
+  
+  // Debounce timer for search
+  Timer? _searchDebounceTimer;
+  late TextEditingController _searchController;
 
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
     _userId = AuthService.currentSession?.userId ?? 0;
     _loadData();
   }
+  
+  @override
+  void dispose() {
+    _searchDebounceTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _loadData() {
-    _salesFuture = ApiService.getAllSales().catchError((_) => []);
+    _salesFuture = ApiService.getAllSales().catchError((_) => <dynamic>[]);
     _marketPricesFuture = ApiService.getMarketPrices().catchError((_) => <MarketPrice>[]);
     if (_userId > 0) {
-      _mySalesFuture = ApiService.getSalesByUser(_userId).catchError((_) => []);
+      _mySalesFuture = ApiService.getSalesByUser(_userId).catchError((_) => <dynamic>[]);
     }
   }
 
-  void _refreshData() {
+  Future<void> _refreshData() async {
     setState(() {
       _loadData();
+      _cachedFilteredSales.clear();
+      _cachedAllSales.clear();
+      _cachedSearchQuery = '';
+      _cachedCategory = 'Tous';
     });
+    
+    // Wait for futures to complete
+    try {
+      await Future.wait([
+        _salesFuture,
+        _marketPricesFuture,
+        if (_userId > 0) _mySalesFuture,
+      ]);
+    } catch (e) {
+      // Handle errors silently or show message
+      debugPrint('Error refreshing data: $e');
+    }
+  }
+  
+  /// Debounced search handler
+  void _onSearchChanged(String value) {
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _searchQuery = value.toLowerCase();
+          _cachedFilteredSales.clear();
+        });
+      }
+    });
+  }
+  
+  /// Filter sales with complete memoization including category
+  List<dynamic> _getFilteredSales(List<dynamic> allSales) {
+    // Check if cache is valid
+    if (allSales == _cachedAllSales && 
+        _selectedCategory == _cachedCategory &&
+        _searchQuery == _cachedSearchQuery &&
+        _cachedFilteredSales.isNotEmpty) {
+      return _cachedFilteredSales;
+    }
+    
+    // Update cache keys
+    _cachedAllSales = allSales;
+    _cachedCategory = _selectedCategory;
+    _cachedSearchQuery = _searchQuery;
+    
+    // Apply filters
+    _cachedFilteredSales = allSales.where((sale) {
+      final productName = (sale['product_name'] as String? ?? '').toLowerCase();
+      final category = (sale['category'] as String? ?? '');
+      
+      final matchesSearch = _searchQuery.isEmpty || productName.contains(_searchQuery);
+      final matchesCategory = _selectedCategory == 'Tous' || category == _selectedCategory;
+      
+      return matchesSearch && matchesCategory;
+    }).toList();
+    
+    return _cachedFilteredSales;
   }
 
   @override
@@ -56,14 +134,11 @@ class _MarketTabState extends State<MarketTab> {
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF0A0A0A) : const Color(0xFFFAFAFA),
       body: RefreshIndicator(
-        onRefresh: () async {
-          _refreshData();
-          await Future.delayed(const Duration(milliseconds: 500));
-        },
+        onRefresh: _refreshData,
         color: const Color(0xFF7BA428),
         child: CustomScrollView(
           physics: const ClampingScrollPhysics(),
-          cacheExtent: 600.0,
+          cacheExtent: 200.0,
           slivers: [
             // En-tête minimaliste
             SliverAppBar(
@@ -118,7 +193,7 @@ class _MarketTabState extends State<MarketTab> {
               ),
             ),
 
-            // Barre de recherche légère
+            // Barre de recherche avec debouncing
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               sliver: SliverToBoxAdapter(
@@ -136,11 +211,8 @@ class _MarketTabState extends State<MarketTab> {
                     ],
                   ),
                   child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value.toLowerCase();
-                      });
-                    },
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
                     decoration: InputDecoration(
                       hintText: 'Rechercher un produit...',
                       hintStyle: TextStyle(
@@ -171,7 +243,8 @@ class _MarketTabState extends State<MarketTab> {
                     scrollDirection: Axis.horizontal,
                     physics: const ClampingScrollPhysics(),
                     itemCount: _categories.length,
-                    cacheExtent: 300,
+                    cacheExtent: 150,
+                    addRepaintBoundaries: true,
                     itemBuilder: (context, index) {
                       final category = _categories[index];
                       final isSelected = _selectedCategory == category;
@@ -179,6 +252,7 @@ class _MarketTabState extends State<MarketTab> {
                         onTap: () {
                           setState(() {
                             _selectedCategory = isSelected ? 'Tous' : category;
+                            _cachedFilteredSales.clear();
                           });
                         },
                         child: Container(
@@ -220,7 +294,7 @@ class _MarketTabState extends State<MarketTab> {
               ),
             ),
 
-            // Mes annonces (déplacé en haut)
+            // Mes annonces (optimisé avec SliverGrid)
             if (_userId > 0)
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -244,9 +318,9 @@ class _MarketTabState extends State<MarketTab> {
                             children: [
                               Text(
                                 _showMyAds ? 'Masquer' : 'Afficher',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 13,
-                                  color: const Color(0xFF4A90E2),
+                                  color: Color(0xFF4A90E2),
                                   fontWeight: FontWeight.w400,
                                 ),
                               ),
@@ -268,94 +342,105 @@ class _MarketTabState extends State<MarketTab> {
                           ),
                         ],
                       ),
-                      if (_showMyAds)
-                        FutureBuilder<List<dynamic>>(
-                          future: _mySalesFuture,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 40),
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      const Color(0xFF4A90E2).withOpacity(0.6),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
-
-                            if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                              return Container(
-                                height: 100,
-                                margin: const EdgeInsets.only(top: 16),
-                                decoration: BoxDecoration(
-                                  color: isDarkMode
-                                      ? const Color(0xFF1A1A1A)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: const Color(0xFF4A90E2).withOpacity(0.1),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.add_photo_alternate_outlined,
-                                        size: 32,
-                                        color: isDarkMode
-                                            ? Colors.grey.shade700
-                                            : Colors.grey.shade300,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Aucune annonce',
-                                        style: TextStyle(
-                                          color: isDarkMode
-                                              ? Colors.grey.shade500
-                                              : Colors.grey.shade400,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w300,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
-
-                            final mySales = snapshot.data!;
-                            return LayoutBuilder(
-                              builder: (context, constraints) {
-                                final availableWidth = constraints.maxWidth;
-                                // account for parent horizontal padding (20 left + 20 right)
-                                final paddingHorizontal = 0.0;
-                                final spacing = 12.0;
-                                final itemWidth = (availableWidth - paddingHorizontal - spacing) / 2;
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 16),
-                                  child: Wrap(
-                                    spacing: spacing,
-                                    runSpacing: 12,
-                                    children: mySales.map<Widget>((sale) {
-                                      return SizedBox(
-                                        width: itemWidth,
-                                        child: _buildMyOfferCard(sale, isDarkMode),
-                                      );
-                                    }).toList(),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
                     ],
                   ),
                 ),
+              ),
+
+            // Grid des annonces personnelles (SliverGrid pour lazy loading)
+            if (_userId > 0 && _showMyAds)
+              FutureBuilder<List<dynamic>>(
+                future: _mySalesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      sliver: SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                const Color(0xFF4A90E2).withOpacity(0.6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                    return SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      sliver: SliverToBoxAdapter(
+                        child: Container(
+                          height: 100,
+                          margin: const EdgeInsets.only(top: 16),
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? const Color(0xFF1A1A1A)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFF4A90E2).withOpacity(0.1),
+                              width: 1,
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.add_photo_alternate_outlined,
+                                  size: 32,
+                                  color: isDarkMode
+                                      ? Colors.grey.shade700
+                                      : Colors.grey.shade300,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Aucune annonce',
+                                  style: TextStyle(
+                                    color: isDarkMode
+                                        ? Colors.grey.shade500
+                                        : Colors.grey.shade400,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final mySales = snapshot.data!;
+                  return SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                    sliver: SliverGrid(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final sale = mySales[index];
+                          return RepaintBoundary(
+                            child: _buildMyOfferCard(sale, isDarkMode, key: ValueKey(sale['id'])),
+                          );
+                        },
+                        childCount: mySales.length,
+                        addRepaintBoundaries: true,
+                      ),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.72, // Ajusté pour éviter l'overflow
+                      ),
+                    ),
+                  );
+                },
               ),
 
             // Prix du marché
@@ -398,10 +483,6 @@ class _MarketTabState extends State<MarketTab> {
                             decoration: BoxDecoration(
                               color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
-                                width: 1,
-                              ),
                             ),
                             child: Center(
                               child: Column(
@@ -436,7 +517,9 @@ class _MarketTabState extends State<MarketTab> {
                           children: prices.map((price) {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _buildPriceCard(price, isDarkMode),
+                              child: RepaintBoundary(
+                                child: _buildPriceCard(price, isDarkMode),
+                              ),
                             );
                           }).toList(),
                         );
@@ -529,11 +612,7 @@ class _MarketTabState extends State<MarketTab> {
                 }
 
                 final sales = snapshot.data!;
-                final filteredSales = sales.where((sale) {
-                  final productName = (sale['product_name'] as String? ?? '').toLowerCase();
-                  final matchesSearch = _searchQuery.isEmpty || productName.contains(_searchQuery);
-                  return matchesSearch;
-                }).toList();
+                final filteredSales = _getFilteredSales(sales);
 
                 if (filteredSales.isEmpty) {
                   return SliverToBoxAdapter(
@@ -581,15 +660,18 @@ class _MarketTabState extends State<MarketTab> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final sale = filteredSales[index];
-                        return _buildOfferCard(sale, isDarkMode);
+                        return RepaintBoundary(
+                          child: _buildOfferCard(sale, isDarkMode, key: ValueKey(sale['id'])),
+                        );
                       },
                       childCount: filteredSales.length,
+                      addRepaintBoundaries: true,
                     ),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 0.7, // Ratio amélioré pour éviter l'overflow
+                      childAspectRatio: 0.72, // Ajusté pour éviter l'overflow
                     ),
                   ),
                 );
@@ -632,10 +714,6 @@ class _MarketTabState extends State<MarketTab> {
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
-          width: 1,
-        ),
       ),
       child: Row(
         children: [
@@ -646,9 +724,9 @@ class _MarketTabState extends State<MarketTab> {
               color: const Color(0xFF7BA428).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.eco_outlined,
-              color: const Color(0xFF7BA428),
+              color: Color(0xFF7BA428),
               size: 24,
             ),
           ),
@@ -722,11 +800,12 @@ class _MarketTabState extends State<MarketTab> {
     );
   }
 
-  Widget _buildOfferCard(dynamic sale, bool isDarkMode) {
+  Widget _buildOfferCard(dynamic sale, bool isDarkMode, {Key? key}) {
     final productName = sale['product_name'] as String? ?? 'Produit';
     final pricePerUnit = sale['price_per_unit'] as num? ?? 0;
     final currency = sale['currency'] as String? ?? 'CFA';
     final location = sale['delivery_location'] as String? ?? 'Lieu non spécifié';
+    final imageUrl = sale['image_url'] as String?;
     
     return GestureDetector(
       onTap: () {
@@ -738,6 +817,7 @@ class _MarketTabState extends State<MarketTab> {
         );
       },
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: isDarkMode ? const Color(0xFF111111) : Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -753,108 +833,122 @@ class _MarketTabState extends State<MarketTab> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image avec hauteur fixe
+            // Image optimisée - Hauteur fixe
             Container(
-              height: 120,
+              height: 130, // Ajusté pour éviter l'overflow
               decoration: BoxDecoration(
                 color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: sale['image_url'] != null
-                    ? Image.network(
-                        sale['image_url'],
-                        fit: BoxFit.cover,
-                        errorBuilder: (c, e, s) => Center(
+              child: imageUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 250,
+                      memCacheHeight: 130,
+                      fadeInDuration: const Duration(milliseconds: 200),
+                      placeholder: (context, url) => Container(
+                        color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              const Color(0xFF7BA428).withOpacity(0.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
+                        child: Center(
                           child: Icon(
                             Icons.image_outlined,
                             color: const Color(0xFF7BA428),
-                            size: 32,
+                            size: 28,
                           ),
                         ),
-                      )
-                    : Center(
+                      ),
+                    )
+                  : Container(
+                      color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
+                      child: Center(
                         child: Icon(
                           Icons.image_outlined,
                           color: const Color(0xFF7BA428),
-                          size: 32,
+                          size: 28,
                         ),
                       ),
-              ),
+                    ),
             ),
-            // Contenu avec hauteur limitée
+            // Contenu compact
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Nom du produit avec hauteur limitée
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 40),
+                    Flexible(
                       child: Text(
                         productName,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: isDarkMode ? Colors.white : const Color(0xFF233C15),
                         ),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    // Localisation
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.place_outlined,
-                          size: 12,
-                          color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            location,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-                              fontWeight: FontWeight.w300,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    // Prix et bouton
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '$pricePerUnit $currency',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF7BA428),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: isDarkMode ? const Color(0xFF121212) : Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.chevron_right_rounded,
-                            size: 16,
+                    const SizedBox(height: 2),
+                    Flexible(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.place_outlined,
+                            size: 9,
                             color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              location,
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                                fontWeight: FontWeight.w300,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Flexible(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '$pricePerUnit $currency',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF7BA428),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 12,
+                            color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -866,12 +960,13 @@ class _MarketTabState extends State<MarketTab> {
     );
   }
 
-  Widget _buildMyOfferCard(dynamic sale, bool isDarkMode) {
+  Widget _buildMyOfferCard(dynamic sale, bool isDarkMode, {Key? key}) {
     final productName = sale['product_name'] as String? ?? 'Produit';
     final pricePerUnit = sale['price_per_unit'] as num? ?? 0;
     final currency = sale['currency'] as String? ?? 'CFA';
     final location = sale['delivery_location'] as String? ?? 'Lieu non spécifié';
     final saleId = sale['id'] as int? ?? 0;
+    final imageUrl = sale['image_url'] as String?;
     
     return GestureDetector(
       onTap: () {
@@ -885,6 +980,7 @@ class _MarketTabState extends State<MarketTab> {
       child: Stack(
         children: [
           Container(
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: isDarkMode ? const Color(0xFF111111) : Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -900,91 +996,115 @@ class _MarketTabState extends State<MarketTab> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Image
+                // Image optimisée - Hauteur fixe
                 Container(
-                  height: 100,
+                  height: 110, // Hauteur réduite
                   decoration: BoxDecoration(
                     color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                   ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                    child: sale['image_url'] != null
-                        ? Image.network(
-                            sale['image_url'],
-                            fit: BoxFit.cover,
-                            errorBuilder: (c, e, s) => Center(
+                  child: imageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 220,
+                          memCacheHeight: 110,
+                          fadeInDuration: const Duration(milliseconds: 200),
+                          placeholder: (context, url) => Container(
+                            color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  const Color(0xFF4A90E2).withOpacity(0.5),
+                                ),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
+                            child: Center(
                               child: Icon(
                                 Icons.verified_outlined,
                                 color: const Color(0xFF4A90E2),
                                 size: 24,
                               ),
                             ),
-                          )
-                        : Center(
+                          ),
+                        )
+                      : Container(
+                          color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
+                          child: Center(
                             child: Icon(
                               Icons.verified_outlined,
                               color: const Color(0xFF4A90E2),
                               size: 24,
                             ),
                           ),
-                  ),
+                        ),
                 ),
                 // Contenu
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        productName,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDarkMode ? Colors.white : const Color(0xFF233C15),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.place_outlined,
-                            size: 12,
-                            color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              location,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-                                fontWeight: FontWeight.w300,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(7),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Titre flexible
+                        Flexible(
+                          child: Text(
+                            productName,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.white : const Color(0xFF233C15),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
+                        ),
+                        const SizedBox(height: 3),
+                        // Localisation flexible
+                        Flexible(
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.place_outlined,
+                                size: 10,
+                                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  location,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        // Prix flexible
+                        Flexible(
+                          child: Text(
                             '$pricePerUnit $currency',
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF4A90E2),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -992,8 +1112,8 @@ class _MarketTabState extends State<MarketTab> {
           ),
           // Boutons édition/suppression
           Positioned(
-            right: 6,
-            top: 6,
+            right: 4,
+            top: 4,
             child: Row(
               children: [
                 GestureDetector(
@@ -1012,30 +1132,32 @@ class _MarketTabState extends State<MarketTab> {
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    width: 24,
+                    height: 24,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.edit_outlined,
-                      size: 16,
-                      color: const Color(0xFF4A90E2),
+                      size: 12,
+                      color: Color(0xFF4A90E2),
                     ),
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 GestureDetector(
                   onTap: () => _showDeleteConfirmation(saleId),
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    width: 24,
+                    height: 24,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.delete_outline,
-                      size: 16,
+                      size: 12,
                       color: Colors.red,
                     ),
                   ),

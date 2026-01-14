@@ -27,13 +27,16 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
   XFile? _selectedImage;
   Uint8List? _selectedImageBytes;
   final ImagePicker _imagePicker = ImagePicker();
+  List<XFile> _additionalImages = [];
 
   String _selectedCurrency = 'CFA';
   String _selectedCategory = 'Cultures';
+  String _selectedUnit = 'kg';
   bool _isLoading = false;
 
   final List<String> _currencies = ['CFA', 'EUR', 'USD'];
   final List<String> _categories = ['Cultures', 'Bétail', 'Légumes', 'Fruits', 'Grains'];
+  final List<String> _units = ['kg', 'L', 'tonnes', 'pièces', 'sacs', 'cartons', 'boîtes', 'paires'];
 
   // Couleurs
   static const Color _primaryColor = Color(0xFF8B6B4D);
@@ -85,6 +88,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
       final saleData = {
         'product_name': _productNameCtrl.text.trim(),
         'quantity': double.parse(_quantityCtrl.text),
+        'unit': _selectedUnit,
         'price_per_unit': double.parse(_pricePerUnitCtrl.text),
         'currency': _selectedCurrency,
         'delivery_location': _deliveryLocationCtrl.text.trim(),
@@ -93,15 +97,26 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
         'category': _selectedCategory,
       };
 
-      // If an image was picked, upload and attach URL
+      // Upload main image
       if (_selectedImage != null) {
         final imageUrl = await ApiService.uploadImageToCloudinary(_selectedImage!);
         if (imageUrl != null) {
           saleData['image_url'] = imageUrl;
         }
       } else if (widget.sale != null && (widget.sale!['image_url'] as String?) != null) {
-        // keep existing image_url if editing and no new image selected
         saleData['image_url'] = widget.sale!['image_url'];
+      }
+
+      // Upload additional images
+      List<String> additionalImageUrls = [];
+      for (final image in _additionalImages) {
+        final imageUrl = await ApiService.uploadImageToCloudinary(image);
+        if (imageUrl != null) {
+          additionalImageUrls.add(imageUrl);
+        }
+      }
+      if (additionalImageUrls.isNotEmpty) {
+        saleData['additional_images'] = additionalImageUrls;
       }
 
       if (widget.saleId != null) {
@@ -230,6 +245,104 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
                 ),
                 const SizedBox(height: 16),
 
+              // Photos additionnelles
+              _buildSectionTitle('Photos additionnelles', isDarkMode),
+              const SizedBox(height: 16),
+              
+              // Liste des photos additionnelles
+              if (_additionalImages.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _additionalImages.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final image = entry.value;
+                    return Stack(
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: !kIsWeb
+                                ? Image.file(File(image.path), fit: BoxFit.cover)
+                                : FutureBuilder<Uint8List>(
+                                    future: image.readAsBytes(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.hasData) {
+                                        return Image.memory(snapshot.data!, fit: BoxFit.cover);
+                                      }
+                                      return const Center(child: CircularProgressIndicator());
+                                    },
+                                  ),
+                          ),
+                        ),
+                        Positioned(
+                          top: -8,
+                          right: -8,
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _additionalImages.removeAt(index);
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(4),
+                              child: const Icon(Icons.close, color: Colors.white, size: 16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              const SizedBox(height: 12),
+              
+              // Bouton ajouter photos
+              GestureDetector(
+                onTap: () async {
+                  final List<XFile> images = await _imagePicker.pickMultiImage(
+                    imageQuality: 80,
+                    maxWidth: 1024,
+                    maxHeight: 1024,
+                  );
+                  if (images.isNotEmpty) {
+                    setState(() {
+                      _additionalImages.addAll(images.take(5 - _additionalImages.length));
+                    });
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? _cardDark : _cardLight,
+                    border: Border.all(color: borderColor, width: 1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_photo_alternate_outlined, color: _accentColor, size: 24),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ajouter d\'autres photos (max ${5 - _additionalImages.length} restantes)',
+                        style: TextStyle(color: secondaryTextColor, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // Nom du produit
               _buildTextField(
                 controller: _productNameCtrl,
@@ -287,7 +400,35 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDarkMode ? _cardDark : _cardLight,
+                        border: Border.all(color: borderColor, width: 1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: DropdownButton<String>(
+                          value: _selectedUnit,
+                          onChanged: (newUnit) {
+                            setState(() => _selectedUnit = newUnit ?? 'kg');
+                          },
+                          items: _units.map((unit) {
+                            return DropdownMenuItem(
+                              value: unit,
+                              child: Text(unit, style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
+                            );
+                          }).toList(),
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          dropdownColor: isDarkMode ? _cardDark : _cardLight,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _buildPricePerUnitField(isDarkMode, cardColor, borderColor),
                   ),

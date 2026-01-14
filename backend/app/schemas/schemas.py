@@ -1,7 +1,8 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from datetime import datetime
 from typing import Optional
 from typing import List
+import json
 
 # User Schemas
 class UserCreate(BaseModel):
@@ -167,9 +168,11 @@ class SaleCreate(BaseModel):
     harvest_id: Optional[int] = None
     product_name: str
     quantity: float
+    unit: Optional[str] = "kg"
     price_per_unit: float
     currency: Optional[str] = "CFA"
     image_url: Optional[str] = None
+    additional_images: Optional[list] = None
     category: Optional[str] = None
     delivery_location: Optional[str] = None
     contact: Optional[str] = None
@@ -179,6 +182,17 @@ class SaleCreate(BaseModel):
 class SaleResponse(SaleCreate):
     id: int
     created_at: datetime
+    
+    @field_validator('additional_images', mode='before')
+    @classmethod
+    def parse_additional_images(cls, v):
+        """Parse JSON string to list if needed"""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
 
     class Config:
         from_attributes = True

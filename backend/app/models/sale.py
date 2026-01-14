@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String, Text
+from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String, Text, JSON
 from app.models.base import Base
 from datetime import datetime
 
@@ -9,9 +9,11 @@ class Sale(Base):
     harvest_id = Column(Integer, ForeignKey("harvests.id"), nullable=True)
     product_name = Column(String(200), nullable=False)
     quantity = Column(Float, nullable=False)
+    unit = Column(String(50), default="kg", nullable=False)
     price_per_unit = Column(Float, nullable=False)
     currency = Column(String(10), default="CFA")
     image_url = Column(String(500), nullable=True)
+    additional_images = Column(JSON, nullable=True)
     category = Column(String(50), nullable=True)
     delivery_location = Column(String(200))
     contact = Column(String(100))

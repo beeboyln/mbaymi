@@ -200,7 +200,7 @@ class _DashboardTabState extends State<DashboardTab> {
         },
         child: CustomScrollView(
           physics: const ClampingScrollPhysics(),
-          cacheExtent: 600.0,
+          cacheExtent: 200.0,
           slivers: [
           // Date Header - Minimaliste
           SliverPadding(
@@ -561,7 +561,8 @@ class _DashboardTabState extends State<DashboardTab> {
                           scrollDirection: Axis.horizontal,
                           physics: const ClampingScrollPhysics(),
                           itemCount: filteredArticles.length,
-                          cacheExtent: 500,
+                          cacheExtent: 200,
+                          addRepaintBoundaries: true,
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           itemBuilder: (context, index) {
                             final article = filteredArticles[index];

@@ -1301,7 +1301,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                 scrollDirection: Axis.horizontal,
                 physics: const ClampingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 0),
-                cacheExtent: 500,
+                cacheExtent: 200,
+                addRepaintBoundaries: true,
                 itemCount: posts.take(10).length,
                 itemBuilder: (context, index) {
                   final post = posts[index];

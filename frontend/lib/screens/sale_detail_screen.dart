@@ -37,6 +37,27 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
     }
   }
 
+  /// Safely convert additional_images from string or list to List<String>
+  List<String> _getAdditionalImages(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.whereType<String>().toList();
+    }
+    if (value is String && value.isNotEmpty) {
+      // Try to parse as JSON array if it looks like one
+      if (value.startsWith('[') && value.endsWith(']')) {
+        try {
+          final parsed = Uri.decodeComponent(value);
+          final urls = parsed.replaceAll('[', '').replaceAll(']', '').replaceAll('"', '').split(',');
+          return urls.map((u) => u.trim()).where((u) => u.isNotEmpty).toList();
+        } catch (_) {
+          return [];
+        }
+      }
+    }
+    return [];
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = widget.isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
@@ -198,7 +219,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                                     Icon(Icons.inventory_2, size: 18, color: Colors.green[700]),
                                     const SizedBox(width: 6),
                                     Text(
-                                      '${sale['quantity']?.toString() ?? '0'}',
+                                      '${sale['quantity']?.toString() ?? '0'} ${sale['unit'] ?? 'kg'}',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -212,6 +233,50 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
+
+                        // Photos additionnelles
+                        if (_getAdditionalImages(sale['additional_images']).isNotEmpty) ...[
+                          _buildSectionTitle('Galerie', Icons.photo_library, isDark),
+                          const SizedBox(height: 12),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const ClampingScrollPhysics(),
+                            child: Row(
+                              children: _getAdditionalImages(sale['additional_images']).map<Widget>((imageUrl) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => Dialog(
+                                        child: Image.network(imageUrl, fit: BoxFit.contain),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.only(right: 12),
+                                    width: 120,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.network(
+                                        imageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (c, e, s) => Center(
+                                          child: Icon(Icons.broken_image, color: Colors.grey[400]),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                         
                         // Description
                         if ((sale['description'] as String?)?.isNotEmpty ?? false) ...[

@@ -1067,7 +1067,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     scrollDirection: Axis.horizontal,
                     physics: const ClampingScrollPhysics(),
                     itemCount: imgs.length,
-                    cacheExtent: 300,
+                    cacheExtent: 150,
+                    addRepaintBoundaries: true,
                     itemBuilder: (context, i) => Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: ClipRRect(
