@@ -52,6 +52,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         });
       }
     });
+    // Listen for follow/unfollow changes
+    ApiService.onFollowChanged.listen((payload) {
+      if (mounted) {
+        setState(() {
+          _feedFuture = _loadCombinedFeed();
+        });
+      }
+    });
   }
 
   @override
@@ -106,9 +114,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           return ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(12),
-            itemCount: combinedItems.length,
+            itemCount: combinedItems.length + 1,
             itemBuilder: (context, index) {
-              final item = combinedItems[index];
+              // First item: subscriptions section
+              if (index == 0) {
+                return _buildSubscriptionsSection(isDarkMode);
+              }
+              
+              final item = combinedItems[index - 1];
               if (item['type'] == 'farm_post') {
                 return _buildFarmPostCard(item['data'], item, isDarkMode);
               }
@@ -1256,7 +1269,162 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       ),
     );
   }
+
+  // 📝 Build Subscriptions Section (affiche les posts des abonnements en carrousel)
+  Widget _buildSubscriptionsSection(bool isDarkMode) {
+    return FutureBuilder<List<dynamic>>(
+      future: _userId > 0 ? ApiService.getFarmPostsFeed(userId: _userId) : Future.value(<dynamic>[]),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
+        if (snapshot.hasError) return const SizedBox.shrink();
+        
+        final posts = snapshot.data ?? [];
+        if (posts.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'Abonnements',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 0),
+                itemCount: posts.take(10).length,
+                itemBuilder: (context, index) {
+                  final post = posts[index];
+                  final ownerName = post['owner_name'] as String? ?? 'Agriculteur';
+                  final farmName = post['farm_name'] as String? ?? 'Ferme';
+                  final imageUrl = post['image_url'] as String?;
+                  final userId = post['user_id'] as int? ?? 0;
+
+                  return GestureDetector(
+                    onTap: () {
+                      if (userId > 0) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ProfileDetailScreen(userId: userId, isDarkMode: isDarkMode),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: 160,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          // Image de fond
+                          if (imageUrl != null && imageUrl.isNotEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: _primaryColor.withOpacity(0.1),
+                                  child: const Icon(Icons.image_not_supported_outlined),
+                                ),
+                              ),
+                            )
+                          else
+                            Container(
+                              decoration: BoxDecoration(
+                                color: _primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.image_outlined),
+                            ),
+
+                          // Gradient overlay
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: [
+                                  Colors.black.withOpacity(0.8),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Contenu en bas
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    farmName,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'par $ownerName',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white70,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        );
+      },
+    );
+  }
 }
+
+
 
 class _SearchWidget extends StatefulWidget {
   final bool isDarkMode;

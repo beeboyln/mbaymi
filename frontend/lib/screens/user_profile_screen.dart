@@ -627,10 +627,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                           );
                         }
 
-                        return Column(
-                          children: posts.map((post) {
+                        return GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 1,
+                          ),
+                          itemCount: posts.length,
+                          itemBuilder: (context, index) {
+                            final post = posts[index];
                             final title = post['title'] ?? '';
                             final farmName = post['farm_name'] ?? '';
+                            final imageUrl = post['image_url'] as String?;
                             final createdAt = post['created_at'] ?? '';
                             final postType = post['post_type'] ?? 'crop_update';
                             
@@ -645,69 +656,113 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
 
                             final postTypeEmoji = _getPostTypeEmoji(postType);
 
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: DecoratedBox(
+                            return GestureDetector(
+                              onTap: () {
+                                // Afficher les détails du post
+                                _showPostDetails(context, post, cardColor, textColor, secondaryTextColor, borderColor);
+                              },
+                              child: Container(
                                 decoration: BoxDecoration(
                                   color: cardColor,
-                                  borderRadius: const BorderRadius.all(Radius.circular(12)),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: borderColor, width: 1),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            postTypeEmoji,
-                                            style: const TextStyle(fontSize: 18),
+                                child: Stack(
+                                  children: [
+                                    // Image de fond
+                                    if (imageUrl != null && imageUrl.isNotEmpty)
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          imageUrl,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            color: _primaryColor.withOpacity(0.1),
+                                            child: const Icon(Icons.image_not_supported_outlined, size: 32),
                                           ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              title,
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w500,
-                                                color: textColor,
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: _primaryColor.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(Icons.image_outlined, size: 32),
+                                      ),
+                                    
+                                    // Overlay au hover
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        gradient: LinearGradient(
+                                          begin: Alignment.bottomCenter,
+                                          end: Alignment.topCenter,
+                                          colors: [
+                                            Colors.black.withOpacity(0.8),
+                                            Colors.transparent,
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    
+                                    // Contenu en bas
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  postTypeEmoji,
+                                                  style: const TextStyle(fontSize: 14),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    title,
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.white,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              formattedDate,
+                                              style: const TextStyle(
+                                                fontSize: 9,
+                                                color: Colors.white70,
                                               ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.landscape_outlined,
-                                              size: 14, color: secondaryTextColor),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            farmName,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: secondaryTextColor,
-                                            ),
-                                          ),
-                                          const Spacer(),
-                                          Text(
-                                            formattedDate,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: secondaryTextColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
-                          }).toList(),
+                          },
                         );
                       },
                     ),
@@ -817,6 +872,89 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
       default:
         return '📝';
     }
+  }
+
+  void _showPostDetails(
+    BuildContext context,
+    Map<String, dynamic> post,
+    Color cardColor,
+    Color textColor,
+    Color secondaryTextColor,
+    Color borderColor,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        color: cardColor,
+        child: ListView(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        post['title'] ?? '',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: textColor),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (post['image_url'] != null && (post['image_url'] as String).isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        post['image_url'],
+                        height: 250,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Ferme: ${post['farm_name'] ?? 'N/A'}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: secondaryTextColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Date: ${DateFormat('dd/MM/yyyy').format(DateTime.parse(post['created_at'] ?? ''))}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: secondaryTextColor,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (post['caption'] != null && (post['caption'] as String).isNotEmpty)
+                    Text(
+                      post['caption'],
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.6,
+                        color: textColor,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDefaultAvatar(String name) {

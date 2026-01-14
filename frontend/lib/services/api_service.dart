@@ -29,6 +29,10 @@ class ApiService {
   static final _async_for_api.StreamController<void> _farmPostController = _async_for_api.StreamController<void>.broadcast();
   static Stream<void> get onFarmPostCreated => _farmPostController.stream;
   static void notifyFarmPostCreated() => _farmPostController.add(null);
+  // Stream to notify follow/unfollow changes with payload { 'userId': int, 'action': 'follow'|'unfollow' }
+  static final _async_for_api.StreamController<Map<String, dynamic>> _followController = _async_for_api.StreamController<Map<String, dynamic>>.broadcast();
+  static Stream<Map<String, dynamic>> get onFollowChanged => _followController.stream;
+  static void notifyFollowChanged(int userId, String action) => _followController.add({'userId': userId, 'action': action});
 
   /// 🔄 Retry helper with exponential backoff et timeout global
   /// Handles transient network errors (timeouts, connection issues)

@@ -163,14 +163,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
               final totalFollowers = profile['total_followers'] ?? profile['followers'] ?? 0;
               final totalPosts = profile['total_posts'] ?? 0;
 
-              // initialize follower/following local state from server when available
-              _followersCount = totalFollowers;
-              if (profile.containsKey('followed_by_user')) {
-                _isFollowing = profile['followed_by_user'] as bool? ?? false;
-              } else if (profile.containsKey('is_following')) {
-                _isFollowing = profile['is_following'] as bool? ?? false;
-              } else {
-                _isFollowing ??= false;
+              // Only update from server if local state hasn't been modified
+              if (_followersCount == null) {
+                _followersCount = totalFollowers;
+              }
+              if (_isFollowing == null) {
+                if (profile.containsKey('followed_by_user')) {
+                  _isFollowing = profile['followed_by_user'] as bool? ?? false;
+                } else if (profile.containsKey('is_following')) {
+                  _isFollowing = profile['is_following'] as bool? ?? false;
+                } else {
+                  _isFollowing = false;
+                }
               }
 
               return Padding(
@@ -266,74 +270,82 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
                                         const SizedBox(height: 6),
                                         SizedBox(
                                           height: 30,
-                                          child: _userId == 0
-                                              ? OutlinedButton(
-                                                  onPressed: () {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(content: Text('Veuillez vous connecter pour vous abonner')),
-                                                    );
-                                                  },
-                                                  child: const Text("S'abonner"),
-                                                )
-                                              : (_isFollowing == true
+                                          child: widget.userId == _userId
+                                              ? const SizedBox.shrink()
+                                              : (_userId == 0
                                                   ? OutlinedButton(
-                                                      onPressed: () async {
-                                                        // unfollow
-                                                        final prev = _isFollowing;
-                                                        setState(() {
-                                                          _isFollowing = false;
-                                                          _followersCount = (_followersCount ?? 0) - 1;
-                                                        });
-                                                        try {
-                                                          await ApiService.unfollowUser(userIdToUnfollow: widget.userId, userId: _userId);
-                                                          // fetch authoritative profile in background and merge results without triggering loader
-                                                          ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null).then((fresh) {
-                                                            if (!mounted) return;
-                                                            setState(() {
-                                                              _profileData = fresh;
-                                                              _followersCount = fresh['total_followers'] ?? _followersCount;
-                                                              _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
-                                                            });
-                                                          }).catchError((_) {});
-                                                        } catch (e) {
-                                                          setState(() {
-                                                            _isFollowing = prev;
-                                                            _followersCount = (_followersCount ?? 0) + 1;
-                                                          });
-                                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                                                        }
-                                                      },
-                                                      child: const Text('Abonné'),
-                                                    )
-                                                  : ElevatedButton(
-                                                      style: ElevatedButton.styleFrom(backgroundColor: _accentColor),
-                                                      onPressed: () async {
-                                                        final prev = _isFollowing;
-                                                          setState(() {
-                                                            _isFollowing = true;
-                                                            _followersCount = (_followersCount ?? 0) + 1;
-                                                          });
-                                                          try {
-                                                            await ApiService.followUser(userIdToFollow: widget.userId, userId: _userId);
-                                                            // fetch authoritative profile in background and merge results without triggering loader
-                                                            ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null).then((fresh) {
-                                                              if (!mounted) return;
-                                                              setState(() {
-                                                                _profileData = fresh;
-                                                                _followersCount = fresh['total_followers'] ?? _followersCount;
-                                                                _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
-                                                              });
-                                                            }).catchError((_) {});
-                                                          } catch (e) {
-                                                            setState(() {
-                                                              _isFollowing = prev;
-                                                              _followersCount = (_followersCount ?? 0) - 1;
-                                                            });
-                                                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                                                          }
+                                                      onPressed: () {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(content: Text('Veuillez vous connecter pour vous abonner')),
+                                                        );
                                                       },
                                                       child: const Text("S'abonner"),
-                                                    )),
+                                                    )
+                                                  : (_isFollowing == true
+                                                      ? OutlinedButton(
+                                                          onPressed: () async {
+                                                            // unfollow
+                                                            final prev = _isFollowing;
+                                                            setState(() {
+                                                              _isFollowing = false;
+                                                              _followersCount = (_followersCount ?? 0) - 1;
+                                                            });
+                                                            try {
+                                                              await ApiService.unfollowUser(userIdToUnfollow: widget.userId, userId: _userId);
+                                                              // notify other components (dashboard) that follow state changed IMMEDIATELY
+                                                              ApiService.notifyFollowChanged(widget.userId, 'unfollow');
+                                                              // fetch authoritative profile in background and merge results without triggering loader
+                                                              ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null).then((fresh) {
+                                                                if (!mounted) return;
+                                                                setState(() {
+                                                                  _profileData = fresh;
+                                                                  _followersCount = fresh['total_followers'] ?? _followersCount;
+                                                                  _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
+                                                                });
+                                                              }).catchError((_) {});
+                                                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Désabonné')));
+                                                            } catch (e) {
+                                                              setState(() {
+                                                                _isFollowing = prev;
+                                                                _followersCount = (_followersCount ?? 0) + 1;
+                                                              });
+                                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                                                            }
+                                                          },
+                                                          child: const Text('Abonné'),
+                                                        )
+                                                      : ElevatedButton(
+                                                          style: ElevatedButton.styleFrom(backgroundColor: _accentColor),
+                                                          onPressed: () async {
+                                                            final prev = _isFollowing;
+                                                            setState(() {
+                                                              _isFollowing = true;
+                                                              _followersCount = (_followersCount ?? 0) + 1;
+                                                            });
+                                                            try {
+                                                              await ApiService.followUser(userIdToFollow: widget.userId, userId: _userId);
+                                                              // fetch authoritative profile in background and merge results without triggering loader
+                                                              ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null).then((fresh) {
+                                                                if (!mounted) return;
+                                                                setState(() {
+                                                                  _profileData = fresh;
+                                                                  _followersCount = fresh['total_followers'] ?? _followersCount;
+                                                                  _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
+                                                                });
+                                                              }).catchError((_) {});
+                                                              // notify other components (dashboard) that follow state changed
+                                                              ApiService.notifyFollowChanged(widget.userId, 'follow');
+                                                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Abonné')));
+                                                            } catch (e) {
+                                                              setState(() {
+                                                                _isFollowing = prev;
+                                                                _followersCount = (_followersCount ?? 0) - 1;
+                                                              });
+                                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                                                            }
+                                                          },
+                                                          child: const Text("S'abonner"),
+                                                        ))),
                                         ),
                                       ],
                                     ),
