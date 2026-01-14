@@ -5,7 +5,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
-import 'package:mbaymi/screens/create_livestock_screen.dart';
+// Removed unused import
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -103,16 +103,16 @@ class _DashboardTabState extends State<DashboardTab> {
     try {
       final farms = await ApiService.getUserFarms(widget.userId!);
       final livestock = await ApiService.getUserLivestock(widget.userId!);
-      result['farms'] = (farms as List).length;
-      result['livestock'] = (livestock as List).length;
+      result['farms'] = farms.length;
+      result['livestock'] = livestock.length;
 
-      final parcelFutures = (farms as List).map((f) => ApiService.getFarmCrops(f['id'] as int)).toList();
+      final parcelFutures = farms.map((f) => ApiService.getFarmCrops(f['id'] as int)).toList();
       final parcelsLists = await Future.wait(parcelFutures);
-      result['parcels'] = parcelsLists.fold<int>(0, (sum, l) => sum + ((l as List).length));
+      result['parcels'] = parcelsLists.fold<int>(0, (sum, l) => sum + (l.length));
 
-      final harvestFutures = (farms as List).map((f) => ApiService.getHarvestsForFarm(f['id'] as int)).toList();
+      final harvestFutures = farms.map((f) => ApiService.getHarvestsForFarm(f['id'] as int)).toList();
       final harvestsLists = await Future.wait(harvestFutures);
-      result['harvests'] = harvestsLists.fold<int>(0, (sum, l) => sum + ((l as List).length));
+      result['harvests'] = harvestsLists.fold<int>(0, (sum, l) => sum + (l.length));
 
       final sales = await ApiService.getSalesByUser(widget.userId!);
       double revenue = 0.0;
@@ -983,6 +983,7 @@ class _DashboardTabState extends State<DashboardTab> {
     return '$dayName ${now.day} $monthName ${now.year}';
   }
 
+  // ignore: unused_element
   Color _getHealthColor(String status) {
     switch (status.toLowerCase()) {
       case 'sain':

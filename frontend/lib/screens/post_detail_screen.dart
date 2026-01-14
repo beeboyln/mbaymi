@@ -18,6 +18,7 @@ class PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
+  // ignore: unused_field
   late Future<Map<String, dynamic>> _postDetailFuture;
   late Future<List<dynamic>> _commentsFuture;
   final TextEditingController _commentController = TextEditingController();
@@ -26,7 +27,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   int _commentsCount = 0;
 
   static const Color _primaryColor = Color(0xFF8B6B4D);
+  // ignore: unused_field
   static const Color _primaryLight = Color(0xFFA58A6D);
+  // ignore: unused_field
   static const Color _accentColor = Color(0xFFC4A484);
 
   @override

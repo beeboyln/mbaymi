@@ -36,6 +36,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   XFile? _imageFile;
   Uint8List? _imageBytes;
   String? _existingImageUrl;
+  // ignore: unused_field
   late Future<List<dynamic>> _photosFuture;
   late String _visibility;
   late int _userId;

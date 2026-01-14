@@ -24,6 +24,7 @@ class CropProblemsScreen extends StatefulWidget {
 
 class _CropProblemsScreenState extends State<CropProblemsScreen> {
   late Future<List<dynamic>> _problemsFuture;
+  // ignore: unused_field
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -469,6 +470,7 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
   String _selectedProblem = 'yellowing';
   String _selectedSeverity = 'medium';
   String _description = '';
+  // ignore: unused_field
   String? _photoUrl;
   bool _isLoading = false;
 

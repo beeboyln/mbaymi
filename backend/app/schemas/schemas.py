@@ -169,8 +169,11 @@ class SaleCreate(BaseModel):
     quantity: float
     price_per_unit: float
     currency: Optional[str] = "CFA"
+    image_url: Optional[str] = None
+    category: Optional[str] = None
     delivery_location: Optional[str] = None
     contact: Optional[str] = None
+    description: Optional[str] = None
     user_id: Optional[int] = None
 
 class SaleResponse(SaleCreate):

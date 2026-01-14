@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/activity_screen.dart';
-import 'package:mbaymi/widgets/farm_posts_widget.dart';
 
 class FarmDetailScreen extends StatefulWidget {
   final int farmId;

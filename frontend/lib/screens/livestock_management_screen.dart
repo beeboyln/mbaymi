@@ -48,6 +48,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
   }
 
   // Grouper les animaux par type
+  // ignore: unused_element
   Map<String, List<dynamic>> _groupLivestockByType(List<dynamic> livestock) {
     final grouped = <String, List<dynamic>>{};
     for (final animal in livestock) {

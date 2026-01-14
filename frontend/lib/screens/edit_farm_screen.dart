@@ -67,7 +67,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
 
   Future<void> _pickNewPhotos() async {
     final picked = await ImagePicker().pickMultiImage(maxWidth: 1600);
-    if (picked == null || picked.isEmpty) return;
+    if (picked.isEmpty) return;
     setState(() => _newPhotos.addAll(picked));
   }
 
@@ -81,7 +81,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
         if (u != null) profileUrl = u;
       }
 
-      final updated = await ApiService.updateFarm(
+      final Map<String, dynamic> updated = await ApiService.updateFarm(
         farmId: widget.farm['id'] as int,
         name: _nameCtrl.text.trim(),
         location: _locationCtrl.text.trim(),
@@ -89,6 +89,12 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
         soilType: _type,
         imageUrl: profileUrl,
       );
+
+      // Update local farm map so UI reflects saved values
+      setState(() {
+        widget.farm.clear();
+        widget.farm.addAll(updated);
+      });
 
       // Upload any new photos and attach
       for (final p in _newPhotos) {
@@ -307,7 +313,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
                                         final sizeVal = widget.farm['size_hectares'];
                                         final size = sizeVal != null ? double.tryParse(sizeVal.toString()) : null;
                                         final soil = widget.farm['soil_type'] ?? widget.farm['soilType'];
-                                        final updated = await ApiService.updateFarm(
+                                        final Map<String, dynamic> updated = await ApiService.updateFarm(
                                           farmId: farmId,
                                           name: name,
                                           location: location,
@@ -316,9 +322,9 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
                                           imageUrl: url,
                                         );
                                         // Update local farm map and UI
-                                        widget.farm['image_url'] = url;
-                                        widget.farm['imageUrl'] = url;
                                         setState(() {
+                                          widget.farm.clear();
+                                          widget.farm.addAll(updated);
                                           _profileBytes = null;
                                           _profileFile = null;
                                         });

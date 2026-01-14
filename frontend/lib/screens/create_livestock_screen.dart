@@ -41,6 +41,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
 
   // Palette de couleurs
   static const Color _primaryColor = Color(0xFF8B6B4D);
+  // ignore: unused_field
   static const Color _primaryLight = Color(0xFFA58A6D);
   static const Color _accentColor = Color(0xFFC4A484);
   static const Color _bgLight = Color(0xFFFAF8F5);

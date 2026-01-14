@@ -1,5 +1,3 @@
-import 'dart:async';
-
 /// Cache simple en mémoire pour les requêtes GET
 /// Chaque entrée expire après une durée configurable
 class SimpleCache<T> {

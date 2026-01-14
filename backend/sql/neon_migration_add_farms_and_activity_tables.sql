@@ -36,11 +36,15 @@ CREATE TABLE IF NOT EXISTS sales (
   quantity double precision NOT NULL,
   price_per_unit double precision NOT NULL,
   currency varchar(10) DEFAULT 'CFA',
+  image_url varchar(500),
   delivery_location varchar(200),
   contact varchar(100),
   user_id integer REFERENCES users(id) ON DELETE SET NULL,
   created_at timestamp without time zone DEFAULT now()
 );
+
+-- Ensure image_url column exists for older DBs
+ALTER TABLE IF EXISTS sales ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
 
 -- Indexes to help lookups
 CREATE INDEX IF NOT EXISTS idx_farms_user_id ON farms(user_id);

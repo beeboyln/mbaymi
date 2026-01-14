@@ -94,6 +94,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: bgColor,
         elevation: 0,
         title: const Text('Profil', style: TextStyle(fontWeight: FontWeight.w300)),

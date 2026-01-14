@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image/image.dart' as img;
-import 'dart:io';
+// Removed unused image processing and dart:io imports
 import 'dart:typed_data';
 import 'package:mbaymi/services/api_service.dart';
 

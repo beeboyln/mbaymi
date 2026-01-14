@@ -146,6 +146,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🔍 TAB 2: EXPLORE
+  // ignore: unused_element
   Widget _buildExploreTab(bool isDarkMode) {
     return RefreshIndicator(
       onRefresh: () async {
@@ -190,6 +191,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🔥 TAB 3: TRENDING
+  // ignore: unused_element
   Widget _buildTrendingTab(bool isDarkMode) {
     return RefreshIndicator(
       onRefresh: () async {
@@ -402,14 +404,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                       // API call in background
                       if (isLiked) {
                         await ApiService.unlikeFarmPost(postId);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('🤍 Like retiré'), backgroundColor: _primaryColor, duration: Duration(milliseconds: 600)),
-                        );
                       } else {
                         await ApiService.likeFarmPost(postId);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('❤️ J\'aime!'), backgroundColor: _primaryColor, duration: Duration(milliseconds: 600)),
-                        );
                       }
                     } catch (e) {
                       // Revert on error
@@ -507,6 +503,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 📱 POST CARD
+  // ignore: unused_element
   Widget _buildPostCard(dynamic post, Map<String, dynamic> itemWrapper, bool isDarkMode) {
     final farmName = post['farm_name'] as String? ?? 'Ferme';
     final ownerName = post['owner_name'] as String? ?? 'Agriculteur';
@@ -811,6 +808,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   // 🐄 ANIMAL CARD
+  // ignore: unused_element
   Widget _buildAnimalCard(dynamic animal, Map<String, dynamic> itemWrapper, bool isDarkMode) {
     final animalType = animal['animal_type'] as String? ?? 'Animal';
     final breed = animal['breed'] as String? ?? 'Race';
@@ -937,14 +935,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                       // API call in background
                       if (isLiked) {
                         await ApiService.unlikeLivestock(animal['id'] ?? 0);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('🤍 Like retiré'), backgroundColor: _primaryColor, duration: Duration(milliseconds: 600)),
-                        );
                       } else {
                         await ApiService.likeLivestock(animal['id'] ?? 0);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('❤️ J\'aime!'), backgroundColor: _primaryColor, duration: Duration(milliseconds: 600)),
-                        );
                       }
                     } catch (e) {
                       // Revert on error
@@ -1235,6 +1227,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     );
   }
 
+  // ignore: unused_element
   void _showSearchDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDarkMode = themeProvider.isDarkMode;
@@ -1247,6 +1240,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     );
   }
 
+  // ignore: unused_element
   void _showLikesDialog() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDarkMode = themeProvider.isDarkMode;

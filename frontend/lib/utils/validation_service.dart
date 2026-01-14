@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
-
 /// 🛡️ Input Validation Service
+// Removed unused Flutter import to fix analyzer warning
 /// Valide les entrées utilisateur avant les appels API
 class ValidationService {
   /// Valider un email

@@ -150,6 +150,8 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
                                 ],
                               ),
                             ),
+                          const SizedBox(height: 6),
+                          Text('par $ownerName', style: TextStyle(fontSize: 13, color: widget.isDarkMode ? Colors.white60 : Colors.black54)),
                         ],
                       ),
 

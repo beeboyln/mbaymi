@@ -11,6 +11,8 @@ app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 
 # CORS middleware - Production-ready config
 # ✅ Handles Vercel, Koyeb, localhost, custom domains
+MAIN_DOMAIN = "https://mbaymi.vercel.app"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -23,7 +25,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5000",
         "http://127.0.0.1:8000",
-        "https://mbaymi.vercel.app",  # Main Vercel domain
+        MAIN_DOMAIN,  # Main Vercel domain
         "https://mbaymi-staging.vercel.app",
         "https://mbaymi.com",
         "https://www.mbaymi.com",
@@ -158,7 +160,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     traceback.print_exc()
     
     # Get origin from request
-    origin = request.headers.get("origin", "https://mbaymi.vercel.app")
+    origin = request.headers.get("origin", MAIN_DOMAIN)
     
     # Check if origin is allowed
     allowed_origins = [
@@ -178,7 +180,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         "https://cuddly-lil-bigboyllmnd-9965fc8f.koyeb.app",
     ]
     
-    response_origin = origin if origin in allowed_origins else "https://mbaymi.vercel.app"
+    response_origin = origin if origin in allowed_origins else MAIN_DOMAIN
     
     return JSONResponse(
         status_code=500,

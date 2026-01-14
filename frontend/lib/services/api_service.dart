@@ -38,7 +38,6 @@ class ApiService {
   }) async {
     int attempt = 0;
     Duration delay = _initialDelay;
-    NetworkException? lastError;
 
     while (true) {
       try {
@@ -47,8 +46,7 @@ class ApiService {
         // Succès - enregistrer la connexion
         _connectivity.recordConnectionSuccess();
         return result;
-      } on TimeoutException catch (e) {
-        lastError = e;
+      } on TimeoutException {
         _connectivity.recordConnectionError();
         if (attempt >= maxRetries) {
           debugPrint('❌ Request timeout after $maxRetries attempts');
@@ -57,8 +55,7 @@ class ApiService {
         debugPrint('⚠️ Timeout attempt $attempt, retrying in ${delay.inMilliseconds}ms...');
         await Future.delayed(delay);
         delay = Duration(milliseconds: delay.inMilliseconds * 2);
-      } on ConnectionException catch (e) {
-        lastError = e;
+      } on ConnectionException {
         _connectivity.recordConnectionError();
         if (attempt >= maxRetries) {
           debugPrint('❌ Connection error after $maxRetries attempts');
@@ -68,7 +65,6 @@ class ApiService {
         await Future.delayed(delay);
         delay = Duration(milliseconds: delay.inMilliseconds * 2);
       } catch (e) {
-        lastError = NetworkExceptionHandler.handleError(error: e);
         _connectivity.recordConnectionError();
         if (attempt >= maxRetries) {
           debugPrint('❌ Request failed after $maxRetries attempts: $e');
@@ -79,25 +75,6 @@ class ApiService {
         delay = Duration(milliseconds: delay.inMilliseconds * 2);
       }
     }
-  }
-  /// Helper: Get avec cache pour les requêtes fréquentes
-  static Future<T> _getCached<T>(
-    String cacheKey,
-    Future<T> Function() fn,
-  ) async {
-    // Vérifier le cache d'abord
-    final cached = _getCache.get(cacheKey);
-    if (cached != null) {
-      debugPrint('✅ Cache hit for $cacheKey');
-      return cached as T;
-    }
-
-    // Faire la requête
-    final result = await fn();
-    
-    // Mettre en cache
-    _getCache.set(cacheKey, result);
-    return result;
   }
 
   /// Helper: Invalider le cache d'une clé
@@ -668,6 +645,116 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error getting sales: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getAllSales({int limit = 100}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/sales/'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List;
+      } else {
+        throw Exception('Failed to get sales');
+      }
+    } catch (e) {
+      throw Exception('Error getting sales: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createSale(Map<String, dynamic> saleData) async {
+    try {
+      final token = await TokenStorage.getAccessToken();
+      final userId = AuthService.currentSession?.userId;
+
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/sales/'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          ...saleData,
+          'user_id': userId,
+        }),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        notifyFarmPostCreated(); // Notify to refresh marketplace
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to create sale: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error creating sale: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getSale(int saleId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/sales/$saleId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Failed to get sale');
+      }
+    } catch (e) {
+      throw Exception('Error getting sale: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateSale(int saleId, Map<String, dynamic> saleData) async {
+    try {
+      final token = await TokenStorage.getAccessToken();
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/sales/$saleId'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(saleData),
+      );
+
+      if (response.statusCode == 200) {
+        notifyFarmPostCreated();
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to update sale');
+      }
+    } catch (e) {
+      throw Exception('Error updating sale: $e');
+    }
+  }
+
+  static Future<void> deleteSale(int saleId) async {
+    try {
+      final token = await TokenStorage.getAccessToken();
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/sales/$saleId'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Failed to delete sale');
+      }
+      notifyFarmPostCreated();
+    } catch (e) {
+      throw Exception('Error deleting sale: $e');
     }
   }
 

@@ -160,7 +160,7 @@ class _AnimalPhotoCarouselScreenState extends State<AnimalPhotoCarouselScreen> {
   Widget build(BuildContext context) {
     final isDark = widget.isDarkMode;
     final bgColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFFAF9F6);
-    final cardColor = isDark ? const Color(0xFF2D2D2D) : Colors.white;
+    // cardColor not used; removed to satisfy analyzer
     final textColor = isDark ? Colors.white : Colors.black;
     final secondaryTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
 
