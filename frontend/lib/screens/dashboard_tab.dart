@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
-import 'package:mbaymi/widgets/farm_posts_widget.dart';
+import 'package:mbaymi/services/theme_provider.dart';
+import 'package:mbaymi/services/weather_service.dart';
+import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/animal_detail_screen.dart';
-import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
-import 'package:mbaymi/services/auth_service.dart';
-import 'package:mbaymi/services/theme_provider.dart';
-import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
-// Removed unused import
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:mbaymi/widgets/farm_posts_widget.dart';
+import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
+import 'package:mbaymi/widgets/stat_card.dart';
 
 class DashboardTab extends StatefulWidget {
   final bool isDarkMode;
@@ -44,6 +43,7 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   void initState() {
     super.initState();
+    ApiService.clearCache();
     _countsFuture = _loadCounts();
     _weatherFuture = _loadWeather();
     final viewerId = widget.userId ?? AuthService.currentSession?.userId ?? 0;
@@ -93,6 +93,22 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   @override
+  void didUpdateWidget(DashboardTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      ApiService.clearCache();
+      _countsFuture = _loadCounts();
+      _weatherFuture = _loadWeather();
+      final viewerId = widget.userId ?? AuthService.currentSession?.userId ?? 0;
+      _viewerId = viewerId;
+      _followedPostsFuture = viewerId > 0 ? ApiService.getFarmPostsFeed(userId: viewerId) : Future.value(<dynamic>[]);
+      _followedPosts = [];
+      _postsInitialized = false;
+      setState(() {});
+    }
+  }
+
+  @override
   void dispose() {
     try {
       _followSub.cancel();
@@ -109,60 +125,15 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Future<Map<String, dynamic>> _loadWeather() async {
-    try {
-      // Coordonnées du Sénégal (Dakar)
-      final latitude = 14.6667;
-      final longitude = -17.0382;
-      
-      final response = await http.get(
-        Uri.parse(
-          'https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Africa/Dakar',
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'current_temp': data['current']['temperature_2m'],
-          'weather_code': data['current']['weather_code'],
-          'max_temp': data['daily']['temperature_2m_max'][0],
-          'min_temp': data['daily']['temperature_2m_min'][0],
-          'daily_weather_code': data['daily']['weather_code'][0],
-        };
-      } else {
-        throw Exception('Erreur météo');
-      }
-    } catch (e) {
-      return {
-        'current_temp': 22,
-        'weather_code': 0,
-        'max_temp': 26,
-        'min_temp': 18,
-        'daily_weather_code': 0,
-      };
-    }
+    return WeatherService.getWeather();
   }
 
   String _getWeatherAdvice(int weatherCode, double maxTemp) {
-    if (weatherCode == 80 || weatherCode == 81 || weatherCode == 82) {
-      return 'Pluies prévues';
-    } else if (maxTemp > 28) {
-      return 'Forte chaleur prévue';
-    } else if (maxTemp < 20) {
-      return 'Temps frais';
-    } else {
-      return 'Ciel dégagé';
-    }
+    return WeatherService.getWeatherAdvice(weatherCode, maxTemp);
   }
 
   String _getWateringAdvice(int weatherCode, double maxTemp) {
-    if (weatherCode == 80 || weatherCode == 81 || weatherCode == 82) {
-      return 'Pluies en cours - Attendez avant d\'arroser';
-    } else if (maxTemp > 28) {
-      return 'Arrosez vos cultures avant 8h pour limiter l\'évaporation';
-    } else {
-      return 'Arrosez le matin entre 7h-9h pour une meilleure absorption';
-    }
+    return WeatherService.getWateringAdvice(weatherCode, maxTemp);
   }
 
   Future<Map<String, dynamic>> _loadCounts() async {
@@ -354,22 +325,32 @@ class _DashboardTabState extends State<DashboardTab> {
               child: Row(
                 children: [
                   Expanded(
-                    child: _buildStatCard(
-                      isDarkMode: isDarkMode,
-                      icon: Icons.agriculture,
-                      iconColor: const Color(0xFF6B8E23),
-                      valueKey: 'farms',
-                      label: 'Fermes',
+                    child: FutureBuilder<Map<String, dynamic>>(
+                      future: _countsFuture,
+                      builder: (context, snapshot) {
+                        return StatCard(
+                          icon: Icons.agriculture,
+                          iconColor: const Color(0xFF6B8E23),
+                          label: 'Fermes',
+                          value: snapshot.data?['farms'] ?? 0,
+                          isDarkMode: isDarkMode,
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildStatCard(
-                      isDarkMode: isDarkMode,
-                      icon: Icons.pets,
-                      iconColor: const Color(0xFFD2691E),
-                      valueKey: 'livestock',
-                      label: 'Animaux',
+                    child: FutureBuilder<Map<String, dynamic>>(
+                      future: _countsFuture,
+                      builder: (context, snapshot) {
+                        return StatCard(
+                          icon: Icons.pets,
+                          iconColor: const Color(0xFFD2691E),
+                          label: 'Animaux',
+                          value: snapshot.data?['livestock'] ?? 0,
+                          isDarkMode: isDarkMode,
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -624,93 +605,7 @@ class _DashboardTabState extends State<DashboardTab> {
       );
   }
 
-  Widget _buildStatCard({
-    required bool isDarkMode,
-    required IconData icon,
-    required Color iconColor,
-    required String valueKey,
-    required String label,
-    String? subtitle,
-    Color? subtitleColor,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap ?? () => HapticFeedback.lightImpact(),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDarkMode 
-            ? const Color(0xFF0D0D0D).withOpacity(0.9)
-            : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(isDarkMode ? 0.2 : 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<Map<String, dynamic>>(
-              future: _countsFuture,
-              builder: (context, snapshot) {
-                final count = snapshot.data?[valueKey] ?? 0;
-                return Text(
-                  '$count',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w300,
-                    color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
-                    height: 1,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-              ),
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: subtitleColor?.withOpacity(0.1) ??
-                      const Color(0xFF2D5016).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: subtitleColor ?? const Color(0xFF2D5016),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildNewsCard(NewsArticle article, bool isActive, bool isDarkMode) {
     return GestureDetector(

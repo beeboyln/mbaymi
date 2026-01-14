@@ -58,11 +58,11 @@ class _MarketTabState extends State<MarketTab> {
       body: RefreshIndicator(
         onRefresh: () async {
           _refreshData();
-          await Future.delayed(const Duration(seconds: 1));
+          await Future.delayed(const Duration(milliseconds: 500));
         },
         color: const Color(0xFF7BA428),
         child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           slivers: [
             // En-tête minimaliste
             SliverAppBar(

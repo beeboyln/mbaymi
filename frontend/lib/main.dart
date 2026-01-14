@@ -52,8 +52,41 @@ Future<void> main() async {
   });
 }
 
-class MbaymiApp extends StatelessWidget {
+class MbaymiApp extends StatefulWidget {
   const MbaymiApp({Key? key}) : super(key: key);
+
+  @override
+  State<MbaymiApp> createState() => _MbaymiAppState();
+}
+
+class _MbaymiAppState extends State<MbaymiApp> {
+  late StreamSubscription _authSubscription;
+  int? _lastUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastUserId = AuthService.currentSession?.userId;
+    
+    // 🔍 Écouter les changements d'authentification de manière plus efficace
+    // Vérifier toutes les 2 secondes au lieu de 500ms (moins consommateur d'énergie)
+    _authSubscription = Stream.periodic(const Duration(seconds: 2)).listen((_) {
+      if (mounted) {
+        final currentUserId = AuthService.currentSession?.userId;
+        // Ne rebuild que si l'userId a changé
+        if (_lastUserId != currentUserId) {
+          _lastUserId = currentUserId;
+          setState(() {});
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +125,7 @@ class MbaymiApp extends StatelessWidget {
               ),
             ),
             themeMode: themeProvider.themeMode,
-            home: SplashScreen(userId: userId),
+            home: HomeScreen(key: ValueKey('home_${userId ?? 0}'), userId: userId),
             onGenerateRoute: (settings) {
               if (settings.name == '/home') {
                 final arg = settings.arguments;
@@ -106,8 +139,9 @@ class MbaymiApp extends StatelessWidget {
                     routeUserId = int.tryParse(raw.toString());
                   }
                 }
+                final finalUserId = routeUserId ?? userId;
                 return MaterialPageRoute(
-                  builder: (context) => HomeScreen(userId: routeUserId ?? userId),
+                  builder: (context) => HomeScreen(key: ValueKey('home_${finalUserId ?? 0}'), userId: finalUserId),
                 );
               }
               // 🌾 Crop Problems Screen

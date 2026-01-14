@@ -4,6 +4,7 @@ import 'package:mbaymi/widgets/empty_state.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/create_livestock_screen.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
@@ -18,18 +19,21 @@ class FarmTab extends StatefulWidget {
   State<FarmTab> createState() => _FarmTabState();
 }
 
-class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
+class _FarmTabState extends State<FarmTab> {
   Future<List<dynamic>>? _farmsFuture;
   Future<List<dynamic>>? _livestockFuture;
   int _selectedSection = 0;
-
-  @override
-  bool get wantKeepAlive => true;
+  int? _lastKnownUserId;
 
   @override
   void initState() {
     super.initState();
-    _farmsFuture ??= (widget.userId != null
+    _lastKnownUserId = widget.userId;
+    _loadFarms();
+  }
+
+  void _loadFarms() {
+    _farmsFuture = (widget.userId != null
         ? ApiService.getUserFarms(widget.userId!)
         : ApiService.getPublicFarms());
   }
@@ -38,13 +42,41 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
   void didUpdateWidget(FarmTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Recharger les fermes si l'utilisateur vient de se connecter
-    if (oldWidget.userId != widget.userId && widget.userId != null) {
-      _farmsFuture = ApiService.getUserFarms(widget.userId!);
+    if (oldWidget.userId != widget.userId) {
+      // Clear le cache quand l'utilisateur change
+      ApiService.clearCache();
+      _lastKnownUserId = widget.userId;
+      _farmsFuture = null;
+      _livestockFuture = null;
+      _selectedSection = 0;
+      _loadFarms();
       setState(() {});
     }
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Vérifier si l'utilisateur s'est connecté quand on revient au premier plan
+    if (state == AppLifecycleState.resumed) {
+      _checkForAuthChange();
+    }
+  }
+
+  void _checkForAuthChange() {
+    final currentUserId = AuthService.currentSession?.userId;
+    if (_lastKnownUserId != currentUserId && currentUserId != null) {
+      _lastKnownUserId = currentUserId;
+      _loadFarms();
+      _livestockFuture = null;
+      _selectedSection = 0;
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
   Future<void> _refreshFarms() async {
+    _checkForAuthChange();
     if (_selectedSection == 0) {
       _farmsFuture = widget.userId != null
           ? ApiService.getUserFarms(widget.userId!)
@@ -129,7 +161,6 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     // Lire le mode sombre directement du ThemeProvider
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     
@@ -149,6 +180,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
               snap: false,
               surfaceTintColor: Colors.transparent,
               toolbarHeight: 80.0,
+              automaticallyImplyLeading: false,
               title: Container(
                 width: double.infinity,
                 padding: EdgeInsets.only(

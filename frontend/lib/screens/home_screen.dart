@@ -24,7 +24,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _isDarkMode = false;
-  late final List<Widget> _screens;
+  late List<Widget> _screens;
 
   int? _userId;
 
@@ -45,8 +45,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     _screens = [
-      DashboardTab(isDarkMode: _isDarkMode, userId: userId),
-      FarmTab(userId: userId),
+      DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId),
+      FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId),
       FarmNetworkScreen(isDarkMode: _isDarkMode),
       LivestockTab(isDarkMode: _isDarkMode),
       MarketTab(isDarkMode: _isDarkMode),
@@ -62,10 +62,31 @@ class _HomeScreenState extends State<HomeScreen> {
         if (v != null && mounted) {
           setState(() {
             _userId = v;
+            _updateScreens();
           });
         }
       });
     }
+  }
+
+  @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      _userId = widget.userId;
+      _updateScreens();
+    }
+  }
+
+  void _updateScreens() {
+    _screens = [
+      DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId),
+      FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId),
+      FarmNetworkScreen(isDarkMode: _isDarkMode),
+      LivestockTab(isDarkMode: _isDarkMode),
+      MarketTab(isDarkMode: _isDarkMode),
+      AdviceTab(isDarkMode: _isDarkMode),
+    ];
   }
 
   @override
@@ -329,8 +350,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (result != null) {
                     if (!mounted) return;
                     setState(() {
-                      _screens[1] = FarmTab(userId: userId);
-                      _screens[0] = DashboardTab(isDarkMode: _isDarkMode, userId: userId);
+                      _screens[1] = FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId);
+                      _screens[0] = DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId);
                     });
                     ScaffoldMessenger.of(rootContext).showSnackBar(const SnackBar(content: Text('Ferme créée')));
                   }
