@@ -51,8 +51,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
   void initState() {
     super.initState();
     // Créer les futures qu'UNE SEULE FOIS
-    _profileFuture ??= ApiService.getUserProfile(widget.userId);
-    _postsFuture ??= ApiService.getUserPosts(widget.userId);
+    final viewerId = AuthService.currentSession?.userId ?? 0;
+    _profileFuture ??= ApiService.getUserProfile(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
+    _postsFuture ??= ApiService.getUserPosts(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
   }
 
   @override
@@ -60,16 +61,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
     super.didUpdateWidget(oldWidget);
     // Ne recharger que si l'userId change
     if (oldWidget.userId != widget.userId) {
-      _profileFuture = ApiService.getUserProfile(widget.userId);
-      _postsFuture = ApiService.getUserPosts(widget.userId);
+      final viewerId = AuthService.currentSession?.userId ?? 0;
+      _profileFuture = ApiService.getUserProfile(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
+      _postsFuture = ApiService.getUserPosts(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
       setState(() {});
     }
   }
 
   Future<void> _refresh() async {
     // Recharger UNIQUEMENT si on swipe
-    _profileFuture = ApiService.getUserProfile(widget.userId);
-    _postsFuture = ApiService.getUserPosts(widget.userId);
+    final viewerId = AuthService.currentSession?.userId ?? 0;
+    _profileFuture = ApiService.getUserProfile(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
+    _postsFuture = ApiService.getUserPosts(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
     setState(() {});
   }
 

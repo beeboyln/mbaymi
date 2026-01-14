@@ -1430,11 +1430,14 @@ class ApiService {
   // USER PROFILE (Profil personnel)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> getUserProfile(int userId) async {
+  static Future<Map<String, dynamic>> getUserProfile(int userId, {int? viewerId}) async {
     try {
       return await _withRetry(() async {
+        final uri = viewerId != null
+            ? Uri.parse('$baseUrl/users/$userId/profile?viewer_id=$viewerId')
+            : Uri.parse('$baseUrl/users/$userId/profile');
         final response = await http.get(
-          Uri.parse('$baseUrl/users/$userId/profile'),
+          uri,
           headers: {'Content-Type': 'application/json'},
         );
 
@@ -1449,11 +1452,14 @@ class ApiService {
     }
   }
 
-  static Future<List<dynamic>> getUserPosts(int userId, {int skip = 0, int limit = 20}) async {
+  static Future<List<dynamic>> getUserPosts(int userId, {int skip = 0, int limit = 20, int? viewerId}) async {
     try {
       return await _withRetry(() async {
+        final uri = viewerId != null
+            ? Uri.parse('$baseUrl/users/$userId/posts?skip=$skip&limit=$limit&viewer_id=$viewerId')
+            : Uri.parse('$baseUrl/users/$userId/posts?skip=$skip&limit=$limit');
         final response = await http.get(
-          Uri.parse('$baseUrl/users/$userId/posts?skip=$skip&limit=$limit'),
+          uri,
           headers: {'Content-Type': 'application/json'},
         );
 

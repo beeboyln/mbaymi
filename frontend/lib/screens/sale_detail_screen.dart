@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 
@@ -17,19 +18,21 @@ class SaleDetailScreen extends StatefulWidget {
 class _SaleDetailScreenState extends State<SaleDetailScreen> {
   Future<Map<String, dynamic>>? _saleFuture;
   Future<Map<String, dynamic>>? _ownerFuture;
+  int _userId = 0;
 
   @override
   void initState() {
     super.initState();
+    _userId = AuthService.currentSession?.userId ?? 0;
     if (widget.sale != null) {
       _saleFuture = Future.value(widget.sale!);
       final uid = widget.sale!['user_id'] as int?;
-      if (uid != null) _ownerFuture = ApiService.getUserProfile(uid);
+      if (uid != null) _ownerFuture = ApiService.getUserProfile(uid, viewerId: _userId > 0 ? _userId : null);
     } else if (widget.saleId != null) {
       _saleFuture = ApiService.getSale(widget.saleId!);
       _saleFuture!.then((s) {
         final uid = s['user_id'] as int?;
-        if (uid != null) _ownerFuture = ApiService.getUserProfile(uid);
+        if (uid != null) _ownerFuture = ApiService.getUserProfile(uid, viewerId: _userId > 0 ? _userId : null);
       });
     }
   }

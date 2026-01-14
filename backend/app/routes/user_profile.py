@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import Optional
 from app.database import get_db
-from app.models import User, Farm, FarmPost, Crop, Livestock
+from app.models import User, Farm, FarmPost, Crop, Livestock, UserFollowing
+from app.models.farm_post import FarmPostLike
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,7 @@ router = APIRouter(prefix="/api/users", tags=["User Profile"])
 # ═══════════════════════════════════════════════════════════════════════════
 
 @router.get("/{user_id}/profile")
-def get_user_profile(user_id: int, db: Session = Depends(get_db)):
+def get_user_profile(user_id: int, viewer_id: Optional[int] = None, db: Session = Depends(get_db)):
     """
     👤 Récupérer le profil personnel d'un utilisateur.
     """
@@ -43,6 +45,20 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
         # Pour livestock, on met juste le total (pas associé à une ferme spécifique)
         livestock_count = len(all_livestock)
         
+        # Calculer le nombre total de followers depuis la table UserFollowing
+        try:
+            total_followers = db.query(UserFollowing).filter(UserFollowing.following_id == user_id).count()
+        except Exception:
+            total_followers = 0
+
+        # Déterminer si le viewer courant suit cet utilisateur
+        followed_by_user = False
+        if viewer_id:
+            followed_by_user = db.query(UserFollowing).filter(
+                UserFollowing.follower_id == viewer_id,
+                UserFollowing.following_id == user_id
+            ).first() is not None
+
         return {
             "id": user.id,
             "name": user.name,
@@ -50,7 +66,8 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
             "phone": getattr(user, 'phone', None),
             "profile_image": getattr(user, 'profile_image', None),
             "total_farms": len(farms),
-            "total_followers": 0,
+            "total_followers": total_followers,
+            "followed_by_user": followed_by_user,
             "total_posts": total_posts,
             "farms": [
                 {
@@ -130,7 +147,7 @@ def update_user_profile(
 
 
 @router.get("/{user_id}/posts")
-def get_user_posts(user_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+def get_user_posts(user_id: int, skip: int = 0, limit: int = 20, viewer_id: Optional[int] = None, db: Session = Depends(get_db)):
     """
     📰 Récupérer tous les posts d'un utilisateur.
     """
@@ -152,6 +169,16 @@ def get_user_posts(user_id: int, skip: int = 0, limit: int = 20, db: Session = D
         posts_data = []
         for post in posts:
             farm = db.query(Farm).filter(Farm.id == post.farm_id).first()
+            # likes count from post
+            likes_count = getattr(post, 'likes_count', 0) if hasattr(post, 'likes_count') else 0
+            liked_by_user = False
+            if viewer_id:
+                liked = db.query(FarmPostLike).filter(
+                    FarmPostLike.farm_post_id == post.id,
+                    FarmPostLike.user_id == viewer_id
+                ).first()
+                liked_by_user = liked is not None
+
             posts_data.append({
                 "id": post.id,
                 "farm_id": post.farm_id,
@@ -161,6 +188,8 @@ def get_user_posts(user_id: int, skip: int = 0, limit: int = 20, db: Session = D
                 "photo_url": post.photo_url,
                 "post_type": post.post_type,
                 "created_at": post.created_at.isoformat() if post.created_at else None,
+                "likes_count": likes_count,
+                "liked_by_user": liked_by_user,
             })
         
         return {

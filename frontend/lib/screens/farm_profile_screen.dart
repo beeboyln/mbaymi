@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
 
 class FarmProfileScreen extends StatefulWidget {
   final int farmId;
@@ -29,7 +30,8 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
   void initState() {
     super.initState();
     _profileFuture = ApiService.getFarmProfile(widget.farmId);
-    _postsFuture = ApiService.getFarmPosts(widget.farmId);
+    final viewerId = AuthService.currentSession?.userId ?? 0;
+    _postsFuture = ApiService.getFarmPosts(widget.farmId, userId: viewerId > 0 ? viewerId : null);
   }
 
   @override

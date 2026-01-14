@@ -53,15 +53,15 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
     super.initState();
     _userId = AuthService.currentSession?.userId ?? 0;
     // Créer les futures qu'UNE SEULE FOIS
-    _profileFuture ??= ApiService.getUserProfile(widget.userId);
-    _postsFuture ??= ApiService.getUserPosts(widget.userId);
+    _profileFuture ??= ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null);
+    _postsFuture ??= ApiService.getUserPosts(widget.userId, viewerId: _userId > 0 ? _userId : null);
     _farmsFuture ??= ApiService.getUserFarms(widget.userId);
   }
 
   Future<void> _refresh() async {
     // Recharger UNIQUEMENT si on swipe
-    _profileFuture = ApiService.getUserProfile(widget.userId);
-    _postsFuture = ApiService.getUserPosts(widget.userId);
+    _profileFuture = ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null);
+    _postsFuture = ApiService.getUserPosts(widget.userId, viewerId: _userId > 0 ? _userId : null);
     _farmsFuture = ApiService.getUserFarms(widget.userId);
     setState(() {});
   }
@@ -129,7 +129,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: FutureBuilder<Map<String, dynamic>>(
-            future: _profileFuture ?? ApiService.getUserProfile(widget.userId),
+            future: _profileFuture ?? ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null),
             builder: (context, profileSnap) {
               if (profileSnap.connectionState == ConnectionState.waiting) {
                 return Center(
