@@ -199,7 +199,8 @@ class _DashboardTabState extends State<DashboardTab> {
           await Future.delayed(const Duration(milliseconds: 500));
         },
         child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
+          cacheExtent: 600.0,
           slivers: [
           // Date Header - Minimaliste
           SliverPadding(
@@ -558,8 +559,9 @@ class _DashboardTabState extends State<DashboardTab> {
                         height: 320,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
+                          physics: const ClampingScrollPhysics(),
                           itemCount: filteredArticles.length,
+                          cacheExtent: 500,
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           itemBuilder: (context, index) {
                             final article = filteredArticles[index];

@@ -1299,8 +1299,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               height: 220,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 0),
+                cacheExtent: 500,
                 itemCount: posts.take(10).length,
                 itemBuilder: (context, index) {
                   final post = posts[index];

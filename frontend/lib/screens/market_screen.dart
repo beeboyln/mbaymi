@@ -63,6 +63,7 @@ class _MarketTabState extends State<MarketTab> {
         color: const Color(0xFF7BA428),
         child: CustomScrollView(
           physics: const ClampingScrollPhysics(),
+          cacheExtent: 600.0,
           slivers: [
             // En-tête minimaliste
             SliverAppBar(
@@ -168,7 +169,9 @@ class _MarketTabState extends State<MarketTab> {
                   height: 36,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
+                    physics: const ClampingScrollPhysics(),
                     itemCount: _categories.length,
+                    cacheExtent: 300,
                     itemBuilder: (context, index) {
                       final category = _categories[index];
                       final isSelected = _selectedCategory == category;

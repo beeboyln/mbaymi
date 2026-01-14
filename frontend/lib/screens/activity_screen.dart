@@ -294,7 +294,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             // Contenu principal - Scrollable avec padding normal
             Expanded(
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 padding: EdgeInsets.only(
                   left: 20,
                   right: 20,
@@ -1065,8 +1065,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   height: 100,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     itemCount: imgs.length,
+                    cacheExtent: 300,
                     itemBuilder: (context, i) => Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: ClipRRect(
