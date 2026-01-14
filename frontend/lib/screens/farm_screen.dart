@@ -232,40 +232,170 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
 
   Widget _buildContent(bool isDarkMode) {
     if (widget.userId == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: buildEmptyState(
-          icon: Icons.agriculture_outlined,
-          title: 'Gestion des Fermes',
-          description: 'Créez et gérez vos parcelles agricoles',
-          buttonLabel: 'Commencer',
-          color: const Color(0xFF6B8E23),
-          isDarkMode: isDarkMode,
-          onPressed: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CreateFarmScreen()),
-            );
-            if (result != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Row(
-                    children: [
-                      Icon(Icons.check_circle_outline,
-                          color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text('Ferme créée avec succès',
-                          style: TextStyle(fontWeight: FontWeight.w400)),
+      return SingleChildScrollView(
+        child: Column(
+          children: [
+            // Image de la ferme - Hero section
+            Container(
+              width: double.infinity,
+              height: 300,
+              decoration: BoxDecoration(
+                image: const DecorationImage(
+                  image: AssetImage('assets/images/ferme.jpg'),
+                  fit: BoxFit.cover,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              // Gradient overlay
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.3),
+                      Colors.black.withOpacity(0.6),
                     ],
                   ),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  backgroundColor: const Color(0xFF6B8E23),
                 ),
-              );
-            }
-          },
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        '🌾',
+                        style: TextStyle(fontSize: 64),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Gestion des Fermes',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            
+            // Contenu descriptif
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Créez et gérez vos fermes',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Organisez vos parcelles, suivez vos cultures et gérez votre inventaire agricole en un seul endroit.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.6,
+                      color: isDarkMode ? Colors.white70 : const Color(0xFF666666),
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Caractéristiques
+                  ...['📊 Suivez vos cultures', '🐄 Gérez votre bétail', '📈 Analysez vos rendements'].map((feature) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B6B4D),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            feature,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDarkMode ? Colors.white60 : const Color(0xFF555555),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Bouton Commencer vert
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CreateFarmScreen()),
+                        );
+                        if (result != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                children: [
+                                  Icon(Icons.check_circle_outline,
+                                      color: Colors.white, size: 20),
+                                  SizedBox(width: 8),
+                                  Text('Ferme créée avec succès',
+                                      style: TextStyle(fontWeight: FontWeight.w400)),
+                                ],
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                              backgroundColor: const Color(0xFF3D6B1F),
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3D6B1F),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Commencer',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -283,7 +413,7 @@ class _FarmTabState extends State<FarmTab> with AutomaticKeepAliveClientMixin {
                 children: [
                   const CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Color(0xFF6B8E23),
+                    color: Color(0xFF2D5016),
                   ),
                   const SizedBox(height: 20),
                   Text(
