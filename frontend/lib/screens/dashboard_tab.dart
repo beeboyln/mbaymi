@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/widgets/farm_posts_widget.dart';
+import 'package:mbaymi/screens/profile_detail_screen.dart';
+import 'package:mbaymi/screens/farm_detail_screen.dart';
+import 'package:mbaymi/screens/animal_detail_screen.dart';
+import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
@@ -23,13 +31,21 @@ class _DashboardTabState extends State<DashboardTab> {
   String _selectedNewsFilter = 'Local';
   late Future<Map<String, dynamic>> _countsFuture;
   late Future<Map<String, dynamic>> _weatherFuture;
+  late Future<List<dynamic>> _followedPostsFuture;
+  List<Map<String, dynamic>> _followedPosts = [];
+  int _viewerId = 0;
   int _currentNewsPage = 0;
+  
+  Future<List<dynamic>>? get _followedFarmsFuture => null;
 
   @override
   void initState() {
     super.initState();
     _countsFuture = _loadCounts();
     _weatherFuture = _loadWeather();
+    final viewerId = widget.userId ?? AuthService.currentSession?.userId ?? 0;
+    _viewerId = viewerId;
+    _followedPostsFuture = viewerId > 0 ? ApiService.getFarmPostsFeed(userId: viewerId) : Future.value(<dynamic>[]);
   }
 
   Future<Map<String, dynamic>> _loadWeather() async {
@@ -296,6 +312,146 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
 
           // News Section Header avec fond
+          // Posts des abonnements (affiche directement les posts, pas les fermes vides)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            sliver: SliverToBoxAdapter(
+              child: FutureBuilder<List<dynamic>>(
+                future: _followedPostsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
+                  if (snapshot.hasError) return const SizedBox.shrink();
+                  final posts = snapshot.data ?? [];
+                  if (posts.isEmpty) return const SizedBox.shrink();
+
+                  // store locally for optimistic updates
+                  _followedPosts = List<Map<String, dynamic>>.from(posts.cast<Map<String, dynamic>>());
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Text(
+                          'Abonnements',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w300,
+                            color: isDarkMode ? const Color.fromARGB(255, 0, 0, 0) : const Color.fromARGB(255, 0, 0, 0),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Column(
+                        children: _followedPosts.take(5).map((post) {
+                          final farmName = post['farm_name'] as String? ?? 'Ferme';
+                          final ownerName = post['owner_name'] as String? ?? 'Agriculteur';
+                          final caption = post['caption'] as String? ?? post['title'] ?? '';
+                          final imageUrl = post['image_url'] as String?;
+                          final postId = post['id'] as int? ?? 0;
+                          final farmId = post['farm_id'] as int? ?? 0;
+                          final livestockId = post['livestock_id'] as int?;
+                          final userId = post['user_id'] as int? ?? 0;
+                          final likesCount = post['likes_count'] ?? 0;
+                          final commentsCount = post['comments_count'] ?? 0;
+                          final sharesCount = post['shares_count'] ?? 0;
+                          final createdAt = DateTime.tryParse(post['created_at'] as String? ?? '') ?? DateTime.now();
+                          final daysAgo = DateTime.now().difference(createdAt).inDays;
+                          final timeText = daysAgo == 0 ? 'Aujourd\'hui' : daysAgo == 1 ? 'Hier' : '$daysAgo j';
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05), blurRadius: 8, offset: const Offset(0,2)),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    if (userId > 0) {
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileDetailScreen(userId: userId, isDarkMode: isDarkMode)));
+                                    }
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 20,
+                                          backgroundColor: const Color(0xFF8B6B4D),
+                                          backgroundImage: (post['owner_profile_image'] != null && (post['owner_profile_image'] as String).isNotEmpty) ? NetworkImage(post['owner_profile_image'] as String) : null,
+                                          child: (post['owner_profile_image'] == null || (post['owner_profile_image'] as String).isEmpty) ? Text(ownerName.isNotEmpty ? ownerName[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)) : null,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(child: Text(farmName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF8B6B4D)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                                  const Text('🌾', style: TextStyle(fontSize: 16)),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text('par $ownerName • $timeText', style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white54 : Colors.black54)),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (imageUrl != null && imageUrl.isNotEmpty)
+                                  Container(height: 250, width: double.infinity, color: Colors.grey[300], child: Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (c,e,s)=> Icon(Icons.image, size: 40, color: Colors.grey[400]))),
+                                if (imageUrl == null || imageUrl.isEmpty)
+                                  Container(height: 180, width: double.infinity, decoration: BoxDecoration(gradient: LinearGradient(colors: [const Color(0xFF8B6B4D).withOpacity(0.2), const Color(0xFFC4A484).withOpacity(0.2)])), child: Center(child: Icon(Icons.image_outlined, size: 48, color: isDarkMode ? Colors.white30 : Colors.black12))),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  child: Row(children: [
+                                    GestureDetector(onTap: () async {
+                                      try {
+                                        final isLiked = post['is_liked'] ?? false;
+                                        post['is_liked'] = !isLiked;
+                                        post['likes_count'] = isLiked ? (post['likes_count'] ?? 0) - 1 : (post['likes_count'] ?? 0) + 1;
+                                        setState(() {});
+                                        if (isLiked) await ApiService.unlikeFarmPost(postId);
+                                        else await ApiService.likeFarmPost(postId);
+                                      } catch (e) {
+                                        final isLiked = post['is_liked'] ?? false;
+                                        post['is_liked'] = !isLiked;
+                                        post['likes_count'] = isLiked ? (post['likes_count'] ?? 0) - 1 : (post['likes_count'] ?? 0) + 1;
+                                        setState(() {});
+                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e'), backgroundColor: const Color(0xFF8B6B4D)));
+                                      }
+                                    }, child: Row(children: [Icon((post['is_liked'] ?? false) ? Icons.favorite : Icons.favorite_border, size: 20, color: (post['is_liked'] ?? false) ? Colors.red : const Color(0xFF8B6B4D)), const SizedBox(width: 6), Text('${post['likes_count'] ?? 0}')])),
+                                    const SizedBox(width: 16),
+                                    GestureDetector(onTap: () { showModalBottomSheet(context: context, isScrollControlled: true, builder: (context) => CommentsBottomSheet(postId: postId, currentUserId: _viewerId, isDarkMode: isDarkMode)); }, child: Row(children: [Icon(Icons.chat_bubble_outline, size: 20, color: const Color(0xFF8B6B4D)), const SizedBox(width: 6), Text('${post['comments_count'] ?? 0}')])),
+                                    const SizedBox(width: 16),
+                                    GestureDetector(onTap: () async { try { post['shares_count'] = (post['shares_count'] ?? 0) + 1; setState(() {}); await ApiService.shareFarmPost(postId); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('📤 Partagé!'), backgroundColor: Color(0xFF8B6B4D), duration: Duration(milliseconds: 600))); } catch (e) { post['shares_count'] = (post['shares_count'] ?? 0) - 1; setState(() {}); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red)); } }, child: Row(children: [Icon(Icons.share_outlined, size: 20, color: const Color(0xFF8B6B4D)), const SizedBox(width: 6), Text('${post['shares_count'] ?? 0}')])),
+                                    const Spacer(),
+                                    Icon(Icons.bookmark_border, size: 20, color: const Color(0xFF8B6B4D)),
+                                  ]),
+                                ),
+                                if (caption.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Text(caption, style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white70 : Colors.black87, height: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis)),
+                                const SizedBox(height: 8),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
             sliver: SliverToBoxAdapter(
