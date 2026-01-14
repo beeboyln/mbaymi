@@ -288,7 +288,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
                                                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
                                                         }
                                                       },
-                                                      child: const Text('Abonné'),
+                                                      child: const Text('Se désabonner'),
                                                     )
                                                   : ElevatedButton(
                                                       style: ElevatedButton.styleFrom(backgroundColor: _accentColor),
