@@ -1,11 +1,13 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/models/market_model.dart';
 import 'package:mbaymi/models/news_model.dart';
+import 'package:mbaymi/models/veterinarian_model.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/token_storage.dart';
 import 'package:mbaymi/services/simple_cache.dart';
@@ -148,6 +150,7 @@ class ApiService {
             refreshToken: refreshToken,
             userId: AuthService.currentSession?.userId ?? 0,
             userEmail: AuthService.currentSession?.email ?? '',
+            userRole: AuthService.currentSession?.role,
           );
           debugPrint('✅ Token refreshed successfully');
           
@@ -2041,6 +2044,25 @@ class ApiService {
     }
   }
 
+  static Future<List<dynamic>> getSubscriptionsFeed({required int userId}) async {
+    try {
+      final url = '$baseUrl/farm-posts/subscriptions-feed/$userId';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Erreur lecture posts abonnements: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur: $e');
+    }
+  }
+
   static Future<void> likeFarmPost(int postId) async {
     try {
       final headers = await _getAuthHeaders();
@@ -2334,6 +2356,257 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Erreur suppression commentaire: $e');
+    }
+  }
+
+  // 👨‍⚕️ VETERINARIAN ENDPOINTS
+  
+  /// Create veterinarian profile
+  static Future<Map<String, dynamic>> createVeterinarianProfile({
+    required String specialty,
+    required String zone,
+    required int distanceMax,
+    required String bio,
+    required int experienceYears,
+    required String contactPreference,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/veterinarians/profile'),
+        headers: headers,
+        body: jsonEncode({
+          'specialty': specialty,
+          'zone': zone,
+          'distance_max': distanceMax,
+          'bio': bio,
+          'experience_years': experienceYears,
+          'contact_preference': contactPreference,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur création profil vétérinaire: $e');
+    }
+  }
+
+  /// Upload veterinarian certificate
+  static Future<void> uploadCertificate(File certificateFile) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/veterinarians/upload-certificate'),
+      );
+      request.headers.addAll(headers);
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'certificate',
+          certificateFile.path,
+        ),
+      );
+
+      final response = await request.send();
+      final responseString = await response.stream.bytesToString();
+
+      if (response.statusCode != 200) {
+        throw Exception('Erreur upload: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur upload certificat: $e');
+    }
+  }
+
+  /// Get veterinarian profile
+  static Future<VeterinarianProfile?> getVeterinarianProfile() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/veterinarians/my-profile'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return VeterinarianProfile.fromJson(json);
+      } else if (response.statusCode == 404) {
+        // Profile not found - vet needs to create one
+        return null;
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération profil: $e');
+    }
+  }
+
+  /// Get veterinarians by zone
+  static Future<List<dynamic>> getVeterinariansByZone(String zone) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/veterinarians/by-zone/$zone'),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération vétérinaires: $e');
+    }
+  }
+
+  // 🆘 SERVICE REQUEST ENDPOINTS
+
+  /// Create service request
+  static Future<Map<String, dynamic>> createServiceRequest({
+    required String serviceType,
+    required String title,
+    required String description,
+    String? symptoms,
+    int? animalId,
+    int? cropId,
+    String priority = 'medium',
+    List<String>? photos,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/service-requests/'),
+        headers: headers,
+        body: jsonEncode({
+          'service_type': serviceType,
+          'title': title,
+          'description': description,
+          'symptoms': symptoms,
+          'animal_id': animalId,
+          'crop_id': cropId,
+          'priority': priority,
+          'photos': photos,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur création demande: $e');
+    }
+  }
+
+  /// Get user's service requests
+  static Future<List<dynamic>> getMyServiceRequests() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/service-requests/my-requests'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération demandes: $e');
+    }
+  }
+
+  /// Get available service requests for veterinarian
+  static Future<List<dynamic>> getAvailableRequests() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/service-requests/available-for-me'),
+        headers: headers,
+      );
+
+      debugPrint('ApiService.getAvailableRequests: status=${response.statusCode}, body=${response.body}');
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else if (response.statusCode == 404) {
+        // No profile or no requests
+        return <dynamic>[];
+      } else if (response.statusCode == 422) {
+        // Unprocessable content - log and return empty list to avoid crashing the UI
+        debugPrint('Warning: getAvailableRequests returned 422 Unprocessable Content');
+        return <dynamic>[];
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération demandes disponibles: $e');
+    }
+  }
+
+  // 🔐 AUTHORIZATION ENDPOINTS
+
+  /// Create authorization request
+  static Future<Map<String, dynamic>> createAuthorization({
+    int farmId = 0,
+    required int veterinarianId,
+    bool canViewData = true,
+    bool canGiveAdvice = true,
+    bool canVisit = false,
+    String? authorizationReason,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/authorizations/'),
+        headers: headers,
+        body: jsonEncode({
+          'farm_id': farmId,
+          'veterinarian_id': veterinarianId,
+          'can_view_data': canViewData,
+          'can_give_advice': canGiveAdvice,
+          'can_visit': canVisit,
+          'authorization_reason': authorizationReason,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur création autorisation: $e');
     }
   }
 }

@@ -246,7 +246,12 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
                 children: [
                   // Onglet Informations
                   SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 20,
+                      bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
+                    ),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -599,7 +604,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: TextStyle(fontSize: 15, color: textColor),
+        style: TextStyle(fontSize: 16, color: textColor),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
@@ -607,7 +612,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
           labelStyle: TextStyle(color: secondaryTextColor),
           prefixIcon: Icon(icon, color: _primaryColor, size: 20),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         ),
       ),
     );

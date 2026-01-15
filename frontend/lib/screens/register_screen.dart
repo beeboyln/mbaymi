@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/token_storage.dart';
 import 'package:mbaymi/utils/email_validator.dart';
 import 'package:mbaymi/utils/validators.dart';
 
@@ -97,7 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ApiService.register(
+      final response = await ApiService.register(
         name: _nameController.text.trim(),
         email: email,
         phone: phone,
@@ -107,13 +108,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
         village: _villageController.text.trim(),
       );
 
+      // Save tokens if they exist in the response
+      if (response.containsKey('access_token') && 
+          response['access_token'] != null &&
+          response.containsKey('id') &&
+          response['id'] != null) {
+        await TokenStorage.saveTokens(
+          accessToken: response['access_token'],
+          refreshToken: response.containsKey('refresh_token') ? response['refresh_token'] ?? '' : '',
+          userId: response['id'] ?? 0,
+          userEmail: email,
+          userRole: _selectedRole,
+        );
+      }
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Inscription réussie')),
       );
 
-      Navigator.of(context).pushReplacementNamed('/login');
+      // Route based on selected role
+      if (_selectedRole == 'veterinarian' || _selectedRole == 'expert') {
+        Navigator.of(context).pushReplacementNamed('/veterinarian-setup');
+      } else {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
     } catch (e) {
       if (!mounted) return;
       final errorMessage = ErrorMessages.getHumanReadableError(e);
@@ -134,13 +154,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: hintColor),
-      border: const UnderlineInputBorder(),
-      enabledBorder: UnderlineInputBorder(
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: borderColor),
       ),
-      focusedBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: isDark ? Colors.white70 : Colors.black),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: borderColor),
       ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: isDark ? Colors.white70 : Colors.black, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     );
   }
 
@@ -204,7 +230,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_emailFocus),
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: textColor, fontSize: 16),
                   decoration:
                       _inputDecoration('Nom complet', borderColor, hintColor, isDark),
                   validator: (v) =>
@@ -222,7 +248,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_phoneFocus),
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: textColor, fontSize: 16),
                   decoration: _inputDecoration('Email', borderColor, hintColor, isDark),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Email requis' : null,
@@ -239,7 +265,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.phone,
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_passwordFocus),
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: textColor, fontSize: 16),
                   decoration:
                       _inputDecoration('Téléphone', borderColor, hintColor, isDark),
                   validator: (v) =>
@@ -257,7 +283,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_confirmPasswordFocus),
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: textColor, fontSize: 16),
                   decoration:
                       _inputDecoration('Mot de passe', borderColor, hintColor, isDark),
                   validator: (v) =>
@@ -275,7 +301,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_regionFocus),
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: textColor, fontSize: 16),
                   decoration: _inputDecoration(
                       'Confirmer le mot de passe', borderColor, hintColor, isDark),
                   validator: (v) =>
@@ -292,7 +318,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: TextStyle(color: textColor),
                   decoration: _inputDecoration('Rôle', borderColor, hintColor, isDark),
                   items: const [
-                    DropdownMenuItem(value: 'farmer', child: Text('Agriculteur')),
+                    DropdownMenuItem(value: 'farmer', child: Text('Agriculteur / Éleveur')),
+                    DropdownMenuItem(value: 'veterinarian', child: Text('Vétérinaire')),
+                    DropdownMenuItem(value: 'expert', child: Text('Expert Agricole')),
                     DropdownMenuItem(value: 'livestock_breeder', child: Text('Éleveur')),
                     DropdownMenuItem(value: 'buyer', child: Text('Acheteur')),
                     DropdownMenuItem(value: 'seller', child: Text('Vendeur')),
@@ -310,7 +338,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_villageFocus),
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: textColor, fontSize: 16),
                   decoration: _inputDecoration('Région', borderColor, hintColor, isDark),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Région requise' : null,
@@ -324,7 +352,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _villageController,
                   focusNode: _villageFocus,
                   textInputAction: TextInputAction.done,
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: textColor, fontSize: 16),
                   decoration: _inputDecoration(
                       'Village (optionnel)', borderColor, hintColor, isDark),
                 ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/services/token_storage.dart';
 import 'package:mbaymi/services/theme_provider.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/farm_screen.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/screens/livestock_screen.dart';
@@ -11,6 +12,7 @@ import 'package:mbaymi/screens/market_screen.dart';
 import 'package:mbaymi/screens/advice_screen.dart';
 import 'package:mbaymi/screens/dashboard_tab.dart';
 import 'package:mbaymi/screens/farm_network_screen.dart';
+import 'package:mbaymi/screens/veterinarian_dashboard_screen.dart';
 import 'package:mbaymi/widgets/notification_icon_widget.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -54,8 +56,11 @@ class _HomeScreenState extends State<HomeScreen> {
       AdviceTab(isDarkMode: _isDarkMode),
     ];
 
-    if (isLoggedIn) {
-      // Profile sync will happen automatically via auth service
+    // Ensure screens reflect current role (e.g. veterinarian) at startup
+    if (mounted) {
+      setState(() {
+        _updateScreens();
+      });
     }
 
     if (_userId == null) {
@@ -80,14 +85,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _updateScreens() {
-    _screens = [
-      DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId),
-      FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId),
-      FarmNetworkScreen(isDarkMode: _isDarkMode),
-      LivestockTab(isDarkMode: _isDarkMode),
-      MarketTab(isDarkMode: _isDarkMode),
-      AdviceTab(isDarkMode: _isDarkMode),
-    ];
+    // Check if user is a veterinarian
+    final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' || 
+                          AuthService.currentSession?.role == 'expert';
+    
+    if (isVeterinarian) {
+      // For veterinarians, show different screens
+      _screens = [
+        const VeterinarianDashboardScreen(),
+        FarmNetworkScreen(isDarkMode: _isDarkMode),
+        LivestockTab(isDarkMode: _isDarkMode),
+        MarketTab(isDarkMode: _isDarkMode),
+        AdviceTab(isDarkMode: _isDarkMode),
+      ];
+    } else {
+      // For farmers/regular users, show the normal screens
+      _screens = [
+        DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId),
+        FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId),
+        FarmNetworkScreen(isDarkMode: _isDarkMode),
+        LivestockTab(isDarkMode: _isDarkMode),
+        MarketTab(isDarkMode: _isDarkMode),
+        AdviceTab(isDarkMode: _isDarkMode),
+      ];
+    }
   }
 
   @override
@@ -144,14 +165,20 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               HapticFeedback.lightImpact();
               if (isLoggedIn && _userId != null) {
-                Navigator.pushNamed(
-                  context,
-                  '/user-profile/$_userId',
-                  arguments: {
-                    'userId': _userId,
-                    'isDarkMode': _isDarkMode,
-                  },
-                );
+                final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' || 
+                                      AuthService.currentSession?.role == 'expert';
+                if (isVeterinarian) {
+                  Navigator.pushNamed(context, '/veterinarian-profile');
+                } else {
+                  Navigator.pushNamed(
+                    context,
+                    '/user-profile/$_userId',
+                    arguments: {
+                      'userId': _userId,
+                      'isDarkMode': _isDarkMode,
+                    },
+                  );
+                }
               } else {
                 _showAuthSheet(context);
               }
@@ -177,20 +204,42 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(Icons.home_outlined, Icons.home, 'Accueil', 0, _isDarkMode),
-                _buildNavItem(Icons.agriculture_outlined, Icons.agriculture, 'Fermes', 1, _isDarkMode),
-                _buildCentralActionButton(),
-                _buildNavItem(Icons.groups_outlined, Icons.groups, 'Réseau', 2, _isDarkMode),
-                _buildNavItem(Icons.shopping_bag_outlined, Icons.shopping_bag, 'Marché', 4, _isDarkMode),
-              ],
-            ),
+            child: _buildNavBar(isDarkMode),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildNavBar(bool isDarkMode) {
+    final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' || 
+                          AuthService.currentSession?.role == 'expert';
+    
+    if (isVeterinarian) {
+      // Veterinarian nav: Accueil → Réseau → Suivis → Conseils
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(Icons.home_outlined, Icons.home, 'Accueil', 0, isDarkMode),
+          _buildNavItem(Icons.groups_outlined, Icons.groups, 'Réseau', 1, isDarkMode),
+          _buildCentralActionButton(),
+          _buildNavItem(Icons.pets_outlined, Icons.pets, 'Suivis', 2, isDarkMode),
+          _buildNavItem(Icons.lightbulb_outline, Icons.lightbulb, 'Conseils', 4, isDarkMode),
+        ],
+      );
+    } else {
+      // Farmer nav: Accueil → Fermes → Réseau → Animaux → Marché
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(Icons.home_outlined, Icons.home, 'Accueil', 0, isDarkMode),
+          _buildNavItem(Icons.agriculture_outlined, Icons.agriculture, 'Fermes', 1, isDarkMode),
+          _buildCentralActionButton(),
+          _buildNavItem(Icons.groups_outlined, Icons.groups, 'Réseau', 2, isDarkMode),
+          _buildNavItem(Icons.shopping_bag_outlined, Icons.shopping_bag, 'Marché', 4, isDarkMode),
+        ],
+      );
+    }
   }
 
   Widget _buildNavItem(IconData icon, IconData activeIcon, String label, int index, bool isDarkMode) {

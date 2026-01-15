@@ -114,14 +114,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           return ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(12),
-            itemCount: combinedItems.length + 1,
+            itemCount: combinedItems.length,
             itemBuilder: (context, index) {
-              // First item: subscriptions section
-              if (index == 0) {
-                return _buildSubscriptionsSection(isDarkMode);
-              }
-              
-              final item = combinedItems[index - 1];
+              final item = combinedItems[index];
               if (item['type'] == 'farm_post') {
                 return _buildFarmPostCard(item['data'], item, isDarkMode);
               }
@@ -136,20 +131,36 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   Future<Map<String, dynamic>> _loadCombinedFeed() async {
     try {
       List<dynamic> items = [];
+      Set<int> subscriptionPostIds = {};
+
+      // Charger les posts des abonnements d'abord (pour les identifier)
+      try {
+        if (_userId > 0) {
+          final subscriptionPosts = await ApiService.getSubscriptionsFeed(userId: _userId);
+          subscriptionPostIds = subscriptionPosts.map((post) => post['id'] as int).toSet();
+        }
+      } catch (e) {
+        print('Erreur chargement posts abonnements: $e');
+      }
 
       // Charger les posts d'images des fermes (farm posts)
       try {
         final farmPosts = await ApiService.getFarmPostsFeed(userId: _userId);
-        items.addAll(farmPosts.map((post) => {
-          'type': 'farm_post',
-          'data': post,
-          'timestamp': DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now(),
+        items.addAll(farmPosts.map((post) {
+          final postId = post['id'] as int;
+          final isSubscription = subscriptionPostIds.contains(postId);
+          return {
+            'type': 'farm_post',
+            'data': post,
+            'timestamp': DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now(),
+            'isSubscription': isSubscription,
+          };
         }));
       } catch (e) {
         print('Erreur chargement farm posts: $e');
       }
 
-      // Trier par date décroissante
+      // Trier par date décroissante (les plus récents en premier)
       items.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
 
       return {'items': items};
@@ -258,23 +269,26 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final createdAt = DateTime.tryParse(post['created_at'] as String? ?? '') ?? DateTime.now();
     final daysAgo = DateTime.now().difference(createdAt).inDays;
     final timeText = daysAgo == 0 ? 'Aujourd\'hui' : daysAgo == 1 ? 'Hier' : '$daysAgo j';
+    final isSubscription = itemWrapper['isSubscription'] as bool? ?? false;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // 👤 En-tête (clickable profil et ferme)
           GestureDetector(
             onTap: () {
@@ -402,6 +416,16 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               children: [
                 GestureDetector(
                   onTap: () async {
+                    if (_userId <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Connectez-vous pour liker ce post'),
+                          backgroundColor: Colors.orange,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                      return;
+                    }
                     try {
                       final isLiked = post['is_liked'] ?? false;
                       final currentLikes = likesCount;
@@ -511,8 +535,30 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             ),
 
           const SizedBox(height: 8),
-        ],
-      ),
+            ],
+          ),
+        ),
+        // 🎯 Badge (icône) "Abonnement" en haut à droite
+        if (isSubscription)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _accentColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.favorite, color: Colors.white, size: 16),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1270,10 +1316,11 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     );
   }
 
-  // 📝 Build Subscriptions Section (affiche les posts des abonnements en carrousel)
+  // 📝 Build Subscriptions Section - DEPRECATED (sections fusionnées avec le feed principal et badges)
+  // ignore: unused_element
   Widget _buildSubscriptionsSection(bool isDarkMode) {
     return FutureBuilder<List<dynamic>>(
-      future: _userId > 0 ? ApiService.getFarmPostsFeed(userId: _userId) : Future.value(<dynamic>[]),
+      future: _userId > 0 ? ApiService.getSubscriptionsFeed(userId: _userId) : Future.value(<dynamic>[]),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
         if (snapshot.hasError) return const SizedBox.shrink();

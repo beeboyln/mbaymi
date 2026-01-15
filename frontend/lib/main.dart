@@ -11,6 +11,10 @@ import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/screens/login_screen.dart';
 import 'package:mbaymi/screens/register_screen.dart';
+import 'package:mbaymi/screens/veterinarian_setup_screen.dart';
+import 'package:mbaymi/screens/edit_veterinarian_profile_screen.dart';
+import 'package:mbaymi/screens/veterinarian_profile_detail_screen.dart';
+import 'package:mbaymi/screens/veterinarian_profile_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
 import 'package:mbaymi/screens/farm_profile_screen.dart';
 import 'package:mbaymi/screens/user_profile_screen.dart';
@@ -148,22 +152,21 @@ class _MbaymiAppState extends State<MbaymiApp> {
             ),
             themeMode: themeProvider.themeMode,
             home: HomeScreen(key: ValueKey('home_${userId ?? 0}'), userId: userId),
+            routes: {
+              '/login': (context) => const LoginScreen(),
+              '/register': (context) => const RegisterScreen(),
+              '/veterinarian-setup': (context) => const VeterinarianSetupScreen(),
+              '/edit-veterinarian-profile': (context) => const EditVeterinarianProfileScreen(),
+              '/veterinarian-profile': (context) => const VeterinarianProfileScreen(),
+            },
             onGenerateRoute: (settings) {
-              if (settings.name == '/home') {
-                final arg = settings.arguments;
-                int? routeUserId;
-                if (arg is int) routeUserId = arg;
-                if (arg is Map && arg['id'] != null) {
-                  final raw = arg['id'];
-                  if (raw is int) {
-                    routeUserId = raw;
-                  } else {
-                    routeUserId = int.tryParse(raw.toString());
-                  }
-                }
-                final finalUserId = routeUserId ?? userId;
+              // Veterinarian Profile Detail
+              if (settings.name?.startsWith('/veterinarian-profile/') == true) {
+                final vetId = settings.name!.replaceFirst('/veterinarian-profile/', '');
                 return MaterialPageRoute(
-                  builder: (context) => HomeScreen(key: ValueKey('home_${finalUserId ?? 0}'), userId: finalUserId),
+                  builder: (context) => VeterinarianProfileDetailScreen(
+                    veterinarianId: vetId,
+                  ),
                 );
               }
               // 🌾 Crop Problems Screen
@@ -202,10 +205,6 @@ class _MbaymiAppState extends State<MbaymiApp> {
               }
               return null;
             },
-            routes: {
-              '/login': (context) => const LoginScreen(),
-              '/register': (context) => const RegisterScreen(),
-            },
           );
         },
       ),
@@ -228,7 +227,7 @@ class _SplashScreenState extends State<SplashScreen> {
     // Afficher le splash pendant 2 secondes, puis passer à HomeScreen
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home', arguments: widget.userId);
+        Navigator.of(context).pushReplacementNamed('/', arguments: widget.userId);
       }
     });
   }

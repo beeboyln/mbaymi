@@ -22,6 +22,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   List<dynamic> _comments = [];
   bool _isLoading = true;
   bool _isSubmitting = false;
+  int? _replyingToCommentId;
+  String? _replyingToUserName;
 
   @override
   void initState() {
@@ -54,20 +56,44 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   }
 
   void _submitComment() async {
-    final text = _commentController.text.trim();
+    // Check authentication before submitting
+    if (widget.currentUserId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connectez-vous pour commenter'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    var text = _commentController.text.trim();
     if (text.isEmpty) return;
+
+    // Ajouter la mention si on répond à quelqu'un
+    if (_replyingToCommentId != null && _replyingToUserName != null) {
+      text = '@$_replyingToUserName $text';
+    }
 
     setState(() => _isSubmitting = true);
 
     try {
       await ApiService.addComment(widget.postId, text, widget.currentUserId);
       _commentController.clear();
+      setState(() {
+        _replyingToCommentId = null;
+        _replyingToUserName = null;
+        _isSubmitting = false;
+      });
       _loadComments();
-      setState(() => _isSubmitting = false);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Commentaire ajouté')),
+          const SnackBar(
+            content: Text('Commentaire ajouté'),
+            duration: Duration(milliseconds: 800),
+          ),
         );
       }
     } catch (e) {
@@ -104,7 +130,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
     final secondaryColor = isDark ? Colors.white60 : Colors.grey[600];
-    final borderColor = isDark ? Colors.white12 : Colors.grey[300];
+    final borderColor = isDark ? Colors.white12 : Colors.grey[300]!;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
@@ -122,7 +148,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: borderColor!),
+                bottom: BorderSide(color: borderColor),
               ),
             ),
             child: Row(
@@ -200,6 +226,26 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                                           fontSize: 12,
                                         ),
                                       ),
+                                      const SizedBox(height: 6),
+                                      // Bouton Répondre
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _replyingToCommentId = comment['id'];
+                                            _replyingToUserName = comment['user_name'] ?? 'Utilisateur';
+                                          });
+                                          // Scroll vers le champ de saisie
+                                          FocusScope.of(context).requestFocus(FocusNode());
+                                        },
+                                        child: Text(
+                                          'Répondre',
+                                          style: TextStyle(
+                                            color: Theme.of(context).primaryColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -232,38 +278,79 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             decoration: BoxDecoration(
               color: bgColor,
               border: Border(
-                top: BorderSide(color: borderColor!),
+                top: BorderSide(color: borderColor),
               ),
             ),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    decoration: InputDecoration(
-                      hintText: 'Votre commentaire...',
-                      hintStyle: TextStyle(color: secondaryColor),
-                      filled: true,
-                      fillColor: isDark ? Colors.white10 : Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: borderColor!),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                // Affiche si on répond à quelqu'un
+                if (_replyingToCommentId != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.reply, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Répondre à $_replyingToUserName',
+                            style: TextStyle(
+                              color: Theme.of(context).primaryColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _replyingToCommentId = null;
+                              _replyingToUserName = null;
+                            });
+                          },
+                          child: Icon(Icons.close, size: 16, color: secondaryColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _commentController,
+                        decoration: InputDecoration(
+                          hintText: 'Votre commentaire...',
+                          hintStyle: TextStyle(color: secondaryColor),
+                          filled: true,
+                          fillColor: isDark ? Colors.white10 : Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        maxLines: null,
                       ),
                     ),
-                    maxLines: null,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                CircleAvatar(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: _isSubmitting ? null : _submitComment,
-                  ),
+                    const SizedBox(width: 8),
+                    CircleAvatar(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      child: IconButton(
+                        icon: const Icon(Icons.send, color: Colors.white),
+                        onPressed: _isSubmitting ? null : _submitComment,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

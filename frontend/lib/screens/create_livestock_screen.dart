@@ -235,7 +235,12 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
             // Formulaire
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
+                ),
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 child: GestureDetector(
                   onTap: () => FocusScope.of(context).unfocus(),

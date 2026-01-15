@@ -228,7 +228,12 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
             // Formulaire - Scrollable avec padding normal
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(_defaultPadding), // ✅ Padding normal, pas de viewInsets
+                padding: EdgeInsets.only(
+                  left: _defaultPadding,
+                  right: _defaultPadding,
+                  top: _defaultPadding,
+                  bottom: _defaultPadding + MediaQuery.of(context).viewInsets.bottom,
+                ),
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 child: GestureDetector(
                   onTap: () => FocusScope.of(context).unfocus(),

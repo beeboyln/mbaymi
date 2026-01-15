@@ -8,6 +8,7 @@ class TokenStorage {
   static const _keyRefreshToken = 'mbaymi_refresh_token';
   static const _keyUserId = 'mbaymi_user_id';
   static const _keyUserEmail = 'mbaymi_user_email';
+  static const _keyUserRole = 'mbaymi_user_role';
 
   /// Save tokens to localStorage (web) or fallback in-memory.
   static Future<void> saveTokens({
@@ -15,6 +16,7 @@ class TokenStorage {
     required String refreshToken,
     required int userId,
     required String userEmail,
+    String? userRole,
   }) async {
     try {
       final storage = html.window.localStorage;
@@ -22,6 +24,9 @@ class TokenStorage {
       storage[_keyRefreshToken] = refreshToken;
       storage[_keyUserId] = userId.toString();
       storage[_keyUserEmail] = userEmail;
+      if (userRole != null) {
+        storage[_keyUserRole] = userRole;
+      }
       debugPrint('✅ Tokens saved to localStorage');
     } catch (e) {
       debugPrint('⚠️ TokenStorage.saveTokens failed: $e');
@@ -74,6 +79,17 @@ class TokenStorage {
     }
   }
 
+  /// Retrieve userRole from localStorage.
+  static Future<String?> getUserRole() async {
+    try {
+      final storage = html.window.localStorage;
+      return storage[_keyUserRole];
+    } catch (e) {
+      debugPrint('⚠️ TokenStorage.getUserRole failed: $e');
+      return null;
+    }
+  }
+
   /// Clear all tokens (logout).
   static Future<void> clear() async {
     try {
@@ -82,6 +98,7 @@ class TokenStorage {
       storage.remove(_keyRefreshToken);
       storage.remove(_keyUserId);
       storage.remove(_keyUserEmail);
+      storage.remove(_keyUserRole);
       debugPrint('✅ Tokens cleared from localStorage');
     } catch (e) {
       debugPrint('⚠️ TokenStorage.clear failed: $e');

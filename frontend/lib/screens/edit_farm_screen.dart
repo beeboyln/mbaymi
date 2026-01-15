@@ -131,38 +131,50 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
             children: [
               TextFormField(
                 controller: _nameCtrl,
-                style: TextStyle(color: textColor),
+                style: TextStyle(color: textColor, fontSize: 16),
                 decoration: InputDecoration(
                   labelText: 'Nom',
                   labelStyle: TextStyle(color: labelColor),
                   filled: true,
                   fillColor: cardBg,
-                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                  ),
                 ),
                 validator: (v) => (v==null||v.trim().isEmpty)?'Nom requis':null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _locationCtrl,
-                style: TextStyle(color: textColor),
+                style: TextStyle(color: textColor, fontSize: 16),
                 decoration: InputDecoration(
                   labelText: 'Localisation',
                   labelStyle: TextStyle(color: labelColor),
                   filled: true,
                   fillColor: cardBg,
-                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _sizeCtrl,
-                style: TextStyle(color: textColor),
+                style: TextStyle(color: textColor, fontSize: 16),
                 decoration: InputDecoration(
                   labelText: 'Superficie (ha)',
                   labelStyle: TextStyle(color: labelColor),
                   filled: true,
                   fillColor: cardBg,
-                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                  ),
                 ),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
               ),

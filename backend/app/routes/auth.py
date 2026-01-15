@@ -28,13 +28,34 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> int:
     
     return user_id
 
+def get_current_user_obj(
+    authorization: Optional[str] = Header(None), 
+    db: Session = Depends(get_db)
+) -> User:
+    """Extract user_id from Authorization header and return User object"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    
+    token = authorization.replace("Bearer ", "")
+    user_id = verify_token(token)
+    
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    print(f"✅ get_current_user_obj: Returning User object (id={user.id}, name={user.name})")
+    return user
+
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     # Check if user exists
     existing_user = db.query(User).filter(User.email == user.email).first()
@@ -56,14 +77,35 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
-    return new_user
+    print(f"✅ USER REGISTERED: {user.email} (role: {user.role})")
+    
+    # Generate JWT tokens (same as login)
+    access_token = create_access_token(data={"user_id": new_user.id, "email": new_user.email})
+    refresh_token = create_refresh_token(data={"user_id": new_user.id, "email": new_user.email})
+    
+    return {
+        "id": new_user.id,
+        "email": new_user.email,
+        "name": new_user.name,
+        "role": new_user.role,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "message": "Registration successful"
+    }
 
 @router.post("/login", response_model=UserLoginResponse)
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     
-    if not db_user or not verify_password(user.password, db_user.password_hash):
+    if not db_user:
+        print(f"❌ USER NOT FOUND: {user.email}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not verify_password(user.password, db_user.password_hash):
+        print(f"❌ PASSWORD MISMATCH for {user.email}")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    print(f"✅ LOGIN SUCCESS: {user.email} (role: {db_user.role})")
     
     # Generate JWT tokens
     access_token = create_access_token(data={"user_id": db_user.id, "email": db_user.email})

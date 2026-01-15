@@ -77,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
         refreshToken: refreshToken,
       );
 
-      Navigator.of(context).pushReplacementNamed('/home');
+      Navigator.of(context).pushReplacementNamed('/');
     } catch (e) {
       if (!mounted) return;
       final errorMessage = ErrorMessages.getHumanReadableError(e);
@@ -100,19 +100,19 @@ class _LoginScreenState extends State<LoginScreen> {
       labelText: label,
       labelStyle: TextStyle(color: hintColor),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: borderColor),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: borderColor),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: Colors.brown.shade700, width: 2),
       ),
       suffixIcon: suffix,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     );
   }
 
@@ -137,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
         foregroundColor: textColor,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: textColor),
-          onPressed: () => Navigator.of(context).pushReplacementNamed('/home'),
+          onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
           splashRadius: 1,
         ),
         title: Text(
@@ -147,7 +147,12 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -174,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onSubmitted: (_) =>
                     FocusScope.of(context).requestFocus(_passwordFocus),
                 onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-                style: TextStyle(color: textColor),
+                style: TextStyle(color: textColor, fontSize: 16),
                 decoration:
                     _inputDecoration('Email', borderColor, hintColor),
               ),
@@ -189,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: _obscurePassword,
                 onSubmitted: (_) => _handleLogin(),
                 onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-                style: TextStyle(color: textColor),
+                style: TextStyle(color: textColor, fontSize: 16),
                 decoration: _inputDecoration(
                   'Mot de passe',
                   borderColor,

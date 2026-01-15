@@ -52,12 +52,13 @@ class AuthService {
       refreshToken: refreshToken,
     );
 
-    // Persist to localStorage
+    // Persist to localStorage (including role)
     await TokenStorage.saveTokens(
       accessToken: accessToken,
       refreshToken: refreshToken,
       userId: userId,
       userEmail: email,
+      userRole: role,
     );
 
     debugPrint('✅ AuthService.login: Session created for userId=$userId with JWT token');
@@ -70,6 +71,7 @@ class AuthService {
       final accessToken = await TokenStorage.getAccessToken();
       final refreshToken = await TokenStorage.getRefreshToken();
       final email = await TokenStorage.getUserEmail();
+      final role = await TokenStorage.getUserRole();
 
       if (userId != null && accessToken != null && refreshToken != null && email != null) {
         // Clear cache when restoring session
@@ -79,11 +81,11 @@ class AuthService {
           userId: userId,
           email: email,
           name: email.split('@').first, // Extract name from email
-          role: 'farmer', // Default role
+          role: role ?? 'farmer', // Use stored role or default to 'farmer'
           accessToken: accessToken,
           refreshToken: refreshToken,
         );
-        debugPrint('✅ AuthService.restoreSession: Session restored for userId=$userId');
+        debugPrint('✅ AuthService.restoreSession: Session restored for userId=$userId with role=$role');
       } else {
         debugPrint('⚠️ AuthService.restoreSession: No valid tokens found');
       }
