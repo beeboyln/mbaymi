@@ -135,6 +135,11 @@ class _LoginScreenState extends State<LoginScreen> {
         elevation: 0,
         centerTitle: true,
         foregroundColor: textColor,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: textColor),
+          onPressed: () => Navigator.of(context).pushReplacementNamed('/home'),
+          splashRadius: 1,
+        ),
         title: Text(
           'Connexion',
           style: TextStyle(fontWeight: FontWeight.w600, color: textColor),

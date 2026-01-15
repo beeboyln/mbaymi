@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:intl/intl.dart';
+import 'package:mbaymi/screens/create_farm_post_dialog.dart';
+import 'package:mbaymi/screens/farm_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final int userId;
@@ -133,9 +135,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
     }
   }
 
-  Future<void> _showEditProfileDialog(String currentName, String currentEmail) async {
+  Future<void> _showEditProfileDialog(String currentName, String currentEmail, String currentPhone) async {
     final nameController = TextEditingController(text: currentName);
     final emailController = TextEditingController(text: currentEmail);
+    final phoneController = TextEditingController(text: currentPhone);
 
     return showDialog<void>(
       context: context,
@@ -155,59 +158,102 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-              children: [
-                // TextField pour le nom
-                TextField(
-                  controller: nameController,
-                  autofocus: false,
-                  textInputAction: TextInputAction.next,
-                  style: TextStyle(color: textColor),
-                  decoration: InputDecoration(
-                    labelText: 'Nom',
-                    labelStyle: TextStyle(color: textColor),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                        color: _primaryColor.withOpacity(0.3),
+                children: [
+                  // TextField pour le nom
+                  TextField(
+                    controller: nameController,
+                    autofocus: false,
+                    textInputAction: TextInputAction.next,
+                    style: TextStyle(color: textColor),
+                    decoration: InputDecoration(
+                      labelText: 'Nom',
+                      labelStyle: TextStyle(color: textColor),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: _primaryColor.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: _primaryColor, width: 2),
                       ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: _primaryColor, width: 2),
-                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                // TextField pour l'email
-                TextField(
-                  controller: emailController,
-                  autofocus: false,
-                  textInputAction: TextInputAction.done,
-                  style: TextStyle(color: textColor),
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    labelStyle: TextStyle(color: textColor),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                        color: _primaryColor.withOpacity(0.3),
+                  const SizedBox(height: 16),
+                  // TextField pour l'email
+                  TextField(
+                    controller: emailController,
+                    autofocus: false,
+                    textInputAction: TextInputAction.next,
+                    style: TextStyle(color: textColor),
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      labelStyle: TextStyle(color: textColor),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: _primaryColor.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: _primaryColor, width: 2),
                       ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: _primaryColor, width: 2),
+                  ),
+                  const SizedBox(height: 16),
+                  // TextField pour le téléphone
+                  TextField(
+                    controller: phoneController,
+                    autofocus: false,
+                    textInputAction: TextInputAction.done,
+                    style: TextStyle(color: textColor),
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'Numéro de téléphone',
+                      labelStyle: TextStyle(color: textColor),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: _primaryColor.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: _primaryColor, width: 2),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(height: 16),
+                  // Bouton pour changer le mot de passe
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showChangePasswordDialog();
+                      },
+                      icon: const Icon(Icons.lock),
+                      label: const Text('Changer mon mot de passe'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[400],
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -215,6 +261,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
               onPressed: () {
                 nameController.dispose();
                 emailController.dispose();
+                phoneController.dispose();
                 Navigator.pop(context);
               },
               child: Text(
@@ -229,10 +276,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
               onPressed: () async {
                 nameController.dispose();
                 emailController.dispose();
+                phoneController.dispose();
                 Navigator.pop(context);
                 await _updateProfile(
                   nameController.text.trim(),
                   emailController.text.trim(),
+                  phoneController.text.trim(),
                 );
               },
               child: const Text(
@@ -246,9 +295,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
     );
   }
 
-  Future<void> _updateProfile(String name, String email) async {
+  Future<void> _updateProfile(String name, String email, String phone) async {
     try {
-      if (name.isEmpty && email.isEmpty) {
+      if (name.isEmpty && email.isEmpty && phone.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Veuillez modifier au moins un champ'),
@@ -262,6 +311,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
         userId: widget.userId,
         name: name.isNotEmpty ? name : null,
         email: email.isNotEmpty ? email : null,
+        phone: phone.isNotEmpty ? phone : null,
       );
 
       if (mounted) {
@@ -273,6 +323,244 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
           ),
         );
         _refresh();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showChangePasswordDialog() async {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool showPassword = false;
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        final isDark = widget.isDarkMode;
+        final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+        final textColor = isDark ? Colors.white : Colors.black87;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: bgColor,
+              title: Text(
+                'Changer mon mot de passe',
+                style: TextStyle(color: textColor),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Mot de passe actuel
+                      TextField(
+                        controller: currentPasswordController,
+                        autofocus: false,
+                        textInputAction: TextInputAction.next,
+                        style: TextStyle(color: textColor),
+                        obscureText: !showPassword,
+                        decoration: InputDecoration(
+                          labelText: 'Mot de passe actuel',
+                          labelStyle: TextStyle(color: textColor),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _primaryColor.withOpacity(0.3),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: _primaryColor, width: 2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Nouveau mot de passe
+                      TextField(
+                        controller: newPasswordController,
+                        autofocus: false,
+                        textInputAction: TextInputAction.next,
+                        style: TextStyle(color: textColor),
+                        obscureText: !showPassword,
+                        decoration: InputDecoration(
+                          labelText: 'Nouveau mot de passe',
+                          labelStyle: TextStyle(color: textColor),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _primaryColor.withOpacity(0.3),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: _primaryColor, width: 2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Confirmer le mot de passe
+                      TextField(
+                        controller: confirmPasswordController,
+                        autofocus: false,
+                        textInputAction: TextInputAction.done,
+                        style: TextStyle(color: textColor),
+                        obscureText: !showPassword,
+                        decoration: InputDecoration(
+                          labelText: 'Confirmer le mot de passe',
+                          labelStyle: TextStyle(color: textColor),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _primaryColor.withOpacity(0.3),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: _primaryColor, width: 2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Checkbox pour afficher/masquer le mot de passe
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: showPassword,
+                            onChanged: (value) {
+                              setState(() {
+                                showPassword = value ?? false;
+                              });
+                            },
+                          ),
+                          Text(
+                            'Afficher le mot de passe',
+                            style: TextStyle(color: textColor),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    currentPasswordController.dispose();
+                    newPasswordController.dispose();
+                    confirmPasswordController.dispose();
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'Annuler',
+                    style: TextStyle(color: textColor),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[400],
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await _changePassword(
+                      currentPasswordController.text.trim(),
+                      newPasswordController.text.trim(),
+                      confirmPasswordController.text.trim(),
+                    );
+                    currentPasswordController.dispose();
+                    newPasswordController.dispose();
+                    confirmPasswordController.dispose();
+                  },
+                  child: const Text(
+                    'Changer',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _changePassword(String currentPassword, String newPassword, String confirmPassword) async {
+    try {
+      // Validations
+      if (currentPassword.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Veuillez entrer votre mot de passe actuel'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      if (newPassword.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Veuillez entrer un nouveau mot de passe'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      if (newPassword != confirmPassword) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Les mots de passe ne correspondent pas'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Le mot de passe doit contenir au moins 6 caractères'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Appeler l'API pour changer le mot de passe
+      final result = await ApiService.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Mot de passe changé avec succès'),
+            backgroundColor: _primaryColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -381,6 +669,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
               final profile = _profileData;
               final name = profile['name'] ?? 'Utilisateur';
               final email = profile['email'] ?? '';
+              final phone = profile['phone'] ?? '';
               final profileImage = profile['profile_image'] as String?;
               final totalFollowers = profile['total_followers'] ?? 0;
               final totalPosts = profile['total_posts'] ?? 0;
@@ -462,7 +751,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       GestureDetector(
-                                        onTap: isOwnProfile ? () => _showEditProfileDialog(name, email) : null,
+                                        onTap: isOwnProfile ? () => _showEditProfileDialog(name, email, phone) : null,
                                         child: Row(
                                           children: [
                                             Expanded(
@@ -486,7 +775,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                       ),
                                       const SizedBox(height: 4),
                                       GestureDetector(
-                                        onTap: isOwnProfile ? () => _showEditProfileDialog(name, email) : null,
+                                        onTap: isOwnProfile ? () => _showEditProfileDialog(name, email, phone) : null,
                                         child: Row(
                                           children: [
                                             Expanded(
@@ -538,14 +827,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                             _buildQuickActionButton(
                               context: context,
                               icon: Icons.add_circle_outline,
-                              label: 'Créer du contenu',
+                              label: 'Créer un post',
                               color: _primaryColor,
                               onTap: () {
                                 HapticFeedback.lightImpact();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Fonctionnalité à venir'),
-                                    backgroundColor: _primaryColor,
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => FarmTab(userId: widget.userId),
                                   ),
                                 );
                               },

@@ -40,7 +40,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   late Future<List<dynamic>> _photosFuture;
   late String _visibility;
   late int _userId;
-  bool _showPosts = false;
+  int _selectedTabIndex = 0;
 
   static const Color _primaryColor = Color(0xFF6B8E23);
   static const Color _bgLight = Color(0xFFF8F9FA);
@@ -216,21 +216,6 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
           ),
         ),
         actions: [
-          TextButton.icon(
-            onPressed: () => setState(() => _showPosts = !_showPosts),
-            icon: Icon(
-              _showPosts ? Icons.close : Icons.photo_library_outlined,
-              color: _primaryColor,
-              size: 20,
-            ),
-            label: Text(
-              _showPosts ? 'Fermer' : 'Publications',
-              style: TextStyle(
-                color: _primaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.red),
             onPressed: _delete,
@@ -238,182 +223,210 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: _showPosts
-            ? _buildPostsSection(cardColor, textColor)
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Photo principale
-              _buildPhotoSection(cardColor, textColor, secondaryTextColor),
-              
-              const SizedBox(height: 32),
-
-              // Informations de base
-              _buildSectionTitle('Informations'),
-              const SizedBox(height: 16),
-              
-              _buildDropdown(
-                label: 'Type d\'animal',
-                value: _animalTypeCtrl.text.isEmpty ? null : _animalTypeCtrl.text,
-                items: _animalTypes,
-                onChanged: (value) => setState(() => _animalTypeCtrl.text = value ?? ''),
-                icon: Icons.pets,
-                cardColor: cardColor,
-                textColor: textColor,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              _buildTextField(
-                controller: _breedCtrl,
-                label: 'Race',
-                hint: 'Ex: Race locale',
-                icon: Icons.info_outline,
-                cardColor: cardColor,
-                textColor: textColor,
-                secondaryTextColor: secondaryTextColor,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _quantityCtrl,
-                      label: 'Quantité',
-                      hint: '1',
-                      icon: Icons.format_list_numbered,
-                      keyboardType: TextInputType.number,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      secondaryTextColor: secondaryTextColor,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _ageCtrl,
-                      label: 'Âge (mois)',
-                      hint: '12',
-                      icon: Icons.calendar_today,
-                      keyboardType: TextInputType.number,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      secondaryTextColor: secondaryTextColor,
-                    ),
-                  ),
+      body: DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            Container(
+              color: cardColor,
+              child: TabBar(
+                indicatorColor: _primaryColor,
+                indicatorWeight: 3,
+                labelColor: _primaryColor,
+                unselectedLabelColor: secondaryTextColor,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                tabs: const [
+                  Tab(text: 'Informations'),
+                  Tab(text: 'Publications'),
                 ],
               ),
-              
-              const SizedBox(height: 16),
-              
-              _buildTextField(
-                controller: _weightCtrl,
-                label: 'Poids (kg)',
-                hint: '250',
-                icon: Icons.monitor_weight_outlined,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                cardColor: cardColor,
-                textColor: textColor,
-                secondaryTextColor: secondaryTextColor,
-              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  // Onglet Informations
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Photo principale
+                          _buildPhotoSection(cardColor, textColor, secondaryTextColor),
+                          
+                          const SizedBox(height: 32),
 
-              const SizedBox(height: 32),
+                          // Informations de base
+                          _buildSectionTitle('Informations'),
+                          const SizedBox(height: 16),
+                          
+                          _buildDropdown(
+                            label: 'Type d\'animal',
+                            value: _animalTypeCtrl.text.isEmpty ? null : _animalTypeCtrl.text,
+                            items: _animalTypes,
+                            onChanged: (value) => setState(() => _animalTypeCtrl.text = value ?? ''),
+                            icon: Icons.pets,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          _buildTextField(
+                            controller: _breedCtrl,
+                            label: 'Race',
+                            hint: 'Ex: Race locale',
+                            icon: Icons.info_outline,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            secondaryTextColor: secondaryTextColor,
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTextField(
+                                  controller: _quantityCtrl,
+                                  label: 'Quantité',
+                                  hint: '1',
+                                  icon: Icons.format_list_numbered,
+                                  keyboardType: TextInputType.number,
+                                  cardColor: cardColor,
+                                  textColor: textColor,
+                                  secondaryTextColor: secondaryTextColor,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildTextField(
+                                  controller: _ageCtrl,
+                                  label: 'Âge (mois)',
+                                  hint: '12',
+                                  icon: Icons.calendar_today,
+                                  keyboardType: TextInputType.number,
+                                  cardColor: cardColor,
+                                  textColor: textColor,
+                                  secondaryTextColor: secondaryTextColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          _buildTextField(
+                            controller: _weightCtrl,
+                            label: 'Poids (kg)',
+                            hint: '250',
+                            icon: Icons.monitor_weight_outlined,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            secondaryTextColor: secondaryTextColor,
+                          ),
 
-              // Santé
-              _buildSectionTitle('Santé & Alimentation'),
-              const SizedBox(height: 16),
-              
-              _buildDropdown(
-                label: 'État de santé',
-                value: _healthCtrl.text.isEmpty ? null : _healthCtrl.text,
-                items: _healthStatuses,
-                onChanged: (value) => setState(() => _healthCtrl.text = value ?? ''),
-                icon: Icons.favorite_outline,
-                cardColor: cardColor,
-                textColor: textColor,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              _buildDropdown(
-                label: 'Alimentation',
-                value: _feedingCtrl.text.isEmpty ? null : _feedingCtrl.text,
-                items: _feedingTypes,
-                onChanged: (value) => setState(() => _feedingCtrl.text = value ?? ''),
-                icon: Icons.restaurant_outlined,
-                cardColor: cardColor,
-                textColor: textColor,
-              ),
+                          const SizedBox(height: 32),
 
-              const SizedBox(height: 32),
+                          // Santé
+                          _buildSectionTitle('Santé & Alimentation'),
+                          const SizedBox(height: 16),
+                          
+                          _buildDropdown(
+                            label: 'État de santé',
+                            value: _healthCtrl.text.isEmpty ? null : _healthCtrl.text,
+                            items: _healthStatuses,
+                            onChanged: (value) => setState(() => _healthCtrl.text = value ?? ''),
+                            icon: Icons.favorite_outline,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          _buildDropdown(
+                            label: 'Alimentation',
+                            value: _feedingCtrl.text.isEmpty ? null : _feedingCtrl.text,
+                            items: _feedingTypes,
+                            onChanged: (value) => setState(() => _feedingCtrl.text = value ?? ''),
+                            icon: Icons.restaurant_outlined,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                          ),
 
-              // Notes
-              _buildSectionTitle('Notes'),
-              const SizedBox(height: 16),
-              
-              _buildTextField(
-                controller: _notesCtrl,
-                label: 'Observations',
-                hint: 'Remarques importantes...',
-                icon: Icons.note_outlined,
-                maxLines: 4,
-                cardColor: cardColor,
-                textColor: textColor,
-                secondaryTextColor: secondaryTextColor,
-              ),
+                          const SizedBox(height: 32),
 
-              const SizedBox(height: 32),
+                          // Notes
+                          _buildSectionTitle('Notes'),
+                          const SizedBox(height: 16),
+                          
+                          _buildTextField(
+                            controller: _notesCtrl,
+                            label: 'Observations',
+                            hint: 'Remarques importantes...',
+                            icon: Icons.note_outlined,
+                            maxLines: 4,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            secondaryTextColor: secondaryTextColor,
+                          ),
 
-              // Visibilité
-              _buildSectionTitle('Visibilité'),
-              const SizedBox(height: 16),
-              
-              _buildVisibilityOptions(cardColor, textColor, secondaryTextColor),
+                          const SizedBox(height: 32),
 
-              const SizedBox(height: 40),
+                          // Visibilité
+                          _buildSectionTitle('Visibilité'),
+                          const SizedBox(height: 16),
+                          
+                          _buildVisibilityOptions(cardColor, textColor, secondaryTextColor),
 
-              // Bouton enregistrer
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                          const SizedBox(height: 40),
+
+                          // Bouton enregistrer
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton(
+                              onPressed: _loading ? null : _submit,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _primaryColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: _loading
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Enregistrer',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+                        ],
+                      ),
                     ),
-                    elevation: 0,
                   ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Enregistrer',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                ),
+                  // Onglet Publications
+                  _buildPostsSection(cardColor, textColor),
+                ],
               ),
-
-              const SizedBox(height: 20),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

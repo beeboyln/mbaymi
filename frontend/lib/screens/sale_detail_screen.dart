@@ -3,6 +3,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SaleDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? sale;
@@ -56,6 +57,32 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
       }
     }
     return [];
+  }
+
+  /// Ouvrir WhatsApp avec le numéro de téléphone
+  void _openWhatsApp(String phoneNumber) async {
+    // Nettoyer le numéro (enlever les espaces, tirets, etc.)
+    final cleanedPhone = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    
+    // S'assurer que le numéro commence par +
+    final formattedPhone = cleanedPhone.startsWith('+') ? cleanedPhone : '+$cleanedPhone';
+    
+    // Créer l'URL WhatsApp
+    final whatsappUrl = Uri.parse('https://wa.me/$formattedPhone');
+    
+    try {
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible d\'ouvrir WhatsApp')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erreur lors de l\'ouverture de WhatsApp')),
+      );
+    }
   }
 
   @override
@@ -399,6 +426,24 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                                       ],
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
+                                  // Bouton WhatsApp
+                                  if (owner['phone'] != null && (owner['phone'] as String).isNotEmpty)
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(50),
+                                      ),
+                                      child: IconButton(
+                                        onPressed: () {
+                                          _openWhatsApp(owner['phone']);
+                                        },
+                                        icon: const Icon(Icons.chat, color: Colors.white),
+                                        tooltip: 'WhatsApp',
+                                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                                      ),
+                                    ),
+                                  const SizedBox(width: 8),
                                   ElevatedButton(
                                     onPressed: () {
                                       Navigator.push(

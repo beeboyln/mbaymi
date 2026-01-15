@@ -11,6 +11,7 @@ import 'package:mbaymi/screens/market_screen.dart';
 import 'package:mbaymi/screens/advice_screen.dart';
 import 'package:mbaymi/screens/dashboard_tab.dart';
 import 'package:mbaymi/screens/farm_network_screen.dart';
+import 'package:mbaymi/widgets/notification_icon_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   final int? userId;
@@ -117,32 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         actions: [
-          IconButton(
-            icon: Stack(
-              children: [
-                Icon(
-                  Icons.notifications_outlined,
-                  color: appBarIconColor,
-                  size: 24,
-                ),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-            },
-          ),
+          const NotificationIconWidget(),
           IconButton(
             icon: Icon(
               isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,

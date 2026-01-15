@@ -1527,12 +1527,14 @@ class ApiService {
     required int userId,
     String? name,
     String? email,
+    String? phone,
     String? profileImage,
   }) async {
     try {
       final params = <String, String>{};
       if (name != null && name.isNotEmpty) params['name'] = name;
       if (email != null && email.isNotEmpty) params['email'] = email;
+      if (phone != null && phone.isNotEmpty) params['phone'] = phone;
       if (profileImage != null && profileImage.isNotEmpty) params['profile_image'] = profileImage;
 
       final response = await http.put(
@@ -1550,6 +1552,34 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error updating profile: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await TokenStorage.getAccessToken()}',
+        },
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['detail'] ?? 'Failed to change password');
+      }
+    } catch (e) {
+      throw Exception('Error changing password: $e');
     }
   }
 

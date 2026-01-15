@@ -373,6 +373,24 @@ def follow_user(user_id_to_follow: int, user_id: int, db: Session = Depends(get_
         db.add(following)
         db.commit()
         
+        # 🔔 Créer une notification pour l'utilisateur suivi
+        try:
+            from app.services.notification_service import NotificationService
+            NotificationService.create_notification(
+                db=db,
+                user_id=user_id_to_follow,
+                notification_type='follow',
+                title=f'{follower.name} vous suit',
+                description=f'{follower.name} a commencé à vous suivre',
+                actor_id=user_id,
+                actor_name=follower.name,
+                actor_image=follower.profile_image,
+                action_url=f'/user-profile/{user_id}'
+            )
+        except Exception as e:
+            print(f'⚠️ Failed to create notification: {str(e)}')
+            # Ne pas échouer la requête si la notification échoue
+        
         print(f'✅ User {user_id_to_follow} followed by user {user_id}')
         
         return {"message": "✅ Utilisateur suivi"}

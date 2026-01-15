@@ -14,6 +14,7 @@ import app.models.photo  # noqa: F401
 import app.models.farm_post  # noqa: F401
 import app.models.farm_network  # noqa: F401
 import app.models.market_trends  # noqa: F401
+import app.models.notification  # noqa: F401
 from sqlalchemy import text
 
 # Create engine
@@ -38,6 +39,7 @@ def init_db():
             conn.execute(text("ALTER TABLE farms ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);"))
             conn.execute(text("ALTER TABLE farms ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;"))
             conn.execute(text("ALTER TABLE farms ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_id INTEGER;"))
             # You can add more ALTER statements here for future model changes
     except Exception as e:
         print(f"Warning: could not run ALTER TABLE statements: {e}")

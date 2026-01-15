@@ -1,6 +1,9 @@
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 SECRET_KEY = "your-secret-key-change-in-production"
 ALGORITHM = "HS256"
@@ -30,15 +33,23 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
     """Decode and validate a JWT token."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        logger.debug(f"✅ Token decoded successfully: user_id={payload.get('user_id')}")
         return payload
     except jwt.ExpiredSignatureError:
+        logger.warning("⚠️ Token has expired")
         return None
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"⚠️ Invalid token: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"❌ Token decoding error: {e}")
         return None
 
 def verify_token(token: str) -> Optional[int]:
     """Verify token and return user_id if valid."""
     payload = decode_token(token)
     if payload and "user_id" in payload:
+        logger.debug(f"✅ Token verified: user_id={payload['user_id']}")
         return payload["user_id"]
+    logger.warning(f"⚠️ Token verification failed: payload={payload}")
     return None

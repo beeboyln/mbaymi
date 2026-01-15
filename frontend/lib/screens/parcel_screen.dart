@@ -294,33 +294,6 @@ class _ParcelScreenState extends State<ParcelScreen> {
           ),
         ),
         actions: [
-          TextButton.icon(
-            onPressed: () => setState(() {
-              // Navigation vers la vue Photos
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => FarmPostsWidget(
-                    farmId: widget.farmId,
-                    farmName: 'Photos de la ferme',
-                    isOwner: _userId == widget.userId,
-                  ),
-                ),
-              );
-            }),
-            icon: Icon(
-              Icons.photo_library_outlined,
-              color: _primaryColor,
-              size: 20,
-            ),
-            label: Text(
-              'Photos',
-              style: TextStyle(
-                color: _primaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
           if (!widget.readOnly && _selectedSection == 0)
             IconButton(
               icon: Icon(Icons.add, color: _primaryColor),

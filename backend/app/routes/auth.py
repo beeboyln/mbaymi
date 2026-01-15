@@ -1,13 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from app.schemas.schemas import UserCreate, UserResponse, UserLogin, UserLoginResponse
 from passlib.context import CryptContext
 from app.services.jwt_service import create_access_token, create_refresh_token, verify_token
+from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+def get_current_user(authorization: Optional[str] = Header(None)) -> int:
+    """Extract user_id from Authorization header"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    
+    token = authorization.replace("Bearer ", "")
+    user_id = verify_token(token)
+    
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    return user_id
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -78,3 +97,32 @@ def refresh_token(data: dict):
         "access_token": access_token,
         "token_type": "bearer"
     }
+
+@router.post("/change-password")
+def change_password(
+    request: ChangePasswordRequest,
+    current_user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Change user password"""
+    user = db.query(User).filter(User.id == current_user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify current password
+    if not verify_password(request.current_password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    
+    # Validate new password
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    # Hash and update password
+    user.password_hash = hash_password(request.new_password)
+    db.commit()
+    
+    return {
+        "message": "Password changed successfully"
+    }
+

@@ -180,7 +180,7 @@ class _FarmTabState extends State<FarmTab> {
               snap: false,
               surfaceTintColor: Colors.transparent,
               toolbarHeight: 80.0,
-              automaticallyImplyLeading: false,
+              automaticallyImplyLeading: true,
               title: Container(
                 width: double.infinity,
                 padding: EdgeInsets.only(
