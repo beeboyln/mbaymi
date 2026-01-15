@@ -589,6 +589,8 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
 
     return TextFormField(
       controller: controller,
+      autocorrect: false,
+      enableSuggestions: false,
       keyboardType: keyboardType,
       maxLines: maxLines,
       minLines: 1,

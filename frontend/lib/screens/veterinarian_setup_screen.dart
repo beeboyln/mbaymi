@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
@@ -24,6 +25,13 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
   final _bioController = TextEditingController();
   final _experienceController = TextEditingController();
 
+  // Focus nodes
+  final _specialtyFocus = FocusNode();
+  final _zoneFocus = FocusNode();
+  final _distanceFocus = FocusNode();
+  final _experienceFocus = FocusNode();
+  final _bioFocus = FocusNode();
+
   // Step 2: Contact Preference
   String _contactPreference = 'whatsapp';
 
@@ -31,12 +39,71 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
   File? _certificateFile;
   final ImagePicker _imagePicker = ImagePicker();
 
+  final ScrollController _scrollController = ScrollController();
+
   static const Color _primaryColor = Colors.brown;
+
+  bool get isWeb => kIsWeb;
 
   @override
   void initState() {
     super.initState();
     _restoreSession();
+    _setupFocusListeners();
+  }
+
+  void _setupFocusListeners() {
+    _specialtyFocus.addListener(() {
+      if (_specialtyFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(100);
+        });
+      }
+    });
+
+    _zoneFocus.addListener(() {
+      if (_zoneFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(180);
+        });
+      }
+    });
+
+    _distanceFocus.addListener(() {
+      if (_distanceFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(260);
+        });
+      }
+    });
+
+    _experienceFocus.addListener(() {
+      if (_experienceFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(340);
+        });
+      }
+    });
+
+    _bioFocus.addListener(() {
+      if (_bioFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(420);
+        });
+      }
+    });
+  }
+
+  void _smartScroll(double offset) {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final targetOffset = offset > maxScroll ? maxScroll : offset;
+
+    _scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   Future<void> _restoreSession() async {
@@ -62,6 +129,14 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
     _distanceController.dispose();
     _bioController.dispose();
     _experienceController.dispose();
+
+    _specialtyFocus.dispose();
+    _zoneFocus.dispose();
+    _distanceFocus.dispose();
+    _experienceFocus.dispose();
+    _bioFocus.dispose();
+    _scrollController.dispose();
+
     super.dispose();
   }
 
@@ -182,11 +257,14 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          controller: _scrollController,
+          physics: const ClampingScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
           padding: EdgeInsets.only(
             left: 24,
             right: 24,
             top: 24,
-            bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
+            bottom: isWeb ? 60 : 24,
           ),
           child: Form(
             key: _formKey,
@@ -219,6 +297,7 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
                   // Specialty
                   TextFormField(
                     controller: _specialtyController,
+                    focusNode: _specialtyFocus,
                     style: TextStyle(color: textColor, fontSize: 16),
                     decoration: _inputDecoration('Spécialité'),
                     validator: (v) =>
@@ -229,6 +308,7 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
                   // Zone
                   TextFormField(
                     controller: _zoneController,
+                    focusNode: _zoneFocus,
                     style: TextStyle(color: textColor, fontSize: 16),
                     decoration: _inputDecoration('Zone de couverture'),
                     validator: (v) =>
@@ -239,6 +319,7 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
                   // Distance
                   TextFormField(
                     controller: _distanceController,
+                    focusNode: _distanceFocus,
                     style: TextStyle(color: textColor, fontSize: 16),
                     keyboardType: TextInputType.number,
                     decoration: _inputDecoration('Distance maximale (km)'),
@@ -254,6 +335,7 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
                   // Experience
                   TextFormField(
                     controller: _experienceController,
+                    focusNode: _experienceFocus,
                     style: TextStyle(color: textColor, fontSize: 16),
                     keyboardType: TextInputType.number,
                     decoration: _inputDecoration('Années d\'expérience'),
@@ -279,6 +361,7 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
                   // Bio
                   TextFormField(
                     controller: _bioController,
+                    focusNode: _bioFocus,
                     style: TextStyle(color: textColor, fontSize: 16),
                     maxLines: 5,
                     decoration: InputDecoration(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,10 +20,19 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _locationCtrl;
   late TextEditingController _sizeCtrl;
+  
+  final _nameFocus = FocusNode();
+  final _locationFocus = FocusNode();
+  final _sizeFocus = FocusNode();
+  
+  final _scrollController = ScrollController();
+  
   String _type = '🌱 Agricole';
   XFile? _profileFile;
   Uint8List? _profileBytes;
   bool _loading = false;
+
+  bool get isWeb => kIsWeb;
 
   @override
   void initState() {
@@ -44,13 +54,58 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
         _type = soilType;
       }
     }
+    
+    _setupFocusListeners();
   }
 
+  void _setupFocusListeners() {
+    _nameFocus.addListener(() {
+      if (_nameFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(100);
+        });
+      }
+    });
+
+    _locationFocus.addListener(() {
+      if (_locationFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(180);
+        });
+      }
+    });
+
+    _sizeFocus.addListener(() {
+      if (_sizeFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(260);
+        });
+      }
+    });
+  }
+
+  void _smartScroll(double offset) {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final targetOffset = offset > maxScroll ? maxScroll : offset;
+
+    _scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
   @override
   void dispose() {
     _nameCtrl.dispose();
     _locationCtrl.dispose();
     _sizeCtrl.dispose();
+    _nameFocus.dispose();
+    _locationFocus.dispose();
+    _sizeFocus.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -109,7 +164,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
     final labelColor = isDark ? Colors.grey[400] : Colors.grey[700];
     
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: !isWeb,
       backgroundColor: bgColor,
       appBar: AppBar(
         title: const Text('Éditer la ferme'),
@@ -118,12 +173,14 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
         foregroundColor: textColor,
       ),
       body: SingleChildScrollView(
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        controller: _scrollController,
+        physics: const ClampingScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         padding: EdgeInsets.only(
           left: 16,
           top: 16,
           right: 16,
-          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+          bottom: isWeb ? 60 : 16,
         ),
         child: Form(
           key: _formKey,
@@ -131,6 +188,9 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
             children: [
               TextFormField(
                 controller: _nameCtrl,
+                focusNode: _nameFocus,
+                autocorrect: false,
+                enableSuggestions: false,
                 style: TextStyle(color: textColor, fontSize: 16),
                 decoration: InputDecoration(
                   labelText: 'Nom',
@@ -148,6 +208,9 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _locationCtrl,
+                focusNode: _locationFocus,
+                autocorrect: false,
+                enableSuggestions: false,
                 style: TextStyle(color: textColor, fontSize: 16),
                 decoration: InputDecoration(
                   labelText: 'Localisation',
@@ -164,6 +227,9 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _sizeCtrl,
+                focusNode: _sizeFocus,
+                autocorrect: false,
+                enableSuggestions: false,
                 style: TextStyle(color: textColor, fontSize: 16),
                 decoration: InputDecoration(
                   labelText: 'Superficie (ha)',

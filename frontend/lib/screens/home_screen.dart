@@ -575,7 +575,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: cardBg,
         title: TextField(
           controller: searchController,
-          autofocus: true,
+          autofocus: false,
           decoration: InputDecoration(
             hintText: 'Rechercher des fermes...',
             hintStyle: TextStyle(color: Colors.grey[500]),

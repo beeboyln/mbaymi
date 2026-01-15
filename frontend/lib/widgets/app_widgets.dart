@@ -99,6 +99,8 @@ class AppWidgets {
   }) {
     return TextFormField(
       controller: controller,
+      autocorrect: false,
+      enableSuggestions: false,
       keyboardType: keyboardType,
       obscureText: obscureText,
       maxLines: maxLines,

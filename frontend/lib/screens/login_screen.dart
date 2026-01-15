@@ -1,8 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
-import 'package:mbaymi/utils/email_validator.dart';
-import 'package:mbaymi/utils/validators.dart';
+import 'package:mbaymi/utils/validators.dart' as validators;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -14,11 +14,16 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
 
+  final ScrollController _scrollController = ScrollController();
+
   bool _isLoading = false;
   bool _obscurePassword = true;
+
+  bool get isWeb => kIsWeb;
 
   @override
   void dispose() {
@@ -26,24 +31,31 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     _emailFocus.dispose();
     _passwordFocus.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez remplir tous les champs')),
-      );
-      return;
-    }
+  void _scrollTo(double offset) {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      offset,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
+  }
 
-    // Validate email format
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
-    if (!Validators.isValidEmail(email)) {
+    final password = _passwordController.text;
+
+    final emailError = validators.Validators.email(email);
+    final passwordError = validators.Validators.password(password);
+
+    if (emailError != null || passwordError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez entrer une adresse email valide.'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: Text(emailError ?? passwordError ?? 'Champs invalides'),
+          backgroundColor: Colors.red.shade700,
         ),
       );
       return;
@@ -52,67 +64,49 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.login(
-        email: email,
-        password: _passwordController.text,
+      final result = await ApiService.login(email: email, password: password);
+
+      await AuthService.login(
+        userId: int.parse(result['id'].toString()),
+        email: result['email'],
+        name: result['name'] ?? 'User',
+        role: result['role'] ?? 'farmer',
+        accessToken: result['access_token'],
+        refreshToken: result['refresh_token'],
       );
 
       if (!mounted) return;
-
-      final userId = result['id'] ?? result['user_id'];
-      if (userId == null) throw Exception('ID utilisateur manquant');
-
-      final accessToken = result['access_token'] as String?;
-      final refreshToken = result['refresh_token'] as String?;
-      if (accessToken == null || refreshToken == null) {
-        throw Exception('Tokens JWT manquants du serveur');
-      }
-
-      await AuthService.login(
-        userId: userId is int ? userId : int.parse(userId.toString()),
-        email: email,
-        name: result['name'] ?? 'User',
-        role: result['role'] ?? 'farmer',
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-      );
-
       Navigator.of(context).pushReplacementNamed('/');
     } catch (e) {
       if (!mounted) return;
-      final errorMessage = ErrorMessages.getHumanReadableError(e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red.shade700,
-          duration: const Duration(seconds: 4),
-        ),
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  InputDecoration _inputDecoration(
-      String label, Color borderColor, Color hintColor,
-      {Widget? suffix}) {
+  InputDecoration _decoration(
+    String label,
+    Color border,
+    Color hint, {
+    Widget? suffix,
+  }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(color: hintColor),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: borderColor),
-      ),
+      labelStyle: TextStyle(color: hint),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: borderColor),
+        borderSide: BorderSide(color: border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: Colors.brown.shade700, width: 2),
       ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       suffixIcon: suffix,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     );
   }
 
@@ -120,157 +114,136 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Palette dynamique
     final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
-    final appBarColor = bgColor;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final hintColor = isDark ? Colors.grey.shade500 : Colors.grey.shade600;
-    final borderColor = isDark ? Colors.grey.shade700 : Colors.grey.shade300;
-    final buttonColor = isDark ? Colors.brown.shade700 : Colors.brown;
+    final hintColor = Colors.grey;
+    final borderColor = Colors.grey.shade400;
+    final buttonColor = Colors.brown;
 
     return Scaffold(
       backgroundColor: bgColor,
+      resizeToAvoidBottomInset: !isWeb,
+
       appBar: AppBar(
-        backgroundColor: appBarColor,
+        backgroundColor: bgColor,
         elevation: 0,
         centerTitle: true,
-        foregroundColor: textColor,
+        title: const Text('Connexion'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
-          onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
-          splashRadius: 1,
-        ),
-        title: Text(
-          'Connexion',
-          style: TextStyle(fontWeight: FontWeight.w600, color: textColor),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 40),
 
-              // LOGO CENTRÉ
-              Center(
-                child: Image.asset(
-                  'assets/images/aa.png',
-                  height: 100,
-                  width: 100,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 40),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Ensure we account for keyboard / system insets on devices
+          final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-              // EMAIL
-              TextField(
-                controller: _emailController,
-                focusNode: _emailFocus,
-                autofocus: false,
-                textInputAction: TextInputAction.next,
-                keyboardType: TextInputType.emailAddress,
-                onSubmitted: (_) =>
-                    FocusScope.of(context).requestFocus(_passwordFocus),
-                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-                style: TextStyle(color: textColor, fontSize: 16),
-                decoration:
-                    _inputDecoration('Email', borderColor, hintColor),
-              ),
-              const SizedBox(height: 24),
+          return SingleChildScrollView(
+            controller: _scrollController,
+            physics: const ClampingScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(24, 32, 24, 32 + bottomInset),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset('assets/images/aa.png', height: 90),
+                    const SizedBox(height: 40),
 
-              // MOT DE PASSE
-              TextField(
-                controller: _passwordController,
-                focusNode: _passwordFocus,
-                autofocus: false,
-                textInputAction: TextInputAction.done,
-                obscureText: _obscurePassword,
-                onSubmitted: (_) => _handleLogin(),
-                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-                style: TextStyle(color: textColor, fontSize: 16),
-                decoration: _inputDecoration(
-                  'Mot de passe',
-                  borderColor,
-                  hintColor,
-                  suffix: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      color: hintColor,
+                    TextField(
+                      controller: _emailController,
+                      focusNode: _emailFocus,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      onTap: () {
+                        if (isWeb) _scrollTo(120);
+                      },
+                      onSubmitted: (_) =>
+                          FocusScope.of(context).requestFocus(_passwordFocus),
+                      style: TextStyle(color: textColor, fontSize: 16),
+                      decoration: _decoration('Email', borderColor, hintColor),
                     ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
 
-              // BOUTON SE CONNECTER
-              SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonColor,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                    const SizedBox(height: 24),
+
+                    TextField(
+                      controller: _passwordController,
+                      focusNode: _passwordFocus,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      onTap: () {
+                        if (isWeb) _scrollTo(200);
+                      },
+                      onSubmitted: (_) => _handleLogin(),
+                      style: TextStyle(color: textColor, fontSize: 16),
+                      decoration: _decoration(
+                        'Mot de passe',
+                        borderColor,
+                        hintColor,
+                        suffix: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
                           ),
-                        )
-                      : const Text(
-                          'SE CONNECTER',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.1,
-                          ),
+                          onPressed: () =>
+                              setState(() => _obscurePassword = !_obscurePassword),
                         ),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // LIEN INSCRIPTION
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Pas encore de compte ?', style: TextStyle(color: textColor)),
-                  TextButton(
-                    onPressed: () =>
-                        Navigator.of(context).pushNamed('/register'),
-                    child: Text(
-                      'Créer un compte',
-                      style: TextStyle(
-                        color: buttonColor,
-                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 32),
+
+                    SizedBox(
+                      height: 52,
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: buttonColor,
+                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
+                                'SE CONNECTER',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Pas encore de compte ? "),
+                        GestureDetector(
+                          onTap: () =>
+                              Navigator.of(context).pushNamed('/register'),
+                          child: Text(
+                            "S'inscrire",
+                            style: TextStyle(
+                              color: Colors.brown.shade700,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    if (isWeb) const SizedBox(height: 40),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

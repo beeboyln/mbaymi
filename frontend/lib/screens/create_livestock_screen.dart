@@ -484,6 +484,8 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
         border: Border.all(color: borderColor, width: 1),
       ),
       child: TextFormField(
+        autocorrect: false,
+        enableSuggestions: false,
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,

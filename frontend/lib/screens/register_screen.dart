@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/token_storage.dart';
-import 'package:mbaymi/utils/email_validator.dart';
-import 'package:mbaymi/utils/validators.dart';
+
+// 🔹 ALIAS POUR ÉVITER LE CONFLIT
+import 'package:mbaymi/utils/email_validator.dart' as email_validator;
+import 'package:mbaymi/utils/validators.dart' as validators;
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -23,7 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _regionController = TextEditingController();
   final _villageController = TextEditingController();
 
-  // FocusNodes
+  // Focus
   final _nameFocus = FocusNode();
   final _emailFocus = FocusNode();
   final _phoneFocus = FocusNode();
@@ -32,18 +35,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _regionFocus = FocusNode();
   final _villageFocus = FocusNode();
 
-  String _selectedRole = 'farmer';
-  bool _isLoading = false;
+  final ScrollController _scrollController = ScrollController();
 
-  // Palette de couleurs
-  static const Color _bgLight = Colors.white;
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _textLight = Color(0xFF1A1A1A);
-  static const Color _textDark = Colors.white;
-  static const Color _borderLight = Color(0xFFE8E2D8);
-  static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _hintLight = Color(0xFF999999);
-  static const Color _hintDark = Color(0xFF666666);
+  bool _isLoading = false;
+  String _selectedRole = 'farmer';
+
+  bool get isWeb => kIsWeb;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupFocusScroll();
+  }
+
+  void _setupFocusScroll() {
+    void listen(FocusNode node, double offset) {
+      node.addListener(() {
+        if (node.hasFocus && isWeb) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scroll(offset);
+          });
+        }
+      });
+    }
+
+    listen(_nameFocus, 100);
+    listen(_emailFocus, 200);
+    listen(_phoneFocus, 300);
+    listen(_passwordFocus, 400);
+    listen(_confirmPasswordFocus, 500);
+    listen(_regionFocus, 600);
+    listen(_villageFocus, 700);
+  }
+
+  void _scroll(double offset) {
+    if (!_scrollController.hasClients) return;
+    final max = _scrollController.position.maxScrollExtent;
+
+    _scrollController.animateTo(
+      offset > max ? max : offset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   void dispose() {
@@ -62,62 +96,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _confirmPasswordFocus.dispose();
     _regionFocus.dispose();
     _villageFocus.dispose();
+    _scrollController.dispose();
 
     super.dispose();
   }
 
-  void _handleRegister() async {
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-
-    // Additional validation
-    final email = _emailController.text.trim();
-    final phone = _phoneController.text.trim();
-    
-    // Validate email format
-    if (!Validators.isValidEmail(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez entrer une adresse email valide.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Validate phone (only digits, at least 8 digits)
-    if (!RegExp(r'^\d{8,}$').hasMatch(phone)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Le numéro de téléphone doit contenir au moins 8 chiffres.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
 
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.register(
+      final res = await ApiService.register(
         name: _nameController.text.trim(),
-        email: email,
-        phone: phone,
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
         password: _passwordController.text,
         role: _selectedRole,
         region: _regionController.text.trim(),
         village: _villageController.text.trim(),
       );
 
-      // Save tokens if they exist in the response
-      if (response.containsKey('access_token') && 
-          response['access_token'] != null &&
-          response.containsKey('id') &&
-          response['id'] != null) {
+      if (res['access_token'] != null) {
         await TokenStorage.saveTokens(
-          accessToken: response['access_token'],
-          refreshToken: response.containsKey('refresh_token') ? response['refresh_token'] ?? '' : '',
-          userId: response['id'] ?? 0,
-          userEmail: email,
+          accessToken: res['access_token'],
+          refreshToken: res['refresh_token'] ?? '',
+          userId: res['id'],
+          userEmail: _emailController.text.trim(),
           userRole: _selectedRole,
         );
       }
@@ -128,20 +133,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SnackBar(content: Text('Inscription réussie')),
       );
 
-      // Route based on selected role
-      if (_selectedRole == 'veterinarian' || _selectedRole == 'expert') {
-        Navigator.of(context).pushReplacementNamed('/veterinarian-setup');
-      } else {
-        Navigator.of(context).pushReplacementNamed('/login');
-      }
+      Navigator.pushReplacementNamed(
+        context,
+        _selectedRole == 'veterinarian' || _selectedRole == 'expert'
+            ? '/veterinarian-setup'
+            : '/login',
+      );
     } catch (e) {
       if (!mounted) return;
-      final errorMessage = ErrorMessages.getHumanReadableError(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMessage),
+          content: Text(e.toString()),
           backgroundColor: Colors.red.shade700,
-          duration: const Duration(seconds: 4),
         ),
       );
     } finally {
@@ -149,252 +152,159 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  InputDecoration _inputDecoration(
-      String label, Color borderColor, Color hintColor, bool isDark) {
+  InputDecoration _input(
+    String label,
+    bool isDark,
+  ) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(color: hintColor),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: borderColor),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: isDark ? Colors.white70 : Colors.black, width: 2),
+        borderSide: BorderSide(
+          color: isDark ? Colors.white : Colors.black,
+          width: 2,
+        ),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? _bgDark : _bgLight;
-    final textColor = isDark ? _textDark : _textLight;
-    final borderColor = isDark ? _borderDark : _borderLight;
-    final hintColor = isDark ? _hintDark : _hintLight;
-    final buttonColor = isDark ? Colors.brown[700] : Colors.brown;
-    final buttonTextColor = Colors.white;
-    final appBarColor = isDark ? Color(0xFF1E1E1E) : Colors.white;
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: appBarColor,
-        elevation: 0,
-        foregroundColor: textColor,
-        title: Text(
-          'Créer un compte',
-          style: TextStyle(fontWeight: FontWeight.w600, color: textColor),
-        ),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 0,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 32),
+      resizeToAvoidBottomInset: !isWeb,
+      appBar: AppBar(title: const Text('Créer un compte')),
+      body: SingleChildScrollView(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Image.asset('assets/images/aa.png', height: 80),
+              const SizedBox(height: 32),
 
-                // Logo centré
-                Center(
-                  child: Image.asset(
-                    'assets/images/aa.png',
-                    height: 80,
-                    width: 80,
-                    fit: BoxFit.contain,
+              TextFormField(
+                controller: _nameController,
+                focusNode: _nameFocus,
+                textInputAction: TextInputAction.next,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: _input('Nom complet', isDark),
+                validator: (v) => v == null || v.isEmpty ? 'Nom requis' : null,
+              ),
+
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _emailController,
+                focusNode: _emailFocus,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: _input('Email', isDark),
+                validator: email_validator.Validators.email,
+              ),
+
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _phoneController,
+                focusNode: _phoneFocus,
+                autocorrect: false,
+                enableSuggestions: false,
+                keyboardType: TextInputType.phone,
+                decoration: _input('Téléphone', isDark),
+                validator: validators.Validators.phone,
+              ),
+
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _passwordController,
+                focusNode: _passwordFocus,
+                autocorrect: false,
+                enableSuggestions: false,
+                obscureText: true,
+                decoration: _input('Mot de passe', isDark),
+                validator: validators.Validators.password,
+              ),
+
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _confirmPasswordController,
+                focusNode: _confirmPasswordFocus,
+                autocorrect: false,
+                enableSuggestions: false,
+                obscureText: true,
+                decoration: _input('Confirmer mot de passe', isDark),
+                validator: (v) =>
+                    v != _passwordController.text
+                        ? 'Les mots de passe ne correspondent pas'
+                        : null,
+              ),
+
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<String>(
+                value: _selectedRole,
+                decoration: _input('Rôle', isDark),
+                items: const [
+                  DropdownMenuItem(value: 'farmer', child: Text('Agriculteur')),
+                  DropdownMenuItem(value: 'veterinarian', child: Text('Vétérinaire')),
+                  DropdownMenuItem(value: 'expert', child: Text('Expert Agricole')),
+                  DropdownMenuItem(value: 'buyer', child: Text('Acheteur')),
+                  DropdownMenuItem(value: 'seller', child: Text('Vendeur')),
+                ],
+                onChanged: (v) => setState(() => _selectedRole = v!),
+              ),
+
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _regionController,
+                focusNode: _regionFocus,
+                decoration: _input('Région', isDark),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Région requise' : null,
+              ),
+
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _villageController,
+                focusNode: _villageFocus,
+                decoration: _input('Village (optionnel)', isDark),
+              ),
+
+              const SizedBox(height: 32),
+
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _register,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.brown,
                   ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // NOM
-                TextFormField(
-                  controller: _nameController,
-                  focusNode: _nameFocus,
-                  autofocus: false,
-                  textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_emailFocus),
-                  style: TextStyle(color: textColor, fontSize: 16),
-                  decoration:
-                      _inputDecoration('Nom complet', borderColor, hintColor, isDark),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Nom requis' : null,
-                ),
-
-                const SizedBox(height: 24),
-
-                // EMAIL
-                TextFormField(
-                  controller: _emailController,
-                  focusNode: _emailFocus,
-                  autofocus: false,
-                  textInputAction: TextInputAction.next,
-                  keyboardType: TextInputType.emailAddress,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_phoneFocus),
-                  style: TextStyle(color: textColor, fontSize: 16),
-                  decoration: _inputDecoration('Email', borderColor, hintColor, isDark),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Email requis' : null,
-                ),
-
-                const SizedBox(height: 24),
-
-                // TELEPHONE
-                TextFormField(
-                  controller: _phoneController,
-                  autofocus: false,
-                  focusNode: _phoneFocus,
-                  textInputAction: TextInputAction.next,
-                  keyboardType: TextInputType.phone,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_passwordFocus),
-                  style: TextStyle(color: textColor, fontSize: 16),
-                  decoration:
-                      _inputDecoration('Téléphone', borderColor, hintColor, isDark),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Téléphone requis' : null,
-                ),
-
-                const SizedBox(height: 24),
-
-                // MOT DE PASSE
-                TextFormField(
-                  controller: _passwordController,
-                  autofocus: false,
-                  focusNode: _passwordFocus,
-                  obscureText: true,
-                  textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_confirmPasswordFocus),
-                  style: TextStyle(color: textColor, fontSize: 16),
-                  decoration:
-                      _inputDecoration('Mot de passe', borderColor, hintColor, isDark),
-                  validator: (v) =>
-                      v != null && v.length < 6 ? '6 caractères minimum' : null,
-                ),
-
-                const SizedBox(height: 24),
-
-                // CONFIRMATION
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  autofocus: false,
-                  focusNode: _confirmPasswordFocus,
-                  obscureText: true,
-                  textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_regionFocus),
-                  style: TextStyle(color: textColor, fontSize: 16),
-                  decoration: _inputDecoration(
-                      'Confirmer le mot de passe', borderColor, hintColor, isDark),
-                  validator: (v) =>
-                      v != _passwordController.text
-                          ? 'Les mots de passe ne correspondent pas'
-                          : null,
-                ),
-
-                const SizedBox(height: 24),
-
-                // ROLE
-                DropdownButtonFormField<String>(
-                  value: _selectedRole,
-                  style: TextStyle(color: textColor),
-                  decoration: _inputDecoration('Rôle', borderColor, hintColor, isDark),
-                  items: const [
-                    DropdownMenuItem(value: 'farmer', child: Text('Agriculteur / Éleveur')),
-                    DropdownMenuItem(value: 'veterinarian', child: Text('Vétérinaire')),
-                    DropdownMenuItem(value: 'expert', child: Text('Expert Agricole')),
-                    DropdownMenuItem(value: 'livestock_breeder', child: Text('Éleveur')),
-                    DropdownMenuItem(value: 'buyer', child: Text('Acheteur')),
-                    DropdownMenuItem(value: 'seller', child: Text('Vendeur')),
-                  ],
-                  onChanged: (v) => setState(() => _selectedRole = v ?? 'farmer'),
-                ),
-
-                const SizedBox(height: 24),
-
-                // REGION
-                TextFormField(
-                  autofocus: false,
-                  controller: _regionController,
-                  focusNode: _regionFocus,
-                  textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_villageFocus),
-                  style: TextStyle(color: textColor, fontSize: 16),
-                  decoration: _inputDecoration('Région', borderColor, hintColor, isDark),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Région requise' : null,
-                ),
-
-                const SizedBox(height: 24),
-
-                // VILLAGE
-                TextFormField(
-                  autofocus: false,
-                  controller: _villageController,
-                  focusNode: _villageFocus,
-                  textInputAction: TextInputAction.done,
-                  style: TextStyle(color: textColor, fontSize: 16),
-                  decoration: _inputDecoration(
-                      'Village (optionnel)', borderColor, hintColor, isDark),
-                ),
-
-                const SizedBox(height: 40),
-
-                // BOUTON MARRON
-                SizedBox(
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleRegister,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: buttonColor,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(buttonTextColor),
-                            ),
-                          )
-                        : Text(
-                            'CRÉER UN COMPTE',
-                            style: TextStyle(
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w600,
-                              color: buttonTextColor,
-                            ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'CRÉER UN COMPTE',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                  ),
+                        ),
                 ),
+              ),
 
-                const SizedBox(height: 32),
-              ],
-            ),
+              if (isWeb) const SizedBox(height: 40),
+            ],
           ),
         ),
       ),

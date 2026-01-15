@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
@@ -32,6 +33,18 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   late TextEditingController _feedingCtrl;
   late TextEditingController _notesCtrl;
 
+  // Focus nodes
+  final _animalTypeFocus = FocusNode();
+  final _breedFocus = FocusNode();
+  final _quantityFocus = FocusNode();
+  final _ageFocus = FocusNode();
+  final _weightFocus = FocusNode();
+  final _healthFocus = FocusNode();
+  final _feedingFocus = FocusNode();
+  final _notesFocus = FocusNode();
+
+  final _scrollController = ScrollController();
+
   bool _loading = false;
   XFile? _imageFile;
   Uint8List? _imageBytes;
@@ -41,6 +54,8 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   late String _visibility;
   late int _userId;
   int _selectedTabIndex = 0;
+
+  bool get isWeb => kIsWeb;
 
   static const Color _primaryColor = Color(0xFF6B8E23);
   static const Color _bgLight = Color(0xFFF8F9FA);
@@ -68,6 +83,86 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     _healthCtrl = TextEditingController(text: widget.livestock['health_status'] ?? '');
     _feedingCtrl = TextEditingController(text: widget.livestock['feeding_type'] ?? '');
     _notesCtrl = TextEditingController(text: widget.livestock['notes'] ?? '');
+
+    _setupFocusListeners();
+  }
+
+  void _setupFocusListeners() {
+    _animalTypeFocus.addListener(() {
+      if (_animalTypeFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(100);
+        });
+      }
+    });
+
+    _breedFocus.addListener(() {
+      if (_breedFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(180);
+        });
+      }
+    });
+
+    _quantityFocus.addListener(() {
+      if (_quantityFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(260);
+        });
+      }
+    });
+
+    _ageFocus.addListener(() {
+      if (_ageFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(340);
+        });
+      }
+    });
+
+    _weightFocus.addListener(() {
+      if (_weightFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(420);
+        });
+      }
+    });
+
+    _healthFocus.addListener(() {
+      if (_healthFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(500);
+        });
+      }
+    });
+
+    _feedingFocus.addListener(() {
+      if (_feedingFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(580);
+        });
+      }
+    });
+
+    _notesFocus.addListener(() {
+      if (_notesFocus.hasFocus && isWeb) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _smartScroll(660);
+        });
+      }
+    });
+  }
+
+  void _smartScroll(double offset) {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final targetOffset = offset > maxScroll ? maxScroll : offset;
+
+    _scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   Future<void> _pickImage() async {

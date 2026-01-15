@@ -108,7 +108,9 @@ class _ParcelScreenState extends State<ParcelScreen> {
                 // Name Field
                 TextField(
                   controller: nameCtrl,
-                  autofocus: true,
+                  autofocus: false,
+                  autocorrect: false,
+                  enableSuggestions: false,
                   style: TextStyle(fontSize: 16, color: textColor),
                   decoration: InputDecoration(
                     labelText: 'Nom de la parcelle',
