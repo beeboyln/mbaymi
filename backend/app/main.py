@@ -84,6 +84,12 @@ def include_routes():
         if "farm-posts" in str(route.path):
             print(f"  {route.methods} {route.path}")
 
+# ✅ Health check endpoint (wakes up Render free tier)
+@app.get("/health")
+def health():
+    """🏥 Health check endpoint - used by UptimeRobot/cron-job to keep server awake"""
+    return {"status": "ok", "service": "mbaymi-api"}
+
 @app.on_event("startup")
 def startup():
     include_routes()

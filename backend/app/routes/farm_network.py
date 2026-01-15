@@ -535,21 +535,8 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
     
     Affiche les fermes qui ont été rendues publiques par leurs propriétaires.
     """
-    logger.info(f"📍 [get_public_farms] Début - skip={skip}, limit={limit}")
     try:
-        # Vérifier les tables existent
-        logger.debug("🔍 [get_public_farms] Vérification des tables...")
-        farm_profile_count = db.query(FarmProfile).count()
-        logger.info(f"✅ [get_public_farms] farm_profiles table existe - {farm_profile_count} lignes")
-        
-        farm_count = db.query(Farm).count()
-        logger.info(f"✅ [get_public_farms] farms table existe - {farm_count} lignes")
-        
-        user_count = db.query(User).count()
-        logger.info(f"✅ [get_public_farms] users table existe - {user_count} lignes")
-        
-        # Récupérer les profils publics
-        logger.debug("🔍 [get_public_farms] Exécution de la query...")
+        # Récupérer les profils publics avec jointures optimisées
         profiles = db.query(FarmProfile, Farm, User)\
             .join(Farm, FarmProfile.farm_id == Farm.id)\
             .join(User, Farm.user_id == User.id)\
@@ -559,20 +546,15 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
             .limit(limit)\
             .all()
         
-        logger.info(f"✅ [get_public_farms] Query réussie - {len(profiles)} fermes trouvées")
-        
         # Transformer les résultats
         farms_list = []
-        for idx, (profile, farm, user) in enumerate(profiles):
-            logger.debug(f"  📦 Traitement ferme {idx+1}/{len(profiles)}: farm_id={farm.id}, farm_name={farm.name}")
-            
+        for profile, farm, user in profiles:
             # Traiter les spécialités de manière sûre
             specialties = []
             if profile.specialties:
                 try:
                     specialties = [s.strip() for s in profile.specialties.split(",") if s.strip()]
-                except Exception as e:
-                    logger.warning(f"  ⚠️ Erreur en traitant specialties: {e}")
+                except:
                     specialties = []
             
             farm_data = {
@@ -589,12 +571,10 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
             }
             farms_list.append(farm_data)
         
-        result = {
+        return {
             "count": len(farms_list),
             "farms": farms_list
         }
-        logger.info(f"✅ [get_public_farms] Succès - Retour {len(farms_list)} fermes")
-        return result
         
     except Exception as e:
         logger.error(f"❌ [get_public_farms] ERREUR: {type(e).__name__}: {str(e)}", exc_info=True)

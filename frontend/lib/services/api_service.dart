@@ -17,7 +17,8 @@ class ApiService {
   // 🔄 Retry configuration
   static const int _maxRetries = 3;
   static const Duration _initialDelay = Duration(milliseconds: 500);
-  static const Duration _requestTimeout = Duration(seconds: 15);
+  // Increased to 45s for Render free tier cold starts
+  static const Duration _requestTimeout = Duration(seconds: 45);
 
   // 💾 Cache simple pour les GET
   static final _getCache = SimpleCache<dynamic>(ttl: Duration(minutes: 5));
@@ -36,6 +37,7 @@ class ApiService {
 
   /// 🔄 Retry helper with exponential backoff et timeout global
   /// Handles transient network errors (timeouts, connection issues)
+  /// Special handling for cold starts with progressive delays
   static Future<T> _withRetry<T>(
     Future<T> Function() fn, {
     int maxRetries = _maxRetries,
@@ -53,30 +55,31 @@ class ApiService {
       } on TimeoutException {
         _connectivity.recordConnectionError();
         if (attempt >= maxRetries) {
-          debugPrint('❌ Request timeout after $maxRetries attempts');
+          debugPrint('❌ Request timeout after $maxRetries attempts (cold start?)');
           rethrow;
         }
-        debugPrint('⚠️ Timeout attempt $attempt, retrying in ${delay.inMilliseconds}ms...');
-        await Future.delayed(delay);
-        delay = Duration(milliseconds: delay.inMilliseconds * 2);
+        // Exponential backoff: 1s, 2s, 4s (better for cold starts)
+        final backoffDuration = Duration(seconds: attempt * 2);
+        debugPrint('⏳ Timeout attempt $attempt/$maxRetries, waiting ${backoffDuration.inSeconds}s before retry (cold start recovery)...');
+        await Future.delayed(backoffDuration);
       } on ConnectionException {
         _connectivity.recordConnectionError();
         if (attempt >= maxRetries) {
           debugPrint('❌ Connection error after $maxRetries attempts');
           rethrow;
         }
-        debugPrint('⚠️ Connection error attempt $attempt, retrying...');
-        await Future.delayed(delay);
-        delay = Duration(milliseconds: delay.inMilliseconds * 2);
+        final backoffDuration = Duration(seconds: attempt * 2);
+        debugPrint('⚠️ Connection error attempt $attempt, retrying in ${backoffDuration.inSeconds}s...');
+        await Future.delayed(backoffDuration);
       } catch (e) {
         _connectivity.recordConnectionError();
         if (attempt >= maxRetries) {
           debugPrint('❌ Request failed after $maxRetries attempts: $e');
           rethrow;
         }
-        debugPrint('⚠️ Attempt $attempt failed, retrying in ${delay.inMilliseconds}ms...');
-        await Future.delayed(delay);
-        delay = Duration(milliseconds: delay.inMilliseconds * 2);
+        final backoffDuration = Duration(seconds: attempt * 2);
+        debugPrint('⚠️ Attempt $attempt failed, retrying in ${backoffDuration.inSeconds}s...');
+        await Future.delayed(backoffDuration);
       }
     }
   }

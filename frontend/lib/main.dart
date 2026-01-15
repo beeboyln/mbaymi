@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
+import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
@@ -34,6 +35,9 @@ Future<void> main() async {
     debugPrint('🔄 Restoring session from localStorage...');
     await AuthService.restoreSession();
 
+    // 🏥 Wake up backend on cold start (Render free tier)
+    _wakeupBackend();
+
     // Initialiser le ThemeProvider
     await ThemeProvider().init();
 
@@ -50,6 +54,24 @@ Future<void> main() async {
     debugPrint('💥 ZONE ERROR: $error');
     debugPrint(stack.toString());
   });
+}
+
+/// 🏥 Wake up backend on app launch (handles Render free tier cold start)
+Future<void> _wakeupBackend() async {
+  try {
+    final apiUrl = dotenv.env['API_URL'] ?? 'http://localhost:8000';
+    final healthUrl = Uri.parse('$apiUrl/health');
+    
+    debugPrint('🏥 Attempting to wake up backend at $healthUrl...');
+    
+    final response = await http.get(healthUrl).timeout(const Duration(seconds: 10));
+    if (response.statusCode == 200) {
+      debugPrint('✅ Backend is awake and ready!');
+    }
+  } catch (e) {
+    // Silently fail - will retry on first real request
+    debugPrint('⚠️ Health check timed out (cold start), will retry on first request: $e');
+  }
 }
 
 class MbaymiApp extends StatefulWidget {
