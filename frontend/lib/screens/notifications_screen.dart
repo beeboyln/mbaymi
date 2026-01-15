@@ -146,22 +146,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
 
           if (snapshot.hasError) {
+            final errorMessage = snapshot.error.toString();
+            final isAuthError = errorMessage.contains('not authenticated') || 
+                               errorMessage.contains('No access token') ||
+                               errorMessage.contains('Token expired');
+            
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.error_outline,
+                  Icon(
+                    isAuthError ? Icons.lock_outline : Icons.error_outline,
                     size: 48,
                     color: Colors.grey,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Erreur de chargement',
+                    isAuthError ? 'Connectez-vous pour voir vos notifications' : 'Erreur de chargement',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(

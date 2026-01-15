@@ -23,6 +23,11 @@ class NotificationService {
     int limit = 20,
   }) async {
     try {
+      // Ensure session is restored from localStorage if needed
+      if (AuthService.currentSession == null) {
+        await AuthService.restoreSession();
+      }
+      
       final userId = AuthService.currentSession?.userId;
       if (userId == null) {
         throw Exception('User not authenticated');
@@ -188,6 +193,11 @@ class NotificationService {
   /// Compter les notifications non lues
   static Future<int> getUnreadCount() async {
     try {
+      // Ensure session is restored from localStorage if needed
+      if (AuthService.currentSession == null) {
+        await AuthService.restoreSession();
+      }
+      
       final userId = AuthService.currentSession?.userId;
       if (userId == null) {
         throw Exception('User not authenticated');

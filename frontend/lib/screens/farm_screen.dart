@@ -14,7 +14,6 @@ class FarmTab extends StatefulWidget {
 
   const FarmTab({Key? key, this.userId}) : super(key: key);
 
-
   @override
   State<FarmTab> createState() => _FarmTabState();
 }
@@ -41,9 +40,7 @@ class _FarmTabState extends State<FarmTab> {
   @override
   void didUpdateWidget(FarmTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Recharger les fermes si l'utilisateur vient de se connecter
     if (oldWidget.userId != widget.userId) {
-      // Clear le cache quand l'utilisateur change
       ApiService.clearCache();
       _lastKnownUserId = widget.userId;
       _farmsFuture = null;
@@ -56,7 +53,6 @@ class _FarmTabState extends State<FarmTab> {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Vérifier si l'utilisateur s'est connecté quand on revient au premier plan
     if (state == AppLifecycleState.resumed) {
       _checkForAuthChange();
     }
@@ -89,6 +85,67 @@ class _FarmTabState extends State<FarmTab> {
     imageCache.clear();
   }
 
+  Widget _buildFeatureCard({
+    required String icon,
+    required String title,
+    required String description,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDarkMode 
+            ? const Color(0xFF0A0A0A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode
+              ? Colors.white.withOpacity(0.03)
+              : Colors.black.withOpacity(0.02),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            icon,
+            style: const TextStyle(fontSize: 32),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: isDarkMode ? Colors.white : const Color(0xFF0A0A0A),
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w300,
+                    color: isDarkMode 
+                        ? Colors.white.withOpacity(0.5)
+                        : const Color(0xFF0A0A0A).withOpacity(0.4),
+                    height: 1.5,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionTabs(bool isDarkMode) {
     final selectedColor = const Color(0xFF6B8E23);
     return Padding(
@@ -111,9 +168,10 @@ class _FarmTabState extends State<FarmTab> {
                 child: Text(
                   '🌾 Fermes',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w300,
                     color: _selectedSection == 0 ? selectedColor : (isDarkMode ? Colors.white60 : Colors.black45),
+                    letterSpacing: -0.2,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -145,9 +203,10 @@ class _FarmTabState extends State<FarmTab> {
                 child: Text(
                   '🐄 Bétail',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w300,
                     color: _selectedSection == 1 ? selectedColor : (isDarkMode ? Colors.white60 : Colors.black45),
+                    letterSpacing: -0.2,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -161,11 +220,10 @@ class _FarmTabState extends State<FarmTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Lire le mode sombre directement du ThemeProvider
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? const Color(0xFF000000) : const Color(0xFFFAFAFA),
       body: RefreshIndicator(
         color: const Color(0xFF6B8E23),
         backgroundColor: isDarkMode ? const Color(0xFF1C1C1E) : Colors.white,
@@ -173,7 +231,7 @@ class _FarmTabState extends State<FarmTab> {
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+              backgroundColor: isDarkMode ? const Color(0xFF000000) : const Color(0xFFFAFAFA),
               elevation: 0,
               pinned: true,
               floating: false,
@@ -191,19 +249,19 @@ class _FarmTabState extends State<FarmTab> {
                   border: Border(
                     bottom: BorderSide(
                       color: isDarkMode 
-                          ? Colors.white.withOpacity(0.08) 
-                          : Colors.black.withOpacity(0.06),
+                          ? Colors.white.withOpacity(0.05) 
+                          : Colors.black.withOpacity(0.03),
                       width: 1,
                     ),
                   ),
                 ),
                 child: Text(
-                  'Gestion',
+                  'Tool yi',
                   style: TextStyle(
                     fontSize: 28,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: -0.8,
-                    color: isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
+                    fontWeight: FontWeight.w200,
+                    letterSpacing: -1,
+                    color: isDarkMode ? Colors.white : const Color(0xFF0A0A0A),
                   ),
                 ),
               ),
@@ -225,7 +283,6 @@ class _FarmTabState extends State<FarmTab> {
               child: FloatingActionButton(
                 onPressed: () async {
                   if (_selectedSection == 1) {
-                    // Section Bétail - ouvrir la page d'ajout d'animal
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -233,13 +290,11 @@ class _FarmTabState extends State<FarmTab> {
                       ),
                     );
                     if (result != null) {
-                      // Recharger le bétail après ajout
                       setState(() {
                         _livestockFuture = ApiService.getUserLivestock(widget.userId!);
                       });
                     }
                   } else {
-                    // Section Fermes - créer une ferme
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -250,10 +305,10 @@ class _FarmTabState extends State<FarmTab> {
                   }
                 },
                 backgroundColor: isDarkMode 
-                    ? const Color(0xFF2C2C2E) 
+                    ? const Color(0xFF0A0A0A) 
                     : Colors.white,
                 foregroundColor: const Color(0xFF6B8E23),
-                elevation: 1,
+                elevation: 0,
                 shape: const CircleBorder(),
                 child: const Icon(Icons.add, size: 24),
               ),
@@ -267,36 +322,29 @@ class _FarmTabState extends State<FarmTab> {
       return SingleChildScrollView(
         child: Column(
           children: [
-            // Image de la ferme - Hero section
+            // Hero section avec image ferme.jpg
             Container(
               width: double.infinity,
-              height: 300,
-              decoration: BoxDecoration(
-                image: const DecorationImage(
+              height: 400,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
                   image: AssetImage('assets/images/ferme.jpg'),
                   fit: BoxFit.cover,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
-              // Gradient overlay
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(0.3),
-                      Colors.black.withOpacity(0.6),
+                      Colors.black.withOpacity(0.2),
+                      Colors.black.withOpacity(0.5),
                     ],
                   ),
                 ),
-                child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 60),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -304,16 +352,25 @@ class _FarmTabState extends State<FarmTab> {
                         '🌾',
                         style: TextStyle(fontSize: 64),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 24),
                       const Text(
-                        'Gestion des Fermes',
+                        'Mbaymi',
                         style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 36,
+                          fontWeight: FontWeight.w200,
                           color: Colors.white,
-                          letterSpacing: -0.5,
+                          letterSpacing: -1.5,
                         ),
-                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Agriculture moderne',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w300,
+                          color: Colors.white.withOpacity(0.8),
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ],
                   ),
@@ -321,67 +378,78 @@ class _FarmTabState extends State<FarmTab> {
               ),
             ),
             
-            // Contenu descriptif
+            // Description épurée
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Créez et gérez vos fermes',
+                    'Une plateforme complète pour suivre vos cultures, votre bétail et optimiser vos rendements',
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
-                      letterSpacing: -0.3,
+                      fontSize: 16,
+                      height: 1.8,
+                      color: isDarkMode 
+                          ? Colors.white.withOpacity(0.6)
+                          : const Color(0xFF0A0A0A).withOpacity(0.5),
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 0.2,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Organisez vos parcelles, suivez vos cultures et gérez votre inventaire agricole en un seul endroit.',
-                    style: TextStyle(
-                      fontSize: 15,
-                      height: 1.6,
-                      color: isDarkMode ? Colors.white70 : const Color(0xFF666666),
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 40),
                   
-                  // Caractéristiques
-                  ...['📊 Suivez vos cultures', '🐄 Gérez votre bétail', '📈 Analysez vos rendements'].map((feature) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF8B6B4D),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            feature,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: isDarkMode ? Colors.white60 : const Color(0xFF555555),
-                            ),
-                          ),
-                        ],
+                  // Feature cards minimalistes
+                  Column(
+                    children: [
+                      _buildFeatureCard(
+                        icon: '📊',
+                        title: 'Suivez vos cultures',
+                        description: 'Organisez vos parcelles et surveillez la croissance',
+                        isDarkMode: isDarkMode,
                       ),
-                    );
-                  }).toList(),
+                      const SizedBox(height: 12),
+                      _buildFeatureCard(
+                        icon: '🐄',
+                        title: 'Gérez votre bétail',
+                        description: 'Inventaire complet de vos animaux',
+                        isDarkMode: isDarkMode,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFeatureCard(
+                        icon: '📈',
+                        title: 'Analysez vos rendements',
+                        description: 'Optimisez vos performances',
+                        isDarkMode: isDarkMode,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
                   
-                  const SizedBox(height: 32),
-                  
-                  // Bouton Commencer vert
+                  // CTA ultra minimaliste
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
+                    child: TextButton(
                       onPressed: () async {
+                        if (widget.userId == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text(
+                                'Connectez-vous pour créer une ferme',
+                                style: TextStyle(fontWeight: FontWeight.w300),
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              backgroundColor: const Color(0xFF555555),
+                              duration: const Duration(seconds: 3),
+                              margin: const EdgeInsets.all(16),
+                            ),
+                          );
+                          return;
+                        }
+                        
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => const CreateFarmScreen()),
@@ -389,41 +457,65 @@ class _FarmTabState extends State<FarmTab> {
                         if (result != null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Row(
-                                children: [
-                                  Icon(Icons.check_circle_outline,
-                                      color: Colors.white, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Ferme créée avec succès',
-                                      style: TextStyle(fontWeight: FontWeight.w400)),
-                                ],
+                              content: const Text(
+                                'Ferme créée avec succès',
+                                style: TextStyle(fontWeight: FontWeight.w300),
                               ),
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               backgroundColor: const Color(0xFF3D6B1F),
+                              margin: const EdgeInsets.all(16),
                             ),
                           );
                         }
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3D6B1F),
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(200, 10, 93, 25),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        elevation: 0,
                       ),
                       child: const Text(
-                        'Commencer',
+                        'Créer ma première ferme',
                         style: TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  
+                  // Bouton connexion minimaliste
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pushNamed('/login');
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'Se connecter',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w300,
+                          color: isDarkMode ? Colors.white.withOpacity(0.6) : const Color(0xFF0A0A0A).withOpacity(0.5),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 60),
                 ],
               ),
             ),
@@ -443,17 +535,18 @@ class _FarmTabState extends State<FarmTab> {
             child: Center(
               child: Column(
                 children: [
-                  const CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF2D5016),
+                  CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: const Color(0xFF6B8E23).withOpacity(0.3),
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Chargement de vos fermes...',
+                    'Chargement...',
                     style: TextStyle(
-                      fontWeight: FontWeight.w300,
-                      fontSize: 14,
-                      color: isDarkMode ? Colors.white60 : Colors.black45,
+                      fontWeight: FontWeight.w200,
+                      fontSize: 13,
+                      color: isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.3),
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -469,40 +562,28 @@ class _FarmTabState extends State<FarmTab> {
               children: [
                 Icon(
                   Icons.error_outline,
-                  size: 48,
-                  color: Colors.red.shade400,
+                  size: 40,
+                  color: isDarkMode ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.2),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Erreur de chargement',
                   style: TextStyle(
-                    fontWeight: FontWeight.w400,
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Text(
-                    'Veuillez réessayer ou contacter le support',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w300,
-                      fontSize: 14,
-                      color: isDarkMode ? Colors.white60 : Colors.black54,
-                    ),
+                    fontWeight: FontWeight.w300,
+                    fontSize: 15,
+                    color: isDarkMode ? Colors.white.withOpacity(0.6) : Colors.black.withOpacity(0.5),
                   ),
                 ),
                 const SizedBox(height: 20),
                 TextButton(
                   onPressed: _refreshFarms,
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF6B8E23),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: const Text(
+                    'Réessayer',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w300,
+                      color: Color(0xFF6B8E23),
+                    ),
                   ),
-                  child: const Text('Réessayer'),
                 ),
               ],
             ),
@@ -521,13 +602,25 @@ class _FarmTabState extends State<FarmTab> {
               if (_selectedSection == 0) ...[
                 if (farms.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+                    padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 20),
                     child: Center(
                       child: Column(
                         children: [
-                          Icon(Icons.agriculture_outlined, size: 48, color: const Color(0xFF6B8E23).withOpacity(0.4)),
-                          const SizedBox(height: 12),
-                          Text('Aucune ferme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: isDarkMode ? Colors.white60 : Colors.black45)),
+                          Icon(
+                            Icons.agriculture_outlined,
+                            size: 40,
+                            color: isDarkMode ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.1),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Aucune ferme',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w200,
+                              color: isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.3),
+                              letterSpacing: 0.3,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -549,9 +642,19 @@ class _FarmTabState extends State<FarmTab> {
                         child: Center(
                           child: Column(
                             children: [
-                              const CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6B8E23)),
+                              CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: const Color(0xFF6B8E23).withOpacity(0.3),
+                              ),
                               const SizedBox(height: 16),
-                              Text('Chargement...', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w300, color: isDarkMode ? Colors.white60 : Colors.black45)),
+                              Text(
+                                'Chargement...',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w200,
+                                  color: isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.3),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -563,9 +666,20 @@ class _FarmTabState extends State<FarmTab> {
                         child: Center(
                           child: Column(
                             children: [
-                              Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+                              Icon(
+                                Icons.error_outline,
+                                size: 40,
+                                color: isDarkMode ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.2),
+                              ),
                               const SizedBox(height: 12),
-                              Text('Erreur de chargement', style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white60 : Colors.black45)),
+                              Text(
+                                'Erreur',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w200,
+                                  color: isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.3),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -574,13 +688,25 @@ class _FarmTabState extends State<FarmTab> {
                     final animals = lsnap.data ?? [];
                     if (animals.isEmpty) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        padding: const EdgeInsets.symmetric(vertical: 80),
                         child: Center(
                           child: Column(
                             children: [
-                              Icon(Icons.pets_outlined, size: 48, color: const Color(0xFF6B8E23).withOpacity(0.4)),
-                              const SizedBox(height: 12),
-                              Text('Aucun animal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: isDarkMode ? Colors.white60 : Colors.black45)),
+                              Icon(
+                                Icons.pets_outlined,
+                                size: 40,
+                                color: isDarkMode ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.1),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Aucun animal',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w200,
+                                  color: isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.3),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -617,22 +743,22 @@ class _FarmTabState extends State<FarmTab> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: isDarkMode ? const Color(0xFF0A0A0A) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDarkMode
-                ? Colors.white.withOpacity(0.08)
-                : Colors.black.withOpacity(0.06),
+                ? Colors.white.withOpacity(0.03)
+                : Colors.black.withOpacity(0.02),
             width: 1,
           ),
         ),
         child: Row(
           children: [
             _buildFarmAvatar(farm, isDarkMode),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -640,9 +766,10 @@ class _FarmTabState extends State<FarmTab> {
                   Text(
                     farm['name'] ?? 'Ferme',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: isDarkMode ? Colors.white : Colors.black87,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w300,
+                      color: isDarkMode ? Colors.white : const Color(0xFF0A0A0A),
+                      letterSpacing: -0.2,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -654,7 +781,9 @@ class _FarmTabState extends State<FarmTab> {
                         farm['location'],
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDarkMode ? Colors.white60 : Colors.black45,
+                          fontWeight: FontWeight.w300,
+                          color: isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.3),
+                          letterSpacing: 0.1,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -665,8 +794,8 @@ class _FarmTabState extends State<FarmTab> {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              size: 16,
-              color: isDarkMode ? Colors.white30 : Colors.black26,
+              size: 14,
+              color: isDarkMode ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.15),
             ),
           ],
         ),
@@ -683,10 +812,10 @@ class _FarmTabState extends State<FarmTab> {
 
       if (url != null) {
         return Container(
-          width: 60,
-          height: 60,
+          width: 56,
+          height: 56,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             image: DecorationImage(
               image: NetworkImage(url),
               fit: BoxFit.cover,
@@ -699,10 +828,10 @@ class _FarmTabState extends State<FarmTab> {
     final imageUrl = farm['image_url'] ?? farm['imageUrl'];
     if (imageUrl != null && (imageUrl as String).isNotEmpty) {
       return Container(
-        width: 60,
-        height: 60,
+        width: 56,
+        height: 56,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           image: DecorationImage(
             image: NetworkImage(imageUrl),
             fit: BoxFit.cover,
@@ -712,18 +841,18 @@ class _FarmTabState extends State<FarmTab> {
     }
 
     return Container(
-      width: 60,
-      height: 60,
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
         color: isDarkMode
-            ? Colors.white.withOpacity(0.05)
-            : const Color(0xFF6B8E23).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+            ? Colors.white.withOpacity(0.03)
+            : Colors.black.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: const Icon(
+      child: Icon(
         Icons.agriculture_outlined,
-        size: 24,
-        color: Color(0xFF6B8E23),
+        size: 22,
+        color: isDarkMode ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.2),
       ),
     );
   }
@@ -751,48 +880,68 @@ class _FarmTabState extends State<FarmTab> {
           : null,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isDarkMode ? Colors.white10 : Colors.black12),
+          color: isDarkMode ? const Color(0xFF0A0A0A) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDarkMode ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+          ),
         ),
         child: Row(
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: isDarkMode ? Colors.white10 : Colors.black12,
+                borderRadius: BorderRadius.circular(12),
+                color: isDarkMode ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
                 image: photo != null ? DecorationImage(image: NetworkImage(photo), fit: BoxFit.cover) : null,
               ),
-              child: photo == null ? const Icon(Icons.pets, color: Color(0xFF6B8E23), size: 24) : null,
+              child: photo == null ? Icon(Icons.pets, color: isDarkMode ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.2), size: 22) : null,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     animalType,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDarkMode ? Colors.white : Colors.black87),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w300,
+                      color: isDarkMode ? Colors.white : const Color(0xFF0A0A0A),
+                      letterSpacing: -0.1,
+                    ),
                   ),
                   if (breed.isNotEmpty)
                     Text(
                       breed,
-                      style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white60 : Colors.black54),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w300,
+                        color: isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.3),
+                        letterSpacing: 0.1,
+                      ),
                     ),
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF6B8E23).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
+                color: const Color(0xFF6B8E23).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('x$quantity', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B8E23))),
+              child: Text(
+                'x$quantity',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w300,
+                  color: Color(0xFF6B8E23),
+                  letterSpacing: 0.2,
+                ),
+              ),
             ),
           ],
         ),
@@ -806,53 +955,69 @@ class _FarmTabState extends State<FarmTab> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: Provider.of<ThemeProvider>(context, listen: false).isDarkMode 
+              ? const Color(0xFF0A0A0A) 
+              : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 40,
-              height: 4,
+              height: 3,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: Colors.grey.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             const Text(
               'Connexion requise',
               style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w300,
+                fontSize: 20,
+                fontWeight: FontWeight.w200,
+                letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            const SizedBox(height: 12),
+            Text(
               'Connectez-vous pour voir votre bétail',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w300,
+                color: Colors.grey.withOpacity(0.6),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: TextButton(
                 onPressed: () {
                   Navigator.pop(context);
                   Navigator.pushNamed(context, '/login');
                 },
-                style: ElevatedButton.styleFrom(
+                style: TextButton.styleFrom(
                   backgroundColor: const Color(0xFF6B8E23),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-                child: const Text('Se connecter', style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  'Se connecter',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w300,
+                    fontSize: 15,
+                    letterSpacing: 0.3,
+                  ),
+                ),
               ),
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
