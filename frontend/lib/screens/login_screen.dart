@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../src/visual_viewport_listener_stub.dart'
+  if (dart.library.html) '../src/visual_viewport_listener_web.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/utils/validators.dart' as validators;
@@ -19,11 +21,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordFocus = FocusNode();
 
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _emailKey = GlobalKey();
+  final GlobalKey _passwordKey = GlobalKey();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
 
   bool get isWeb => kIsWeb;
+
+  // import the visual viewport listener via conditional imports
+  // The actual function is a no-op on non-web platforms.
+  // ignore: uri_does_not_exist
+  // The conditional import is handled at build time by the analyzer; we use a simple runtime alias below.
+  // We'll import via a relative path and rely on Dart's conditional imports in pubspec if needed.
 
   @override
   void dispose() {
@@ -33,6 +43,78 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordFocus.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _emailFocus.addListener(() {
+      if (_emailFocus.hasFocus && isWeb) {
+        final ctx = _emailKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 250),
+            alignment: 0.3,
+          );
+        }
+      }
+    });
+
+    _passwordFocus.addListener(() {
+      if (_passwordFocus.hasFocus && isWeb) {
+        final ctx = _passwordKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 250),
+            alignment: 0.3,
+          );
+        }
+      }
+    });
+
+    // If running on web, listen to visualViewport messages from index.html and ensure focused field is visible
+    if (isWeb) {
+      try {
+        // Use conditional files under lib/src — import at top would be static; instead use deferred invocation via URI
+        // We use a small dynamic loader to call the web listener implementation if present.
+        // ignore: avoid_dynamic_calls
+        final dynamic vvlib = ((){
+          try {
+            return (Object){};
+          } catch (_) {
+            return null;
+          }
+        })();
+      } catch (_) {}
+
+      // Simple approach: use `dart:html` only when compiled to web using a string eval fallback.
+      // Instead of complex conditional imports here, call the JS-posted message handler via `window.onMessage` from a small helper file.
+      // Import the helper via package import.
+      try {
+        // this import is a normal import resolved at compile time; the file uses conditional imports in lib/src
+      } catch (_) {}
+
+      // call the listener from our small helper (it will be a no-op on non-web builds)
+      try {
+        // Platform-specific function is defined in lib/src/visual_viewport_listener_web.dart or stub.
+        // ignore: undefined_function
+        addVisualViewportListener((height, offsetTop) {
+          // If a field is focused, ensure it's visible
+          if (_emailFocus.hasFocus) {
+            final ctx = _emailKey.currentContext;
+            if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 250), alignment: 0.3);
+          } else if (_passwordFocus.hasFocus) {
+            final ctx = _passwordKey.currentContext;
+            if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 250), alignment: 0.3);
+          }
+        });
+      } catch (e) {
+        // ignore if the function isn't available (non-web builds)
+      }
+    }
   }
 
   void _scrollTo(double offset) {
@@ -122,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      resizeToAvoidBottomInset: !isWeb,
+      resizeToAvoidBottomInset: true,
 
       appBar: AppBar(
         backgroundColor: bgColor,
@@ -154,46 +236,70 @@ class _LoginScreenState extends State<LoginScreen> {
                     Image.asset('assets/images/aa.png', height: 90),
                     const SizedBox(height: 40),
 
-                    TextField(
-                      controller: _emailController,
-                      focusNode: _emailFocus,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      onTap: () {
-                        if (isWeb) _scrollTo(120);
-                      },
-                      onSubmitted: (_) =>
-                          FocusScope.of(context).requestFocus(_passwordFocus),
-                      style: TextStyle(color: textColor, fontSize: 16),
-                      decoration: _decoration('Email', borderColor, hintColor),
+                    Container(
+                      key: _emailKey,
+                      child: TextField(
+                        controller: _emailController,
+                        focusNode: _emailFocus,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        onTap: () {
+                          if (isWeb) {
+                            final ctx = _emailKey.currentContext;
+                            if (ctx != null) {
+                              Scrollable.ensureVisible(
+                                ctx,
+                                duration: const Duration(milliseconds: 250),
+                                alignment: 0.3,
+                              );
+                            }
+                          }
+                        },
+                        onSubmitted: (_) =>
+                            FocusScope.of(context).requestFocus(_passwordFocus),
+                        style: TextStyle(color: textColor, fontSize: 16),
+                        decoration: _decoration('Email', borderColor, hintColor),
+                      ),
                     ),
 
                     const SizedBox(height: 24),
 
-                    TextField(
-                      controller: _passwordController,
-                      focusNode: _passwordFocus,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      onTap: () {
-                        if (isWeb) _scrollTo(200);
-                      },
-                      onSubmitted: (_) => _handleLogin(),
-                      style: TextStyle(color: textColor, fontSize: 16),
-                      decoration: _decoration(
-                        'Mot de passe',
-                        borderColor,
-                        hintColor,
-                        suffix: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    Container(
+                      key: _passwordKey,
+                      child: TextField(
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        obscureText: _obscurePassword,
+                        textInputAction: TextInputAction.done,
+                        onTap: () {
+                          if (isWeb) {
+                            final ctx = _passwordKey.currentContext;
+                            if (ctx != null) {
+                              Scrollable.ensureVisible(
+                                ctx,
+                                duration: const Duration(milliseconds: 250),
+                                alignment: 0.3,
+                              );
+                            }
+                          }
+                        },
+                        onSubmitted: (_) => _handleLogin(),
+                        style: TextStyle(color: textColor, fontSize: 16),
+                        decoration: _decoration(
+                          'Mot de passe',
+                          borderColor,
+                          hintColor,
+                          suffix: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            ),
+                            onPressed: () =>
+                                setState(() => _obscurePassword = !_obscurePassword),
                           ),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
                     ),

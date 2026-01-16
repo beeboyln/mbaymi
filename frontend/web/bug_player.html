@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bug video - player</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 12px; background: #f7f7f7; }
+    .container { max-width: 900px; margin: 0 auto; }
+    video { width: 100%; height: auto; background: black; }
+    .panel { margin-top: 12px; padding: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .log { height: 220px; overflow:auto; font-size:13px; background:#111; color:#0f0; padding:8px; border-radius:4px; }
+    .controls { display:flex; gap:8px; margin-top:8px; }
+    input { padding:8px; font-size:16px; width:100%; }
+    button { padding:8px 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Lecteur - bug.mp4</h2>
+    <p>Vidéo: <strong>assets/images/bug.mp4</strong></p>
+    <div class="panel">
+      <video id="video" src="../assets/images/bug.mp4" controls playsinline webkit-playsinline tabindex="-1"></video>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="min-width:120px;">Test input (pour clavier):</label>
+        <input id="testInput" placeholder="Tapez ici pour ouvrir le clavier" />
+        <button id="focusBtn">Focus</button>
+      </div>
+      <div class="controls">
+        <button id="clearLog">Effacer log</button>
+        <div style="flex:1"></div>
+        <small>Ouvrez sur Android et observez le comportement du clavier.</small>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    function log(msg) {
+      const time = new Date().toLocaleTimeString();
+      logEl.innerHTML = `[${time}] ${msg}<br>` + logEl.innerHTML;
+    }
+
+    // VisualViewport API (mobile browsers)
+    if (window.visualViewport) {
+      log('visualViewport available: width=' + window.visualViewport.width + ' height=' + window.visualViewport.height);
+      window.visualViewport.addEventListener('resize', (e) => {
+        log('visualViewport.resize -> width=' + window.visualViewport.width + ' height=' + window.visualViewport.height + ' offsetTop=' + window.visualViewport.offsetTop + ' offsetLeft=' + window.visualViewport.offsetLeft);
+      });
+      window.visualViewport.addEventListener('scroll', (e) => {
+        log('visualViewport.scroll -> offsetTop=' + window.visualViewport.offsetTop + ' pageYOffset=' + window.pageYOffset);
+      });
+    } else {
+      log('visualViewport API not available');
+    }
+
+    window.addEventListener('resize', () => {
+      log('window.resize -> innerHeight=' + window.innerHeight + ' innerWidth=' + window.innerWidth + ' pageYOffset=' + window.pageYOffset);
+    });
+
+    window.addEventListener('focusin', (e) => {
+      log('focusin -> target=' + e.target.tagName + (e.target.id ? ('#' + e.target.id) : ''));
+    });
+    window.addEventListener('focusout', (e) => {
+      log('focusout -> target=' + e.target.tagName + (e.target.id ? ('#' + e.target.id) : ''));
+    });
+
+    document.getElementById('testInput').addEventListener('focus', () => log('testInput.focused'));
+    document.getElementById('testInput').addEventListener('blur', () => log('testInput.blurred'));
+    // Prevent the video element from taking focus which can steal input focus on some Android browsers
+    const videoEl = document.getElementById('video');
+    if (videoEl) {
+      try {
+        videoEl.setAttribute('tabindex', '-1');
+        videoEl.addEventListener('focus', () => {
+          log('video.focused -> blur to avoid stealing input focus');
+          videoEl.blur();
+        });
+      } catch (e) { /* ignore */ }
+    }
+    document.getElementById('focusBtn').addEventListener('click', () => document.getElementById('testInput').focus());
+    document.getElementById('clearLog').addEventListener('click', () => logEl.innerHTML = '');
+
+    // log initial sizes
+    setTimeout(() => {
+      log('init: innerHeight=' + window.innerHeight + ' visualHeight=' + (window.visualViewport ? window.visualViewport.height : 'n/a'));
+    }, 100);
+  </script>
+</body>
+</html>
