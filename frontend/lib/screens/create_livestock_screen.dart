@@ -555,7 +555,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildSectionTitle('Photos'),
+            Expanded(child: _buildSectionTitle('Photos')),
             if (_imageFiles.isNotEmpty)
               Text(
                 '${_imageFiles.length} photo(s)',
@@ -564,6 +564,8 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
           ],
         ),

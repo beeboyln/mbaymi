@@ -28,10 +28,22 @@
     html, body, #flutter-root, flt-glass-pane, flt-platform-view {
       height: 100%;
       min-height: 100%;
+      width: 100%;
+      min-width: 100%;
+    }
+    /* Force Flutter elements and canvas to fill available space and avoid scaling bugs on very large device resolutions */
+    #flutter-root, flt-glass-pane, flt-platform-view, canvas {
+      display: block;
+      box-sizing: border-box;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: 100% !important;
+      max-height: 100% !important;
     }
     body {
       -webkit-overflow-scrolling: touch;
       margin: 0;
+      overflow: auto;
     }
   </style>
 
@@ -78,6 +90,70 @@
         }, 60);
       });
     })();
+      // Robust canvas/root sizing for high-DPR / large resolutions (fix white canvas area)
+      (function() {
+        function fixFlutterSizing() {
+          try {
+            const dpr = window.devicePixelRatio || 1;
+            const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+            const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+
+            const selectors = ['#flutter-root', 'flt-glass-pane', 'flt-platform-view'];
+            selectors.forEach(sel => {
+              const el = document.querySelector(sel);
+              if (el) {
+                el.style.width = vw + 'px';
+                el.style.height = vh + 'px';
+                el.style.maxWidth = '100%';
+                el.style.maxHeight = '100%';
+                el.style.display = 'block';
+                el.style.boxSizing = 'border-box';
+              }
+            });
+
+            // Adjust canvases backing store to match DPR/viewport (important for CanvasKit)
+            const canvases = Array.from(document.querySelectorAll('canvas'));
+            canvases.forEach(canvas => {
+              const cssW = Math.round(vw);
+              const cssH = Math.round(vh);
+              // Cap DPR used for backing store to avoid extremely large canvases on QHD+ devices
+              const dprUsed = Math.min(dpr, 2);
+              const backingW = Math.max(1, Math.round(cssW * dprUsed));
+              const backingH = Math.max(1, Math.round(cssH * dprUsed));
+              // center canvas and clear transforms that may shift rendering
+              canvas.style.width = cssW + 'px';
+              canvas.style.height = cssH + 'px';
+              canvas.style.display = 'block';
+              canvas.style.margin = '0 auto';
+              canvas.style.transformOrigin = 'top left';
+              canvas.style.transform = 'none';
+              // Only update backing store if different
+              if (canvas.width !== backingW || canvas.height !== backingH) {
+                canvas.width = backingW;
+                canvas.height = backingH;
+                console.log('fixFlutterSizing: adjusted canvas', { cssW, cssH, backingW, backingH, dpr, dprUsed });
+              }
+            });
+          } catch (e) {
+            console.warn('fixFlutterSizing error', e);
+          }
+        }
+
+        // Run several times after load and on viewport/resizes
+        function scheduleFixes() {
+          fixFlutterSizing();
+          setTimeout(fixFlutterSizing, 100);
+          setTimeout(fixFlutterSizing, 500);
+          setTimeout(fixFlutterSizing, 1500);
+        }
+
+        window.addEventListener('resize', fixFlutterSizing);
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', fixFlutterSizing);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleFixes(); });
+        document.addEventListener('DOMContentLoaded', scheduleFixes);
+        // also run once now in case script loads after content
+        scheduleFixes();
+      })();
   </script>
 </body>
 </html>

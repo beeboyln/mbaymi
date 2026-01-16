@@ -158,13 +158,17 @@ class _MarketTabState extends State<MarketTab> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Marché',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w300,
-                              color: Color(0xFF7BA428),
-                              letterSpacing: -0.8,
+                          Expanded(
+                            child: Text(
+                              'Marché',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w300,
+                                color: const Color(0xFF7BA428),
+                                letterSpacing: -0.8,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           IconButton(
@@ -305,16 +309,21 @@ class _MarketTabState extends State<MarketTab> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Mes annonces',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w300,
-                              color: isDarkMode ? Colors.white : const Color(0xFF2C2416),
-                              letterSpacing: -0.3,
+                          Expanded(
+                            child: Text(
+                              'Mes annonces',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w300,
+                                color: isDarkMode ? Colors.white : const Color(0xFF2C2416),
+                                letterSpacing: -0.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 _showMyAds ? 'Masquer' : 'Afficher',

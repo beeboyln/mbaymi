@@ -217,21 +217,23 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
 
-      body: LayoutBuilder(
-        builder: (context, constraints) {
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
           // Ensure we account for keyboard / system insets on devices
           final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
           return SingleChildScrollView(
             controller: _scrollController,
             physics: const ClampingScrollPhysics(),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Padding(
                 padding: EdgeInsets.fromLTRB(24, 32, 24, 32 + bottomInset),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Image.asset('assets/images/aa.png', height: 90),
                     const SizedBox(height: 40),
@@ -351,6 +353,6 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         },
       ),
-    );
+    ));
   }
 }

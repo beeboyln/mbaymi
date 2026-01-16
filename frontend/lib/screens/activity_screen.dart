@@ -1183,17 +1183,22 @@ class _ActivityScreenState extends State<ActivityScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            editDate != null 
-                                ? DateFormat('dd MMM yyyy', 'fr_FR').format(editDate!)
-                                : 'Sélectionner une date',
-                            style: TextStyle(
-                              color: editDate != null ? Colors.black : Colors.grey,
-                              fontSize: 14,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                          Expanded(
+                            child: Text(
+                              editDate != null 
+                                  ? DateFormat('dd MMM yyyy', 'fr_FR').format(editDate!)
+                                  : 'Sélectionner une date',
+                              style: TextStyle(
+                                color: editDate != null ? Colors.black : Colors.grey,
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 8),
                           const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
                         ],
                       ),
