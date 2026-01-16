@@ -292,6 +292,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     final cardColor = isDark ? _cardDark : _cardLight;
     final textColor = isDark ? Colors.white : Colors.black87;
     final secondaryTextColor = isDark ? Colors.white60 : Colors.black54;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -341,13 +342,12 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
                 children: [
                   // Onglet Informations
                   SingleChildScrollView(
-                    padding: EdgeInsets.only(
-                      left: 20,
-                      right: 20,
-                      top: 20,
-                      bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
-                    ),
-                    child: Form(
+                    padding: EdgeInsets.zero,
+                    child: AnimatedPadding(
+                      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + (bottomInset > 8 ? bottomInset : 0)),
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,6 +519,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
                           const SizedBox(height: 20),
                         ],
                       ),
+                    ),
                     ),
                   ),
                   // Onglet Publications

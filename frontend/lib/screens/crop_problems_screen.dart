@@ -488,14 +488,14 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: const EdgeInsets.only(bottom: 0),
       child: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.only(
             left: 20,
             right: 20,
             top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            bottom: 20,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

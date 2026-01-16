@@ -77,18 +77,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     // If running on web, listen to visualViewport messages from index.html and ensure focused field is visible
     if (isWeb) {
-      try {
-        // Use conditional files under lib/src — import at top would be static; instead use deferred invocation via URI
-        // We use a small dynamic loader to call the web listener implementation if present.
-        // ignore: avoid_dynamic_calls
-        final dynamic vvlib = ((){
-          try {
-            return (Object){};
-          } catch (_) {
-            return null;
-          }
-        })();
-      } catch (_) {}
+      // placeholder for optional web-only listener library; no-op on failure
+      final dynamic vvlib = null;
 
       // Simple approach: use `dart:html` only when compiled to web using a string eval fallback.
       // Instead of complex conditional imports here, call the JS-posted message handler via `window.onMessage` from a small helper file.
@@ -229,8 +219,10 @@ class _LoginScreenState extends State<LoginScreen> {
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(24, 32, 24, 32 + bottomInset),
+              child: AnimatedPadding(
+                padding: EdgeInsets.fromLTRB(24, 32, 24, 32 + (bottomInset > 8 ? bottomInset : 0)),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.stretch,

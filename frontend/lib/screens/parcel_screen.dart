@@ -72,7 +72,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              bottom: 20,
               left: 24,
               right: 24,
               top: 20,

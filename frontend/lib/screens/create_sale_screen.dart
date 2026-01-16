@@ -183,7 +183,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
           left: 20,
           right: 20,
           top: 20,
-          bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
+          bottom: 20,
         ),
         child: Form(
           key: _formKey,

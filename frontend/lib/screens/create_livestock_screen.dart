@@ -222,6 +222,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
     final textColor = isDark ? _textDark : _textLight;
     final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
     final borderColor = isDark ? _borderDark : _borderLight;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -235,16 +236,15 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
             // Formulaire
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  top: 20,
-                  bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
-                ),
+                padding: EdgeInsets.zero,
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                child: GestureDetector(
-                  onTap: () => FocusScope.of(context).unfocus(),
-                  child: Form(
+                child: AnimatedPadding(
+                  padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + (bottomInset > 8 ? bottomInset : 0)),
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    child: Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,7 +410,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
                   ),
                 ),
               ),
-            ),
+            )),
           ],
         ),
       ),

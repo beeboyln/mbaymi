@@ -232,7 +232,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                   left: _defaultPadding,
                   right: _defaultPadding,
                   top: _defaultPadding,
-                  bottom: _defaultPadding + MediaQuery.of(context).viewInsets.bottom,
+                  bottom: _defaultPadding,
                 ),
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 child: GestureDetector(
