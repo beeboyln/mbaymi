@@ -1,6 +1,7 @@
 class NewsArticle {
   final String title;
   final String description;
+  final String? content;
   final String? imageUrl;
   final DateTime pubDate;
   final String? category;
@@ -10,6 +11,7 @@ class NewsArticle {
   NewsArticle({
     required this.title,
     required this.description,
+    this.content,
     this.imageUrl,
     required this.pubDate,
     this.category,

@@ -33,7 +33,6 @@ class StatCard extends StatelessWidget {
           color: isDarkMode 
             ? const Color(0xFF0D0D0D).withOpacity(0.9)
             : Colors.white,
-          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
@@ -49,7 +48,6 @@ class StatCard extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: iconColor.withOpacity(isDarkMode ? 0.2 : 0.1),
-                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: iconColor, size: 20),
             ),
@@ -79,7 +77,6 @@ class StatCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: subtitleColor?.withOpacity(0.1) ??
                       const Color(0xFF2D5016).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   subtitle!,

@@ -94,332 +94,269 @@ class NewsDetailScreen extends StatelessWidget {
           // Contenu de l'article
           SliverToBoxAdapter(
             child: Container(
-              decoration: BoxDecoration(
-                color: surfaceColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 20,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
+              color: surfaceColor,
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Catégorie
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: primaryColor.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        article.category?.toUpperCase() ?? 'AGRICULTURE',
-                        style: TextStyle(
-                          color: primaryColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          letterSpacing: 1.2,
-                        ),
+                    // Catégorie - minimaliste
+                    Text(
+                      article.category?.toUpperCase() ?? 'AGRICULTURE',
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        letterSpacing: 2,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Titre
                     Text(
                       article.title,
                       style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        height: 1.3,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w300,
+                        height: 1.4,
                         color: textColor,
-                        letterSpacing: -0.5,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
 
-                    // Métadonnées
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[900] : Colors.grey[50],
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                        ),
-                      ),
+                    // Métadonnées minimalistes
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 32),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.source_rounded,
-                              size: 22,
-                              color: primaryColor,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'PAR',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: secondaryTextColor,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                article.source ?? 'Source non spécifiée',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: textColor,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Source',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: secondaryTextColor,
-                                    letterSpacing: 0.5,
-                                  ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'DATE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: secondaryTextColor,
+                                  letterSpacing: 1.5,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  article.source ?? 'Source non spécifiée',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                    color: textColor,
-                                  ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                article.timeAgo,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: textColor,
                                 ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.schedule_rounded,
-                              size: 22,
-                              color: primaryColor,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Publié',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: secondaryTextColor,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  article.timeAgo,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                    color: textColor,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
 
-                    // Section description
-                    Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: primaryColor,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Résumé',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: textColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Description
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[900] : Colors.grey[50],
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        article.description,
-                        style: TextStyle(
-                          fontSize: 16,
-                          height: 1.7,
-                          color: textColor.withOpacity(0.9),
-                          letterSpacing: 0.3,
-                        ),
+                    // Séparateur élégant
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 40),
+                      child: Container(
+                        height: 1,
+                        color: isDark ? Colors.grey[800] : Colors.grey[200],
                       ),
                     ),
-                    const SizedBox(height: 32),
 
-                    // Bouton d'action
+                    // Article principal - Style bibliothèque
+                    SelectableText(
+                      article.content ?? article.description,
+                      style: TextStyle(
+                        fontSize: 17,
+                        height: 2.0,
+                        color: textColor,
+                        letterSpacing: 0.3,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+
+                    // Section lecture complémentaire
                     if (article.link != null && article.link!.isNotEmpty)
                       Column(
                         children: [
-                          Container(
-                            width: double.infinity,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  primaryColor,
-                                  Color.lerp(primaryColor, Colors.green, 0.3)!,
-                                ],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: primaryColor.withOpacity(0.3),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: () => _launchUrl(article.link!),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                foregroundColor: Colors.white,
-                                shadowColor: Colors.transparent,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.open_in_new_rounded,
-                                    size: 22,
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: primaryColor.withOpacity(0.06),
+                                border: Border(
+                                  top: BorderSide(
+                                    color: primaryColor.withOpacity(0.3),
                                   ),
-                                  SizedBox(width: 12),
+                                  bottom: BorderSide(
+                                    color: primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    'Lire l\'article complet',
+                                    'CONTINUER LA LECTURE',
                                     style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.3,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryColor,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Accédez à l\'article original sur la source pour consulter la version complète et intégrale.',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      height: 1.7,
+                                      color: secondaryTextColor,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: ElevatedButton(
+                                      onPressed: () => _launchUrl(article.link!),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: primaryColor,
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.zero,
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.open_in_new_rounded,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            'LIRE L\'ARTICLE COMPLET',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 1,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          TextButton(
+                          TextButton.icon(
                             onPressed: () => _shareArticle(article),
-                            style: TextButton.styleFrom(
-                              foregroundColor: primaryColor,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
+                            icon: Icon(
+                              Icons.share_rounded,
+                              color: primaryColor,
+                              size: 18,
+                            ),
+                            label: Text(
+                              'Partager',
+                              style: TextStyle(
+                                color: primaryColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.share_rounded,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Partager cet article',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
                           ),
+                          const SizedBox(height: 32),
                         ],
                       ),
-                    const SizedBox(height: 20),
 
-                    // Footer avec informations
+                    // Footer informatif
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.only(top: 32),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[900] : Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline_rounded,
-                            size: 18,
-                            color: secondaryTextColor,
+                        border: Border(
+                          top: BorderSide(
+                            color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Informations',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: secondaryTextColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Article publié ${article.timeAgo}',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: secondaryTextColor,
-                                  ),
-                                ),
-                              ],
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'INFORMATIONS',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: secondaryTextColor,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Catégorie : ${article.category?.toUpperCase() ?? "AGRICULTURE"}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: textColor.withOpacity(0.8),
+                              height: 1.8,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          Text(
+                            'Source : ${article.source ?? "Non spécifiée"}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: textColor.withOpacity(0.8),
+                              height: 1.8,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          Text(
+                            'Publié ${article.timeAgo}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: secondaryTextColor,
+                              height: 1.8,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 48),
                   ],
                 ),
               ),

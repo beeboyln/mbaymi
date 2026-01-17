@@ -1077,6 +1077,7 @@ class ApiService {
             return NewsArticle(
               title: item['title'] ?? 'Actualité agricole',
               description: item['description'] ?? '',
+              content: item['content'] ?? item['description'] ?? '',
               imageUrl: item['imageUrl'],
               pubDate: DateTime.parse(item['pubDate'] ?? DateTime.now().toIso8601String()),
               source: item['source'] ?? 'Source',
@@ -1101,6 +1102,7 @@ class ApiService {
       NewsArticle(
         title: 'Alerte Météo',
         description: 'Pluie prévue ce weekend - Bonne nouvelle pour les cultures',
+        content: 'Les prévisions météorologiques indiquent une arrivée de pluies ce weekend. Cela représente une excellente nouvelle pour vos cultures qui bénéficieront de cette humidité naturelle. Les agriculteurs doivent se préparer à arrêter l\'irrigation si elle était prévue. Les accumulations de pluie devraient être de 20 à 40 mm selon les régions.',
         pubDate: now.subtract(const Duration(hours: 2)),
         source: 'Météo',
         category: 'Météo',
@@ -1108,6 +1110,7 @@ class ApiService {
       NewsArticle(
         title: 'Prix en hausse',
         description: 'Le maïs atteint 850 FCFA/kg - Plus haut en 30 jours',
+        content: 'Le cours du maïs a atteint 850 FCFA par kilogramme, marquant le plus haut niveau depuis 30 jours. Cette hausse est due à la baisse des stocks nationaux et à la demande croissante des marchés régionaux. Les experts recommandent aux producteurs de bien évaluer leurs stocks avant de vendre, car cette tendance pourrait s\'accentuer dans les semaines à venir.',
         pubDate: now.subtract(const Duration(hours: 4)),
         source: 'Marché',
         category: 'Prix',
@@ -1115,6 +1118,7 @@ class ApiService {
       NewsArticle(
         title: 'Alerte Ravageurs',
         description: 'Attention aux chenilles légionnaires dans votre région',
+        content: 'Une alerte a été émise concernant la présence de chenilles légionnaires (Spodoptera frugiperda) dans plusieurs zones agricoles de la région. Ces ravageurs sont particulièrement destructeurs pour le maïs et le sorgho. Les agriculteurs doivent inspecter régulièrement leurs cultures et appliquer des mesures de lutte intégrée. Consultez un agent vétérinaire pour les options de traitement recommandées.',
         pubDate: now.subtract(const Duration(hours: 6)),
         source: 'Alertes',
         category: 'Santé des cultures',
@@ -1122,6 +1126,7 @@ class ApiService {
       NewsArticle(
         title: 'Conseil Irrigation',
         description: 'Augmentez l\'irrigation de 20% cette semaine',
+        content: 'En raison de l\'augmentation des températures et de la baisse de l\'humidité relative, il est recommandé d\'augmenter l\'irrigation de vos cultures de 20% cette semaine. Les cultures au stade de croissance active consomment plus d\'eau. Assurez-vous que votre système d\'irrigation fonctionne correctement et que l\'eau atteint les racines. Un arrosage adéquat améliora la productivité de vos cultures.',
         pubDate: now.subtract(const Duration(hours: 8)),
         source: 'Conseils',
         category: 'Technique',
@@ -1129,6 +1134,7 @@ class ApiService {
       NewsArticle(
         title: 'Vaccin disponible',
         description: 'Nouveau vaccin pour le bétail arrivé - Réservez maintenant',
+        content: 'Un nouveau vaccin polyvalent pour le bétail est maintenant disponible dans les cliniques vétérinaires agréées. Ce vaccin offre une protection contre les principales maladies infectieuses du bétail. La campagne de vaccination est fortement recommandée, particulièrement pour les jeunes animaux et lors de la transition des saisons. Contactez votre vétérinaire local pour prendre un rendez-vous et en savoir plus sur les tarifs.',
         pubDate: now.subtract(const Duration(days: 1)),
         source: 'Vétérinaire',
         category: 'Santé animale',
