@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:provider/provider.dart';
@@ -13,6 +14,7 @@ import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/animal_detail_screen.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
+import 'package:mbaymi/screens/farm_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 import 'package:mbaymi/widgets/stat_card.dart';
@@ -40,6 +42,16 @@ class _DashboardTabState extends State<DashboardTab> {
   bool _postsInitialized = false;
   final ScrollController _newsScrollController = ScrollController();
   bool _isWeatherExpanded = false;
+  // Random tip feature
+  final List<String> _tips = [
+    'Arrosez tôt le matin pour réduire l\'évaporation et économiser l\'eau.',
+    'Utilisez du compost pour améliorer la rétention d\'eau du sol.',
+    'Diversifiez les cultures pour réduire les risques de ravageurs.',
+    'Surveillez régulièrement l\'état des feuilles pour détecter les maladies tôt.',
+    'Plantez des haies pour protéger les cultures du vent.',
+    'Récupérez l\'eau de pluie pour l\'irrigation des petits jardins.',
+  ];
+  String _currentTip = '';
   
   Future<List<dynamic>>? get _followedFarmsFuture => null;
 
@@ -50,6 +62,8 @@ class _DashboardTabState extends State<DashboardTab> {
     _countsFuture = _loadCounts();
     _weatherFuture = _loadWeather();
     _newsFuture = ApiService.getAgriculturalNews();
+    // Initialize random tip
+    _currentTip = _tips[Random().nextInt(_tips.length)];
     final viewerId = widget.userId ?? AuthService.currentSession?.userId ?? 0;
     _viewerId = viewerId;
     _followedPostsFuture = viewerId > 0 ? ApiService.getFarmPostsFeed(userId: viewerId) : Future.value(<dynamic>[]);
@@ -335,6 +349,50 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ),
 
+            // Astuce aléatoire (nouvelle fonctionnalité)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              sliver: SliverToBoxAdapter(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? const Color(0xFF12210D).withOpacity(0.9) : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lightbulb, color: Color(0xFF6B8E23), size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _currentTip.isNotEmpty ? _currentTip : 'Chargement...',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDarkMode ? Colors.grey.shade200 : const Color(0xFF2D5016),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh, color: Color(0xFF6B8E23)),
+                        onPressed: () {
+                          setState(() {
+                            _currentTip = _tips[Random().nextInt(_tips.length)];
+                          });
+                          HapticFeedback.selectionClick();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           // 📊 STATS RAPIDES
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
@@ -351,6 +409,14 @@ class _DashboardTabState extends State<DashboardTab> {
                           label: 'Fermes',
                           value: snapshot.data?['farms'] ?? 0,
                           isDarkMode: isDarkMode,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FarmTab(userId: widget.userId, initialSection: 0),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -366,6 +432,19 @@ class _DashboardTabState extends State<DashboardTab> {
                           label: 'Animaux',
                           value: snapshot.data?['livestock'] ?? 0,
                           isDarkMode: isDarkMode,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FarmTab(userId: widget.userId, initialSection: 1),
+                              ),
+                            ).then((_) {
+                              // When returning from FarmTab, refresh the counts
+                              setState(() {
+                                _countsFuture = _loadCounts();
+                              });
+                            });
+                          },
                         );
                       },
                     ),

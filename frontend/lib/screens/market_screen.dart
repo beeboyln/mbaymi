@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
+import 'package:mbaymi/utils/app_theme.dart';
 import 'package:mbaymi/models/market_model.dart';
 import 'package:mbaymi/screens/create_sale_screen.dart';
 import 'package:mbaymi/screens/sale_detail_screen.dart';
@@ -132,7 +133,7 @@ class _MarketTabState extends State<MarketTab> {
     final isDarkMode = themeProvider.isDarkMode;
     
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF0A0A0A) : const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? AppTheme.socialDark : const Color(0xFFFAFAFA),
       body: RefreshIndicator(
         onRefresh: _refreshData,
         color: const Color(0xFF7BA428),
@@ -145,7 +146,7 @@ class _MarketTabState extends State<MarketTab> {
               automaticallyImplyLeading: false,
               expandedHeight: 140,
               collapsedHeight: 100,
-              backgroundColor: isDarkMode ? const Color(0xFF0A0A0A) : const Color(0xFFFAFAFA),
+              backgroundColor: isDarkMode ? AppTheme.socialDark : const Color(0xFFFAFAFA),
               surfaceTintColor: Colors.transparent,
               flexibleSpace: FlexibleSpaceBar(
                 collapseMode: CollapseMode.pin,

@@ -11,6 +11,8 @@ class AppTheme {
   // Couleurs de fond
   static const Color bgLight = Color(0xFFF8F9FA);
   static const Color bgDark = Color(0xFF0A0A0A);
+    // Dark tone used for social/feed, farm and market screens
+    static const Color socialDark = Color(0xFF121212);
   
   // Couleurs de carte
   static const Color cardLight = Color(0xFFFFFFFF);

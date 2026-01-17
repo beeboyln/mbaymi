@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:mbaymi/services/token_storage.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/farm_screen.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/screens/livestock_screen.dart';
@@ -127,16 +128,75 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: appBarBg,
         elevation: 0,
         titleSpacing: 12,
-        title: IconButton(
-          icon: Icon(
-            Icons.search_rounded,
-            color: appBarIconColor,
-            size: 24,
-          ),
-          onPressed: () {
+        title: GestureDetector(
+          onTap: () {
             HapticFeedback.lightImpact();
-            _showSearchDialog(context);
+            if (isLoggedIn && _userId != null) {
+              final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' ||
+                  AuthService.currentSession?.role == 'expert';
+              if (isVeterinarian) {
+                Navigator.pushNamed(context, '/veterinarian-profile');
+              } else {
+                Navigator.pushNamed(
+                  context,
+                  '/user-profile/$_userId',
+                  arguments: {
+                    'userId': _userId,
+                    'isDarkMode': _isDarkMode,
+                  },
+                );
+              }
+            } else {
+              _showAuthSheet(context);
+            }
           },
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: FutureBuilder<Map<String, dynamic>>(
+              future: _userId != null ? ApiService.getUserProfile(_userId!, viewerId: _userId) : Future.value(<String, dynamic>{}),
+              builder: (context, snap) {
+                final img = snap.data?['profile_image'] as String?;
+                if (img != null && img.isNotEmpty) {
+                  return Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [_isDarkMode ? const Color(0xFF8FBF6B) : const Color(0xFFf0932b), _isDarkMode ? const Color(0xFF2D5016) : const Color(0xFFc13584)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: Image.network(
+                        img,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.account_circle_outlined,
+                          color: appBarIconColor,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                return CircleAvatar(
+                  radius: 20,
+                  backgroundColor: appBarBg,
+                  child: Icon(
+                    Icons.account_circle_outlined,
+                    color: appBarIconColor,
+                    size: 24,
+                  ),
+                );
+              },
+            ),
+          ),
         ),
         actions: [
           const NotificationIconWidget(),
@@ -155,35 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             },
           ),
-          IconButton(
-            tooltip: 'Profil',
-            icon: Icon(
-              Icons.account_circle_outlined,
-              color: appBarIconColor,
-              size: 22,
-            ),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              if (isLoggedIn && _userId != null) {
-                final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' || 
-                                      AuthService.currentSession?.role == 'expert';
-                if (isVeterinarian) {
-                  Navigator.pushNamed(context, '/veterinarian-profile');
-                } else {
-                  Navigator.pushNamed(
-                    context,
-                    '/user-profile/$_userId',
-                    arguments: {
-                      'userId': _userId,
-                      'isDarkMode': _isDarkMode,
-                    },
-                  );
-                }
-              } else {
-                _showAuthSheet(context);
-              }
-            },
-          ),
+          // Profile moved to AppBar title (avatar)
         ],
       ),
       body: IndexedStack(
@@ -504,10 +536,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Rejoignez Mbaymi',
+              'Rejoignez Savana',
               style: TextStyle(
                 fontSize: 22,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w300,
                 color: _isDarkMode ? Colors.white : const Color(0xFF2C2416),
                 letterSpacing: -0.5,
               ),
@@ -543,8 +575,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? const Color(0xFF8B7355) : Colors.white,
-          foregroundColor: isPrimary ? Colors.white : const Color(0xFF8B7355),
+          backgroundColor: isPrimary ? const Color.fromARGB(255, 109, 72, 55) : Colors.white,
+          foregroundColor: isPrimary ? Colors.white : const Color.fromARGB(255, 139, 100, 85),
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(

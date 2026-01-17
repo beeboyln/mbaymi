@@ -55,10 +55,12 @@ class _NotificationIconWidgetState extends State<NotificationIconWidget> {
           children: [
             // Bouton notification
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.notifications_outlined,
                 size: 24,
-                color: Colors.black87,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.getTextColor(true)
+                    : AppTheme.getTextColor(false),
               ),
               onPressed: () {
                 Navigator.push(
@@ -72,7 +74,7 @@ class _NotificationIconWidgetState extends State<NotificationIconWidget> {
                 });
               },
             ),
-            // Badge rouge simple quand il y a des notifications
+            // Badge verte (visible en mode sombre)
             if (_unreadCount > 0)
               Positioned(
                 right: 4,
@@ -81,15 +83,21 @@ class _NotificationIconWidgetState extends State<NotificationIconWidget> {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: Colors.red,
+                    color: AppTheme.successColor,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.red.withOpacity(0.5),
-                        blurRadius: 4,
+                        color: AppTheme.successColor.withOpacity(0.45),
+                        blurRadius: 6,
                         spreadRadius: 1,
                       ),
                     ],
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.black.withOpacity(0.25)
+                          : Colors.white.withOpacity(0.6),
+                      width: 0.8,
+                    ),
                   ),
                 ),
               ),

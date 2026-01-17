@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/widgets/empty_state.dart';
 import 'package:mbaymi/services/theme_provider.dart';
+import 'package:mbaymi/utils/app_theme.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/widgets/random_tip_widget.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/create_livestock_screen.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
+import 'package:mbaymi/screens/social_feed_screen.dart';
 
 class FarmTab extends StatefulWidget {
   final int? userId;
+  final int initialSection;
 
-  const FarmTab({Key? key, this.userId}) : super(key: key);
+  const FarmTab({Key? key, this.userId, this.initialSection = 0}) : super(key: key);
 
   @override
   State<FarmTab> createState() => _FarmTabState();
@@ -24,11 +28,26 @@ class _FarmTabState extends State<FarmTab> {
   int _selectedSection = 0;
   int? _lastKnownUserId;
 
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _lastKnownUserId = widget.userId;
+    _selectedSection = widget.initialSection;
+    _searchController.addListener(() {
+      if (_searchQuery != _searchController.text) {
+        setState(() => _searchQuery = _searchController.text);
+      }
+    });
     _loadFarms();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _loadFarms() {
@@ -45,7 +64,7 @@ class _FarmTabState extends State<FarmTab> {
       _lastKnownUserId = widget.userId;
       _farmsFuture = null;
       _livestockFuture = null;
-      _selectedSection = 0;
+      _selectedSection = widget.initialSection;
       _loadFarms();
       setState(() {});
     }
@@ -77,6 +96,9 @@ class _FarmTabState extends State<FarmTab> {
       _farmsFuture = widget.userId != null
           ? ApiService.getUserFarms(widget.userId!)
           : ApiService.getPublicFarms();
+      // clear search on manual refresh
+      _searchController.clear();
+      _searchQuery = '';
     } else if (widget.userId != null) {
       _livestockFuture = ApiService.getUserLivestock(widget.userId!);
     }
@@ -218,20 +240,47 @@ class _FarmTabState extends State<FarmTab> {
     );
   }
 
+  Widget _smallFeature({required String icon, required String label, required bool isDark}) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(child: Text(icon, style: const TextStyle(fontSize: 24))),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.w400)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF000000) : const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? AppTheme.socialDark : const Color(0xFFFAFAFA),
       body: RefreshIndicator(
         color: const Color(0xFF6B8E23),
-        backgroundColor: isDarkMode ? const Color(0xFF1C1C1E) : Colors.white,
+        backgroundColor: isDarkMode ? AppTheme.socialDark : Colors.white,
         onRefresh: _refreshFarms,
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: isDarkMode ? const Color(0xFF000000) : const Color(0xFFFAFAFA),
+              backgroundColor: isDarkMode ? AppTheme.socialDark : const Color(0xFFFAFAFA),
               elevation: 0,
               pinned: true,
               floating: false,
@@ -256,7 +305,7 @@ class _FarmTabState extends State<FarmTab> {
                   ),
                 ),
                 child: Text(
-                  'Tool yi',
+                  'Fermes',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w200,
@@ -322,10 +371,10 @@ class _FarmTabState extends State<FarmTab> {
       return SingleChildScrollView(
         child: Column(
           children: [
-            // Hero section avec image ferme.jpg
+            // Clean hero
             Container(
               width: double.infinity,
-              height: 400,
+              height: 320,
               decoration: const BoxDecoration(
                 image: DecorationImage(
                   image: AssetImage('assets/images/ferme.jpg'),
@@ -338,38 +387,52 @@ class _FarmTabState extends State<FarmTab> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(0.2),
-                      Colors.black.withOpacity(0.5),
+                      Colors.black.withOpacity(0.35),
+                      AppTheme.socialDark.withOpacity(0.55),
                     ],
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 60),
+                child: Center(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        '🌾',
-                        style: TextStyle(fontSize: 64),
+                      Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3D6B1F), Color(0xFF2D5016)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const Center(child: Text('🌾', style: TextStyle(fontSize: 36))),
                       ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Mbaymi',
+                      const SizedBox(height: 16),
+                      Text(
+                        'Savana',
                         style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w200,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w400,
                           color: Colors.white,
-                          letterSpacing: -1.5,
+                          letterSpacing: -0.6,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
-                        'Agriculture moderne',
+                        'Plateforme agricole, simple & utile',
                         style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w300,
+                          fontSize: 13,
                           color: Colors.white.withOpacity(0.8),
-                          letterSpacing: 0.5,
+                          fontWeight: FontWeight.w300,
                         ),
                       ),
                     ],
@@ -377,145 +440,61 @@ class _FarmTabState extends State<FarmTab> {
                 ),
               ),
             ),
-            
-            // Description épurée
+
+            const SizedBox(height: 18),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Une plateforme complète pour suivre vos cultures, votre bétail et optimiser vos rendements',
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.8,
-                      color: isDarkMode 
-                          ? Colors.white.withOpacity(0.6)
-                          : const Color(0xFF0A0A0A).withOpacity(0.5),
-                      fontWeight: FontWeight.w300,
-                      letterSpacing: 0.2,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 40),
-                  
-                  // Feature cards minimalistes
-                  Column(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildFeatureCard(
-                        icon: '📊',
-                        title: 'Suivez vos cultures',
-                        description: 'Organisez vos parcelles et surveillez la croissance',
-                        isDarkMode: isDarkMode,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFeatureCard(
-                        icon: '🐄',
-                        title: 'Gérez votre bétail',
-                        description: 'Inventaire complet de vos animaux',
-                        isDarkMode: isDarkMode,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFeatureCard(
-                        icon: '📈',
-                        title: 'Analysez vos rendements',
-                        description: 'Optimisez vos performances',
-                        isDarkMode: isDarkMode,
-                      ),
+                      _smallFeature(icon: '🌱', label: 'Cultures', isDark: isDarkMode),
+                      const SizedBox(width: 12),
+                      _smallFeature(icon: '🐄', label: 'Bétail', isDark: isDarkMode),
+                      const SizedBox(width: 12),
+                      _smallFeature(icon: '📊', label: 'Rendements', isDark: isDarkMode),
                     ],
                   ),
-                  const SizedBox(height: 40),
-                  
-                  // CTA ultra minimaliste
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
-                    child: TextButton(
-                      onPressed: () async {
-                        if (widget.userId == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text(
-                                'Connectez-vous pour créer une ferme',
-                                style: TextStyle(fontWeight: FontWeight.w300),
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              backgroundColor: const Color(0xFF555555),
-                              duration: const Duration(seconds: 3),
-                              margin: const EdgeInsets.all(16),
-                            ),
-                          );
-                          return;
-                        }
-                        
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const CreateFarmScreen()),
-                        );
-                        if (result != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text(
-                                'Ferme créée avec succès',
-                                style: TextStyle(fontWeight: FontWeight.w300),
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              backgroundColor: const Color(0xFF3D6B1F),
-                              margin: const EdgeInsets.all(16),
-                            ),
-                          );
-                        }
-                      },
-                      style: TextButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(200, 10, 93, 25),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pushNamed('/login'),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color.fromARGB(154, 106, 142, 35),
+                          foregroundColor: isDarkMode ? Colors.white : Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
                       ),
-                      child: const Text(
-                        'Créer ma première ferme',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w300,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
+                        child: const Text('Se connecter', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w300)),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  
-                  // Bouton connexion minimaliste
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: TextButton(
+                    child: OutlinedButton(
                       onPressed: () {
-                        Navigator.of(context).pushNamed('/login');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => SocialFeedScreen(isDarkMode: isDarkMode)),
+                        );
                       },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: Text(
-                        'Se connecter',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w300,
-                          color: isDarkMode ? Colors.white.withOpacity(0.6) : const Color(0xFF0A0A0A).withOpacity(0.5),
-                          letterSpacing: 0.3,
-                        ),
-                      ),
+                      child: Text('Découvrir', style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87, fontSize: 15)),
                     ),
                   ),
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Explorez des fermes publiques et découvrez des producteurs locaux.',
+                    style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white70 : Colors.black54, fontWeight: FontWeight.w300),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 36),
                 ],
               ),
             ),
@@ -600,6 +579,34 @@ class _FarmTabState extends State<FarmTab> {
               _buildSectionTabs(isDarkMode),
               const SizedBox(height: 16),
               if (_selectedSection == 0) ...[
+                // Search bar for farms
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher une ferme...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: isDarkMode ? const Color(0xFF0A0A0A) : Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+
                 if (farms.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 20),
@@ -626,12 +633,50 @@ class _FarmTabState extends State<FarmTab> {
                     ),
                   )
                 else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: farms.length,
-                    itemBuilder: (context, index) => _buildFarmCard(context, farms[index] as Map<String, dynamic>, isDarkMode),
-                  ),
+                  Builder(builder: (context) {
+                    final query = _searchQuery.trim().toLowerCase();
+                    final filtered = query.isEmpty
+                        ? farms
+                        : farms.where((f) {
+                            final name = (f['name'] ?? '').toString().toLowerCase();
+                            final location = (f['location'] ?? '').toString().toLowerCase();
+                            return name.contains(query) || location.contains(query);
+                          }).toList();
+
+                    if (filtered.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 20),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 40,
+                                color: isDarkMode ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.1),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Aucune ferme trouvée',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w200,
+                                  color: isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.3),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) => _buildFarmCard(context, filtered[index] as Map<String, dynamic>, isDarkMode),
+                    );
+                  }),
               ] else ...[
                 FutureBuilder<List<dynamic>>(
                   future: _livestockFuture ?? (widget.userId != null ? ApiService.getUserLivestock(widget.userId!) : Future.value([])),
@@ -1011,7 +1056,7 @@ class _FarmTabState extends State<FarmTab> {
                   'Se connecter',
                   style: TextStyle(
                     fontWeight: FontWeight.w300,
-                    fontSize: 15,
+                    fontSize: 13,
                     letterSpacing: 0.3,
                   ),
                 ),

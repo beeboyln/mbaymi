@@ -1060,6 +1060,35 @@ class ApiService {
     }
   }
 
+  /// Try to fetch a list of short tips from the backend.
+  /// Returns a list of strings on success.
+  static Future<List<String>> getTips({String? region}) async {
+    try {
+      return await _withRetry(() async {
+        final uri = Uri.parse('$baseUrl/advice/tips${region != null ? '?region=${Uri.encodeComponent(region)}' : ''}');
+        final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data is List) {
+            return data.map((e) => e.toString()).toList();
+          }
+          if (data is Map && data['tips'] is List) {
+            return (data['tips'] as List).map((e) => e.toString()).toList();
+          }
+          // If backend returns a single string, wrap it
+          if (data is String) return [data];
+          throw Exception('Unexpected tips format');
+        } else {
+          throw Exception('Failed to get tips: ${response.statusCode}');
+        }
+      });
+    } catch (e) {
+      debugPrint('Error fetching tips: $e');
+      rethrow;
+    }
+  }
+
   // Get agricultural news from backend (which proxies Google News RSS)
   static Future<List<NewsArticle>> getAgriculturalNews() async {
     try {

@@ -255,6 +255,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 decoration: _input('Rôle', isDark),
                 items: const [
                   DropdownMenuItem(value: 'farmer', child: Text('Agriculteur')),
+                  DropdownMenuItem(value: 'livestock_breeder', child: Text('Éleveur')),
                   DropdownMenuItem(value: 'veterinarian', child: Text('Vétérinaire')),
                   DropdownMenuItem(value: 'expert', child: Text('Expert Agricole')),
                   DropdownMenuItem(value: 'buyer', child: Text('Acheteur')),

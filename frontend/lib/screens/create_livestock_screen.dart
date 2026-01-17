@@ -55,7 +55,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
   static const Color _textSecondaryLight = Color(0xFF6B6B6B);
   static const Color _textSecondaryDark = Color(0xFF8E8E93);
 
-  final List<String> _animalTypes = ['Bovins', 'Chèvres', 'Moutons', 'Porcs', 'Volailles', 'Autre'];
+  final List<String> _animalTypes = ['Bovins', 'Chèvres', 'Moutons', 'Volailles', 'Autre'];
   final List<String> _healthStatuses = ['Sain', 'Malade', 'Vacciné', 'À surveiller'];
   final List<String> _feedingTypes = ['Herbe', 'Grains', 'Mixte', 'Aliment composé'];
 

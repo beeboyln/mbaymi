@@ -116,12 +116,12 @@ class NewsDetailScreen extends StatelessWidget {
                     Text(
                       article.title,
                       style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w300,
-                        height: 1.4,
-                        color: textColor,
-                        letterSpacing: -0.3,
-                      ),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w300,
+                          height: 1.2,
+                          color: textColor,
+                          letterSpacing: -0.3,
+                        ),
                     ),
                     const SizedBox(height: 32),
 
@@ -389,40 +389,27 @@ class NewsDetailScreen extends StatelessWidget {
             errorBuilder: (context, error, stackTrace) {
               return Container(
                 decoration: BoxDecoration(
+                  image: const DecorationImage(
+                    image: AssetImage('assets/images/d.jpg'),
+                    fit: BoxFit.cover,
+                  ),
                   gradient: LinearGradient(
                     colors: isDark
                         ? [Colors.grey[900]!, Colors.grey[800]!]
-                        : [const Color(0xFF2D5016), const Color(0xFF4CAF50)],
+                        : [const Color(0xFF2D5016).withOpacity(0.0), const Color(0xFF4CAF50).withOpacity(0.0)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.article_rounded,
-                    size: 80,
-                    color: Colors.white.withOpacity(0.8),
                   ),
                 ),
               );
             },
           )
-        else
+          else
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [Colors.grey[900]!, Colors.grey[800]!]
-                    : [const Color(0xFF2D5016), const Color(0xFF4CAF50)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Center(
-              child: Icon(
-                Icons.article_rounded,
-                size: 80,
-                color: Colors.white.withOpacity(0.8),
+              image: const DecorationImage(
+                image: AssetImage('assets/images/d.jpg'),
+                fit: BoxFit.cover,
               ),
             ),
           ),

@@ -25,6 +25,7 @@ class EditLivestockScreen extends StatefulWidget {
 class _EditLivestockScreenState extends State<EditLivestockScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _animalTypeCtrl;
+  late TextEditingController _customAnimalTypeCtrl;
   late TextEditingController _breedCtrl;
   late TextEditingController _quantityCtrl;
   late TextEditingController _ageCtrl;
@@ -63,7 +64,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   static const Color _cardLight = Color(0xFFFFFFFF);
   static const Color _cardDark = Color(0xFF1A1A1A);
 
-  final List<String> _animalTypes = ['Bovins', 'Chèvres', 'Moutons', 'Porcs', 'Volailles', 'Autre'];
+  final List<String> _animalTypes = ['Bovins', 'Chèvres', 'Moutons', 'Volailles', 'Autre'];
   final List<String> _healthStatuses = ['Sain', 'Malade', 'Vacciné', 'À surveiller'];
   final List<String> _feedingTypes = ['Herbe', 'Grains', 'Mixte', 'Aliment composé'];
 
@@ -75,7 +76,14 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     _photosFuture = ApiService.getAnimalPhotos(widget.livestockId);
     _visibility = widget.livestock['visibility'] ?? 'PRIVATE';
     
-    _animalTypeCtrl = TextEditingController(text: widget.livestock['animal_type'] ?? '');
+    final existingType = (widget.livestock['animal_type'] ?? '').toString();
+    if (existingType.isNotEmpty && !_animalTypes.contains(existingType)) {
+      _animalTypeCtrl = TextEditingController(text: 'Autre');
+      _customAnimalTypeCtrl = TextEditingController(text: existingType);
+    } else {
+      _animalTypeCtrl = TextEditingController(text: existingType);
+      _customAnimalTypeCtrl = TextEditingController();
+    }
     _breedCtrl = TextEditingController(text: widget.livestock['breed'] ?? '');
     _quantityCtrl = TextEditingController(text: '${widget.livestock['quantity'] ?? 1}');
     _ageCtrl = TextEditingController(text: widget.livestock['age_months']?.toString() ?? '');
@@ -186,6 +194,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   @override
   void dispose() {
     _animalTypeCtrl.dispose();
+    _customAnimalTypeCtrl.dispose();
     _breedCtrl.dispose();
     _quantityCtrl.dispose();
     _ageCtrl.dispose();
@@ -216,7 +225,9 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
 
       final res = await ApiService.updateLivestock(
         livestockId: widget.livestockId,
-        animalType: _animalTypeCtrl.text.trim(),
+        animalType: _animalTypeCtrl.text.trim() == 'Autre'
+            ? _customAnimalTypeCtrl.text.trim()
+            : _animalTypeCtrl.text.trim(),
         breed: _breedCtrl.text.trim(),
         quantity: int.tryParse(_quantityCtrl.text) ?? 1,
         ageMonths: int.tryParse(_ageCtrl.text),
@@ -370,6 +381,18 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
                             cardColor: cardColor,
                             textColor: textColor,
                           ),
+                          if (_animalTypeCtrl.text == 'Autre') ...[
+                            const SizedBox(height: 12),
+                            _buildTextField(
+                              controller: _customAnimalTypeCtrl,
+                              label: 'Précisez le type',
+                              hint: 'Ex: Lapins, Chevaux, etc.',
+                              icon: Icons.edit_outlined,
+                              cardColor: cardColor,
+                              textColor: textColor,
+                              secondaryTextColor: secondaryTextColor,
+                            ),
+                          ],
                           
                           const SizedBox(height: 16),
                           

@@ -45,6 +45,9 @@ Server disponible à : `http://localhost:8000`
 - `POST /api/auth/register` - Créer un compte
 - `POST /api/auth/login` - Se connecter
 
+### Info
+- `GET /version` - Retourne le nom de l'application, la version, le timestamp de build (UTC) et le commit Git si fourni via `GIT_COMMIT`.
+
 ### Farms
 - `POST /api/farms/` - Créer une ferme
 - `GET /api/farms/{farm_id}` - Récupérer une ferme

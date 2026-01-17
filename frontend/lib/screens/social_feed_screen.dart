@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
+import 'package:mbaymi/utils/app_theme.dart';
 import 'package:mbaymi/screens/post_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
@@ -34,7 +35,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   static const Color _primaryColor = Color(0xFF8B6B4D);
   static const Color _accentColor = Color(0xFF6B8E23);
   static const Color _bgLight = Color(0xFFFAFAFA);
-  static const Color _bgDark = Color(0xFF121212);
+  static const Color _bgDark = AppTheme.socialDark;
 
   @override
   void initState() {

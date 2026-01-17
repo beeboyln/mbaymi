@@ -134,8 +134,12 @@ class AdviceService:
     
     def get_crop_advice(self, crop_name: str, region: Optional[str] = None) -> dict:
         """Obtenir des conseils pour une culture spécifique"""
-        crop_lower = crop_name.lower()
-        
+        # Guard against None or empty topic
+        if not crop_name:
+            crop_lower = ""
+        else:
+            crop_lower = crop_name.lower()
+
         for crop_key, advice in self.CROP_ADVICE.items():
             if crop_key in crop_lower or crop_lower in crop_key:
                 return {
@@ -144,11 +148,11 @@ class AdviceService:
                     "tips": advice["tips"],
                     "warnings": advice.get("warnings", [])
                 }
-        
+
         # Si la culture n'existe pas, retourner un conseil générique
         return {
-            "title": f"Conseils pour {crop_name}",
-            "advice": f"Nous n'avons pas de guide spécifique pour {crop_name}. Consultez un agent agricole local pour des conseils détaillés.",
+            "title": f"Conseils pour {crop_name or 'cette culture'}",
+            "advice": f"Nous n'avons pas de guide spécifique pour {crop_name or 'cette culture'}. Consultez un agent agricole local pour des conseils détaillés.",
             "tips": [
                 "Préparez bien votre sol avant la plantation",
                 "Assurez-vous une irrigation régulière",
@@ -156,13 +160,17 @@ class AdviceService:
                 "Nettoyez régulièrement vos champs",
                 "Consultez les données météorologiques locales"
             ],
-            "warnings": None
+            "warnings": []
         }
     
     def get_livestock_advice(self, animal_type: str, region: Optional[str] = None) -> dict:
         """Obtenir des conseils pour un type d'animal spécifique"""
-        animal_lower = animal_type.lower()
-        
+        # Guard against None or empty topic
+        if not animal_type:
+            animal_lower = ""
+        else:
+            animal_lower = animal_type.lower()
+
         for animal_key, advice in self.LIVESTOCK_ADVICE.items():
             if animal_key in animal_lower or animal_lower in animal_key:
                 return {
@@ -171,11 +179,11 @@ class AdviceService:
                     "tips": advice["tips"],
                     "warnings": advice.get("warnings", [])
                 }
-        
+
         # Si l'animal n'existe pas, retourner un conseil générique
         return {
-            "title": f"Conseils pour l'élevage de {animal_type}",
-            "advice": f"Nous n'avons pas de guide spécifique pour {animal_type}. Consultez un vétérinaire local pour des conseils détaillés.",
+            "title": f"Conseils pour l'élevage de {animal_type or 'cet animal'}",
+            "advice": f"Nous n'avons pas de guide spécifique pour {animal_type or 'cet animal'}. Consultez un vétérinaire local pour des conseils détaillés.",
             "tips": [
                 "Fournissez un abri adéquat et propre",
                 "Assurez un accès constant à l'eau propre",
@@ -183,5 +191,5 @@ class AdviceService:
                 "Vaccinez régulièrement",
                 "Nettoyez et entretenez les enclos"
             ],
-            "warnings": None
+            "warnings": []
         }

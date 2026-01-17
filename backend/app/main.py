@@ -5,9 +5,13 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 import os
 import traceback
+from datetime import datetime
 
 # Initialize app
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
+
+# Build timestamp captured at process start (UTC)
+BUILD_TIME = datetime.utcnow().isoformat()
 
 # CORS middleware - Production-ready config
 # ✅ Handles Vercel, Koyeb, localhost, custom domains
@@ -122,6 +126,17 @@ def read_root():
         "description": "Agricultural platform for farmers and livestock breeders",
         "status": "running",
         "docs": "http://localhost:8000/docs"
+    }
+
+
+@app.get("/version")
+def version():
+    """Return application name, version, build timestamp and optional git commit."""
+    return {
+        "name": settings.APP_NAME,
+        "version": app.version,
+        "build_time": BUILD_TIME,
+        "git_commit": os.getenv("GIT_COMMIT", None),
     }
 
 @app.get("/health")
