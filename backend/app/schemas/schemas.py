@@ -49,6 +49,9 @@ class CropCreate(BaseModel):
     expected_harvest_date: Optional[datetime] = None
     quantity_planted: Optional[float] = None
     expected_yield: Optional[float] = None
+    variety: Optional[str] = None
+    cycle_duration_days: Optional[int] = None
+    objective: str = "consumption"
     status: str = "growing"
     notes: Optional[str] = None
 
@@ -155,6 +158,8 @@ class HarvestCreate(BaseModel):
     actual_quantity: Optional[float] = None
     harvest_date: Optional[datetime] = None
     notes: Optional[str] = None
+    destination: Optional[str] = None  # sold / stored / consumed
+    sale_price: Optional[float] = None
 
 class HarvestResponse(HarvestCreate):
     id: int
@@ -233,3 +238,59 @@ class FarmPostCreate(BaseModel):
     price: Optional[float] = None  # Prix si vente
     product_name: Optional[str] = None  # Produit vendu
     unit: str = "kg"  # Unité de mesure
+
+
+# Input (Intrants) Schemas
+class InputCreate(BaseModel):
+    farm_id: int
+    crop_id: Optional[int] = None
+    input_type: Optional[str] = None
+    name: Optional[str] = None
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+    applied_date: Optional[datetime] = None
+    cost: Optional[float] = None
+    notes: Optional[str] = None
+
+class InputResponse(InputCreate):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Finance Schemas
+class FinanceTransactionCreate(BaseModel):
+    farm_id: int
+    crop_id: Optional[int] = None
+    transaction_type: str  # expense / income
+    category: Optional[str] = None
+    amount: float
+    transaction_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class FinanceTransactionResponse(FinanceTransactionCreate):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Reminder Schemas
+class ReminderCreate(BaseModel):
+    farm_id: int
+    crop_id: Optional[int] = None
+    title: str
+    description: Optional[str] = None
+    remind_at: datetime
+    repeat_rule: Optional[str] = None
+
+class ReminderResponse(ReminderCreate):
+    id: int
+    is_done: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

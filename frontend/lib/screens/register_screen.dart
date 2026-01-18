@@ -174,138 +174,148 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
-      resizeToAvoidBottomInset: !isWeb,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(title: const Text('Créer un compte')),
-      body: SingleChildScrollView(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Image.asset('assets/images/aa.png', height: 80),
-              const SizedBox(height: 32),
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: bottomInset + 24,
+          ),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                Image.asset('assets/images/aa.png', height: 80),
+                const SizedBox(height: 32),
 
-              TextFormField(
-                controller: _nameController,
-                focusNode: _nameFocus,
-                textInputAction: TextInputAction.next,
-                autocorrect: false,
-                enableSuggestions: false,
-                decoration: _input('Nom complet', isDark),
-                validator: (v) => v == null || v.isEmpty ? 'Nom requis' : null,
-              ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _emailController,
-                focusNode: _emailFocus,
-                autocorrect: false,
-                enableSuggestions: false,
-                decoration: _input('Email', isDark),
-                validator: email_validator.Validators.email,
-              ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _phoneController,
-                focusNode: _phoneFocus,
-                autocorrect: false,
-                enableSuggestions: false,
-                keyboardType: TextInputType.phone,
-                decoration: _input('Téléphone', isDark),
-                validator: validators.Validators.phone,
-              ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _passwordController,
-                focusNode: _passwordFocus,
-                autocorrect: false,
-                enableSuggestions: false,
-                obscureText: true,
-                decoration: _input('Mot de passe', isDark),
-                validator: validators.Validators.password,
-              ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _confirmPasswordController,
-                focusNode: _confirmPasswordFocus,
-                autocorrect: false,
-                enableSuggestions: false,
-                obscureText: true,
-                decoration: _input('Confirmer mot de passe', isDark),
-                validator: (v) =>
-                    v != _passwordController.text
-                        ? 'Les mots de passe ne correspondent pas'
-                        : null,
-              ),
-
-              const SizedBox(height: 16),
-
-              DropdownButtonFormField<String>(
-                value: _selectedRole,
-                decoration: _input('Rôle', isDark),
-                items: const [
-                  DropdownMenuItem(value: 'farmer', child: Text('Agriculteur')),
-                  DropdownMenuItem(value: 'livestock_breeder', child: Text('Éleveur')),
-                  DropdownMenuItem(value: 'veterinarian', child: Text('Vétérinaire')),
-                  DropdownMenuItem(value: 'expert', child: Text('Expert Agricole')),
-                  DropdownMenuItem(value: 'buyer', child: Text('Acheteur')),
-                  DropdownMenuItem(value: 'seller', child: Text('Vendeur')),
-                ],
-                onChanged: (v) => setState(() => _selectedRole = v!),
-              ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _regionController,
-                focusNode: _regionFocus,
-                decoration: _input('Région', isDark),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Région requise' : null,
-              ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _villageController,
-                focusNode: _villageFocus,
-                decoration: _input('Village (optionnel)', isDark),
-              ),
-
-              const SizedBox(height: 32),
-
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _register,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.brown,
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'CRÉER UN COMPTE',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                TextFormField(
+                  controller: _nameController,
+                  focusNode: _nameFocus,
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  decoration: _input('Nom complet', isDark),
+                  validator: (v) => v == null || v.isEmpty ? 'Nom requis' : null,
                 ),
-              ),
 
-              if (isWeb) const SizedBox(height: 40),
-            ],
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _emailController,
+                  focusNode: _emailFocus,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  decoration: _input('Email', isDark),
+                  validator: email_validator.Validators.email,
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _phoneController,
+                  focusNode: _phoneFocus,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.phone,
+                  decoration: _input('Téléphone', isDark),
+                  validator: validators.Validators.phone,
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _passwordController,
+                  focusNode: _passwordFocus,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  obscureText: true,
+                  decoration: _input('Mot de passe', isDark),
+                  validator: validators.Validators.password,
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  focusNode: _confirmPasswordFocus,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  obscureText: true,
+                  decoration: _input('Confirmer mot de passe', isDark),
+                  validator: (v) =>
+                      v != _passwordController.text
+                          ? 'Les mots de passe ne correspondent pas'
+                          : null,
+                ),
+
+                const SizedBox(height: 16),
+
+                DropdownButtonFormField<String>(
+                  value: _selectedRole,
+                  decoration: _input('Rôle', isDark),
+                  items: const [
+                    DropdownMenuItem(value: 'farmer', child: Text('Agriculteur')),
+                    DropdownMenuItem(value: 'livestock_breeder', child: Text('Éleveur')),
+                    DropdownMenuItem(value: 'veterinarian', child: Text('Vétérinaire')),
+                    DropdownMenuItem(value: 'expert', child: Text('Expert Agricole')),
+                    DropdownMenuItem(value: 'buyer', child: Text('Acheteur')),
+                    DropdownMenuItem(value: 'seller', child: Text('Vendeur')),
+                  ],
+                  onChanged: (v) => setState(() => _selectedRole = v!),
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _regionController,
+                  focusNode: _regionFocus,
+                  decoration: _input('Région', isDark),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Région requise' : null,
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _villageController,
+                  focusNode: _villageFocus,
+                  decoration: _input('Village (optionnel)', isDark),
+                ),
+
+                const SizedBox(height: 32),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _register,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.brown,
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'CRÉER UN COMPTE',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+
+                if (isWeb) const SizedBox(height: 40),
+              ],
+            ),
           ),
         ),
       ),

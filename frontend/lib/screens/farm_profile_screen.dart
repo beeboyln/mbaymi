@@ -38,7 +38,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : Colors.white,
         elevation: 0,
@@ -71,6 +71,10 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
         ],
       ),
       body: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: FutureBuilder<Map<String, dynamic>>(
           future: _profileFuture,
           builder: (context, snapshot) {

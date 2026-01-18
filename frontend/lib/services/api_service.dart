@@ -505,6 +505,406 @@ class ApiService {
     }
   }
 
+  // ------------------------- Crops API -------------------------
+  static Future<Map<String, dynamic>> createCrop({
+    required int farmId,
+    required String cropName,
+    DateTime? plantedDate,
+    DateTime? expectedHarvestDate,
+    double? quantityPlanted,
+    double? expectedYield,
+    String? variety,
+    int? cycleDurationDays,
+    String? objective,
+    String? status,
+    String? notes,
+    String? imageUrl,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final body = jsonEncode({
+        'crop_name': cropName,
+        'planted_date': plantedDate?.toIso8601String(),
+        'expected_harvest_date': expectedHarvestDate?.toIso8601String(),
+        'quantity_planted': quantityPlanted,
+        'expected_yield': expectedYield,
+        'variety': variety,
+        'cycle_duration_days': cycleDurationDays,
+        'objective': objective,
+        'status': status,
+        'notes': notes,
+        'image_url': imageUrl,
+      });
+
+      var response = await _withRetry(() async {
+        return await http.post(
+          Uri.parse('$baseUrl/crops/?farm_id=$farmId'),
+          headers: headers,
+          body: body,
+        );
+      });
+
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.post(
+            Uri.parse('$baseUrl/crops/?farm_id=$farmId'),
+            headers: newHeaders,
+            body: body,
+          );
+        });
+      }
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Failed to create crop: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error creating crop: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCrop(int cropId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/crops/$cropId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/crops/$cropId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to fetch crop');
+    } catch (e) {
+      throw Exception('Error fetching crop: $e');
+    }
+  }
+
+  static Future<List<dynamic>> listCropsForFarm(int farmId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/crops/farm/$farmId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/crops/farm/$farmId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List;
+      }
+      throw Exception('Failed to list crops');
+    } catch (e) {
+      throw Exception('Error listing crops: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateCrop(int cropId, Map<String, dynamic> updates) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.patch(Uri.parse('$baseUrl/crops/$cropId'), headers: headers, body: jsonEncode(updates));
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.patch(Uri.parse('$baseUrl/crops/$cropId'), headers: newHeaders, body: jsonEncode(updates));
+        });
+      }
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      throw Exception('Failed to update crop');
+    } catch (e) {
+      throw Exception('Error updating crop: $e');
+    }
+  }
+
+  static Future<bool> deleteCrop(int cropId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.delete(Uri.parse('$baseUrl/crops/$cropId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.delete(Uri.parse('$baseUrl/crops/$cropId'), headers: newHeaders);
+        });
+      }
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Error deleting crop: $e');
+    }
+  }
+
+  // ------------------------- Inputs API -------------------------
+  static Future<Map<String, dynamic>> createInput(Map<String, dynamic> payload) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.post(Uri.parse('$baseUrl/inputs/'), headers: headers, body: jsonEncode(payload));
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.post(Uri.parse('$baseUrl/inputs/'), headers: newHeaders, body: jsonEncode(payload));
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to create input: ${response.body}');
+    } catch (e) {
+      throw Exception('Error creating input: $e');
+    }
+  }
+
+  static Future<List<dynamic>> listInputsForFarm(int farmId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/inputs/farm/$farmId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/inputs/farm/$farmId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as List;
+      throw Exception('Failed to list inputs');
+    } catch (e) {
+      throw Exception('Error listing inputs: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getInput(int inputId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/inputs/$inputId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/inputs/$inputId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to get input');
+    } catch (e) {
+      throw Exception('Error getting input: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateInput(int inputId, Map<String, dynamic> updates) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.patch(Uri.parse('$baseUrl/inputs/$inputId'), headers: headers, body: jsonEncode(updates));
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.patch(Uri.parse('$baseUrl/inputs/$inputId'), headers: newHeaders, body: jsonEncode(updates));
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to update input');
+    } catch (e) {
+      throw Exception('Error updating input: $e');
+    }
+  }
+
+  static Future<bool> deleteInput(int inputId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.delete(Uri.parse('$baseUrl/inputs/$inputId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.delete(Uri.parse('$baseUrl/inputs/$inputId'), headers: newHeaders);
+        });
+      }
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Error deleting input: $e');
+    }
+  }
+
+  // ------------------------- Finance API -------------------------
+  static Future<Map<String, dynamic>> createTransaction(Map<String, dynamic> payload) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.post(Uri.parse('$baseUrl/finance/transactions/'), headers: headers, body: jsonEncode(payload));
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.post(Uri.parse('$baseUrl/finance/transactions/'), headers: newHeaders, body: jsonEncode(payload));
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to create transaction: ${response.body}');
+    } catch (e) {
+      throw Exception('Error creating transaction: $e');
+    }
+  }
+
+  static Future<List<dynamic>> listTransactionsForFarm(int farmId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/finance/transactions/farm/$farmId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/finance/transactions/farm/$farmId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as List;
+      throw Exception('Failed to list transactions');
+    } catch (e) {
+      throw Exception('Error listing transactions: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getTransaction(int transactionId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/finance/transactions/$transactionId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/finance/transactions/$transactionId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to get transaction');
+    } catch (e) {
+      throw Exception('Error getting transaction: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateTransaction(int transactionId, Map<String, dynamic> updates) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.patch(Uri.parse('$baseUrl/finance/transactions/$transactionId'), headers: headers, body: jsonEncode(updates));
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.patch(Uri.parse('$baseUrl/finance/transactions/$transactionId'), headers: newHeaders, body: jsonEncode(updates));
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to update transaction');
+    } catch (e) {
+      throw Exception('Error updating transaction: $e');
+    }
+  }
+
+  static Future<bool> deleteTransaction(int transactionId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.delete(Uri.parse('$baseUrl/finance/transactions/$transactionId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.delete(Uri.parse('$baseUrl/finance/transactions/$transactionId'), headers: newHeaders);
+        });
+      }
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Error deleting transaction: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getFinanceSummary(int farmId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/finance/summary/$farmId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/finance/summary/$farmId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to get finance summary');
+    } catch (e) {
+      throw Exception('Error getting finance summary: $e');
+    }
+  }
+
+  // ------------------------- Reminders API -------------------------
+  static Future<Map<String, dynamic>> createReminder(Map<String, dynamic> payload) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.post(Uri.parse('$baseUrl/reminders/'), headers: headers, body: jsonEncode(payload));
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.post(Uri.parse('$baseUrl/reminders/'), headers: newHeaders, body: jsonEncode(payload));
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to create reminder: ${response.body}');
+    } catch (e) {
+      throw Exception('Error creating reminder: $e');
+    }
+  }
+
+  static Future<List<dynamic>> listRemindersForFarm(int farmId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/reminders/farm/$farmId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/reminders/farm/$farmId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as List;
+      throw Exception('Failed to list reminders');
+    } catch (e) {
+      throw Exception('Error listing reminders: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getReminder(int reminderId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/reminders/$reminderId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/reminders/$reminderId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to get reminder');
+    } catch (e) {
+      throw Exception('Error getting reminder: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateReminder(int reminderId, Map<String, dynamic> updates) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.patch(Uri.parse('$baseUrl/reminders/$reminderId'), headers: headers, body: jsonEncode(updates));
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.patch(Uri.parse('$baseUrl/reminders/$reminderId'), headers: newHeaders, body: jsonEncode(updates));
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to update reminder');
+    } catch (e) {
+      throw Exception('Error updating reminder: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> markReminderDone(int reminderId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.post(Uri.parse('$baseUrl/reminders/$reminderId/done/'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.post(Uri.parse('$baseUrl/reminders/$reminderId/done/'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to mark reminder done');
+    } catch (e) {
+      throw Exception('Error marking reminder done: $e');
+    }
+  }
+
+  static Future<bool> deleteReminder(int reminderId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.delete(Uri.parse('$baseUrl/reminders/$reminderId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.delete(Uri.parse('$baseUrl/reminders/$reminderId'), headers: newHeaders);
+        });
+      }
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Error deleting reminder: $e');
+    }
+  }
+
   // Activities
   static Future<Map<String, dynamic>> createActivity({
     required int farmId,

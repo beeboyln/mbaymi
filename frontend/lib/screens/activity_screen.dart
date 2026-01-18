@@ -240,8 +240,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea( // ✅ Wrap tout le body avec SafeArea
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // Header minimaliste
@@ -291,7 +292,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
               ),
             ),
 
-            // Contenu principal - Scrollable avec padding normal
+            // Contenu principal - Scrollable avec padding dynamique
             Expanded(
               child: SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
@@ -299,7 +300,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   left: 20,
                   right: 20,
                   top: 20,
-                              bottom: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
                 ),
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 child: Column(

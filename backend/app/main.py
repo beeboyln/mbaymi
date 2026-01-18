@@ -6,6 +6,8 @@ from app.config import settings
 import os
 import traceback
 from datetime import datetime
+import asyncio
+import threading
 
 # Initialize app
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
@@ -71,6 +73,8 @@ def include_routes():
     
     # 🌾 Agricultural features
     from app.routes import crop_problems, farm_network, user_profile, social, farm_posts, market_prices, notifications, veterinarian, authorization, service_request
+    # New agriculture API routes
+    from app.routes import api_crops, api_inputs, api_finance, api_reminders
     app.include_router(crop_problems.router)
     app.include_router(farm_network.router)
     # Also expose farm_network routes under legacy `/api` prefix to support older frontends
@@ -88,10 +92,20 @@ def include_routes():
     app.include_router(veterinarian.router)  # 👨‍⚕️ Veterinarian profiles and management
     app.include_router(authorization.router)  # 🔐 Farm data access authorization
     app.include_router(service_request.router)  # 🆘 Service requests and consultations
+    # Agricultural management APIs (auth required)
+    app.include_router(api_crops.router)
+    app.include_router(api_inputs.router)
+    app.include_router(api_finance.router)
+    app.include_router(api_reminders.router)
     
     print("🔴 DEBUG: farm_posts.router routes:")
     for route in app.routes:
         if "farm-posts" in str(route.path):
+            print(f"  {route.methods} {route.path}")
+    
+    print("🟡 DEBUG: api_inputs.router routes:")
+    for route in app.routes:
+        if "input" in str(route.path).lower():
             print(f"  {route.methods} {route.path}")
 
 # ✅ Health check endpoint (wakes up Render free tier)
@@ -112,6 +126,22 @@ def startup():
         print("🗄️ Database initialized")
     except Exception as e:
         print(f"⚠️ Database init failed: {e}")
+    
+    # Start background task to check reminders every 5 minutes
+    def check_reminders_periodically():
+        import time
+        from app.workers.reminder_worker import check_due_reminders
+        while True:
+            try:
+                check_due_reminders()
+            except Exception as e:
+                print(f"⚠️ Reminder worker error: {e}")
+            time.sleep(300)  # Check every 5 minutes
+    
+    reminder_thread = threading.Thread(target=check_reminders_periodically, daemon=True)
+    reminder_thread.start()
+    print("🔔 Reminder worker started (checks every 5 minutes)")
+
 
 @app.options("/{full_path:path}")
 def options_handler():

@@ -226,7 +226,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           children: [

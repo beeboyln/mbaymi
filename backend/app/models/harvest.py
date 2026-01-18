@@ -12,4 +12,6 @@ class Harvest(Base):
     actual_quantity = Column(Float)
     harvest_date = Column(DateTime, default=datetime.utcnow)
     notes = Column(String(1000))
+    destination = Column(String(50), nullable=True)  # sold / stored / consumed
+    sale_price = Column(Float, nullable=True)  # prix unitaire ou total selon usage
     created_at = Column(DateTime, default=datetime.utcnow)

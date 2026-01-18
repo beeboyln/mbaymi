@@ -218,21 +218,22 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea( // ✅ Ajout de SafeArea
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // Header minimaliste
             _buildHeader(cardColor, textColor, secondaryTextColor, borderColor),
             
-            // Formulaire - Scrollable avec padding normal
+            // Formulaire - Scrollable avec padding dynamique
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.only(
                   left: _defaultPadding,
                   right: _defaultPadding,
                   top: _defaultPadding,
-                  bottom: _defaultPadding,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + _defaultPadding,
                 ),
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 child: GestureDetector(

@@ -28,6 +28,9 @@ class Crop(Base):
     expected_harvest_date = Column(DateTime)
     quantity_planted = Column(Float)  # en kg
     expected_yield = Column(Float)  # rendement attendu
+    variety = Column(String(100), nullable=True)
+    cycle_duration_days = Column(Integer, nullable=True)  # Durée estimée du cycle en jours
+    objective = Column(String(50), default="consumption")  # consumption / sale
     status = Column(String(50), default="growing")  # growing, harvested, failed
     notes = Column(String(500))
     image_url = Column(String(500))  # Photo de profil de la parcelle

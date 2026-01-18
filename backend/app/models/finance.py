@@ -1,0 +1,16 @@
+from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String
+from app.models.base import Base
+from datetime import datetime
+
+class FinanceTransaction(Base):
+    __tablename__ = "finance_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    farm_id = Column(Integer, ForeignKey("farms.id"), nullable=False)
+    crop_id = Column(Integer, ForeignKey("crops.id"), nullable=True)
+    transaction_type = Column(String(20))  # expense / income
+    category = Column(String(100))  # seeds, labor, sale, other
+    amount = Column(Float, nullable=False)
+    transaction_date = Column(DateTime, default=datetime.utcnow)
+    notes = Column(String(1000), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -21,6 +21,7 @@ dependencies:
   webfeed: ^0.7.0
   url_launcher: ^6.2.0
   cached_network_image: ^3.3.0
+  flutter_local_notifications: ^8.2.0
 
 dev_dependencies:
   flutter_test:

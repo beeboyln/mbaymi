@@ -5,6 +5,9 @@ import 'package:mbaymi/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/screens/activity_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
+import 'package:mbaymi/screens/parcel_inputs_screen.dart';
+import 'package:mbaymi/screens/parcel_finance_screen.dart';
+import 'package:mbaymi/screens/parcel_reminders_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 
 class ParcelScreen extends StatefulWidget {
@@ -711,8 +714,11 @@ class _ParcelScreenState extends State<ParcelScreen> {
                   ),
                 ),
               ),
-              child: Row(
-                children: [
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                   _buildActionButton(
                     label: 'Activités',
                     icon: Icons.timeline,
@@ -753,9 +759,60 @@ class _ParcelScreenState extends State<ParcelScreen> {
                       ).then((_) => _refresh());
                     },
                   ),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: isDark ? Colors.white12 : Colors.black12,
+                  ),
+                  _buildActionButton(
+                    label: 'Intrants',
+                    icon: Icons.shopping_bag_outlined,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ParcelInputsScreen(farmId: widget.farmId, cropId: _toInt(parcel['id']) ?? 0),
+                        ),
+                      ).then((_) => _refresh());
+                    },
+                  ),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: isDark ? Colors.white12 : Colors.black12,
+                  ),
+                  _buildActionButton(
+                    label: 'Finances',
+                    icon: Icons.account_balance_wallet_outlined,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ParcelFinanceScreen(farmId: widget.farmId),
+                        ),
+                      ).then((_) => _refresh());
+                    },
+                  ),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: isDark ? Colors.white12 : Colors.black12,
+                  ),
+                  _buildActionButton(
+                    label: 'Rappels',
+                    icon: Icons.calendar_month_outlined,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ParcelRemindersScreen(farmId: widget.farmId, cropId: _toInt(parcel['id']) ?? 0),
+                        ),
+                      ).then((_) => _refresh());
+                    },
+                  ),
                 ],
               ),
-            ),
+            )),
         ],
       ),
     );
@@ -767,28 +824,30 @@ class _ParcelScreenState extends State<ParcelScreen> {
     required VoidCallback onTap,
     Color? color,
   }) {
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 16, color: color ?? _primaryColor),
-                const SizedBox(width: 6),
-                Text(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: color ?? _primaryColor),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
                   label,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: color ?? _primaryColor,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

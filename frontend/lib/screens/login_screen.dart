@@ -29,12 +29,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool get isWeb => kIsWeb;
 
-  // import the visual viewport listener via conditional imports
-  // The actual function is a no-op on non-web platforms.
-  // ignore: uri_does_not_exist
-  // The conditional import is handled at build time by the analyzer; we use a simple runtime alias below.
-  // We'll import via a relative path and rely on Dart's conditional imports in pubspec if needed.
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -75,24 +69,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     });
 
-    // If running on web, listen to visualViewport messages from index.html and ensure focused field is visible
     if (isWeb) {
-      // placeholder for optional web-only listener library; no-op on failure
-      final dynamic vvlib = null;
-
-      // Simple approach: use `dart:html` only when compiled to web using a string eval fallback.
-      // Instead of complex conditional imports here, call the JS-posted message handler via `window.onMessage` from a small helper file.
-      // Import the helper via package import.
       try {
-        // this import is a normal import resolved at compile time; the file uses conditional imports in lib/src
-      } catch (_) {}
-
-      // call the listener from our small helper (it will be a no-op on non-web builds)
-      try {
-        // Platform-specific function is defined in lib/src/visual_viewport_listener_web.dart or stub.
-        // ignore: undefined_function
         addVisualViewportListener((height, offsetTop) {
-          // If a field is focused, ensure it's visible
           if (_emailFocus.hasFocus) {
             final ctx = _emailKey.currentContext;
             if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 250), alignment: 0.3);
@@ -107,15 +86,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _scrollTo(double offset) {
-    if (!_scrollController.hasClients) return;
-    _scrollController.animateTo(
-      offset,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-    );
-  }
-
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -128,6 +98,8 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(
           content: Text(emailError ?? passwordError ?? 'Champs invalides'),
           backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
@@ -152,7 +124,12 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -164,17 +141,24 @@ class _LoginScreenState extends State<LoginScreen> {
     Color border,
     Color hint, {
     Widget? suffix,
+    IconData? prefixIcon,
   }) {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: hint),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: hint) : null,
+      filled: true,
+      fillColor: Colors.grey[50],
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: Colors.brown.shade700, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -182,169 +166,313 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildLoginForm(double maxWidth) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
     final hintColor = Colors.grey;
-    final borderColor = Colors.grey.shade400;
-    final buttonColor = Colors.brown;
+    final borderColor = Colors.grey.shade300;
+
+    // Responsive sizing
+    final isLargeScreen = maxWidth > 600;
+    final formWidth = isLargeScreen ? 480.0 : maxWidth;
+    final logoSize = isLargeScreen ? 120.0 : 90.0;
+    final fontSize = isLargeScreen ? 18.0 : 16.0;
+
+    return Container(
+      width: formWidth,
+      padding: EdgeInsets.all(isLargeScreen ? 48 : 24),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: isLargeScreen ? [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ] : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Image.asset('assets/images/aa.png', height: logoSize),
+          ),
+          SizedBox(height: isLargeScreen ? 48 : 32),
+          Text(
+            'Bienvenue',
+            style: TextStyle(
+              fontSize: isLargeScreen ? 32 : 28,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Connectez-vous pour continuer',
+            style: TextStyle(
+              fontSize: isLargeScreen ? 16 : 14,
+              color: hintColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: isLargeScreen ? 40 : 32),
+          Container(
+            key: _emailKey,
+            child: TextField(
+              controller: _emailController,
+              focusNode: _emailFocus,
+              autocorrect: false,
+              enableSuggestions: false,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              onTap: () {
+                if (isWeb) {
+                  final ctx = _emailKey.currentContext;
+                  if (ctx != null) {
+                    Scrollable.ensureVisible(
+                      ctx,
+                      duration: const Duration(milliseconds: 250),
+                      alignment: 0.3,
+                    );
+                  }
+                }
+              },
+              onSubmitted: (_) =>
+                  FocusScope.of(context).requestFocus(_passwordFocus),
+              style: TextStyle(color: textColor, fontSize: fontSize),
+              decoration: _decoration(
+                'Email',
+                borderColor,
+                hintColor,
+                prefixIcon: Icons.email_outlined,
+              ),
+            ),
+          ),
+          SizedBox(height: isLargeScreen ? 24 : 20),
+          Container(
+            key: _passwordKey,
+            child: TextField(
+              controller: _passwordController,
+              focusNode: _passwordFocus,
+              autocorrect: false,
+              enableSuggestions: false,
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.done,
+              onTap: () {
+                if (isWeb) {
+                  final ctx = _passwordKey.currentContext;
+                  if (ctx != null) {
+                    Scrollable.ensureVisible(
+                      ctx,
+                      duration: const Duration(milliseconds: 250),
+                      alignment: 0.3,
+                    );
+                  }
+                }
+              },
+              onSubmitted: (_) => _handleLogin(),
+              style: TextStyle(color: textColor, fontSize: fontSize),
+              decoration: _decoration(
+                'Mot de passe',
+                borderColor,
+                hintColor,
+                prefixIcon: Icons.lock_outline,
+                suffix: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: hintColor,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: isLargeScreen ? 32 : 24),
+          SizedBox(
+            height: isLargeScreen ? 56 : 52,
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _handleLogin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.brown.shade700,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : Text(
+                      'SE CONNECTER',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: isLargeScreen ? 16 : 15,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+            ),
+          ),
+          SizedBox(height: isLargeScreen ? 32 : 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "Pas encore de compte ? ",
+                style: TextStyle(
+                  fontSize: isLargeScreen ? 15 : 14,
+                  color: hintColor,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pushNamed('/register'),
+                child: Text(
+                  "S'inscrire",
+                  style: TextStyle(
+                    color: Colors.brown.shade700,
+                    fontWeight: FontWeight.bold,
+                    fontSize: isLargeScreen ? 15 : 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : Colors.grey[50];
 
     return Scaffold(
       backgroundColor: bgColor,
       resizeToAvoidBottomInset: true,
-
-      appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text('Connexion'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-
+      appBar: MediaQuery.of(context).size.width <= 600
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-          // Ensure we account for keyboard / system insets on devices
-          final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            final isLargeScreen = constraints.maxWidth > 600;
 
-          return SingleChildScrollView(
-            controller: _scrollController,
-            physics: const ClampingScrollPhysics(),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: AnimatedPadding(
-                padding: EdgeInsets.fromLTRB(24, 32, 24, 32 + (bottomInset > 8 ? bottomInset : 0)),
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Image.asset('assets/images/aa.png', height: 90),
-                    const SizedBox(height: 40),
-
-                    Container(
-                      key: _emailKey,
-                      child: TextField(
-                        controller: _emailController,
-                        focusNode: _emailFocus,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        onTap: () {
-                          if (isWeb) {
-                            final ctx = _emailKey.currentContext;
-                            if (ctx != null) {
-                              Scrollable.ensureVisible(
-                                ctx,
-                                duration: const Duration(milliseconds: 250),
-                                alignment: 0.3,
-                              );
-                            }
-                          }
-                        },
-                        onSubmitted: (_) =>
-                            FocusScope.of(context).requestFocus(_passwordFocus),
-                        style: TextStyle(color: textColor, fontSize: 16),
-                        decoration: _decoration('Email', borderColor, hintColor),
-                      ),
+            if (isLargeScreen) {
+              // Layout pour grand écran - Centré avec design épuré
+              return Center(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const ClampingScrollPhysics(),
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: AnimatedPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      32,
+                      32,
+                      32,
+                      32 + (bottomInset > 8 ? bottomInset : 0),
                     ),
-
-                    const SizedBox(height: 24),
-
-                    Container(
-                      key: _passwordKey,
-                      child: TextField(
-                        controller: _passwordController,
-                        focusNode: _passwordFocus,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        obscureText: _obscurePassword,
-                        textInputAction: TextInputAction.done,
-                        onTap: () {
-                          if (isWeb) {
-                            final ctx = _passwordKey.currentContext;
-                            if (ctx != null) {
-                              Scrollable.ensureVisible(
-                                ctx,
-                                duration: const Duration(milliseconds: 250),
-                                alignment: 0.3,
-                              );
-                            }
-                          }
-                        },
-                        onSubmitted: (_) => _handleLogin(),
-                        style: TextStyle(color: textColor, fontSize: 16),
-                        decoration: _decoration(
-                          'Mot de passe',
-                          borderColor,
-                          hintColor,
-                          suffix: IconButton(
-                            icon: Icon(
-                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            ),
-                            onPressed: () =>
-                                setState(() => _obscurePassword = !_obscurePassword),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    SizedBox(
-                      height: 52,
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: buttonColor,
-                        ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'SE CONNECTER',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    Row(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Text("Pas encore de compte ? "),
-                        GestureDetector(
-                          onTap: () =>
-                              Navigator.of(context).pushNamed('/register'),
-                          child: Text(
-                            "S'inscrire",
-                            style: TextStyle(
-                              color: Colors.brown.shade700,
-                              fontWeight: FontWeight.bold,
+                        if (constraints.maxWidth > 900) ...[
+                          // Section décorative pour très grands écrans
+                          Expanded(
+                            child: Container(
+                              constraints: const BoxConstraints(maxWidth: 500),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.brown.shade700,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: const Icon(
+                                      Icons.agriculture,
+                                      size: 48,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 32),
+                                  Text(
+                                    'Gérez votre ferme\navec simplicité',
+                                    style: TextStyle(
+                                      fontSize: 42,
+                                      fontWeight: FontWeight.bold,
+                                      height: 1.2,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Suivez vos cultures, gérez vos finances et optimisez vos rendements avec notre plateforme complète.',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey[600],
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 80),
+                        ],
+                        _buildLoginForm(constraints.maxWidth),
                       ],
                     ),
-
-                    if (isWeb) const SizedBox(height: 40),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          );
-        },
+              );
+            } else {
+              // Layout pour mobile - Disposition verticale classique
+              return SingleChildScrollView(
+                controller: _scrollController,
+                physics: const ClampingScrollPhysics(),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: AnimatedPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      0,
+                      16,
+                      0,
+                      16 + (bottomInset > 8 ? bottomInset : 0),
+                    ),
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildLoginForm(constraints.maxWidth),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+          },
+        ),
       ),
-    ));
+    );
   }
 }

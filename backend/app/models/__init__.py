@@ -4,6 +4,9 @@ from .farm import Farm, Crop
 from .livestock import Livestock
 from .market import MarketPrice
 from .crop_problem import CropProblem
+from .input import Input
+from .finance import FinanceTransaction
+from .reminder import Reminder
 from .farm_network import FarmProfile, FarmPost, FarmFollowing
 from .user_following import UserFollowing
 from .veterinarian import VeterinarianProfile, VerificationStatus, AvailabilityStatus
@@ -18,6 +21,9 @@ __all__ = [
     "Livestock", 
     "MarketPrice", 
     "CropProblem", 
+    "Input",
+    "FinanceTransaction",
+    "Reminder",
     "FarmProfile", 
     "FarmPost", 
     "FarmFollowing", 
