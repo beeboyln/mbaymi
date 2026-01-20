@@ -5,6 +5,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_theme.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/models/market_model.dart';
 import 'package:mbaymi/screens/create_sale_screen.dart';
 import 'package:mbaymi/screens/sale_detail_screen.dart';
@@ -133,7 +134,7 @@ class _MarketTabState extends State<MarketTab> {
     final isDarkMode = themeProvider.isDarkMode;
     
     return Scaffold(
-      backgroundColor: isDarkMode ? AppTheme.socialDark : const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? AppTheme.socialDark : AppColors.lightBg,
       body: RefreshIndicator(
         onRefresh: _refreshData,
         color: const Color(0xFF7BA428),
@@ -146,7 +147,7 @@ class _MarketTabState extends State<MarketTab> {
               automaticallyImplyLeading: false,
               expandedHeight: 140,
               collapsedHeight: 100,
-              backgroundColor: isDarkMode ? AppTheme.socialDark : const Color(0xFFFAFAFA),
+              backgroundColor: isDarkMode ? AppTheme.socialDark : AppColors.lightBg,
               surfaceTintColor: Colors.transparent,
               flexibleSpace: FlexibleSpaceBar(
                 collapseMode: CollapseMode.pin,
@@ -205,7 +206,7 @@ class _MarketTabState extends State<MarketTab> {
                 child: Container(
                   height: 48,
                   decoration: BoxDecoration(
-                    color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+                    color: isDarkMode ? const Color(0xFF1A1A1A) : AppColors.lightBg,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
@@ -491,7 +492,7 @@ class _MarketTabState extends State<MarketTab> {
                           return Container(
                             height: 100,
                             decoration: BoxDecoration(
-                              color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+                              color: isDarkMode ? const Color(0xFF1A1A1A) : AppColors.lightBg,
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Center(
@@ -722,7 +723,7 @@ class _MarketTabState extends State<MarketTab> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+        color: isDarkMode ? const Color(0xFF1A1A1A) : AppColors.lightBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -829,7 +830,7 @@ class _MarketTabState extends State<MarketTab> {
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF111111) : Colors.white,
+          color: isDarkMode ? const Color(0xFF111111) : AppColors.lightBg,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -992,7 +993,7 @@ class _MarketTabState extends State<MarketTab> {
           Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: isDarkMode ? const Color(0xFF111111) : Colors.white,
+              color: isDarkMode ? const Color(0xFF111111) : AppColors.lightBg,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -1187,7 +1188,7 @@ class _MarketTabState extends State<MarketTab> {
       builder: (context) {
         final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
         return Dialog(
-          backgroundColor: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+          backgroundColor: isDarkMode ? const Color(0xFF1A1A1A) : AppColors.lightBg,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),

@@ -9,6 +9,7 @@ import 'package:mbaymi/screens/parcel_inputs_screen.dart';
 import 'package:mbaymi/screens/parcel_finance_screen.dart';
 import 'package:mbaymi/screens/parcel_reminders_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class ParcelScreen extends StatefulWidget {
   final int farmId;
@@ -32,9 +33,9 @@ class _ParcelScreenState extends State<ParcelScreen> {
   int _selectedSection = 0; // 0: Parcelles, 1: Posts
 
   static const Color _primaryColor = Color(0xFF6B8E23);
-  static const Color _bgLight = Color(0xFFF8F9FA);
+  static const Color _bgLight = AppColors.lightBg;
   static const Color _bgDark = Color(0xFF0A0A0A);
-  static const Color _cardLight = Color(0xFFFFFFFF);
+  static const Color _cardLight = AppColors.lightBg;
   static const Color _cardDark = Color(0xFF1A1A1A);
 
   @override

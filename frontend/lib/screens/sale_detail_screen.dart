@@ -4,6 +4,7 @@ import 'package:mbaymi/services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class SaleDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? sale;
@@ -117,7 +118,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
               SliverAppBar(
                 expandedHeight: 300,
                 pinned: true,
-                backgroundColor: isDark ? Colors.black : Colors.white,
+                backgroundColor: isDark ? Colors.black : AppColors.lightBg,
                 foregroundColor: Colors.white,
                 iconTheme: const IconThemeData(color: Colors.white),
                 leading: Padding(
@@ -181,7 +182,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
               SliverToBoxAdapter(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.grey[900] : Colors.white,
+                    color: isDark ? Colors.grey[900] : AppColors.lightBg,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(24),
                       topRight: Radius.circular(24),
@@ -238,7 +239,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: isDark ? Colors.grey[800] : Colors.white,
+                                  color: isDark ? Colors.grey[800] : AppColors.lightBg,
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class ProfileDetailScreen extends StatefulWidget {
   final int userId;
@@ -36,7 +37,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
   static const Color _accentColor = Color(0xFFC4A484);
   static const Color _bgLight = Color(0xFFFAF8F5);
   static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = Colors.white;
+  static const Color _cardLight = AppColors.lightBg;
   static const Color _cardDark = Color(0xFF1E1E1E);
   static const Color _borderLight = Color(0xFFE8E2D8);
   static const Color _borderDark = Color(0xFF2C2C2C);

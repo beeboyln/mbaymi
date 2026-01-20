@@ -6,6 +6,7 @@ import 'package:mbaymi/services/token_storage.dart';
 // 🔹 ALIAS POUR ÉVITER LE CONFLIT
 import 'package:mbaymi/utils/email_validator.dart' as email_validator;
 import 'package:mbaymi/utils/validators.dart' as validators;
+import 'package:mbaymi/utils/app_colors.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -175,10 +176,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bgColor = AppColors.getBgColor(isDark);
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppBar(title: const Text('Créer un compte')),
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        title: const Text('Créer un compte'),
+        backgroundColor: bgColor,
+      ),
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(

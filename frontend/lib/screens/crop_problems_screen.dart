@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -36,10 +37,10 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+      backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : AppColors.lightBg,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : Colors.white,
+        backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : AppColors.lightBg,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
@@ -126,7 +127,7 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showReportProblemDialog,
-        backgroundColor: widget.isDarkMode ? const Color(0xFF2C2C2E) : Colors.white,
+        backgroundColor: widget.isDarkMode ? const Color(0xFF2C2C2E) : AppColors.lightBg,
         foregroundColor: const Color(0xFF6B8E23),
         elevation: 1,
         shape: const CircleBorder(),
@@ -147,7 +148,7 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: widget.isDarkMode ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04),
@@ -328,7 +329,7 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
   void _showReportProblemDialog() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: widget.isDarkMode ? const Color(0xFF1C1C1E) : Colors.white,
+      backgroundColor: widget.isDarkMode ? const Color(0xFF1C1C1E) : AppColors.lightBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -578,7 +579,7 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
                               setState(() => _selectedSeverity = severity);
                             }
                           },
-                          backgroundColor: widget.isDarkMode ? const Color(0xFF2C2C2E) : Colors.white,
+                          backgroundColor: widget.isDarkMode ? const Color(0xFF2C2C2E) : AppColors.lightBg,
                           selectedColor: const Color(0xFF6B8E23),
                         ),
                       ),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:mbaymi/widgets/empty_state.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_theme.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/widgets/random_tip_widget.dart';
@@ -248,7 +249,7 @@ class _FarmTabState extends State<FarmTab> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+              color: isDark ? const Color(0xFF1A1A1A) : AppColors.lightBg,
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
@@ -272,15 +273,15 @@ class _FarmTabState extends State<FarmTab> {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     
     return Scaffold(
-      backgroundColor: isDarkMode ? AppTheme.socialDark : const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? AppTheme.socialDark : AppColors.lightBg,
       body: RefreshIndicator(
         color: const Color(0xFF6B8E23),
-        backgroundColor: isDarkMode ? AppTheme.socialDark : Colors.white,
+        backgroundColor: isDarkMode ? AppTheme.socialDark : AppColors.lightBg,
         onRefresh: _refreshFarms,
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: isDarkMode ? AppTheme.socialDark : const Color(0xFFFAFAFA),
+              backgroundColor: isDarkMode ? AppTheme.socialDark : AppColors.lightBg,
               elevation: 0,
               pinned: true,
               floating: false,
@@ -597,7 +598,7 @@ class _FarmTabState extends State<FarmTab> {
                             )
                           : null,
                       filled: true,
-                      fillColor: isDarkMode ? const Color(0xFF0A0A0A) : Colors.white,
+                      fillColor: isDarkMode ? const Color(0xFF0A0A0A) : AppColors.lightBg,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -791,7 +792,7 @@ class _FarmTabState extends State<FarmTab> {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF0A0A0A) : Colors.white,
+          color: isDarkMode ? const Color(0xFF0A0A0A) : AppColors.lightBg,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDarkMode
@@ -927,7 +928,7 @@ class _FarmTabState extends State<FarmTab> {
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF0A0A0A) : Colors.white,
+          color: isDarkMode ? const Color(0xFF0A0A0A) : AppColors.lightBg,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDarkMode ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),

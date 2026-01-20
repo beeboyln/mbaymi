@@ -18,6 +18,7 @@ import 'package:mbaymi/screens/veterinarian_profile_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
 import 'package:mbaymi/screens/farm_profile_screen.dart';
 import 'package:mbaymi/screens/user_profile_screen.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 Future<void> main() async {
   // Run all initialization inside the same zone as runApp to avoid "Zone mismatch".
@@ -132,7 +133,7 @@ class _MbaymiAppState extends State<MbaymiApp> {
               brightness: Brightness.light,
               scaffoldBackgroundColor: const Color(0xFFF8F9FA),
               appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.white,
+                backgroundColor: AppColors.lightBg,
                 foregroundColor: Colors.black87,
                 elevation: 0,
                 surfaceTintColor: Colors.transparent,
@@ -235,7 +236,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.lightBg,
       body: Center(
         child: Image.asset(
           'assets/images/aa.png',

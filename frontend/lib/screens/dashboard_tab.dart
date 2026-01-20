@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/services/weather_service.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
@@ -202,6 +203,9 @@ class _DashboardTabState extends State<DashboardTab> {
     
     return Container(
       decoration: BoxDecoration(
+        color: isDarkMode 
+          ? AppColors.darkBg
+          : AppColors.lightBg,
         image: DecorationImage(
           image: const AssetImage('assets/images/aa.png'),
           fit: BoxFit.cover,
@@ -355,7 +359,7 @@ class _DashboardTabState extends State<DashboardTab> {
               sliver: SliverToBoxAdapter(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDarkMode ? const Color(0xFF12210D).withOpacity(0.9) : Colors.white,
+                    color: isDarkMode ? const Color(0xFF12210D).withOpacity(0.9) : AppColors.lightBg,
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
@@ -677,7 +681,7 @@ class _DashboardTabState extends State<DashboardTab> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF0D0D0D).withOpacity(0.9) : Colors.white,
+          color: isDarkMode ? const Color(0xFF0D0D0D).withOpacity(0.9) : AppColors.lightBg,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(

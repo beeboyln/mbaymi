@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class CreateSaleScreen extends StatefulWidget {
   final Map<String, dynamic>? sale;
@@ -43,7 +44,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
   static const Color _accentColor = Color(0xFF6B8E23);
   static const Color _bgLight = Color(0xFFFAF8F5);
   static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = Colors.white;
+  static const Color _cardLight = AppColors.lightBg;
   static const Color _cardDark = Color(0xFF1E1E1E);
   static const Color _borderLight = Color(0xFFE8E2D8);
   static const Color _borderDark = Color(0xFF2C2C2C);
@@ -221,7 +222,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
                   child: Container(
                     height: 120,
                     decoration: BoxDecoration(
-                      color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+                      color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: borderColor),
                     ),
@@ -584,7 +585,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
     String? Function(String?)? validator,
   }) {
     final borderColor = isDarkMode ? const Color(0xFF2C2C2C) : const Color(0xFFE8E2D8);
-    final fillColor = isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
+    final fillColor = isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg;
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return TextFormField(
@@ -629,7 +630,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
   }
 
   Widget _buildCategoryDropdown(bool isDarkMode, Color cardColor, Color borderColor, Color? secondaryTextColor) {
-    final fillColor = isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
+    final fillColor = isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg;
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Container(
@@ -662,7 +663,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
   }
 
   Widget _buildPricePerUnitField(bool isDarkMode, Color cardColor, Color borderColor) {
-    final fillColor = isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
+    final fillColor = isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg;
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Container(

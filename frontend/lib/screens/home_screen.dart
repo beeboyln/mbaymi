@@ -15,6 +15,7 @@ import 'package:mbaymi/screens/dashboard_tab.dart';
 import 'package:mbaymi/screens/farm_network_screen.dart';
 import 'package:mbaymi/screens/veterinarian_dashboard_screen.dart';
 import 'package:mbaymi/widgets/notification_icon_widget.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
   final int? userId;
@@ -118,11 +119,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
     
-    final appBarBg = isDarkMode ? const Color(0xFF1a1a1a) : Colors.white;
+    final appBarBg = isDarkMode ? const Color(0xFF1a1a1a) : AppColors.lightBg;
     final appBarIconColor = isDarkMode ? const Color(0xFF6B8E23) : const Color(0xFF2D5016);
     
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF0A0A0A) : const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? const Color(0xFF0A0A0A) : AppColors.lightBg,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: appBarBg,
@@ -352,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: _isDarkMode ? const Color(0xFF2C2C2C) : Colors.white,
+          color: _isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SingleChildScrollView(
@@ -519,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: _isDarkMode ? const Color(0xFF2C2C2C) : Colors.white,
+          color: _isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: const EdgeInsets.all(24),
@@ -575,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? const Color.fromARGB(255, 109, 72, 55) : Colors.white,
+          backgroundColor: isPrimary ? const Color.fromARGB(255, 109, 72, 55) : AppColors.lightBg,
           foregroundColor: isPrimary ? Colors.white : const Color.fromARGB(255, 139, 100, 85),
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -598,7 +599,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showSearchDialog(BuildContext context) {
     final searchController = TextEditingController();
-    final cardBg = _isDarkMode ? const Color(0xFF2C2C2C) : Colors.white;
+    final cardBg = _isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightBg;
     final textColor = _isDarkMode ? Colors.white : Colors.black;
 
     showDialog(

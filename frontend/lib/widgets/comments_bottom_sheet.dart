@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
   final int postId;
@@ -127,7 +128,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = widget.isDarkMode;
-    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final bgColor = isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg;
     final textColor = isDark ? Colors.white : Colors.black87;
     final secondaryColor = isDark ? Colors.white60 : Colors.grey[600];
     final borderColor = isDark ? Colors.white12 : Colors.grey[300]!;
@@ -329,7 +330,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                           hintText: 'Votre commentaire...',
                           hintStyle: TextStyle(color: secondaryColor),
                           filled: true,
-                          fillColor: isDark ? Colors.white10 : Colors.white,
+                          fillColor: isDark ? Colors.white10 : AppColors.lightBg,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: BorderSide(color: borderColor),

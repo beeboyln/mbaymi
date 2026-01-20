@@ -5,6 +5,7 @@ import 'package:mbaymi/models/notification_model.dart';
 import 'package:mbaymi/services/notification_service.dart';
 import 'package:mbaymi/utils/app_theme.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 /// 🔔 Page des notifications
 class NotificationsScreen extends StatefulWidget {
@@ -111,7 +112,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.lightBg,
         title: const Text(
           'Notifications',
           style: TextStyle(

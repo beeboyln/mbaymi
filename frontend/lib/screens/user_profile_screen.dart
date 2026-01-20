@@ -6,6 +6,7 @@ import 'package:mbaymi/services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/create_farm_post_dialog.dart';
 import 'package:mbaymi/screens/farm_screen.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final int userId;
@@ -37,7 +38,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
   static const Color _accentColor = Color(0xFFC4A484);
   static const Color _bgLight = Color(0xFFFAF8F5);
   static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = Colors.white;
+  static const Color _cardLight = AppColors.lightBg;
   static const Color _cardDark = Color(0xFF1E1E1E);
   static const Color _borderLight = Color(0xFFE8E2D8);
   static const Color _borderDark = Color(0xFF2C2C2C);
@@ -144,7 +145,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
       context: context,
       builder: (BuildContext context) {
         final isDark = widget.isDarkMode;
-        final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+        final bgColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F1E8);
         final textColor = isDark ? Colors.white : Colors.black87;
 
         return AlertDialog(
@@ -347,7 +348,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
       context: context,
       builder: (BuildContext context) {
         final isDark = widget.isDarkMode;
-        final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+        final bgColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F1E8);
         final textColor = isDark ? Colors.white : Colors.black87;
 
         return StatefulBuilder(

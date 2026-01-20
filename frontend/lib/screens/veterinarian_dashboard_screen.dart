@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/edit_veterinarian_profile_screen.dart';
 import 'package:mbaymi/models/veterinarian_model.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class VeterinarianDashboardScreen extends StatefulWidget {
   const VeterinarianDashboardScreen({Key? key}) : super(key: key);
@@ -95,7 +96,7 @@ class _VeterinarianDashboardScreenState
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F1E8);
     final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
 
     return DefaultTabController(
@@ -103,7 +104,7 @@ class _VeterinarianDashboardScreenState
       child: Scaffold(
         backgroundColor: bgColor,
         appBar: AppBar(
-          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg,
           elevation: 0,
           foregroundColor: textColor,
           title: const Text(
@@ -279,7 +280,7 @@ class _VeterinarianDashboardScreenState
                                 });
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
+                                backgroundColor: const Color(0xFFF5F1E8),
                                 foregroundColor: _primaryColor,
                               ),
                               icon: const Icon(Icons.edit),
@@ -406,7 +407,7 @@ class _VeterinarianDashboardScreenState
 
   Widget _buildRequestsList() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgCard = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final bgCard = isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg;
     final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
 
     if (_availableRequests.isEmpty) {

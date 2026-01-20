@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class NewsDetailScreen extends StatelessWidget {
   final NewsArticle article;
@@ -18,7 +19,7 @@ class NewsDetailScreen extends StatelessWidget {
         (Theme.of(context).brightness == Brightness.dark);
     final primaryColor = isDark ? const Color(0xFF4CAF50) : const Color(0xFF2D5016);
     final backgroundColor = isDark ? const Color(0xFF121212) : const Color(0xFFFAFAFA);
-    final surfaceColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final surfaceColor = isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg;
     final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
     final secondaryTextColor = isDark ? Colors.grey[400] : Colors.grey[700];
 

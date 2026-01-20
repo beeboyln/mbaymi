@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 import 'dart:typed_data';
 
 class EditFarmScreen extends StatefulWidget {
@@ -159,7 +160,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
     final photos = (widget.farm['photos'] as List?) ?? [];
     final isDark = widget.isDarkMode;
     final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFFAFAFA);
-    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg;
     final textColor = isDark ? Colors.white : Colors.black87;
     final labelColor = isDark ? Colors.grey[400] : Colors.grey[700];
     
@@ -168,7 +169,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
       backgroundColor: bgColor,
       appBar: AppBar(
         title: const Text('Éditer la ferme'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg,
         elevation: 0,
         foregroundColor: textColor,
       ),

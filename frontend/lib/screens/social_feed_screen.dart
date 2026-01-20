@@ -5,6 +5,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_theme.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/screens/post_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
@@ -34,7 +35,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   
   static const Color _primaryColor = Color(0xFF8B6B4D);
   static const Color _accentColor = Color(0xFF6B8E23);
-  static const Color _bgLight = Color(0xFFFAFAFA);
+  static const Color _bgLight = AppColors.lightBg;
   static const Color _bgDark = AppTheme.socialDark;
 
   @override
@@ -277,7 +278,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+            color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -611,7 +612,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -896,7 +897,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
@@ -1103,7 +1104,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05), blurRadius: 6)],
         ),
@@ -1172,7 +1173,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05), blurRadius: 6)],
         ),
@@ -1295,7 +1296,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final isDarkMode = themeProvider.isDarkMode;
     showModalBottomSheet(
       context: context,
-      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       isScrollControlled: true,
       builder: (context) => _SearchWidget(isDarkMode: isDarkMode),
@@ -1309,7 +1310,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
         title: const Text('❤️ Vos aimes'),
         content: const Text('Liste de vos posts aimés'),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer'))],
@@ -1374,7 +1375,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                       width: 160,
                       margin: const EdgeInsets.only(right: 12),
                       decoration: BoxDecoration(
-                        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+                        color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(

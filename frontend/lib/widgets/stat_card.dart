@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class StatCard extends StatelessWidget {
   final IconData icon;
@@ -32,7 +33,7 @@ class StatCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDarkMode 
             ? const Color(0xFF0D0D0D).withOpacity(0.9)
-            : Colors.white,
+            : AppColors.lightBg,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),

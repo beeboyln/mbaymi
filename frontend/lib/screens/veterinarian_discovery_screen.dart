@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/veterinarian_profile_detail_screen.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class VeterinarianDiscoveryScreen extends StatefulWidget {
   const VeterinarianDiscoveryScreen({Key? key}) : super(key: key);
@@ -109,13 +110,13 @@ class _VeterinarianDiscoveryScreenState extends State<VeterinarianDiscoveryScree
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
+    final bgColor = isDark ? const Color(0xFF121212) : AppColors.lightBg;
     final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg,
         elevation: 0,
         foregroundColor: textColor,
         title: const Text(
@@ -253,7 +254,7 @@ class VeterinarianCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgCard = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final bgCard = isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg;
     final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
 
     final rating = (veterinarian['average_rating'] as num?)?.toDouble() ?? 0.0;
@@ -481,7 +482,7 @@ class _AuthorizationDialogState extends State<AuthorizationDialog> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F1E8);
     final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
 
     return AlertDialog(

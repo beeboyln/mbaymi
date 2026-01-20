@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 
@@ -37,10 +38,10 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+      backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : AppColors.lightBg,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : Colors.white,
+        backgroundColor: widget.isDarkMode ? const Color(0xFF121212) : AppColors.lightBg,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
@@ -118,7 +119,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+                    color: widget.isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(16),
                       bottomRight: Radius.circular(16),
@@ -250,7 +251,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+                        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: widget.isDarkMode ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04),
@@ -289,7 +290,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+                        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: widget.isDarkMode ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04),
@@ -446,7 +447,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        color: widget.isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: widget.isDarkMode ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04),

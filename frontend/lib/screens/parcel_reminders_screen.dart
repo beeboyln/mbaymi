@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/local_notification_service.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class ParcelRemindersScreen extends StatefulWidget {
   final int farmId;
@@ -579,7 +580,7 @@ class _ParcelRemindersScreenState extends State<ParcelRemindersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.lightBg,
       appBar: AppBar(
         title: const Text('Rappels', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,

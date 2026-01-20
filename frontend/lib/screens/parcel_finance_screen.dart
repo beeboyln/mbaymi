@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class ParcelFinanceScreen extends StatefulWidget {
   final int farmId;
@@ -100,7 +101,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
                                 'Dépense',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w300,
                                   color: type == 'expense' ? Colors.white : Colors.grey[700],
                                 ),
                               ),
@@ -120,7 +121,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
                                 'Revenu',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w300,
                                   color: type == 'income' ? Colors.white : Colors.grey[700],
                                 ),
                               ),
@@ -228,7 +229,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                     ),
-                    child: const Text('Ajouter la transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    child: const Text('Ajouter la transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300)),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -304,7 +305,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
                                 'Dépense',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w300,
                                   color: type == 'expense' ? Colors.white : Colors.grey[700],
                                 ),
                               ),
@@ -324,7 +325,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
                                 'Revenu',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w300,
                                   color: type == 'income' ? Colors.white : Colors.grey[700],
                                 ),
                               ),
@@ -431,7 +432,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                     ),
-                    child: const Text('Modifier la transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    child: const Text('Modifier la transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300)),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -478,7 +479,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.lightBg,
       appBar: AppBar(
         title: const Text('Finances', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
@@ -677,7 +678,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
                         ),
                         title: Text(
                           it['category'] ?? '-',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                          style: const TextStyle(fontWeight: FontWeight.w300, fontSize: 15),
                         ),
                         subtitle: Text(
                           _formatDate(it['transaction_date']),

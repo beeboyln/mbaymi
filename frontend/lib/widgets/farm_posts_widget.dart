@@ -3,6 +3,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/create_farm_post_dialog.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class FarmPostsWidget extends StatefulWidget {
   final int farmId;
@@ -54,7 +55,7 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg;
     final textColor = isDark ? Colors.white : Colors.black87;
 
     return ListView(

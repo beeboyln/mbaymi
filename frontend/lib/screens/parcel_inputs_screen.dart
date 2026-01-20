@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class ParcelInputsScreen extends StatefulWidget {
   final int farmId;
@@ -272,7 +273,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                   ),
-                  child: const Text('Ajouter l\'intrant', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  child: const Text('Ajouter l\'intrant', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300)),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -509,7 +510,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                   ),
-                  child: const Text('Modifier', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  child: const Text('Modifier', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300)),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -555,7 +556,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.lightBg,
       appBar: AppBar(
         title: const Text('Intrants', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
@@ -587,7 +588,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen> {
                     'Aucun intrant',
                     style: TextStyle(
                       fontSize: 20,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w300,
                       color: Colors.grey[700],
                     ),
                   ),
@@ -683,7 +684,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen> {
                         title: Text(
                           it['name'] ?? '-',
                           style: const TextStyle(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w300,
                             fontSize: 15,
                           ),
                         ),

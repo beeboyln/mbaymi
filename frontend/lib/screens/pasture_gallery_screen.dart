@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 // Removed unused image processing and dart:io imports
 import 'dart:typed_data';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class PastureGalleryScreen extends StatefulWidget {
   final int userId;
@@ -148,7 +149,7 @@ class _PastureGalleryScreenState extends State<PastureGalleryScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFFAF9F6);
-    final cardColor = isDark ? const Color(0xFF2D2D2D) : Colors.white;
+    final cardColor = isDark ? const Color(0xFF2D2D2D) : AppColors.lightBg;
     final textColor = isDark ? Colors.white : Colors.black;
     final secondaryTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
 
