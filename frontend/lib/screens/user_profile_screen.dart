@@ -7,16 +7,20 @@ import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/create_farm_post_dialog.dart';
 import 'package:mbaymi/screens/farm_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/utils/app_spacing.dart';
+import 'package:mbaymi/utils/app_typography.dart';
+import 'package:mbaymi/utils/app_radius.dart';
+import 'package:mbaymi/utils/app_shadows.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final int userId;
   final bool isDarkMode;
 
   const UserProfileScreen({
-    Key? key,
+    super.key,
     required this.userId,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -31,21 +35,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
   List<dynamic> _postsData = [];
   
   final ImagePicker _imagePicker = ImagePicker();
-
-  // Couleurs
-  static const Color _primaryColor = Color(0xFF8B6B4D);
-  static const Color _primaryLight = Color(0xFFA58A6D);
-  static const Color _accentColor = Color(0xFFC4A484);
-  static const Color _bgLight = Color(0xFFFAF8F5);
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = AppColors.lightBg;
-  static const Color _cardDark = Color(0xFF1E1E1E);
-  static const Color _borderLight = Color(0xFFE8E2D8);
-  static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _textLight = Color(0xFF1A1A1A);
-  static const Color _textDark = Colors.white;
-  static const Color _textSecondaryLight = Color(0xFF6B6B6B);
-  static const Color _textSecondaryDark = Color(0xFF8E8E93);
 
   @override
   bool get wantKeepAlive => true;
@@ -117,7 +106,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['success'] == true ? 'Photo de profil mise à jour ✅' : 'Erreur'),
-            backgroundColor: _primaryColor,
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -145,8 +134,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
       context: context,
       builder: (BuildContext context) {
         final isDark = widget.isDarkMode;
-        final bgColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F1E8);
-        final textColor = isDark ? Colors.white : Colors.black87;
+        final bgColor = AppColors.getCardBgColor(isDark);
+        final textColor = AppColors.getTextColor(isDark);
 
         return AlertDialog(
           backgroundColor: bgColor,
@@ -170,21 +159,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                       labelText: 'Nom',
                       labelStyle: TextStyle(color: textColor),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                         borderSide: BorderSide(
-                          color: _primaryColor.withOpacity(0.3),
+                          color: AppColors.primary.withOpacity(0.3),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: _primaryColor, width: 2),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   // TextField pour l'email
                   TextField(
                     controller: emailController,
@@ -196,21 +185,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                       labelText: 'Email',
                       labelStyle: TextStyle(color: textColor),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                         borderSide: BorderSide(
-                          color: _primaryColor.withOpacity(0.3),
+                          color: AppColors.primary.withOpacity(0.3),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: _primaryColor, width: 2),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   // TextField pour le téléphone
                   TextField(
                     controller: phoneController,
@@ -222,21 +211,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                       labelText: 'Numéro de téléphone',
                       labelStyle: TextStyle(color: textColor),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                         borderSide: BorderSide(
-                          color: _primaryColor.withOpacity(0.3),
+                          color: AppColors.primary.withOpacity(0.3),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: _primaryColor, width: 2),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   // Bouton pour changer le mot de passe
                   SizedBox(
                     width: double.infinity,
@@ -272,7 +261,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryColor,
+                backgroundColor: AppColors.primary,
               ),
               onPressed: () async {
                 nameController.dispose();
@@ -319,7 +308,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Profil mis à jour'),
-            backgroundColor: _primaryColor,
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -381,12 +370,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(
-                              color: _primaryColor.withOpacity(0.3),
+                              color: AppColors.primary.withOpacity(0.3),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: _primaryColor, width: 2),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
                           ),
                         ),
                       ),
@@ -407,12 +396,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(
-                              color: _primaryColor.withOpacity(0.3),
+                              color: AppColors.primary.withOpacity(0.3),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: _primaryColor, width: 2),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
                           ),
                         ),
                       ),
@@ -433,12 +422,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(
-                              color: _primaryColor.withOpacity(0.3),
+                              color: AppColors.primary.withOpacity(0.3),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: _primaryColor, width: 2),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
                           ),
                         ),
                       ),
@@ -558,7 +547,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Mot de passe changé avec succès'),
-            backgroundColor: _primaryColor,
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -582,11 +571,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
     
     final isDark = widget.isDarkMode;
     final isOwnProfile = widget.userId == (AuthService.currentSession?.userId ?? 0);
-    final bgColor = isDark ? _bgDark : _bgLight;
-    final cardColor = isDark ? _cardDark : _cardLight;
-    final textColor = isDark ? _textDark : _textLight;
-    final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
-    final borderColor = isDark ? _borderDark : _borderLight;
+    final bgColor = AppColors.getBgColor(isDark);
+    final cardColor = AppColors.getCardBgColor(isDark);
+    final textColor = AppColors.getTextColor(isDark);
+    final secondaryTextColor = AppColors.getTextColor(isDark).withOpacity(0.7);
+    final borderColor = AppColors.getBorderColor(isDark);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -635,7 +624,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
         ],
       ),
       body: RefreshIndicator(
-        color: _primaryColor,
+        color: AppColors.primary,
         onRefresh: _refresh,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -643,10 +632,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
             future: _profileFuture!,
             builder: (context, profileSnap) {
               if (profileSnap.connectionState == ConnectionState.waiting) {
-                return Center(
+                return const Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: CircularProgressIndicator(color: _primaryColor),
+                    padding: EdgeInsets.all(40),
+                    child: CircularProgressIndicator(color: AppColors.primary),
                   ),
                 );
               }
@@ -706,7 +695,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                               decoration: BoxDecoration(
                                                 borderRadius: BorderRadius.circular(40),
                                                 border: Border.all(
-                                                  color: _primaryColor,
+                                                  color: AppColors.primary,
                                                   width: 2,
                                                 ),
                                               ),
@@ -728,7 +717,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                           right: 0,
                                           child: Container(
                                             decoration: BoxDecoration(
-                                              color: _primaryColor,
+                                              color: AppColors.primary,
                                               shape: BoxShape.circle,
                                               border: Border.all(
                                                 color: cardColor,
@@ -766,10 +755,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                               ),
                                             ),
                                             if (isOwnProfile)
-                                              Icon(
+                                              const Icon(
                                                 Icons.edit_outlined,
                                                 size: 16,
-                                                color: _primaryColor,
+                                                color: AppColors.primary,
                                               ),
                                           ],
                                         ),
@@ -812,13 +801,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                   icon: Icons.people_outline,
                                   label: 'Abonnés',
                                   value: '$totalFollowers',
-                                  color: _accentColor,
+                                  color: AppColors.accent,
                                 ),
                                 _buildStatWidget(
                                   icon: Icons.newspaper,
                                   label: 'Posts',
                                   value: '$totalPosts',
-                                  color: _primaryLight,
+                                  color: AppColors.primaryLight,
                                 ),
                               ],
                             ),
@@ -829,7 +818,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                               context: context,
                               icon: Icons.add_circle_outline,
                               label: 'Créer un post',
-                              color: _primaryColor,
+                              color: AppColors.primary,
                               onTap: () {
                                 HapticFeedback.lightImpact();
                                 Navigator.push(
@@ -864,10 +853,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                       future: _postsFuture!,
                       builder: (context, postsSnap) {
                         if (postsSnap.connectionState == ConnectionState.waiting) {
-                          return Center(
+                          return const Center(
                             child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: CircularProgressIndicator(color: _primaryColor),
+                              padding: EdgeInsets.all(20),
+                              child: CircularProgressIndicator(color: AppColors.primary),
                             ),
                           );
                         }
@@ -892,7 +881,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                   Icon(
                                     Icons.newspaper_outlined,
                                     size: 48,
-                                    color: _primaryColor.withOpacity(0.5),
+                                    color: AppColors.primary.withOpacity(0.5),
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
@@ -976,7 +965,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                           width: double.infinity,
                                           height: double.infinity,
                                           errorBuilder: (_, __, ___) => Container(
-                                            color: _primaryColor.withOpacity(0.1),
+                                            color: AppColors.primary.withOpacity(0.1),
                                             child: const Icon(Icons.image_not_supported_outlined, size: 32),
                                           ),
                                         ),
@@ -984,7 +973,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                                     else
                                       Container(
                                         decoration: BoxDecoration(
-                                          color: _primaryColor.withOpacity(0.1),
+                                          color: AppColors.primary.withOpacity(0.1),
                                           borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: const Icon(Icons.image_outlined, size: 32),
@@ -1088,9 +1077,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 11,
-            color: isDark ? _textSecondaryDark : _textSecondaryLight,
+          style: AppTypography.caption.copyWith(
+            color: AppColors.getTextColor(isDark).withOpacity(0.7),
           ),
         ),
       ],
@@ -1250,7 +1238,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
   Widget _buildDefaultAvatar(String name) {
     return CircleAvatar(
       radius: 40,
-      backgroundColor: _primaryColor,
+      backgroundColor: AppColors.primary,
       child: Text(
         name.isNotEmpty ? name[0].toUpperCase() : '?',
         style: const TextStyle(

@@ -16,11 +16,14 @@ import 'package:mbaymi/screens/farm_network_screen.dart';
 import 'package:mbaymi/screens/veterinarian_dashboard_screen.dart';
 import 'package:mbaymi/widgets/notification_icon_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/utils/app_spacing.dart';
+import 'package:mbaymi/utils/app_typography.dart';
+import 'package:mbaymi/utils/app_radius.dart';
 
 class HomeScreen extends StatefulWidget {
   final int? userId;
   
-  const HomeScreen({Key? key, this.userId}) : super(key: key);
+  const HomeScreen({super.key, this.userId});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -119,16 +122,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
     
-    final appBarBg = isDarkMode ? const Color(0xFF1a1a1a) : AppColors.lightBg;
-    final appBarIconColor = isDarkMode ? const Color(0xFF6B8E23) : const Color(0xFF2D5016);
+    final appBarBg = AppColors.getBgColor(isDarkMode);
+    final appBarIconColor = AppColors.accent;
     
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF0A0A0A) : AppColors.lightBg,
+      backgroundColor: AppColors.getBgColor(isDarkMode),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: appBarBg,
         elevation: 0,
-        titleSpacing: 12,
+        titleSpacing: AppSpacing.md,
         title: GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
@@ -200,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         actions: [
-          const NotificationIconWidget(),
+          NotificationIconWidget(iconColor: appBarIconColor),
           IconButton(
             icon: Icon(
               isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,

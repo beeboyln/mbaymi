@@ -14,7 +14,7 @@ import 'dart:async';
 class MarketTab extends StatefulWidget {
   final bool isDarkMode;
 
-  const MarketTab({Key? key, this.isDarkMode = false}) : super(key: key);
+  const MarketTab({super.key, this.isDarkMode = false});
 
   @override
   State<MarketTab> createState() => _MarketTabState();
@@ -28,6 +28,7 @@ class _MarketTabState extends State<MarketTab> {
   String _selectedCategory = 'Tous';
   int _userId = 0;
   bool _showMyAds = true;
+  bool _showPrices = false;
   
   final List<String> _categories = ['Tous', 'Cultures', 'Bétail', 'Légumes', 'Fruits', 'Grains'];
   
@@ -160,13 +161,13 @@ class _MarketTabState extends State<MarketTab> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
+                          const Expanded(
                             child: Text(
                               'Marché',
                               style: TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.w300,
-                                color: const Color(0xFF7BA428),
+                                color: Color(0xFF7BA428),
                                 letterSpacing: -0.8,
                               ),
                               maxLines: 1,
@@ -331,7 +332,7 @@ class _MarketTabState extends State<MarketTab> {
                                 _showMyAds ? 'Masquer' : 'Afficher',
                                 style: const TextStyle(
                                   fontSize: 13,
-                                  color: Color(0xFF4A90E2),
+                                  color: Color.fromARGB(255, 143, 82, 51),
                                   fontWeight: FontWeight.w400,
                                 ),
                               ),
@@ -345,7 +346,7 @@ class _MarketTabState extends State<MarketTab> {
                                   _showMyAds
                                       ? Icons.expand_less_rounded
                                       : Icons.expand_more_rounded,
-                                  color: const Color(0xFF4A90E2),
+                                  color: const Color.fromARGB(255, 143, 82, 51),
                                   size: 20,
                                 ),
                               ),
@@ -373,7 +374,7 @@ class _MarketTabState extends State<MarketTab> {
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                const Color(0xFF4A90E2).withOpacity(0.6),
+                                const Color.fromARGB(255, 143, 82, 51).withOpacity(0.6),
                               ),
                             ),
                           ),
@@ -395,7 +396,7 @@ class _MarketTabState extends State<MarketTab> {
                                 : Colors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: const Color(0xFF4A90E2).withOpacity(0.1),
+                              color: const Color.fromARGB(255, 143, 82, 51).withOpacity(0.1),
                               width: 1,
                             ),
                           ),
@@ -454,88 +455,113 @@ class _MarketTabState extends State<MarketTab> {
                 },
               ),
 
-            // Prix du marché
+            // Prix du marché (Collapsible)
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Prix du marché',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w300,
-                        color: isDarkMode ? Colors.white : const Color(0xFF2C2416),
-                        letterSpacing: -0.3,
+                    // Header with expand/collapse button
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _showPrices = !_showPrices;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Prix du marché',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w300,
+                                color: isDarkMode ? Colors.white : const Color(0xFF2C2416),
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            Icon(
+                              _showPrices ? Icons.expand_less : Icons.expand_more,
+                              color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                              size: 24,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    FutureBuilder<List<MarketPrice>>(
-                      future: _marketPricesFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(40),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  const Color(0xFF7BA428).withOpacity(0.6),
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-
-                        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Container(
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: isDarkMode ? const Color(0xFF1A1A1A) : AppColors.lightBg,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.trending_up_outlined,
-                                    size: 32,
-                                    color: isDarkMode
-                                        ? Colors.grey.shade700
-                                        : Colors.grey.shade300,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Aucun prix disponible',
-                                    style: TextStyle(
-                                      color: isDarkMode
-                                          ? Colors.grey.shade500
-                                          : Colors.grey.shade400,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w300,
+                    // Expandable content
+                    if (_showPrices)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: FutureBuilder<List<MarketPrice>>(
+                          future: _marketPricesFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(40),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color.fromARGB(255, 143, 82, 51),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
+                                ),
+                              );
+                            }
 
-                        final prices = snapshot.data!;
-                        return Column(
-                          children: prices.map((price) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: RepaintBoundary(
-                                child: _buildPriceCard(price, isDarkMode),
-                              ),
+                            if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                              return Container(
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: isDarkMode ? const Color(0xFF1A1A1A) : AppColors.lightBg,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.trending_up_outlined,
+                                        size: 32,
+                                        color: isDarkMode
+                                            ? Colors.grey.shade700
+                                            : Colors.grey.shade300,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Aucun prix disponible',
+                                        style: TextStyle(
+                                          color: isDarkMode
+                                              ? Colors.grey.shade500
+                                              : Colors.grey.shade400,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w300,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final prices = snapshot.data!;
+                            return Column(
+                              children: prices.map((price) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: RepaintBoundary(
+                                    child: _buildPriceCard(price, isDarkMode),
+                                  ),
+                                );
+                              }).toList(),
                             );
-                          }).toList(),
-                        );
-                      },
-                    ),
+                          },
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -567,14 +593,14 @@ class _MarketTabState extends State<MarketTab> {
               future: _salesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return SliverToBoxAdapter(
+                  return const SliverToBoxAdapter(
                     child: Center(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        padding: EdgeInsets.symmetric(vertical: 60),
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            const Color(0xFF7BA428).withOpacity(0.6),
+                            Color.fromARGB(255, 143, 82, 51),
                           ),
                         ),
                       ),
@@ -788,7 +814,7 @@ class _MarketTabState extends State<MarketTab> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${price.pricePerKg.toStringAsFixed(0)}',
+                price.pricePerKg.toStringAsFixed(0),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -870,10 +896,10 @@ class _MarketTabState extends State<MarketTab> {
                       ),
                       errorWidget: (context, url, error) => Container(
                         color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
-                        child: Center(
+                        child: const Center(
                           child: Icon(
                             Icons.image_outlined,
-                            color: const Color(0xFF7BA428),
+                            color: Color(0xFF7BA428),
                             size: 28,
                           ),
                         ),
@@ -881,10 +907,10 @@ class _MarketTabState extends State<MarketTab> {
                     )
                   : Container(
                       color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
-                      child: Center(
+                      child: const Center(
                         child: Icon(
                           Icons.image_outlined,
-                          color: const Color(0xFF7BA428),
+                          color: Color(0xFF7BA428),
                           size: 28,
                         ),
                       ),
@@ -1026,17 +1052,17 @@ class _MarketTabState extends State<MarketTab> {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  const Color(0xFF4A90E2).withOpacity(0.5),
+                                  const Color.fromARGB(255, 143, 82, 51).withOpacity(0.5),
                                 ),
                               ),
                             ),
                           ),
                           errorWidget: (context, url, error) => Container(
                             color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
-                            child: Center(
+                            child: const Center(
                               child: Icon(
                                 Icons.verified_outlined,
-                                color: const Color(0xFF4A90E2),
+                                color: Color.fromARGB(255, 143, 82, 51),
                                 size: 24,
                               ),
                             ),
@@ -1044,10 +1070,10 @@ class _MarketTabState extends State<MarketTab> {
                         )
                       : Container(
                           color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
-                          child: Center(
+                          child: const Center(
                             child: Icon(
                               Icons.verified_outlined,
-                              color: const Color(0xFF4A90E2),
+                              color: Color.fromARGB(255, 143, 82, 51),
                               size: 24,
                             ),
                           ),
@@ -1108,7 +1134,7 @@ class _MarketTabState extends State<MarketTab> {
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF4A90E2),
+                              color: Color.fromARGB(255, 143, 82, 51),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1152,7 +1178,7 @@ class _MarketTabState extends State<MarketTab> {
                     child: const Icon(
                       Icons.edit_outlined,
                       size: 12,
-                      color: Color(0xFF4A90E2),
+                      color: Color.fromARGB(255, 143, 82, 51),
                     ),
                   ),
                 ),

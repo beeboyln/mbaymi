@@ -4,16 +4,20 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/create_livestock_screen.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/utils/app_spacing.dart';
+import 'package:mbaymi/utils/app_typography.dart';
+import 'package:mbaymi/utils/app_radius.dart';
+import 'package:mbaymi/utils/app_shadows.dart';
 
 class LivestockManagementScreen extends StatefulWidget {
   final int userId;
   final bool isDarkMode;
 
   const LivestockManagementScreen({
-    Key? key,
+    super.key,
     required this.userId,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   State<LivestockManagementScreen> createState() => _LivestockManagementScreenState();
@@ -22,19 +26,6 @@ class LivestockManagementScreen extends StatefulWidget {
 class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
   late Future<List<dynamic>> _livestockFuture;
   String _selectedFilter = 'Tous'; // Filtre sélectionné
-
-  static const Color _primaryColor = Color(0xFF8B6B4D);
-  static const Color _accentColor = Color(0xFFC4A484);
-  static const Color _bgLight = Color(0xFFFAF8F5);
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = AppColors.lightBg;
-  static const Color _cardDark = Color(0xFF1E1E1E);
-  static const Color _borderLight = Color(0xFFE8E2D8);
-  static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _textLight = Color(0xFF1A1A1A);
-  static const Color _textDark = Colors.white;
-  static const Color _textSecondaryLight = Color(0xFF6B6B6B);
-  static const Color _textSecondaryDark = Color(0xFF8E8E93);
 
   @override
   void initState() {
@@ -73,11 +64,11 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = widget.isDarkMode;
-    final bgColor = isDark ? _bgDark : _bgLight;
-    final cardColor = isDark ? _cardDark : _cardLight;
-    final textColor = isDark ? _textDark : _textLight;
-    final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
-    final borderColor = isDark ? _borderDark : _borderLight;
+    final bgColor = AppColors.getBgColor(isDark);
+    final cardColor = AppColors.getCardBgColor(isDark);
+    final textColor = AppColors.getTextColor(isDark);
+    final secondaryTextColor = AppColors.getTextColor(isDark).withOpacity(0.7);
+    final borderColor = AppColors.getBorderColor(isDark);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -89,21 +80,21 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
         iconTheme: IconThemeData(color: textColor),
       ),
       body: RefreshIndicator(
-        color: _primaryColor,
+        color: AppColors.primary,
         onRefresh: _refresh,
         child: FutureBuilder<List<dynamic>>(
           future: _livestockFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
-                child: CircularProgressIndicator(color: _primaryColor),
+              return const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
               );
             }
 
             if (snapshot.hasError) {
               return Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   child: Text(
                     'Erreur: ${snapshot.error}',
                     style: TextStyle(color: textColor),
@@ -121,15 +112,15 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.pets_outlined, size: 64, color: secondaryTextColor),
-                    const SizedBox(height: 16),
+                    SizedBox(height: AppSpacing.md),
                     Text(
                       'Aucun animal',
-                      style: TextStyle(fontSize: 18, color: textColor),
+                      style: AppTypography.h3.copyWith(color: textColor),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: AppSpacing.sm),
                     Text(
                       'Ajoutez vos premiers animaux',
-                      style: TextStyle(color: secondaryTextColor),
+                      style: AppTypography.body.copyWith(color: secondaryTextColor),
                     ),
                   ],
                 ),
@@ -145,7 +136,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
               children: [
                 // 📊 STATISTIQUES RAPIDES
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Row(
                     children: [
                       Expanded(
@@ -176,7 +167,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                 // 🔍 FILTRES PAR TYPE
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   child: Row(
                     children: [
                       _buildFilterChip(
@@ -186,9 +177,9 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                         textColor: textColor,
                         cardColor: cardColor,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: AppSpacing.sm),
                       ...animalTypes.map((type) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
                         child: _buildFilterChip(
                           label: type,
                           isSelected: _selectedFilter == type,
@@ -200,7 +191,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
 
                 // 📋 LISTE DES ANIMAUX FILTRÉS
                 Expanded(
@@ -210,16 +201,16 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.search_off_outlined, size: 48, color: secondaryTextColor),
-                              const SizedBox(height: 12),
+                              SizedBox(height: AppSpacing.sm),
                               Text(
                                 'Aucun animal de ce type',
-                                style: TextStyle(color: secondaryTextColor),
+                                style: AppTypography.body.copyWith(color: secondaryTextColor),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                           itemCount: filteredLivestock.length,
                           itemBuilder: (context, index) {
                             final animal = filteredLivestock[index] as Map<String, dynamic>;
@@ -251,7 +242,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
             _refresh();
           }
         },
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -274,7 +265,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
     final imageUrl = animal['image_url'] as String?;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: GestureDetector(
         onTap: livestockId != null
             ? () async {
@@ -296,7 +287,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: const BorderRadius.all(Radius.circular(12)),
+            borderRadius: BorderRadius.all(Radius.circular(AppRadius.md)),
             border: Border.all(color: borderColor, width: 1),
           ),
           child: Row(
@@ -307,29 +298,29 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                   Container(
                     width: 100,
                     height: 140,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        bottomLeft: Radius.circular(12),
+                        topLeft: Radius.circular(AppRadius.md),
+                        bottomLeft: Radius.circular(AppRadius.md),
                       ),
                     ),
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        bottomLeft: Radius.circular(12),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(AppRadius.md),
+                        bottomLeft: Radius.circular(AppRadius.md),
                       ),
                       child: imageUrl != null && imageUrl.isNotEmpty
                           ? Image.network(
                               imageUrl,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
-                                color: _accentColor.withOpacity(0.1),
-                                child: const Icon(Icons.pets_outlined, color: _accentColor),
+                                color: AppColors.primaryLight.withOpacity(0.1),
+                                child: Icon(Icons.pets_outlined, color: AppColors.primaryLight),
                               ),
                             )
                           : Container(
-                              color: _accentColor.withOpacity(0.1),
-                              child: const Icon(Icons.pets_outlined, color: _accentColor),
+                              color: AppColors.primaryLight.withOpacity(0.1),
+                              child: Icon(Icons.pets_outlined, color: AppColors.primaryLight),
                             ),
                     ),
                   ),
@@ -349,7 +340,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                               ),
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               child: Text(
-                                '${photoCount}📷',
+                                '$photoCount📷',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
@@ -403,7 +394,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                           ),
                           Container(
                             decoration: BoxDecoration(
-                              color: _accentColor.withOpacity(0.1),
+                              color: AppColors.accent.withOpacity(0.1),
                               borderRadius: const BorderRadius.all(Radius.circular(8)),
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -412,7 +403,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: _accentColor,
+                                color: AppColors.accent,
                               ),
                             ),
                           ),
@@ -520,14 +511,14 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Icon(icon, color: _primaryColor, size: 28),
+          Icon(icon, color: AppColors.primary, size: 28),
           const SizedBox(height: 8),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: _primaryColor,
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(height: 4),
@@ -555,9 +546,9 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: isSelected ? _primaryColor : cardColor,
+          color: isSelected ? AppColors.primary : cardColor,
           border: Border.all(
-            color: isSelected ? _primaryColor : Color(0xFFE8E2D8),
+            color: isSelected ? AppColors.primary : const Color(0xFFE8E2D8),
             width: 1.5,
           ),
           borderRadius: const BorderRadius.all(Radius.circular(20)),

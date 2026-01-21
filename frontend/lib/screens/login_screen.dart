@@ -6,9 +6,14 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/utils/validators.dart' as validators;
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/utils/app_spacing.dart';
+import 'package:mbaymi/utils/app_typography.dart';
+import 'package:mbaymi/utils/app_radius.dart';
+import 'package:mbaymi/widgets/app_button.dart';
+import 'package:mbaymi/widgets/app_input.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -123,16 +128,19 @@ class _LoginScreenState extends State<LoginScreen> {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: hint),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: BorderSide(color: border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.brown.shade700, width: 2),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: AppColors.primary, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
       suffixIcon: suffix,
     );
   }
@@ -142,10 +150,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final bgColor = AppColors.getBgColor(isDark);
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final hintColor = Colors.grey;
-    final borderColor = Colors.grey.shade400;
-    final buttonColor = Colors.brown;
+    final textColor = AppColors.getTextColor(isDark);
+    final hintColor = AppColors.getSecondaryTextColor(isDark);
+    final borderColor = AppColors.getBorderColor(isDark);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -155,7 +162,8 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: bgColor,
         elevation: 0,
         centerTitle: true,
-        title: const Text('Connexion'),
+        title: Text('Connexion', style: AppTypography.h3),
+        foregroundColor: textColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -167,7 +175,12 @@ class _LoginScreenState extends State<LoginScreen> {
           physics: const ClampingScrollPhysics(),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(24, 32, 24, 32 + MediaQuery.of(context).viewInsets.bottom),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -175,88 +188,81 @@ class _LoginScreenState extends State<LoginScreen> {
                 Icon(
                   Icons.person,
                   size: 90,
-                  color: Colors.brown.shade100,
+                  color: AppColors.primaryLight,
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: AppSpacing.xxl),
 
-                    TextField(
-                      controller: _emailController,
-                      focusNode: _emailFocus,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      onSubmitted: (_) =>
-                          FocusScope.of(context).requestFocus(_passwordFocus),
-                      style: TextStyle(color: textColor, fontSize: 16),
-                      decoration: _decoration('Email', borderColor, hintColor),
+                TextField(
+                  controller: _emailController,
+                  focusNode: _emailFocus,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) =>
+                      FocusScope.of(context).requestFocus(_passwordFocus),
+                  style: AppTypography.body.copyWith(color: textColor),
+                  decoration: _decoration('Email', borderColor, hintColor),
+                ),
+
+                SizedBox(height: AppSpacing.lg),
+
+                TextField(
+                  controller: _passwordController,
+                  focusNode: _passwordFocus,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _handleLogin(),
+                  style: AppTypography.body.copyWith(color: textColor),
+                  decoration: _decoration(
+                    'Mot de passe',
+                    borderColor,
+                    hintColor,
+                    suffix: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        color: hintColor,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
+                  ),
+                ),
 
-                    const SizedBox(height: 24),
+                SizedBox(height: AppSpacing.xl),
 
-                    TextField(
-                      controller: _passwordController,
-                      focusNode: _passwordFocus,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _handleLogin(),
-                      style: TextStyle(color: textColor, fontSize: 16),
-                      decoration: _decoration(
-                        'Mot de passe',
-                        borderColor,
-                        hintColor,
-                        suffix: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          ),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
+                AppButton(
+                  label: 'SE CONNECTER',
+                  onPressed: _isLoading ? null : _handleLogin,
+                  isLoading: _isLoading,
+                  isDarkMode: isDark,
+                ),
+
+                SizedBox(height: AppSpacing.lg),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Pas encore de compte ? ",
+                      style: AppTypography.body.copyWith(color: textColor),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pushNamed('/register'),
+                      child: Text(
+                        "S'inscrire",
+                        style: AppTypography.body.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
+                  ],
+                ),
 
-                    const SizedBox(height: 32),
-
-                    SizedBox(
-                      height: 52,
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: buttonColor,
-                        ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'SE CONNECTER',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("Pas encore de compte ? "),
-                        GestureDetector(
-                          onTap: () =>
-                              Navigator.of(context).pushNamed('/register'),
-                          child: Text(
-                            "S'inscrire",
-                            style: TextStyle(
-                              color: Colors.brown.shade700,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                if (isWeb) const SizedBox(height: 40),
+                if (isWeb) SizedBox(height: AppSpacing.xxl),
               ],
             ),
           ),

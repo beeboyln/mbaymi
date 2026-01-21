@@ -4,6 +4,9 @@ import 'package:mbaymi/widgets/empty_state.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_theme.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/utils/app_spacing.dart';
+import 'package:mbaymi/utils/app_typography.dart';
+import 'package:mbaymi/utils/app_radius.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/widgets/random_tip_widget.dart';
@@ -17,7 +20,7 @@ class FarmTab extends StatefulWidget {
   final int? userId;
   final int initialSection;
 
-  const FarmTab({Key? key, this.userId, this.initialSection = 0}) : super(key: key);
+  const FarmTab({super.key, this.userId, this.initialSection = 0});
 
   @override
   State<FarmTab> createState() => _FarmTabState();
@@ -115,12 +118,10 @@ class _FarmTabState extends State<FarmTab> {
     required bool isDarkMode,
   }) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: isDarkMode 
-            ? const Color(0xFF0A0A0A)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.getCardBgColor(isDarkMode),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(
           color: isDarkMode
               ? Colors.white.withOpacity(0.03)
@@ -132,31 +133,24 @@ class _FarmTabState extends State<FarmTab> {
         children: [
           Text(
             icon,
-            style: const TextStyle(fontSize: 32),
+            style: AppTypography.h2,
           ),
-          const SizedBox(width: 20),
+          SizedBox(width: AppSpacing.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    color: isDarkMode ? Colors.white : const Color(0xFF0A0A0A),
-                    letterSpacing: -0.2,
+                  style: AppTypography.body.copyWith(
+                    color: AppColors.getTextColor(isDarkMode),
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: AppSpacing.sm),
                 Text(
                   description,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w300,
-                    color: isDarkMode 
-                        ? Colors.white.withOpacity(0.5)
-                        : const Color(0xFF0A0A0A).withOpacity(0.4),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.getTextColor(isDarkMode).withOpacity(0.7),
                     height: 1.5,
                     letterSpacing: 0.1,
                   ),
@@ -170,7 +164,7 @@ class _FarmTabState extends State<FarmTab> {
   }
 
   Widget _buildSectionTabs(bool isDarkMode) {
-    final selectedColor = const Color(0xFF6B8E23);
+    const selectedColor = Color(0xFF6B8E23);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -418,7 +412,7 @@ class _FarmTabState extends State<FarmTab> {
                         child: const Center(child: Text('🌾', style: TextStyle(fontSize: 36))),
                       ),
                       const SizedBox(height: 16),
-                      Text(
+                      const Text(
                         'Savana',
                         style: TextStyle(
                           fontSize: 28,

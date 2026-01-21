@@ -9,6 +9,10 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/utils/app_spacing.dart';
+import 'package:mbaymi/utils/app_typography.dart';
+import 'package:mbaymi/utils/app_radius.dart';
+import 'package:mbaymi/utils/app_shadows.dart';
 import 'package:mbaymi/services/weather_service.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
@@ -24,7 +28,7 @@ class DashboardTab extends StatefulWidget {
   final bool isDarkMode;
   final int? userId;
   
-  const DashboardTab({Key? key, this.isDarkMode = false, this.userId}) : super(key: key);
+  const DashboardTab({super.key, this.isDarkMode = false, this.userId});
 
   @override
   State<DashboardTab> createState() => _DashboardTabState();
@@ -34,15 +38,11 @@ class _DashboardTabState extends State<DashboardTab> {
   String _selectedNewsFilter = 'Local';
   late Future<Map<String, dynamic>> _countsFuture;
   late Future<Map<String, dynamic>> _weatherFuture;
-  late Future<List<dynamic>> _followedPostsFuture;
   late Future<List<NewsArticle>> _newsFuture;
-  List<Map<String, dynamic>> _followedPosts = [];
-  int _viewerId = 0;
-  late StreamSubscription<Map<String, dynamic>> _followSub;
-  int _currentNewsPage = 0;
-  bool _postsInitialized = false;
+  final int _currentNewsPage = 0;
   final ScrollController _newsScrollController = ScrollController();
   bool _isWeatherExpanded = false;
+  
   // Random tip feature
   final List<String> _tips = [
     'Arrosez tôt le matin pour réduire l\'évaporation et économiser l\'eau.',
@@ -53,8 +53,6 @@ class _DashboardTabState extends State<DashboardTab> {
     'Récupérez l\'eau de pluie pour l\'irrigation des petits jardins.',
   ];
   String _currentTip = '';
-  
-  Future<List<dynamic>>? get _followedFarmsFuture => null;
 
   @override
   void initState() {
@@ -65,50 +63,6 @@ class _DashboardTabState extends State<DashboardTab> {
     _newsFuture = ApiService.getAgriculturalNews();
     // Initialize random tip
     _currentTip = _tips[Random().nextInt(_tips.length)];
-    final viewerId = widget.userId ?? AuthService.currentSession?.userId ?? 0;
-    _viewerId = viewerId;
-    _followedPostsFuture = viewerId > 0 ? ApiService.getFarmPostsFeed(userId: viewerId) : Future.value(<dynamic>[]);
-    // Listen for follow/unfollow changes to update dashboard feed in real-time
-    _followSub = ApiService.onFollowChanged.listen((payload) async {
-      final uid = payload['userId'] as int?;
-      final action = payload['action'] as String?;
-      if (uid == null || action == null) return;
-
-      if (action == 'unfollow') {
-        // remove posts from that user
-        setState(() {
-          _followedPosts.removeWhere((p) => (p['user_id'] as int?) == uid);
-        });
-      } else if (action == 'follow') {
-        try {
-          final newPosts = await ApiService.getUserPosts(uid, viewerId: _viewerId > 0 ? _viewerId : null);
-          if (newPosts.isNotEmpty) {
-            final List<Map<String, dynamic>> incoming = List<Map<String, dynamic>>.from(newPosts.cast<Map<String, dynamic>>());
-            final existingIds = _followedPosts.map<int?>((p) => p['id'] as int?).where((id) => id != null).cast<int>().toSet();
-
-            // Filter out duplicates
-            final filtered = incoming.where((p) {
-              final id = p['id'] as int?;
-              return id != null && !existingIds.contains(id);
-            }).toList();
-
-            if (filtered.isNotEmpty) {
-              setState(() {
-                // prepend then sort by created_at desc
-                _followedPosts.insertAll(0, filtered);
-                _followedPosts.sort((a, b) {
-                  DateTime ta = DateTime.tryParse(a['created_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  DateTime tb = DateTime.tryParse(b['created_at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  return tb.compareTo(ta);
-                });
-                // keep cap to 200 posts
-                if (_followedPosts.length > 200) _followedPosts = _followedPosts.sublist(0, 200);
-              });
-            }
-          }
-        } catch (_) {}
-      }
-    });
   }
 
   @override
@@ -118,30 +72,14 @@ class _DashboardTabState extends State<DashboardTab> {
       ApiService.clearCache();
       _countsFuture = _loadCounts();
       _weatherFuture = _loadWeather();
-      final viewerId = widget.userId ?? AuthService.currentSession?.userId ?? 0;
-      _viewerId = viewerId;
-      _followedPostsFuture = viewerId > 0 ? ApiService.getFarmPostsFeed(userId: viewerId) : Future.value(<dynamic>[]);
-      _followedPosts = [];
-      _postsInitialized = false;
       setState(() {});
     }
   }
 
   @override
   void dispose() {
-    try {
-      _followSub.cancel();
-    } catch (_) {}
     _newsScrollController.dispose();
     super.dispose();
-  }
-
-  void _refreshFollowedPosts() {
-    // Reset initialization flag and reload posts from server
-    _postsInitialized = false;
-    _followedPostsFuture = _viewerId > 0 
-        ? ApiService.getFarmPostsFeed(userId: _viewerId) 
-        : Future.value(<dynamic>[]);
   }
 
   Future<Map<String, dynamic>> _loadWeather() async {
@@ -217,30 +155,30 @@ class _DashboardTabState extends State<DashboardTab> {
       ),
       child: RefreshIndicator(
         onRefresh: () async {
-          _refreshFollowedPosts();
-          setState(() {});
+          setState(() {
+            _countsFuture = _loadCounts();
+            _weatherFuture = _loadWeather();
+            _newsFuture = ApiService.getAgriculturalNews();
+          });
           await Future.delayed(const Duration(milliseconds: 500));
         },
         child: CustomScrollView(
           physics: const ClampingScrollPhysics(),
           cacheExtent: 200.0,
           slivers: [
-          // Date Header - Minimaliste
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 30, 20, 0),
             sliver: SliverToBoxAdapter(
               child: Text(
                 _getFormattedDate(),
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w300,
-                  color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                style: AppTypography.labelSmall.copyWith(
+                  color: isDarkMode ? Colors.grey.shade400 : const Color.fromARGB(233, 15, 89, 36),
                 ),
               ),
             ),
           ),
 
-          // Conseil du jour - Simplifié
+          // Conseil du jour
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             sliver: SliverToBoxAdapter(
@@ -266,21 +204,16 @@ class _DashboardTabState extends State<DashboardTab> {
                       duration: const Duration(milliseconds: 300),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: isDarkMode
-                              ? [const Color(0xFF2D5016).withOpacity(0.7), const Color(0xFF3A6122).withOpacity(0.7)]
-                              : [const Color(0xFF2D5016), const Color(0xFF3D6B1F)],
+                          colors: [
+                            const Color.fromARGB(233, 15, 89, 36),
+                            const Color.fromARGB(200, 156, 78, 47)
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF2D5016).withOpacity(0.15),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+                        boxShadow: AppShadows.elevationSmall,
                       ),
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(AppSpacing.md),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -293,17 +226,15 @@ class _DashboardTabState extends State<DashboardTab> {
                                 children: [
                                   Text(
                                     '☀️ Aujourd\'hui',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
+                                    style: AppTypography.label.copyWith(
                                       color: Colors.white,
+                                      fontWeight: FontWeight.w400,
                                     ),
                                   ),
                                   if (_isWeatherExpanded)
                                     Text(
-                                      '$advice',
-                                      style: const TextStyle(
-                                        fontSize: 11,
+                                      advice,
+                                      style: AppTypography.bodySmall.copyWith(
                                         color: Colors.white70,
                                       ),
                                     ),
@@ -312,30 +243,27 @@ class _DashboardTabState extends State<DashboardTab> {
                               if (!isLoading)
                                 Text(
                                   '${maxTemp.toStringAsFixed(0)}°',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
+                                  style: AppTypography.h2.copyWith(
                                     color: Colors.white,
                                   ),
                                 ),
                             ],
                           ),
                           if (_isWeatherExpanded) ...[
-                            const SizedBox(height: 12),
+                            SizedBox(height: AppSpacing.md),
                             Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(AppSpacing.md),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.1),
                               ),
                               child: Row(
                                 children: [
                                   const Icon(Icons.water_drop_outlined, color: Colors.white70, size: 16),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: AppSpacing.sm),
                                   Expanded(
                                     child: Text(
                                       wateringAdvice,
-                                      style: const TextStyle(
-                                        fontSize: 11,
+                                      style: AppTypography.bodySmall.copyWith(
                                         color: Colors.white,
                                       ),
                                     ),
@@ -353,50 +281,46 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ),
 
-            // Astuce aléatoire (nouvelle fonctionnalité)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              sliver: SliverToBoxAdapter(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? const Color(0xFF12210D).withOpacity(0.9) : AppColors.lightBg,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.lightbulb, color: Color(0xFF6B8E23), size: 28),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _currentTip.isNotEmpty ? _currentTip : 'Chargement...',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDarkMode ? Colors.grey.shade200 : const Color(0xFF2D5016),
-                          ),
+          // Astuce aléatoire
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            sliver: SliverToBoxAdapter(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDarkMode ? const Color(0xFF12210D).withOpacity(0.9) : AppColors.lightBg,
+                  boxShadow: AppShadows.elevationSmall,
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.md,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lightbulb, color: Color.fromARGB(233, 15, 89, 36), size: 28),
+                    SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(
+                        _currentTip.isNotEmpty ? _currentTip : 'Chargement...',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: isDarkMode ? Colors.grey.shade200 : const Color.fromARGB(233, 15, 89, 36),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.refresh, color: Color(0xFF6B8E23)),
-                        onPressed: () {
-                          setState(() {
-                            _currentTip = _tips[Random().nextInt(_tips.length)];
-                          });
-                          HapticFeedback.selectionClick();
-                        },
-                      ),
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: Color.fromARGB(233, 15, 89, 36)),
+                      onPressed: () {
+                        setState(() {
+                          _currentTip = _tips[Random().nextInt(_tips.length)];
+                        });
+                        HapticFeedback.selectionClick();
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),
+          ),
+
           // 📊 STATS RAPIDES
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
@@ -409,7 +333,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       builder: (context, snapshot) {
                         return StatCard(
                           icon: Icons.agriculture,
-                          iconColor: const Color(0xFF6B8E23),
+                          iconColor: const Color.fromARGB(233, 15, 89, 36),
                           label: 'Fermes',
                           value: snapshot.data?['farms'] ?? 0,
                           isDarkMode: isDarkMode,
@@ -443,7 +367,6 @@ class _DashboardTabState extends State<DashboardTab> {
                                 builder: (context) => FarmTab(userId: widget.userId, initialSection: 1),
                               ),
                             ).then((_) {
-                              // When returning from FarmTab, refresh the counts
                               setState(() {
                                 _countsFuture = _loadCounts();
                               });
@@ -458,17 +381,17 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ),
 
-          // News Section Header - Minimaliste
+          // News Section Header
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
             sliver: SliverToBoxAdapter(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.newspaper_rounded,
                     size: 24,
-                    color: const Color(0xFF6B8E23),
+                    color: Color.fromARGB(233, 15, 89, 36),
                   ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -477,20 +400,20 @@ class _DashboardTabState extends State<DashboardTab> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: isDarkMode
-                              ? const Color(0xFF2D5016).withOpacity(0.3)
-                              : const Color(0xFF2D5016).withOpacity(0.1),
+                              ? const Color.fromARGB(233, 15, 89, 36).withOpacity(0.3)
+                              : const Color.fromARGB(233, 15, 89, 36).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.filter_alt, size: 14, color: Color(0xFF6B8E23)),
+                            const Icon(Icons.filter_alt, size: 14, color: Color.fromARGB(233, 15, 89, 36)),
                             const SizedBox(width: 6),
                             Text(
                               _selectedNewsFilter,
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: Color(0xFF6B8E23),
+                                color: Color.fromARGB(233, 15, 89, 36),
                               ),
                             ),
                           ],
@@ -503,14 +426,14 @@ class _DashboardTabState extends State<DashboardTab> {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: isDarkMode
-                                ? const Color(0xFF2D5016).withOpacity(0.3)
-                                : const Color(0xFF2D5016).withOpacity(0.1),
+                                ? const Color.fromARGB(233, 15, 89, 36).withOpacity(0.3)
+                                : const Color.fromARGB(233, 15, 89, 36).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
                             Icons.tune,
                             size: 18,
-                            color: Color(0xFF6B8E23),
+                            color: Color.fromARGB(233, 15, 89, 36),
                           ),
                         ),
                       ),
@@ -538,10 +461,10 @@ class _DashboardTabState extends State<DashboardTab> {
                           : Colors.white.withOpacity(0.85),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Center(
+                      child: const Center(
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: const Color(0xFF6B8E23),
+                          color: Color.fromARGB(233, 15, 89, 36),
                         ),
                       ),
                     ),
@@ -666,8 +589,6 @@ class _DashboardTabState extends State<DashboardTab> {
         ),
       );
   }
-
-
 
   Widget _buildNewsCard(NewsArticle article, bool isActive, bool isDarkMode) {
     return GestureDetector(
@@ -897,7 +818,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                  color: isDarkMode ? Colors.white : const Color.fromARGB(233, 15, 89, 36),
                 ),
               ),
             ),
@@ -909,7 +830,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   children: [
                     ...['Local', 'Cultures', 'Élevage', 'International'].map((filter) {
                       return _buildFilterOption(filter, isDarkMode);
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),
@@ -923,7 +844,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   onPressed: () => Navigator.pop(context),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: const Color(0xFF2D5016),
+                    backgroundColor: const Color.fromARGB(233, 15, 89, 36),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -963,22 +884,16 @@ class _DashboardTabState extends State<DashboardTab> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF2D5016).withOpacity(isDarkMode ? 0.3 : 0.1)
+              ? const Color.fromARGB(233, 15, 89, 36).withOpacity(isDarkMode ? 0.3 : 0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF2D5016)
-                : isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
-            width: isSelected ? 1.5 : 1,
-          ),
         ),
         child: Row(
           children: [
             Icon(
               _getFilterIcon(filter),
               size: 20,
-              color: isSelected ? const Color(0xFF6B8E23) : Colors.grey,
+              color: isSelected ? const Color.fromARGB(233, 15, 89, 36) : Colors.grey,
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -988,7 +903,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                   color: isSelected
-                      ? const Color(0xFF2D5016)
+                      ? const Color.fromARGB(233, 15, 89, 36)
                       : isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
                 ),
               ),
@@ -997,7 +912,7 @@ class _DashboardTabState extends State<DashboardTab> {
               const Icon(
                 Icons.check_circle,
                 size: 20,
-                color: Color(0xFF6B8E23),
+                color: Color.fromARGB(233, 15, 89, 36),
               ),
           ],
         ),
@@ -1030,22 +945,5 @@ class _DashboardTabState extends State<DashboardTab> {
     final monthName = months[now.month - 1];
     
     return '$dayName ${now.day} $monthName ${now.year}';
-  }
-
-  // ignore: unused_element
-  Color _getHealthColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'sain':
-      case 'healthy':
-        return Colors.green;
-      case 'malade':
-      case 'sick':
-        return Colors.red;
-      case 'vacciné':
-      case 'vaccinated':
-        return Colors.blue;
-      default:
-        return Colors.orange;
-    }
   }
 }

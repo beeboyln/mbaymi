@@ -4,12 +4,16 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/map_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/utils/app_spacing.dart';
+import 'package:mbaymi/utils/app_typography.dart';
+import 'package:mbaymi/utils/app_radius.dart';
+import 'package:mbaymi/utils/app_shadows.dart';
 import 'dart:typed_data';
 
 class CreateFarmScreen extends StatefulWidget {
   final int? userId;
 
-  const CreateFarmScreen({Key? key, this.userId}) : super(key: key);
+  const CreateFarmScreen({super.key, this.userId});
 
   @override
   State<CreateFarmScreen> createState() => _CreateFarmScreenState();
@@ -36,29 +40,14 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
   XFile? _imageFile;
   Uint8List? _imageBytes;
   bool _loading = false;
-  
-  // Palette de couleurs - Déclarées comme constantes
-  static const Color _primaryColor = Color(0xFF8B6B4D);
-  static const Color _primaryLight = Color(0xFFA58A6D);
-  static const Color _primaryDark = Color(0xFF5D4730);
-  static const Color _bgLight = Color(0xFFFAF8F5);
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = AppColors.lightBg;
-  static const Color _cardDark = Color(0xFF1E1E1E);
-  static const Color _borderLight = Color(0xFFE8E2D8);
-  static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _textLight = Color(0xFF1A1A1A);
-  static const Color _textDark = Colors.white;
-  static const Color _textSecondaryLight = Color(0xFF6B6B6B);
-  static const Color _textSecondaryDark = Color(0xFF8E8E93);
 
   // Constantes pour les dimensions
-  static const double _defaultPadding = 20.0;
-  static const double _smallPadding = 8.0;
-  static const double _mediumPadding = 16.0;
-  static const double _largePadding = 32.0;
-  static const double _borderRadius = 12.0;
-  static const double _buttonHeight = 52.0;
+  static const double _defaultPadding = AppSpacing.lg;
+  static const double _smallPadding = AppSpacing.sm;
+  static const double _mediumPadding = AppSpacing.md;
+  static const double _largePadding = AppSpacing.xl;
+  static const double _borderRadius = AppRadius.md;
+  static const double _buttonHeight = AppSpacing.buttonHeight;
   static const double _imageHeight = 200.0;
 
   @override
@@ -179,7 +168,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
           message,
           style: const TextStyle(fontWeight: FontWeight.w300),
         ),
-        backgroundColor: _primaryColor,
+        backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_borderRadius),
@@ -205,17 +194,17 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
   }
 
   Color _getSecondaryTextColor(bool isDark) {
-    return isDark ? _textSecondaryDark : _textSecondaryLight;
+    return AppColors.getTextColor(isDark).withOpacity(0.7);
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? _bgDark : _bgLight;
-    final cardColor = isDark ? _cardDark : _cardLight;
-    final textColor = isDark ? _textDark : _textLight;
+    final bgColor = AppColors.getBgColor(isDark);
+    final cardColor = AppColors.getCardBgColor(isDark);
+    final textColor = AppColors.getTextColor(isDark);
     final secondaryTextColor = _getSecondaryTextColor(isDark);
-    final borderColor = isDark ? _borderDark : _borderLight;
+    final borderColor = AppColors.getBorderColor(isDark);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -413,10 +402,10 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: TextStyle(
+      style: const TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.w400,
-        color: _primaryDark,
+        color: AppColors.primary,
         letterSpacing: -0.3,
       ),
     );
@@ -437,16 +426,16 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_photo_alternate_outlined, size: 40, color: _primaryLight),
-                  const SizedBox(height: 12),
+                  const Icon(Icons.add_photo_alternate_outlined, size: 40, color: AppColors.primaryLight),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Ajouter une photo',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: _primaryColor),
+                    style: AppTypography.body.copyWith(color: AppColors.primary),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Touchez pour sélectionner',
-                    style: TextStyle(fontSize: 13, color: _primaryLight, fontWeight: FontWeight.w300),
+                    style: AppTypography.caption.copyWith(color: AppColors.primaryLight),
                   ),
                 ],
               )
@@ -513,7 +502,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
           hintText: hint,
           hintStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w300),
           labelStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w400),
-          prefixIcon: Icon(icon, color: _primaryColor, size: 20),
+          prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: _mediumPadding, vertical: _mediumPadding),
         ),
@@ -522,7 +511,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
   }
 
   Widget _buildTypeSelector(Color cardColor, Color textColor, Color borderColor) {
-    final List<Map<String, dynamic>> types = const [
+    const List<Map<String, dynamic>> types = [
       {'icon': Icons.grass_outlined, 'label': 'Agricole', 'value': 'Agricole'},
       {'icon': Icons.agriculture_outlined, 'label': 'Élevage', 'value': 'Élevage'},
       {'icon': Icons.forest_outlined, 'label': 'Mixte', 'value': 'Mixte'},
@@ -554,13 +543,13 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: isSelected ? _primaryColor : cardColor,
+                      color: isSelected ? AppColors.primary : cardColor,
                       borderRadius: BorderRadius.circular(_smallPadding),
-                      border: Border.all(color: isSelected ? _primaryColor : borderColor, width: 1),
+                      border: Border.all(color: isSelected ? AppColors.primary : borderColor, width: 1),
                     ),
                     child: Column(
                       children: [
-                        Icon(type['icon'] as IconData, color: isSelected ? Colors.white : _primaryColor, size: 20),
+                        Icon(type['icon'] as IconData, color: isSelected ? Colors.white : AppColors.primary, size: 20),
                         const SizedBox(height: 6),
                         Text(
                           type['label'] as String,
@@ -597,10 +586,10 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: _location != null ? _primaryColor : _primaryLight.withOpacity(0.1),
+                color: _location != null ? AppColors.primary : AppColors.primaryLight.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(_smallPadding),
               ),
-              child: Icon(Icons.map_outlined, color: _location != null ? Colors.white : _primaryColor, size: 20),
+              child: Icon(Icons.map_outlined, color: _location != null ? Colors.white : AppColors.primary, size: 20),
             ),
             const SizedBox(width: _mediumPadding),
             Expanded(
@@ -634,7 +623,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
       height: _buttonHeight,
       child: Material(
         borderRadius: BorderRadius.circular(10),
-        color: _primaryColor,
+        color: AppColors.primary,
         child: InkWell(
           onTap: _loading ? null : _submit,
           borderRadius: BorderRadius.circular(10),
@@ -645,9 +634,9 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : Row(
+                : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Icon(Icons.add_circle_outline, color: Colors.white, size: 20),
                       SizedBox(width: _smallPadding),
                       Text(

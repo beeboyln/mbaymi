@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/screens/notifications_screen.dart';
 import 'package:mbaymi/services/notification_service.dart';
 import 'package:mbaymi/utils/app_theme.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 /// 🔔 Widget d'icône notification avec badge
 class NotificationIconWidget extends StatefulWidget {
-  const NotificationIconWidget({Key? key}) : super(key: key);
+  final Color? iconColor;
+  
+  const NotificationIconWidget({super.key, this.iconColor});
 
   @override
   State<NotificationIconWidget> createState() => _NotificationIconWidgetState();
@@ -58,9 +61,9 @@ class _NotificationIconWidgetState extends State<NotificationIconWidget> {
               icon: Icon(
                 Icons.notifications_outlined,
                 size: 24,
-                color: Theme.of(context).brightness == Brightness.dark
+                color: widget.iconColor ?? (Theme.of(context).brightness == Brightness.dark
                     ? AppTheme.getTextColor(true)
-                    : AppTheme.getTextColor(false),
+                    : AppTheme.getTextColor(false)),
               ),
               onPressed: () {
                 Navigator.push(

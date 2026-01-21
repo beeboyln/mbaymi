@@ -7,9 +7,14 @@ import 'package:mbaymi/services/token_storage.dart';
 import 'package:mbaymi/utils/email_validator.dart' as email_validator;
 import 'package:mbaymi/utils/validators.dart' as validators;
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/utils/app_spacing.dart';
+import 'package:mbaymi/utils/app_typography.dart';
+import 'package:mbaymi/utils/app_radius.dart';
+import 'package:mbaymi/widgets/app_button.dart';
+import 'package:mbaymi/widgets/app_input.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -157,15 +162,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String label,
     bool isDark,
   ) {
+    final borderColor = isDark ? Colors.white12 : Colors.black12;
     return InputDecoration(
       labelText: label,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: BorderSide(
-          color: isDark ? Colors.white : Colors.black,
+          color: AppColors.primary,
           width: 2,
         ),
       ),
@@ -177,31 +185,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bgColor = AppColors.getBgColor(isDark);
+    final textColor = AppColors.getTextColor(isDark);
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text('Créer un compte'),
+        title: Text('Créer un compte', style: AppTypography.h3),
         backgroundColor: bgColor,
+        foregroundColor: textColor,
       ),
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
           controller: _scrollController,
           padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: bottomInset + 24,
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            top: AppSpacing.lg,
+            bottom: bottomInset + AppSpacing.lg,
           ),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Form(
             key: _formKey,
             child: Column(
               children: [
-                Image.asset('assets/images/aa.png', height: 80),
-                const SizedBox(height: 32),
+                Icon(
+                  Icons.person,
+                  size: 90,
+                  color: AppColors.primaryLight,
+                ),
+                SizedBox(height: AppSpacing.xxl),
 
                 TextFormField(
                   controller: _nameController,
@@ -210,10 +224,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   autocorrect: false,
                   enableSuggestions: false,
                   decoration: _input('Nom complet', isDark),
+                  style: AppTypography.body.copyWith(color: textColor),
                   validator: (v) => v == null || v.isEmpty ? 'Nom requis' : null,
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _emailController,
@@ -221,10 +236,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   autocorrect: false,
                   enableSuggestions: false,
                   decoration: _input('Email', isDark),
+                  style: AppTypography.body.copyWith(color: textColor),
                   validator: email_validator.Validators.email,
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _phoneController,
@@ -233,10 +249,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   enableSuggestions: false,
                   keyboardType: TextInputType.phone,
                   decoration: _input('Téléphone', isDark),
+                  style: AppTypography.body.copyWith(color: textColor),
                   validator: validators.Validators.phone,
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _passwordController,
@@ -245,10 +262,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   enableSuggestions: false,
                   obscureText: true,
                   decoration: _input('Mot de passe', isDark),
+                  style: AppTypography.body.copyWith(color: textColor),
                   validator: validators.Validators.password,
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _confirmPasswordController,
@@ -257,17 +275,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   enableSuggestions: false,
                   obscureText: true,
                   decoration: _input('Confirmer mot de passe', isDark),
+                  style: AppTypography.body.copyWith(color: textColor),
                   validator: (v) =>
                       v != _passwordController.text
                           ? 'Les mots de passe ne correspondent pas'
                           : null,
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
 
                 DropdownButtonFormField<String>(
                   value: _selectedRole,
                   decoration: _input('Rôle', isDark),
+                  style: AppTypography.body.copyWith(color: textColor),
                   items: const [
                     DropdownMenuItem(value: 'farmer', child: Text('Agriculteur')),
                     DropdownMenuItem(value: 'livestock_breeder', child: Text('Éleveur')),
@@ -279,47 +299,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onChanged: (v) => setState(() => _selectedRole = v!),
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _regionController,
                   focusNode: _regionFocus,
                   decoration: _input('Région', isDark),
+                  style: AppTypography.body.copyWith(color: textColor),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Région requise' : null,
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _villageController,
                   focusNode: _villageFocus,
                   decoration: _input('Village (optionnel)', isDark),
+                  style: AppTypography.body.copyWith(color: textColor),
                 ),
 
-                const SizedBox(height: 32),
+                SizedBox(height: AppSpacing.xl),
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _register,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.brown,
-                    ),
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'CRÉER UN COMPTE',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
+                AppButton(
+                  label: 'CRÉER UN COMPTE',
+                  onPressed: _isLoading ? null : _register,
+                  isLoading: _isLoading,
+                  isDarkMode: isDark,
                 ),
 
-                if (isWeb) const SizedBox(height: 40),
+                if (isWeb) SizedBox(height: AppSpacing.xxl),
               ],
             ),
           ),
