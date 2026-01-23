@@ -3,6 +3,7 @@ import 'package:mbaymi/models/veterinarian_model.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class VeterinarianProfileScreen extends StatefulWidget {
   const VeterinarianProfileScreen({super.key});
@@ -61,10 +62,10 @@ class _VeterinarianProfileScreenState extends State<VeterinarianProfileScreen> {
         future: _profileFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.brown),
-              ),
+            return SkeletonPageLoader(
+              isDarkMode: isDark,
+              includeAppBar: false,
+              cardCount: 4,
             );
           }
 

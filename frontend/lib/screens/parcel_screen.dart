@@ -10,6 +10,7 @@ import 'package:mbaymi/screens/parcel_finance_screen.dart';
 import 'package:mbaymi/screens/parcel_reminders_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class ParcelScreen extends StatefulWidget {
   final int farmId;
@@ -413,11 +414,10 @@ class _ParcelScreenState extends State<ParcelScreen> {
       future: _parcelsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: _primaryColor,
-            ),
+          return SkeletonListLoader(
+            itemCount: 5,
+            isDarkMode: isDark,
+            itemHeight: 120,
           );
         }
         

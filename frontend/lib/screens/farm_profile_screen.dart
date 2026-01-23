@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class FarmProfileScreen extends StatefulWidget {
   final int farmId;
@@ -80,11 +81,10 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
           future: _profileFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 100),
-                  child: CircularProgressIndicator(color: Color(0xFF6B8E23)),
-                ),
+              return SkeletonPageLoader(
+                isDarkMode: widget.isDarkMode,
+                includeAppBar: false,
+                cardCount: 4,
               );
             }
 
@@ -354,7 +354,11 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
                         future: _postsFuture,
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const CircularProgressIndicator(color: Color(0xFF6B8E23));
+                            return SkeletonListLoader(
+                              itemCount: 2,
+                              isDarkMode: widget.isDarkMode,
+                              itemHeight: 120,
+                            );
                           }
 
                           final posts = snapshot.data ?? [];

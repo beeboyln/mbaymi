@@ -5,6 +5,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/activity_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class FarmDetailScreen extends StatefulWidget {
   final int farmId;
@@ -319,14 +320,10 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
       future: _farmDetailsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.all(60),
-            child: Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: _primaryColor,
-              ),
-            ),
+          return SkeletonPageLoader(
+            isDarkMode: widget.isDarkMode,
+            includeAppBar: false,
+            cardCount: 5,
           );
         }
 

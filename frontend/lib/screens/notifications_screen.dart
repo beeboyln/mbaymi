@@ -8,6 +8,7 @@ import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_theme.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 /// 🔔 Page des notifications
 class NotificationsScreen extends StatefulWidget {
@@ -150,8 +151,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             future: _notificationsFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(),
+                final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+                return SkeletonListLoader(
+                  itemCount: 6,
+                  isDarkMode: isDarkMode,
+                  itemHeight: 100,
                 );
               }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/models/veterinarian_model.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class VeterinarianProfileDetailScreen extends StatefulWidget {
   final String veterinarianId;
@@ -63,8 +64,10 @@ class _VeterinarianProfileDetailScreenState
         future: _profileFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
+            return SkeletonPageLoader(
+              isDarkMode: Theme.of(context).brightness == Brightness.dark,
+              includeAppBar: false,
+              cardCount: 4,
             );
           }
 

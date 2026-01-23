@@ -14,11 +14,14 @@ import 'package:mbaymi/screens/advice_screen.dart';
 import 'package:mbaymi/screens/dashboard_tab.dart';
 import 'package:mbaymi/screens/farm_network_screen.dart';
 import 'package:mbaymi/screens/veterinarian_dashboard_screen.dart';
+import 'package:mbaymi/screens/parcel_screen.dart';
+import 'package:mbaymi/screens/parcel_finance_screen.dart';
+import 'package:mbaymi/screens/select_crop_screen.dart';
+import 'package:mbaymi/screens/crop_problems_screen.dart';
+import 'package:mbaymi/screens/activity_screen.dart';
 import 'package:mbaymi/widgets/notification_icon_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/utils/app_spacing.dart';
-import 'package:mbaymi/utils/app_typography.dart';
-import 'package:mbaymi/utils/app_radius.dart';
 
 class HomeScreen extends StatefulWidget {
   final int? userId;
@@ -387,12 +390,61 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.local_florist,
                 label: 'Ajouter une culture',
                 color: const Color(0xFF6B8E23),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ajouter une culture - Bientôt disponible')),
-                  );
+                  
+                  // Get user's farms
+                  if (userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Veuillez vous connecter d\'abord')),
+                    );
+                    return;
+                  }
+
+                  try {
+                    final farms = await ApiService.getUserFarms(userId!);
+                    if (!mounted) return;
+                    
+                    if (farms.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Créez une ferme d\'abord')),
+                      );
+                      return;
+                    }
+
+                    // If only one farm, open directly
+                    if (farms.length == 1) {
+                      final farmId = farms[0]['id'] as int;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ParcelScreen(
+                            farmId: farmId,
+                            userId: userId!,
+                          ),
+                        ),
+                      );
+                    } else {
+                      // Show farm selection dialog
+                      final rootContext = this.context;
+                      _showFarmSelectionDialog(farms, (selectedFarmId) {
+                        Navigator.push(
+                          rootContext,
+                          MaterialPageRoute(
+                            builder: (_) => ParcelScreen(
+                              farmId: selectedFarmId,
+                              userId: userId!,
+                            ),
+                          ),
+                        );
+                      });
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Erreur: ${e.toString()}')),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 12),
@@ -444,12 +496,92 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.warning_rounded,
                 label: 'Signaler un problème',
                 color: const Color(0xFFE07856),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Signaler un problème - Bientôt disponible')),
-                  );
+                  
+                  if (userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Veuillez vous connecter d\'abord')),
+                    );
+                    return;
+                  }
+
+                  try {
+                    final farms = await ApiService.getUserFarms(userId!);
+                    if (!mounted) return;
+                    
+                    if (farms.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Créez une ferme d\'abord')),
+                      );
+                      return;
+                    }
+
+                    // If only one farm, go directly to crop selection
+                    if (farms.length == 1) {
+                      final farmId = farms[0]['id'] as int;
+                      final result = await Navigator.push<Map<String, dynamic>>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SelectCropScreen(
+                            farmId: farmId,
+                            userId: userId!,
+                            isDarkMode: _isDarkMode,
+                          ),
+                        ),
+                      );
+                      
+                      if (result != null && mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CropProblemsScreen(
+                              farmId: farmId,
+                              cropId: result['cropId'] as int,
+                              userId: userId!,
+                              cropName: result['cropName'] as String,
+                              isDarkMode: _isDarkMode,
+                            ),
+                          ),
+                        );
+                      }
+                    } else {
+                      // Show farm selection dialog
+                      final rootContext = this.context;
+                      _showFarmSelectionDialog(farms, (selectedFarmId) async {
+                        final result = await Navigator.push<Map<String, dynamic>>(
+                          rootContext,
+                          MaterialPageRoute(
+                            builder: (_) => SelectCropScreen(
+                              farmId: selectedFarmId,
+                              userId: userId!,
+                              isDarkMode: _isDarkMode,
+                            ),
+                          ),
+                        );
+                        
+                        if (result != null && mounted) {
+                          Navigator.push(
+                            rootContext,
+                            MaterialPageRoute(
+                              builder: (_) => CropProblemsScreen(
+                                farmId: selectedFarmId,
+                                cropId: result['cropId'] as int,
+                                userId: userId!,
+                                cropName: result['cropName'] as String,
+                                isDarkMode: _isDarkMode,
+                              ),
+                            ),
+                          );
+                        }
+                      });
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Erreur: ${e.toString()}')),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 12),
@@ -457,12 +589,59 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.receipt_long,
                 label: 'Noter une dépense',
                 color: const Color(0xFF4A90E2),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Noter une dépense - Bientôt disponible')),
-                  );
+                  
+                  if (userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Veuillez vous connecter d\'abord')),
+                    );
+                    return;
+                  }
+
+                  try {
+                    final farms = await ApiService.getUserFarms(userId!);
+                    if (!mounted) return;
+                    
+                    if (farms.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Créez une ferme d\'abord')),
+                      );
+                      return;
+                    }
+
+                    // If only one farm, open directly
+                    if (farms.length == 1) {
+                      final farmId = farms[0]['id'] as int;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ParcelFinanceScreen(
+                            farmId: farmId,
+
+                          ),
+                        ),
+                      );
+                    } else {
+                      // Show farm selection dialog
+                      final rootContext = this.context;
+                      _showFarmSelectionDialog(farms, (selectedFarmId) {
+                        Navigator.push(
+                          rootContext,
+                          MaterialPageRoute(
+                            builder: (_) => ParcelFinanceScreen(
+                              farmId: selectedFarmId,
+                            ),
+                          ),
+                        );
+                      });
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Erreur: ${e.toString()}')),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 16),
@@ -512,6 +691,117 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(Icons.chevron_right, color: color.withOpacity(0.4), size: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showFarmSelectionDialog(
+    List<dynamic> farms,
+    Function(int) onFarmSelected,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightBg,
+        title: Text(
+          'Sélectionnez une ferme',
+          style: TextStyle(
+            color: _isDarkMode ? Colors.white : const Color(0xFF2D5016),
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: farms.length,
+            itemBuilder: (context, index) {
+              final farm = farms[index];
+              final farmName = farm['name'] ?? farm['farm_name'] ?? 'Ferme sans nom';
+              final farmId = farm['id'] as int;
+              final farmImage = farm['image_url'] ?? farm['imageUrl'];
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  onFarmSelected(farmId);
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: _isDarkMode ? const Color(0xFF3A3A3A) : Colors.grey[100],
+                  ),
+                  child: Row(
+                    children: [
+                      // Farm Image
+                      ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          bottomLeft: Radius.circular(8),
+                        ),
+                        child: farmImage != null && farmImage.toString().isNotEmpty
+                            ? Image.network(
+                                farmImage.toString(),
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 80,
+                                    height: 80,
+                                    color: Colors.grey[400],
+                                    child: Icon(
+                                      Icons.landscape,
+                                      color: _isDarkMode ? Colors.grey[600] : Colors.grey[700],
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
+                                width: 80,
+                                height: 80,
+                                color: Colors.grey[400],
+                                child: Icon(
+                                  Icons.landscape,
+                                  color: _isDarkMode ? Colors.grey[600] : Colors.grey[700],
+                                ),
+                              ),
+                      ),
+                      // Farm Name
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          child: Text(
+                            farmName.toString(),
+                            style: TextStyle(
+                              color: _isDarkMode ? Colors.white : Colors.black87,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Annuler',
+              style: TextStyle(
+                color: _isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -596,57 +886,6 @@ class _HomeScreenState extends State<HomeScreen> {
             letterSpacing: 0.2,
           ),
         ),
-      ),
-    );
-  }
-
-  void _showSearchDialog(BuildContext context) {
-    final searchController = TextEditingController();
-    final cardBg = _isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightBg;
-    final textColor = _isDarkMode ? Colors.white : Colors.black;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: cardBg,
-        title: TextField(
-          controller: searchController,
-          autofocus: false,
-          decoration: InputDecoration(
-            hintText: 'Rechercher des fermes...',
-            hintStyle: TextStyle(color: Colors.grey[500]),
-            prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[600]),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          style: TextStyle(color: textColor),
-          onSubmitted: (query) {
-            Navigator.pop(ctx);
-            if (query.isNotEmpty) {
-              setState(() => _selectedIndex = 2);
-            }
-          },
-        ),
-        content: Text(
-          'Entrez votre recherche...',
-          style: TextStyle(color: textColor),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              if (searchController.text.isNotEmpty) {
-                setState(() => _selectedIndex = 2);
-              }
-            },
-            child: const Text('Rechercher'),
-          ),
-        ],
       ),
     );
   }

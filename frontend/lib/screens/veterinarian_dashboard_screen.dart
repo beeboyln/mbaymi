@@ -3,6 +3,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/edit_veterinarian_profile_screen.dart';
 import 'package:mbaymi/models/veterinarian_model.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class VeterinarianDashboardScreen extends StatefulWidget {
   const VeterinarianDashboardScreen({super.key});
@@ -120,11 +121,9 @@ class _VeterinarianDashboardScreenState
           ],
         ),
         body: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(_primaryColor),
-                ),
+            ? SkeletonPageLoader(
+                isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                cardCount: 4,
               )
             : _profile == null
                 ? Center(

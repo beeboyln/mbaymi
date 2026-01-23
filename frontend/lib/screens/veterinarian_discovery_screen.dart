@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/veterinarian_profile_detail_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class VeterinarianDiscoveryScreen extends StatefulWidget {
   const VeterinarianDiscoveryScreen({super.key});
@@ -187,11 +188,11 @@ class _VeterinarianDiscoveryScreenState extends State<VeterinarianDiscoveryScree
 
             // Veterinarians List
             if (_isLoading)
-              const Expanded(
-                child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-                  ),
+              Expanded(
+                child: SkeletonGridLoader(
+                  crossAxisCount: 2,
+                  itemCount: 6,
+                  isDarkMode: Theme.of(context).brightness == Brightness.dark,
                 ),
               )
             else if (_filteredVeterinarians.isEmpty)

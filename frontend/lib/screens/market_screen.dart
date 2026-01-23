@@ -9,6 +9,7 @@ import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/models/market_model.dart';
 import 'package:mbaymi/screens/create_sale_screen.dart';
 import 'package:mbaymi/screens/sale_detail_screen.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 import 'dart:async';
 
 class MarketTab extends StatefulWidget {
@@ -593,16 +594,13 @@ class _MarketTabState extends State<MarketTab> {
               future: _salesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SliverToBoxAdapter(
-                    child: Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 60),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color.fromARGB(255, 143, 82, 51),
-                          ),
-                        ),
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                      child: SkeletonGridLoader(
+                        crossAxisCount: 2,
+                        itemCount: 6,
+                        isDarkMode: isDarkMode,
                       ),
                     ),
                   );

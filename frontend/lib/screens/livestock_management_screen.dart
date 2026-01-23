@@ -7,7 +7,7 @@ import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/utils/app_spacing.dart';
 import 'package:mbaymi/utils/app_typography.dart';
 import 'package:mbaymi/utils/app_radius.dart';
-import 'package:mbaymi/utils/app_shadows.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class LivestockManagementScreen extends StatefulWidget {
   final int userId;
@@ -86,8 +86,10 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
           future: _livestockFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
+              return SkeletonListLoader(
+                itemCount: 5,
+                isDarkMode: isDark,
+                itemHeight: 120,
               );
             }
 

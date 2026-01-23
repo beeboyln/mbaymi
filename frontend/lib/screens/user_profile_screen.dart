@@ -11,6 +11,7 @@ import 'package:mbaymi/utils/app_spacing.dart';
 import 'package:mbaymi/utils/app_typography.dart';
 import 'package:mbaymi/utils/app_radius.dart';
 import 'package:mbaymi/utils/app_shadows.dart';
+import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final int userId;
@@ -632,11 +633,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
             future: _profileFuture!,
             builder: (context, profileSnap) {
               if (profileSnap.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
+                return SkeletonPageLoader(
+                  isDarkMode: isDark,
+                  includeAppBar: false,
+                  cardCount: 5,
                 );
               }
 
@@ -853,11 +853,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                       future: _postsFuture!,
                       builder: (context, postsSnap) {
                         if (postsSnap.connectionState == ConnectionState.waiting) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: CircularProgressIndicator(color: AppColors.primary),
-                            ),
+                          return SkeletonListLoader(
+                            itemCount: 3,
+                            isDarkMode: isDark,
+                            itemHeight: 150,
                           );
                         }
 
