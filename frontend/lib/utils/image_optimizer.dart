@@ -236,14 +236,14 @@ class OptimizedImage extends StatelessWidget {
   final Duration cacheDuration;
 
   const OptimizedImage({
-    Key? key,
+    super.key,
     required this.imageUrl,
     required this.width,
     required this.height,
     this.fit = BoxFit.cover,
     this.placeholder,
     this.cacheDuration = const Duration(days: 30),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

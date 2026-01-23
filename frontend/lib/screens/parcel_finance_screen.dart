@@ -6,7 +6,7 @@ import 'package:mbaymi/utils/app_colors.dart';
 class ParcelFinanceScreen extends StatefulWidget {
   final int farmId;
 
-  const ParcelFinanceScreen({Key? key, required this.farmId}) : super(key: key);
+  const ParcelFinanceScreen({super.key, required this.farmId});
 
   @override
   State<ParcelFinanceScreen> createState() => _ParcelFinanceScreenState();

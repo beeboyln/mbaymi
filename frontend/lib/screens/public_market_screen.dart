@@ -3,7 +3,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/models/market_model.dart';
 
 class PublicMarketScreen extends StatefulWidget {
-  const PublicMarketScreen({Key? key}) : super(key: key);
+  const PublicMarketScreen({super.key});
 
   @override
   State<PublicMarketScreen> createState() => _PublicMarketScreenState();

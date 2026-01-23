@@ -80,7 +80,7 @@ Future<void> _wakeupBackend() async {
 }
 
 class MbaymiApp extends StatefulWidget {
-  const MbaymiApp({Key? key}) : super(key: key);
+  const MbaymiApp({super.key});
 
   @override
   State<MbaymiApp> createState() => _MbaymiAppState();
@@ -215,7 +215,7 @@ class _MbaymiAppState extends State<MbaymiApp> {
 
 class SplashScreen extends StatefulWidget {
   final int? userId;
-  const SplashScreen({Key? key, this.userId}) : super(key: key);
+  const SplashScreen({super.key, this.userId});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();

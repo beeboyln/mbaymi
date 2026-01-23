@@ -1,4 +1,5 @@
 /// 🎯 Modèle pour les interactions sociales (likes, commentaires, partages)
+library;
 
 class PostLike {
   final int id;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MapPickerScreen extends StatefulWidget {
-  const MapPickerScreen({Key? key}) : super(key: key);
+  const MapPickerScreen({super.key});
 
   @override
   State<MapPickerScreen> createState() => _MapPickerScreenState();
@@ -52,7 +52,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                 autofocus: false,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(labelText: 'Latitude'),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -60,7 +60,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                 autofocus: false,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(labelText: 'Longitude'),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
             const SizedBox(height: 16),
             ElevatedButton.icon(

@@ -117,11 +117,11 @@ class LoadingOverlay extends StatelessWidget {
   final String? message;
 
   const LoadingOverlay({
-    Key? key,
+    super.key,
     required this.isLoading,
     required this.child,
     this.message = 'Chargement en cours...',
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -163,10 +163,10 @@ class ConnectivityBanner extends StatelessWidget {
   final EdgeInsets padding;
 
   const ConnectivityBanner({
-    Key? key,
+    super.key,
     required this.isOnline,
     this.padding = const EdgeInsets.only(top: 16, left: 16, right: 16),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -210,12 +210,12 @@ class EmptyStateWidget extends StatelessWidget {
   final VoidCallback? onRetry;
 
   const EmptyStateWidget({
-    Key? key,
+    super.key,
     required this.title,
     this.message,
     this.icon = Icons.inbox,
     this.onRetry,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

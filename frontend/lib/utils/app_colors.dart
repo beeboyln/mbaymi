@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   // ========== COULEURS PRIMAIRES ==========
   // Palette brune/caramel (primaire)
-  static const Color primary = Color.fromARGB(181, 139, 67, 38); // Espresso (marron foncé principal)
+  static const Color primary = Color.fromARGB(181, 156, 78, 47); // Espresso (marron foncé principal)
   static const Color primaryLight = Color.fromARGB(228, 126, 67, 24); // Coffee (marron moyen)
   static const Color accent = Color(0xFFAB7743); // Caramel (doré accent)
   

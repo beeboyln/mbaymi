@@ -11,7 +11,7 @@ class SaleDetailScreen extends StatefulWidget {
   final int? saleId;
   final bool? isDarkMode;
 
-  const SaleDetailScreen({Key? key, this.sale, this.saleId, this.isDarkMode}) : super(key: key);
+  const SaleDetailScreen({super.key, this.sale, this.saleId, this.isDarkMode});
 
   @override
   State<SaleDetailScreen> createState() => _SaleDetailScreenState();

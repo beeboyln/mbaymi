@@ -10,12 +10,12 @@ class CreateFarmPostDialog extends StatefulWidget {
   final int? livestockId;
 
   const CreateFarmPostDialog({
-    Key? key,
+    super.key,
     required this.farmId,
     required this.farmName,
     required this.onPostCreated,
     this.livestockId,
-  }) : super(key: key);
+  });
 
   @override
   State<CreateFarmPostDialog> createState() => _CreateFarmPostDialogState();
@@ -198,9 +198,9 @@ class _CreateFarmPostDialogState extends State<CreateFarmPostDialog> {
                               ? const CircularProgressIndicator(
                                   color: _primaryColor,
                                 )
-                              : Column(
+                              : const Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
+                                  children: [
                                     Icon(
                                       Icons.add_photo_alternate_outlined,
                                       size: 48,
@@ -276,7 +276,7 @@ class _CreateFarmPostDialogState extends State<CreateFarmPostDialog> {
                         child: Center(
                           child: Column(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.image,
                                 size: 28,
                                 color: _primaryColor,
@@ -315,7 +315,7 @@ class _CreateFarmPostDialogState extends State<CreateFarmPostDialog> {
                         child: Center(
                           child: Column(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.local_atm,
                                 size: 28,
                                 color: _primaryColor,
@@ -360,7 +360,7 @@ class _CreateFarmPostDialogState extends State<CreateFarmPostDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _unit,
+                        initialValue: _unit,
                         items: UNITS.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
                         onChanged: (value) {
                           if (value != null) {

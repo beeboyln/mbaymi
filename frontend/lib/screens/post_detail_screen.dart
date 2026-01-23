@@ -8,11 +8,11 @@ class PostDetailScreen extends StatefulWidget {
   final bool isDarkMode;
 
   const PostDetailScreen({
-    Key? key,
+    super.key,
     required this.postId,
     required this.postData,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   State<PostDetailScreen> createState() => _PostDetailScreenState();
@@ -313,8 +313,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               future: _commentsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16),
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
                     child: Center(
                       child: CircularProgressIndicator(
                         color: _primaryColor,
@@ -354,7 +354,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ),
       bottomSheet: Container(
         color: cardColor,
-        padding: EdgeInsets.only(
+        padding: const EdgeInsets.only(
           left: 16,
           right: 16,
           top: 12,
@@ -382,7 +382,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               onTap: _postComment,
               child: Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: _primaryColor,
                   shape: BoxShape.circle,
                 ),

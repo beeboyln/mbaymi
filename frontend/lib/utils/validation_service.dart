@@ -1,6 +1,7 @@
 /// 🛡️ Input Validation Service
 // Removed unused Flutter import to fix analyzer warning
 /// Valide les entrées utilisateur avant les appels API
+library;
 class ValidationService {
   /// Valider un email
   static String? validateEmail(String? value) {

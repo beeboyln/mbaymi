@@ -12,12 +12,12 @@ class FarmPostsWidget extends StatefulWidget {
   final int? livestockId;
 
   const FarmPostsWidget({
-    Key? key,
+    super.key,
     required this.farmId,
     required this.farmName,
     required this.isOwner,
     this.livestockId,
-  }) : super(key: key);
+  });
 
   @override
   State<FarmPostsWidget> createState() => _FarmPostsWidgetState();
@@ -103,7 +103,7 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                      const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
                       const SizedBox(height: 12),
                       Text(
                         'Aucun post pour le moment',
@@ -223,7 +223,7 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.local_atm, color: Colors.white, size: 14),
+                        const Icon(Icons.local_atm, color: Colors.white, size: 14),
                         const SizedBox(width: 4),
                         Text(
                           '${price.toStringAsFixed(0)} CFA/$unit',
@@ -299,7 +299,7 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
                   },
                   child: Row(
                     children: [
-                      Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor),
+                      const Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor),
                       const SizedBox(width: 4),
                       Text('$commentsCount'),
                     ],
@@ -310,7 +310,7 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget> {
                   onTap: () => _sharePost(postId),
                   child: Row(
                     children: [
-                      Icon(Icons.share_outlined, size: 20, color: _primaryColor),
+                      const Icon(Icons.share_outlined, size: 20, color: _primaryColor),
                       const SizedBox(width: 4),
                       Text('$sharesCount'),
                     ],

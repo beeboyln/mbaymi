@@ -5,7 +5,7 @@ import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
 class VeterinarianProfileScreen extends StatefulWidget {
-  const VeterinarianProfileScreen({Key? key}) : super(key: key);
+  const VeterinarianProfileScreen({super.key});
 
   @override
   State<VeterinarianProfileScreen> createState() =>
@@ -61,9 +61,9 @@ class _VeterinarianProfileScreenState extends State<VeterinarianProfileScreen> {
         future: _profileFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
+            return const Center(
               child: CircularProgressIndicator(
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.brown),
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.brown),
               ),
             );
           }
@@ -363,7 +363,7 @@ class _VeterinarianProfileScreenState extends State<VeterinarianProfileScreen> {
                             child: Column(
                               children: [
                                 Text(
-                                  '${profile.rating?.toStringAsFixed(1) ?? 'N/A'}',
+                                  profile.rating?.toStringAsFixed(1) ?? 'N/A',
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w700,

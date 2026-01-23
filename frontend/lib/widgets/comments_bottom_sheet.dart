@@ -8,11 +8,11 @@ class CommentsBottomSheet extends StatefulWidget {
   final bool isDarkMode;
 
   const CommentsBottomSheet({
-    Key? key,
+    super.key,
     required this.postId,
     required this.currentUserId,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   State<CommentsBottomSheet> createState() => _CommentsBottomSheetState();

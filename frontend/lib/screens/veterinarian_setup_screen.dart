@@ -7,7 +7,7 @@ import 'dart:io';
 import 'package:mbaymi/utils/app_colors.dart';
 
 class VeterinarianSetupScreen extends StatefulWidget {
-  const VeterinarianSetupScreen({Key? key}) : super(key: key);
+  const VeterinarianSetupScreen({super.key});
 
   @override
   State<VeterinarianSetupScreen> createState() =>
@@ -326,8 +326,9 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
                     decoration: _inputDecoration('Distance maximale (km)'),
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Distance requise';
-                      if (int.tryParse(v) == null)
+                      if (int.tryParse(v) == null) {
                         return 'Doit être un nombre';
+                      }
                       return null;
                     },
                   ),
@@ -342,8 +343,9 @@ class _VeterinarianSetupScreenState extends State<VeterinarianSetupScreen> {
                     decoration: _inputDecoration('Années d\'expérience'),
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Expérience requise';
-                      if (int.tryParse(v) == null)
+                      if (int.tryParse(v) == null) {
                         return 'Doit être un nombre';
+                      }
                       return null;
                     },
                   ),

@@ -187,7 +187,7 @@ class AppWidgets {
         if (onMore != null)
           GestureDetector(
             onTap: onMore,
-            child: Text(
+            child: const Text(
               'Voir plus',
               style: TextStyle(
                 fontSize: 14,

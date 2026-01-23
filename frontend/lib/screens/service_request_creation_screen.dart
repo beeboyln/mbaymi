@@ -7,10 +7,10 @@ class ServiceRequestCreationScreen extends StatefulWidget {
   final int? cropId;
 
   const ServiceRequestCreationScreen({
-    Key? key,
+    super.key,
     this.animalId,
     this.cropId,
-  }) : super(key: key);
+  });
 
   @override
   State<ServiceRequestCreationScreen> createState() =>
@@ -230,7 +230,7 @@ class _ServiceRequestCreationScreenState
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _priority,
+                  initialValue: _priority,
                   style: TextStyle(color: textColor),
                   decoration: _inputDecoration('Priorité'),
                   items: const [

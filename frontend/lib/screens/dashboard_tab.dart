@@ -202,11 +202,11 @@ class _DashboardTabState extends State<DashboardTab> {
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            const Color.fromARGB(233, 15, 89, 36),
-                            const Color.fromARGB(200, 156, 78, 47)
+                            Color.fromARGB(233, 15, 89, 36),
+                            Color.fromARGB(200, 156, 78, 47)
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -250,9 +250,9 @@ class _DashboardTabState extends State<DashboardTab> {
                             ],
                           ),
                           if (_isWeatherExpanded) ...[
-                            SizedBox(height: AppSpacing.md),
+                            const SizedBox(height: AppSpacing.md),
                             Container(
-                              padding: EdgeInsets.all(AppSpacing.md),
+                              padding: const EdgeInsets.all(AppSpacing.md),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.1),
                               ),

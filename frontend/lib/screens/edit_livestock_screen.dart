@@ -7,16 +7,17 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:mbaymi/screens/animal_photo_carousel_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 class EditLivestockScreen extends StatefulWidget {
   final int livestockId;
   final Map<String, dynamic> livestock;
 
   const EditLivestockScreen({
-    Key? key,
+    super.key,
     required this.livestockId,
     required this.livestock,
-  }) : super(key: key);
+  });
 
   @override
   State<EditLivestockScreen> createState() => _EditLivestockScreenState();
@@ -54,7 +55,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   late Future<List<dynamic>> _photosFuture;
   late String _visibility;
   late int _userId;
-  int _selectedTabIndex = 0;
+  final int _selectedTabIndex = 0;
 
   bool get isWeb => kIsWeb;
 
@@ -299,16 +300,16 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? _bgDark : _bgLight;
-    final cardColor = isDark ? _cardDark : _cardLight;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final secondaryTextColor = isDark ? Colors.white60 : Colors.black54;
+    final bgColor = AppColors.getBgColor(isDark);
+    final cardColor = AppColors.getCardBgColor(isDark);
+    final textColor = AppColors.getTextColor(isDark);
+    final secondaryTextColor = textColor.withOpacity(0.7);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: cardColor,
+        backgroundColor: bgColor,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: textColor),
@@ -337,9 +338,9 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
             Container(
               color: cardColor,
               child: TabBar(
-                indicatorColor: _primaryColor,
+                indicatorColor: AppColors.primary,
                 indicatorWeight: 3,
-                labelColor: _primaryColor,
+                labelColor: AppColors.primary,
                 unselectedLabelColor: secondaryTextColor,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                 tabs: const [
@@ -680,7 +681,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.add_photo_alternate_outlined, size: 48, color: _primaryColor),
+        const Icon(Icons.add_photo_alternate_outlined, size: 48, color: _primaryColor),
         const SizedBox(height: 12),
         Text(
           'Ajouter une photo',
@@ -761,7 +762,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
         ),
       ),
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         items: items.map((item) {
           return DropdownMenuItem(value: item, child: Text(item));
         }).toList(),

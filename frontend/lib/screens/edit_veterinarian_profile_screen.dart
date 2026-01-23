@@ -5,7 +5,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 
 class EditVeterinarianProfileScreen extends StatefulWidget {
-  const EditVeterinarianProfileScreen({Key? key}) : super(key: key);
+  const EditVeterinarianProfileScreen({super.key});
 
   @override
   State<EditVeterinarianProfileScreen> createState() =>
@@ -251,7 +251,7 @@ class _EditVeterinarianProfileScreenState
 
   Widget _buildStep1() {
     return SingleChildScrollView(
-      padding: EdgeInsets.only(
+      padding: const EdgeInsets.only(
         left: 20,
         right: 20,
         top: 20,
@@ -377,7 +377,7 @@ class _EditVeterinarianProfileScreenState
 
   Widget _buildStep2() {
     return SingleChildScrollView(
-      padding: EdgeInsets.only(
+      padding: const EdgeInsets.only(
         left: 20,
         right: 20,
         top: 20,
@@ -477,7 +477,7 @@ class _EditVeterinarianProfileScreenState
 
   Widget _buildStep3() {
     return SingleChildScrollView(
-      padding: EdgeInsets.only(
+      padding: const EdgeInsets.only(
         left: 20,
         right: 20,
         top: 20,
@@ -576,24 +576,24 @@ class _EditVeterinarianProfileScreenState
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Column(
+                child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.cloud_upload,
                       size: 48,
                       color: Color(0xFF8B6F47),
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
+                    SizedBox(height: 16),
+                    Text(
                       'Appuyez pour télécharger',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    SizedBox(height: 8),
+                    Text(
                       'ou glissez et déposez votre fichier',
                       style: TextStyle(
                         fontSize: 12,

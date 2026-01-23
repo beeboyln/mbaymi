@@ -7,9 +7,9 @@ class VeterinarianProfileDetailScreen extends StatefulWidget {
   final String veterinarianId;
 
   const VeterinarianProfileDetailScreen({
-    Key? key,
+    super.key,
     required this.veterinarianId,
-  }) : super(key: key);
+  });
 
   @override
   State<VeterinarianProfileDetailScreen> createState() =>
@@ -104,13 +104,13 @@ class _VeterinarianProfileDetailScreenState
               children: [
                 // Profile Header
                 Container(
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        const Color(0xFF8B6F47),
-                        const Color(0xFF6B5838),
+                        Color(0xFF8B6F47),
+                        Color(0xFF6B5838),
                       ],
                     ),
                   ),

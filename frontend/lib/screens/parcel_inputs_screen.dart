@@ -6,7 +6,7 @@ class ParcelInputsScreen extends StatefulWidget {
   final int farmId;
   final int cropId;
 
-  const ParcelInputsScreen({Key? key, required this.farmId, required this.cropId}) : super(key: key);
+  const ParcelInputsScreen({super.key, required this.farmId, required this.cropId});
 
   @override
   State<ParcelInputsScreen> createState() => _ParcelInputsScreenState();
@@ -248,9 +248,9 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen> {
                       'crop_id': widget.cropId,
                       'input_type': typeCtrl.text.trim(),
                       'name': nameCtrl.text.trim(),
-                      'quantity': double.tryParse(qtyCtrl.text) ?? null,
+                      'quantity': double.tryParse(qtyCtrl.text),
                       'unit': unitCtrl.text.trim(),
-                      'cost': double.tryParse(costCtrl.text) ?? null,
+                      'cost': double.tryParse(costCtrl.text),
                       'notes': notesCtrl.text.trim(),
                     };
                     try {
@@ -485,9 +485,9 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen> {
                     final updates = {
                       'input_type': typeCtrl.text.trim(),
                       'name': nameCtrl.text.trim(),
-                      'quantity': double.tryParse(qtyCtrl.text) ?? null,
+                      'quantity': double.tryParse(qtyCtrl.text),
                       'unit': unitCtrl.text.trim(),
-                      'cost': double.tryParse(costCtrl.text) ?? null,
+                      'cost': double.tryParse(costCtrl.text),
                       'notes': notesCtrl.text.trim(),
                     };
                     try {
@@ -751,7 +751,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen> {
                         },
                       ),
                     );
-                  }).toList(),
+                  }),
                   const SizedBox(height: 16),
                 ],
               );

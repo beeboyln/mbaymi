@@ -14,13 +14,13 @@ class ActivityScreen extends StatefulWidget {
   final bool readOnly; // Mode lecture seul
 
   const ActivityScreen({
-    Key? key,
+    super.key,
     required this.farmId,
     required this.cropId,
     required this.userId,
     this.farmOwnerId,
     this.readOnly = false,
-  }) : super(key: key);
+  });
 
   @override
   State<ActivityScreen> createState() => _ActivityScreenState();
@@ -338,12 +338,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
             if (!_showAddActivityForm && _canEdit()) ...[
               GestureDetector(
                 onTap: _toggleAddActivityForm,
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
+                child: const DecoratedBox(
+                  decoration: BoxDecoration(
                     color: Color(0xFF8B6B4D),
                     borderRadius: BorderRadius.all(Radius.circular(10)),
                   ),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -420,7 +420,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             children: [
               Text(
                 category.key,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: _primaryDark,
@@ -475,7 +475,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
               const SizedBox(height: 16),
             ],
           );
-        }).toList(),
+        }),
 
         // Type personnalisé
         if (_selectedActivityType == 'Autre') ...[
@@ -793,7 +793,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Historique',
             style: TextStyle(
               fontSize: 18,

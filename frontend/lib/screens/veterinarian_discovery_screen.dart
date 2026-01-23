@@ -4,7 +4,7 @@ import 'package:mbaymi/screens/veterinarian_profile_detail_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
 class VeterinarianDiscoveryScreen extends StatefulWidget {
-  const VeterinarianDiscoveryScreen({Key? key}) : super(key: key);
+  const VeterinarianDiscoveryScreen({super.key});
 
   @override
   State<VeterinarianDiscoveryScreen> createState() =>
@@ -246,10 +246,10 @@ class VeterinarianCard extends StatelessWidget {
   final VoidCallback onRequest;
 
   const VeterinarianCard({
-    Key? key,
+    super.key,
     required this.veterinarian,
     required this.onRequest,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -294,7 +294,7 @@ class VeterinarianCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.location_on,
                             size: 14,
                             color: Colors.grey,
@@ -461,10 +461,10 @@ class AuthorizationDialog extends StatefulWidget {
   final Function(String) onSubmit;
 
   const AuthorizationDialog({
-    Key? key,
+    super.key,
     required this.veterinarian,
     required this.onSubmit,
-  }) : super(key: key);
+  });
 
   @override
   State<AuthorizationDialog> createState() => _AuthorizationDialogState();

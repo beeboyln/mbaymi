@@ -10,7 +10,7 @@ class CreateSaleScreen extends StatefulWidget {
   final Map<String, dynamic>? sale;
   final int? saleId;
 
-  const CreateSaleScreen({Key? key, this.sale, this.saleId}) : super(key: key);
+  const CreateSaleScreen({super.key, this.sale, this.saleId});
 
   @override
   State<CreateSaleScreen> createState() => _CreateSaleScreenState();
@@ -28,7 +28,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
   XFile? _selectedImage;
   Uint8List? _selectedImageBytes;
   final ImagePicker _imagePicker = ImagePicker();
-  List<XFile> _additionalImages = [];
+  final List<XFile> _additionalImages = [];
 
   String _selectedCurrency = 'CFA';
   String _selectedCategory = 'Cultures';
@@ -180,7 +180,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.only(
+        padding: const EdgeInsets.only(
           left: 20,
           right: 20,
           top: 20,
@@ -240,7 +240,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
                         return Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.photo, color: _accentColor),
+                            const Icon(Icons.photo, color: _accentColor),
                             const SizedBox(height: 6),
                             Text('Ajouter une photo (optionnel)', style: TextStyle(color: secondaryTextColor)),
                           ],
@@ -297,7 +297,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
                               });
                             },
                             child: Container(
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: Colors.red,
                                 shape: BoxShape.circle,
                               ),
@@ -337,7 +337,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.add_photo_alternate_outlined, color: _accentColor, size: 24),
+                      const Icon(Icons.add_photo_alternate_outlined, color: _accentColor, size: 24),
                       const SizedBox(height: 8),
                       Text(
                         'Ajouter d\'autres photos (max ${5 - _additionalImages.length} restantes)',
@@ -545,7 +545,7 @@ class _CreateSaleScreenState extends State<CreateSaleScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Text(
+                  child: const Text(
                     'Annuler',
                     style: TextStyle(
                       fontSize: 16,

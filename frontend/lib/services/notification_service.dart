@@ -48,7 +48,7 @@ class NotificationService {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       };
-      debugPrint('🔔 Request headers: Authorization=${"Bearer " + (token.isNotEmpty ? token.substring(0, 20) + "..." : "NULL")}');
+      debugPrint('🔔 Request headers: Authorization=${"Bearer ${token.isNotEmpty ? token.substring(0, 20) + "..." : "NULL"}"}');
 
       final response = await http.get(
         url,

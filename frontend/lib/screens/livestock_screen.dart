@@ -4,7 +4,7 @@ import 'package:mbaymi/widgets/empty_state.dart';
 class LivestockTab extends StatelessWidget {
   final bool isDarkMode;
   
-  const LivestockTab({Key? key, this.isDarkMode = false}) : super(key: key);
+  const LivestockTab({super.key, this.isDarkMode = false});
 
   @override
   Widget build(BuildContext context) {

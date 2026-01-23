@@ -9,9 +9,9 @@ class PastureGalleryScreen extends StatefulWidget {
   final int userId;
   
   const PastureGalleryScreen({
-    Key? key,
+    super.key,
     required this.userId,
-  }) : super(key: key);
+  });
 
   @override
   State<PastureGalleryScreen> createState() => _PastureGalleryScreenState();

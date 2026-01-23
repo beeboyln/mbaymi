@@ -8,7 +8,7 @@ import 'dart:typed_data';
 class CreateLivestockScreen extends StatefulWidget {
   final int? userId;
 
-  const CreateLivestockScreen({Key? key, this.userId}) : super(key: key);
+  const CreateLivestockScreen({super.key, this.userId});
 
   @override
   State<CreateLivestockScreen> createState() => _CreateLivestockScreenState();
@@ -36,8 +36,8 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
   final FocusNode _notesFocus = FocusNode();
 
   bool _loading = false;
-  List<XFile> _imageFiles = [];
-  List<Uint8List> _imageBytes = [];
+  final List<XFile> _imageFiles = [];
+  final List<Uint8List> _imageBytes = [];
   String _visibility = 'PRIVATE'; // PRIVATE, PUBLIC, PARTIAL
 
   // Palette de couleurs
@@ -523,7 +523,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
         border: Border.all(color: borderColor, width: 1),
       ),
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         items: items.map((item) {
           return DropdownMenuItem(
             value: item,
@@ -536,7 +536,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
           prefixIcon: Icon(icon, color: _primaryColor, size: 20),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          labelStyle: TextStyle(color: Color(0xFF6B6B6B), fontWeight: FontWeight.w400),
+          labelStyle: const TextStyle(color: Color(0xFF6B6B6B), fontWeight: FontWeight.w400),
         ),
         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
         dropdownColor: cardColor,
@@ -560,7 +560,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
             if (_imageFiles.isNotEmpty)
               Text(
                 '${_imageFiles.length} photo(s)',
-                style: TextStyle(
+                style: const TextStyle(
                   color: _accentColor,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -634,7 +634,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.add_photo_alternate_outlined,
                     size: 48,
                     color: _primaryColor,
@@ -649,7 +649,7 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  const Text(
                     'Appuyez pour ajouter des images',
                     style: TextStyle(
                       color: _textSecondaryLight,
@@ -780,9 +780,9 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : Row(
+                : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Icon(Icons.add_circle_outline, color: Colors.white, size: 20),
                       SizedBox(width: 8),
                       Text(

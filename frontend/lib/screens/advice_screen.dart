@@ -4,7 +4,7 @@ import 'package:mbaymi/widgets/empty_state.dart';
 class AdviceTab extends StatelessWidget {
   final bool isDarkMode;
   
-  const AdviceTab({Key? key, this.isDarkMode = false}) : super(key: key);
+  const AdviceTab({super.key, this.isDarkMode = false});
 
   @override
   Widget build(BuildContext context) {

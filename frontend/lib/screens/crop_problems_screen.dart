@@ -11,13 +11,13 @@ class CropProblemsScreen extends StatefulWidget {
   final bool isDarkMode;
 
   const CropProblemsScreen({
-    Key? key,
+    super.key,
     required this.farmId,
     required this.cropId,
     required this.userId,
     required this.cropName,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   State<CropProblemsScreen> createState() => _CropProblemsScreenState();
@@ -66,8 +66,8 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
           future: _problemsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
-                child: CircularProgressIndicator(color: const Color(0xFF6B8E23)),
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF6B8E23)),
               );
             }
 
@@ -91,7 +91,7 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.check_circle_outline, size: 48, color: const Color(0xFF6B8E23)),
+                    const Icon(Icons.check_circle_outline, size: 48, color: Color(0xFF6B8E23)),
                     const SizedBox(height: 16),
                     Text(
                       'Aucun problème signalé',
@@ -250,7 +250,7 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
                   errorBuilder: (_, __, ___) => Container(
                     height: 150,
                     color: widget.isDarkMode ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
-                    child: Icon(Icons.image_not_supported, color: Colors.grey),
+                    child: const Icon(Icons.image_not_supported, color: Colors.grey),
                   ),
                 ),
               ),
@@ -359,9 +359,9 @@ class _CropProblemsScreenState extends State<CropProblemsScreen> {
         _problemsFuture = ApiService.getCropProblems(widget.cropId);
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Statut mis à jour'),
-          backgroundColor: const Color(0xFF6B8E23),
+          backgroundColor: Color(0xFF6B8E23),
         ),
       );
     } catch (e) {
@@ -492,7 +492,7 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
       padding: const EdgeInsets.only(bottom: 0),
       child: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.only(
+          padding: const EdgeInsets.only(
             left: 20,
             right: 20,
             top: 20,

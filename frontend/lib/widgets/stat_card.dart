@@ -13,7 +13,7 @@ class StatCard extends StatelessWidget {
   final bool isDarkMode;
 
   const StatCard({
-    Key? key,
+    super.key,
     required this.icon,
     required this.iconColor,
     required this.label,
@@ -22,7 +22,7 @@ class StatCard extends StatelessWidget {
     this.subtitleColor,
     this.onTap,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

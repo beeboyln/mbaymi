@@ -36,7 +36,7 @@ class LocalNotificationService {
       playSound: true,
     );
 
-    final iosDetails = IOSNotificationDetails();
+    const iosDetails = IOSNotificationDetails();
 
     final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 

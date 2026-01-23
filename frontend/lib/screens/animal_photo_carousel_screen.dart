@@ -11,12 +11,12 @@ class AnimalPhotoCarouselScreen extends StatefulWidget {
   final bool isDarkMode;
 
   const AnimalPhotoCarouselScreen({
-    Key? key,
+    super.key,
     required this.livestockId,
     required this.animalType,
     required this.userId,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimalPhotoCarouselScreen> createState() =>
@@ -243,7 +243,7 @@ class _AnimalPhotoCarouselScreenState extends State<AnimalPhotoCarouselScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 32),
                   child: Column(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.add_photo_alternate_outlined,
                         size: 48,
                         color: _accentColor,
@@ -284,7 +284,7 @@ class _AnimalPhotoCarouselScreenState extends State<AnimalPhotoCarouselScreen> {
               future: _photosFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
+                  return const Center(
                     child: CircularProgressIndicator(color: _accentColor),
                   );
                 }

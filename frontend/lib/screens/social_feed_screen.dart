@@ -15,7 +15,7 @@ import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 class SocialFeedScreen extends StatefulWidget {
   final bool isDarkMode;
 
-  const SocialFeedScreen({Key? key, this.isDarkMode = false}) : super(key: key);
+  const SocialFeedScreen({super.key, this.isDarkMode = false});
 
   @override
   State<SocialFeedScreen> createState() => _SocialFeedScreenState();
@@ -485,7 +485,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                       ),
                     );
                   },
-                  child: Row(children: [Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('$commentsCount')]),
+                  child: Row(children: [const Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('$commentsCount')]),
                 ),
                 const SizedBox(width: 16),
                 GestureDetector(
@@ -516,10 +516,10 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                       );
                     }
                   },
-                  child: Row(children: [Icon(Icons.share_outlined, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('${post['shares_count'] ?? 0}')]),
+                  child: Row(children: [const Icon(Icons.share_outlined, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('${post['shares_count'] ?? 0}')]),
                 ),
                 const Spacer(),
-                Icon(Icons.bookmark_border, size: 20, color: _primaryColor),
+                const Icon(Icons.bookmark_border, size: 20, color: _primaryColor),
               ],
             ),
           ),
@@ -705,7 +705,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.local_atm, color: Colors.white, size: 14),
+                            const Icon(Icons.local_atm, color: Colors.white, size: 14),
                             const SizedBox(width: 4),
                             Text(
                               '${price.toStringAsFixed(0)} CFA/$unit',
@@ -803,7 +803,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                         ),
                       );
                     },
-                    child: Row(children: [Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('$commentsCount')]),
+                    child: Row(children: [const Icon(Icons.chat_bubble_outline, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('$commentsCount')]),
                   ),
                   const SizedBox(width: 16),
                   GestureDetector(
@@ -834,10 +834,10 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                         );
                       }
                     },
-                    child: Row(children: [Icon(Icons.share_outlined, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('${post['shares_count'] ?? 0}')]),
+                    child: Row(children: [const Icon(Icons.share_outlined, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('${post['shares_count'] ?? 0}')]),
                   ),
                   const Spacer(),
-                  Icon(Icons.bookmark_border, size: 20, color: _primaryColor),
+                  const Icon(Icons.bookmark_border, size: 20, color: _primaryColor),
                 ],
               ),
             ),
@@ -1051,7 +1051,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                       );
                     }
                   },
-                  child: Row(children: [Icon(Icons.share_outlined, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('${animal['shares_count'] ?? 0}')]),
+                  child: Row(children: [const Icon(Icons.share_outlined, size: 20, color: _primaryColor), const SizedBox(width: 4), Text('${animal['shares_count'] ?? 0}')]),
                 ),
               ],
             ),
@@ -1219,7 +1219,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(color: _primaryColor),
+          const CircularProgressIndicator(color: _primaryColor),
           const SizedBox(height: 16),
           Text('Chargement...', style: TextStyle(color: isDarkMode ? Colors.white60 : Colors.black54)),
         ],
@@ -1250,7 +1250,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.chat_bubble_outline, size: 64, color: _primaryColor),
+          const Icon(Icons.chat_bubble_outline, size: 64, color: _primaryColor),
           const SizedBox(height: 16),
           const Text('Aucun post', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
@@ -1265,7 +1265,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.explore_outlined, size: 64, color: _accentColor),
+          const Icon(Icons.explore_outlined, size: 64, color: _accentColor),
           const SizedBox(height: 16),
           const Text('Aucune ferme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),

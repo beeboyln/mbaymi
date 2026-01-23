@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:mbaymi/models/notification_model.dart';
 import 'package:mbaymi/services/notification_service.dart';
+import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_theme.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
 /// 🔔 Page des notifications
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
+  const NotificationsScreen({super.key});
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -109,75 +111,82 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: AppColors.lightBg,
-        title: const Text(
-          'Notifications',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
-        ),
-        centerTitle: false,
-        actions: [
-          if (_unreadCount > 0)
-            TextButton(
-              onPressed: _markAllAsRead,
-              child: Text(
-                'Marquer tout',
-                style: TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w600,
-                ),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        final isDark = themeProvider.isDarkMode;
+        final bgColor = AppColors.getBgColor(isDark);
+        final textColor = AppColors.getTextColor(isDark);
+        
+        return Scaffold(
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: bgColor,
+            title: Text(
+              'Notifications',
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
               ),
             ),
-        ],
-      ),
-      backgroundColor: Colors.grey[50],
-      body: FutureBuilder<List<NotificationModel>>(
-        future: _notificationsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          if (snapshot.hasError) {
-            final errorMessage = snapshot.error.toString();
-            final isAuthError = errorMessage.contains('not authenticated') || 
-                               errorMessage.contains('No access token') ||
-                               errorMessage.contains('Token expired');
-            
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    isAuthError ? Icons.lock_outline : Icons.error_outline,
-                    size: 48,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    isAuthError ? 'Connectez-vous pour voir vos notifications' : 'Erreur de chargement',
+            centerTitle: false,
+            iconTheme: IconThemeData(color: textColor),
+            actions: [
+              if (_unreadCount > 0)
+                TextButton(
+                  onPressed: _markAllAsRead,
+                  child: const Text(
+                    'Marquer tout',
                     style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.w600,
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _loadNotifications();
-                      });
-                    },
+                ),
+            ],
+          ),
+          backgroundColor: bgColor,
+          body: FutureBuilder<List<NotificationModel>>(
+            future: _notificationsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+
+              if (snapshot.hasError) {
+                final errorMessage = snapshot.error.toString();
+                final isAuthError = errorMessage.contains('not authenticated') || 
+                                   errorMessage.contains('No access token') ||
+                                   errorMessage.contains('Token expired');
+                
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isAuthError ? Icons.lock_outline : Icons.error_outline,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        isAuthError ? 'Connectez-vous pour voir vos notifications' : 'Erreur de chargement',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _loadNotifications();
+                          });
+                        },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Réessayer'),
                   ),
@@ -225,27 +234,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               separatorBuilder: (context, index) => const SizedBox(height: 4),
               itemBuilder: (context, index) {
                 final notification = notifications[index];
-                return _buildNotificationCard(notification);
+                return _buildNotificationCard(notification, isDark);
               },
             ),
           );
         },
       ),
+        );
+      },
     );
   }
 
-  Widget _buildNotificationCard(NotificationModel notification) {
+  Widget _buildNotificationCard(NotificationModel notification, bool isDark) {
     final iconColor = _getNotificationColor(notification.type);
     final icon = _getNotificationIcon(notification.type);
+    final cardBgColor = AppColors.getCardBgColor(isDark);
+    final textColor = AppColors.getTextColor(isDark);
+    final secondaryTextColor = textColor.withOpacity(0.7);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
       decoration: BoxDecoration(
-        color: notification.isRead ? Colors.white : Colors.blue[50],
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: notification.isRead 
-              ? Colors.grey[200]! 
+              ? AppColors.getBorderColor(isDark)
               : AppTheme.primaryColor.withOpacity(0.2),
           width: 0.5,
         ),
@@ -338,7 +352,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     ? FontWeight.w500
                                     : FontWeight.w700,
                                 fontSize: 14,
-                                color: Colors.black87,
+                                color: textColor,
                               ),
                             ),
                           ),
@@ -346,7 +360,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: AppTheme.primaryColor,
                                 shape: BoxShape.circle,
                               ),
@@ -361,7 +375,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: secondaryTextColor,
                           height: 1.4,
                         ),
                       ),
@@ -371,7 +385,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         _formatTime(notification.createdAt),
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey[500],
+                          color: secondaryTextColor,
                         ),
                       ),
                     ],

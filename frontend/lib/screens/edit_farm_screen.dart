@@ -10,7 +10,7 @@ class EditFarmScreen extends StatefulWidget {
   final int? userId;
   final bool isDarkMode;
 
-  const EditFarmScreen({Key? key, required this.farm, this.userId, this.isDarkMode = false}) : super(key: key);
+  const EditFarmScreen({super.key, required this.farm, this.userId, this.isDarkMode = false});
 
   @override
   State<EditFarmScreen> createState() => _EditFarmScreenState();
@@ -243,11 +243,11 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
                     borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
                   ),
                 ),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _type,
+                initialValue: _type,
                 style: TextStyle(color: textColor),
                 dropdownColor: cardBg,
                 items: const [
@@ -318,9 +318,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
     }
     
     // Sinon utiliser image_url ou imageUrl
-    if (url == null) {
-      url = widget.farm['image_url'] as String? ?? widget.farm['imageUrl'] as String?;
-    }
+    url ??= widget.farm['image_url'] as String? ?? widget.farm['imageUrl'] as String?;
     
     if (url == null) return const Text('Aucune image');
     

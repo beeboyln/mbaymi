@@ -6,7 +6,7 @@ import 'package:mbaymi/screens/social_feed_screen.dart';
 class FarmNetworkScreen extends StatelessWidget {
   final bool isDarkMode;
 
-  const FarmNetworkScreen({Key? key, this.isDarkMode = false}) : super(key: key);
+  const FarmNetworkScreen({super.key, this.isDarkMode = false});
 
   @override
   Widget build(BuildContext context) {

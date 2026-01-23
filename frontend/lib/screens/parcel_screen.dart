@@ -17,11 +17,11 @@ class ParcelScreen extends StatefulWidget {
   final bool readOnly;
 
   const ParcelScreen({
-    Key? key,
+    super.key,
     required this.farmId,
     required this.userId,
     this.readOnly = false,
-  }) : super(key: key);
+  });
 
   @override
   State<ParcelScreen> createState() => _ParcelScreenState();
@@ -75,7 +75,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
               color: cardColor,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            padding: EdgeInsets.only(
+            padding: const EdgeInsets.only(
               bottom: 20,
               left: 24,
               right: 24,
@@ -121,7 +121,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                     hintText: 'Ex: Parcelle Nord',
                     labelStyle: TextStyle(color: secondaryTextColor),
                     hintStyle: TextStyle(color: secondaryTextColor),
-                    prefixIcon: Icon(Icons.landscape_outlined, color: _primaryColor),
+                    prefixIcon: const Icon(Icons.landscape_outlined, color: _primaryColor),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
@@ -136,7 +136,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: _primaryColor, width: 2),
+                      borderSide: const BorderSide(color: _primaryColor, width: 2),
                     ),
                   ),
                 ),
@@ -302,14 +302,14 @@ class _ParcelScreenState extends State<ParcelScreen> {
         actions: [
           if (!widget.readOnly && _selectedSection == 0)
             IconButton(
-              icon: Icon(Icons.add, color: _primaryColor),
+              icon: const Icon(Icons.add, color: _primaryColor),
               onPressed: _showAddParcel,
               tooltip: 'Ajouter une parcelle',
               splashRadius: 1,
             ),
           if (!widget.readOnly && _selectedSection == 1)
             IconButton(
-              icon: Icon(Icons.add_circle_outline, color: _primaryColor),
+              icon: const Icon(Icons.add_circle_outline, color: _primaryColor),
               onPressed: _addPost,
               tooltip: 'Ajouter un post',
               splashRadius: 1,
@@ -442,7 +442,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
         if (parcels.isEmpty) {
           return SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            child: Container(
+            child: SizedBox(
               height: MediaQuery.of(context).size.height * 0.8,
               child: Center(
                 child: Column(

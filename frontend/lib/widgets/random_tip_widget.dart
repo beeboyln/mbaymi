@@ -10,7 +10,7 @@ class RandomTipWidget extends StatefulWidget {
   final List<String>? fallbackTips;
   final bool compact;
 
-  const RandomTipWidget({Key? key, this.fallbackTips, this.compact = false}) : super(key: key);
+  const RandomTipWidget({super.key, this.fallbackTips, this.compact = false});
 
   @override
   State<RandomTipWidget> createState() => _RandomTipWidgetState();

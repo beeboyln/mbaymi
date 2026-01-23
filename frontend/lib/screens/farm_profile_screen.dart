@@ -9,11 +9,11 @@ class FarmProfileScreen extends StatefulWidget {
   final bool isDarkMode;
 
   const FarmProfileScreen({
-    Key? key,
+    super.key,
     required this.farmId,
     required this.userId,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   State<FarmProfileScreen> createState() => _FarmProfileScreenState();
@@ -80,10 +80,10 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
           future: _profileFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
+              return const Center(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 100),
-                  child: CircularProgressIndicator(color: const Color(0xFF6B8E23)),
+                  padding: EdgeInsets.symmetric(vertical: 100),
+                  child: CircularProgressIndicator(color: Color(0xFF6B8E23)),
                 ),
               );
             }
@@ -145,7 +145,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
                               padding: const EdgeInsets.only(top: 8),
                               child: Row(
                                 children: [
-                                  Icon(Icons.location_on_outlined, size: 16, color: const Color(0xFF6B8E23)),
+                                  const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF6B8E23)),
                                   const SizedBox(width: 6),
                                   Text(
                                     farmLocation,
@@ -354,7 +354,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
                         future: _postsFuture,
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
-                            return CircularProgressIndicator(color: const Color(0xFF6B8E23));
+                            return const CircularProgressIndicator(color: Color(0xFF6B8E23));
                           }
 
                           final posts = snapshot.data ?? [];

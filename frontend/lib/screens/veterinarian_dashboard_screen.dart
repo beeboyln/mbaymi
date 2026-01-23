@@ -5,7 +5,7 @@ import 'package:mbaymi/models/veterinarian_model.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
 class VeterinarianDashboardScreen extends StatefulWidget {
-  const VeterinarianDashboardScreen({Key? key}) : super(key: key);
+  const VeterinarianDashboardScreen({super.key});
 
   @override
   State<VeterinarianDashboardScreen> createState() =>
@@ -120,10 +120,10 @@ class _VeterinarianDashboardScreenState
           ],
         ),
         body: _isLoading
-            ? Center(
+            ? const Center(
                 child: CircularProgressIndicator(
                   valueColor:
-                      const AlwaysStoppedAnimation<Color>(_primaryColor),
+                      AlwaysStoppedAnimation<Color>(_primaryColor),
                 ),
               )
             : _profile == null

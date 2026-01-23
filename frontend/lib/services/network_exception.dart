@@ -12,47 +12,47 @@ abstract class NetworkException implements Exception {
 /// Erreur de timeout (pas de réponse dans le délai imparti)
 class TimeoutException extends NetworkException {
   TimeoutException({
-    String message = 'La requête a pris trop de temps. Vérifiez votre connexion.',
-  }) : super(message: message);
+    super.message = 'La requête a pris trop de temps. Vérifiez votre connexion.',
+  });
 }
 
 /// Erreur de connexion (pas de réseau)
 class ConnectionException extends NetworkException {
   ConnectionException({
-    String message = 'Pas de connexion Internet. Vérifiez votre réseau.',
-  }) : super(message: message);
+    super.message = 'Pas de connexion Internet. Vérifiez votre réseau.',
+  });
 }
 
 /// Erreur 404 - Ressource non trouvée
 class NotFoundException extends NetworkException {
   NotFoundException({
-    String message = 'La ressource demandée n\'existe pas.',
+    super.message = 'La ressource demandée n\'existe pas.',
     int? statusCode,
-  }) : super(message: message, statusCode: statusCode ?? 404);
+  }) : super(statusCode: statusCode ?? 404);
 }
 
 /// Erreur 401/403 - Non autorisé
 class UnauthorizedException extends NetworkException {
   UnauthorizedException({
-    String message = 'Vous n\'êtes pas autorisé. Reconnectez-vous.',
+    super.message = 'Vous n\'êtes pas autorisé. Reconnectez-vous.',
     int? statusCode,
-  }) : super(message: message, statusCode: statusCode ?? 401);
+  }) : super(statusCode: statusCode ?? 401);
 }
 
 /// Erreur 500+ - Erreur serveur
 class ServerException extends NetworkException {
   ServerException({
-    String message = 'Erreur serveur. Réessayez plus tard.',
+    super.message = 'Erreur serveur. Réessayez plus tard.',
     int? statusCode,
-  }) : super(message: message, statusCode: statusCode ?? 500);
+  }) : super(statusCode: statusCode ?? 500);
 }
 
 /// Erreur générique
 class BadRequestException extends NetworkException {
   BadRequestException({
-    String message = 'Requête invalide.',
+    super.message = 'Requête invalide.',
     int? statusCode,
-  }) : super(message: message, statusCode: statusCode ?? 400);
+  }) : super(statusCode: statusCode ?? 400);
 }
 
 /// Classe helper pour convertir les erreurs HTTP en exceptions personnalisées

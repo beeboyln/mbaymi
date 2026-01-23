@@ -13,7 +13,7 @@ import 'package:mbaymi/services/token_storage.dart';
 import 'package:mbaymi/services/simple_cache.dart';
 import 'package:mbaymi/services/connectivity_service.dart';
 import 'package:mbaymi/services/network_exception.dart';
-import 'dart:async' as _async_for_api;
+import 'dart:async' as async_for_api;
 
 class ApiService {
   // 🔄 Retry configuration
@@ -23,17 +23,17 @@ class ApiService {
   static const Duration _requestTimeout = Duration(seconds: 45);
 
   // 💾 Cache simple pour les GET
-  static final _getCache = SimpleCache<dynamic>(ttl: Duration(minutes: 5));
+  static final _getCache = SimpleCache<dynamic>(ttl: const Duration(minutes: 5));
   
   // 📡 Service de connectivité
   static final ConnectivityService _connectivity = ConnectivityService();
 
   // 🔔 Stream pour notifier la création d'un farm post afin que l'UI puisse se rafraîchir
-  static final _async_for_api.StreamController<void> _farmPostController = _async_for_api.StreamController<void>.broadcast();
+  static final async_for_api.StreamController<void> _farmPostController = async_for_api.StreamController<void>.broadcast();
   static Stream<void> get onFarmPostCreated => _farmPostController.stream;
   static void notifyFarmPostCreated() => _farmPostController.add(null);
   // Stream to notify follow/unfollow changes with payload { 'userId': int, 'action': 'follow'|'unfollow' }
-  static final _async_for_api.StreamController<Map<String, dynamic>> _followController = _async_for_api.StreamController<Map<String, dynamic>>.broadcast();
+  static final async_for_api.StreamController<Map<String, dynamic>> _followController = async_for_api.StreamController<Map<String, dynamic>>.broadcast();
   static Stream<Map<String, dynamic>> get onFollowChanged => _followController.stream;
   static void notifyFollowChanged(int userId, String action) => _followController.add({'userId': userId, 'action': action});
 
@@ -432,7 +432,7 @@ class ApiService {
         return data['secure_url'] as String?;
       } else {
         final body = resp.body;
-        throw Exception('Cloudinary upload failed: ${resp.statusCode} ${body}');
+        throw Exception('Cloudinary upload failed: ${resp.statusCode} $body');
       }
     } catch (e) {
       throw Exception('Image upload error: $e');

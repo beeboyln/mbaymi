@@ -13,12 +13,12 @@ class FarmDetailScreen extends StatefulWidget {
   final bool readOnly;
   
   const FarmDetailScreen({
-    Key? key,
+    super.key,
     required this.farmId,
     required this.farmData,
     this.isDarkMode = false,
     this.readOnly = false,
-  }) : super(key: key);
+  });
 
   @override
   State<FarmDetailScreen> createState() => _FarmDetailScreenState();
@@ -598,7 +598,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                         top: BorderSide(color: borderColor),
                       ),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
@@ -606,7 +606,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                           size: 16,
                           color: _primaryColor,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(
                           'Voir les activités',
                           style: TextStyle(

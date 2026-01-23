@@ -8,11 +8,11 @@ class AnimalDetailScreen extends StatefulWidget {
   final bool isDarkMode;
 
   const AnimalDetailScreen({
-    Key? key,
+    super.key,
     required this.livestockId,
     required this.animal,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimalDetailScreen> createState() => _AnimalDetailScreenState();
@@ -66,7 +66,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
               future: _photosFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
+                  return const Center(
                     child: SizedBox(
                       height: 300,
                       child: CircularProgressIndicator(color: _accentColor),
@@ -87,7 +87,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.image_not_supported_outlined,
                             size: 48,
                             color: _accentColor,

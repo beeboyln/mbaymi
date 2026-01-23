@@ -7,7 +7,7 @@ class ParcelRemindersScreen extends StatefulWidget {
   final int farmId;
   final int cropId;
 
-  const ParcelRemindersScreen({Key? key, required this.farmId, required this.cropId}) : super(key: key);
+  const ParcelRemindersScreen({super.key, required this.farmId, required this.cropId});
 
   @override
   State<ParcelRemindersScreen> createState() => _ParcelRemindersScreenState();
@@ -241,7 +241,7 @@ class _ParcelRemindersScreenState extends State<ParcelRemindersScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: DropdownButtonFormField<String>(
-                        value: repeatRule,
+                        initialValue: repeatRule,
                         decoration: const InputDecoration(
                           labelText: 'Répétition',
                           border: InputBorder.none,
@@ -468,7 +468,7 @@ class _ParcelRemindersScreenState extends State<ParcelRemindersScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: repeatRule,
+                      initialValue: repeatRule,
                       decoration: InputDecoration(
                         labelText: 'Répétition',
                         prefixIcon: const Icon(Icons.repeat_outlined),

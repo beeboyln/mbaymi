@@ -8,10 +8,10 @@ class NewsDetailScreen extends StatelessWidget {
   final bool? isDarkMode;
 
   const NewsDetailScreen({
-    Key? key,
+    super.key,
     required this.article,
     this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +256,7 @@ class NewsDetailScreen extends StatelessWidget {
                                         backgroundColor: primaryColor,
                                         foregroundColor: Colors.white,
                                         elevation: 0,
-                                        shape: RoundedRectangleBorder(
+                                        shape: const RoundedRectangleBorder(
                                           borderRadius: BorderRadius.zero,
                                         ),
                                       ),
@@ -380,9 +380,9 @@ class NewsDetailScreen extends StatelessWidget {
               if (loadingProgress == null) return child;
               return Container(
                 color: isDark ? Colors.grey[900] : Colors.grey[200],
-                child: Center(
+                child: const Center(
                   child: CircularProgressIndicator(
-                    color: const Color(0xFF2D5016),
+                    color: Color(0xFF2D5016),
                   ),
                 ),
               );
@@ -407,8 +407,8 @@ class NewsDetailScreen extends StatelessWidget {
           )
           else
           Container(
-            decoration: BoxDecoration(
-              image: const DecorationImage(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
                 image: AssetImage('assets/images/d.jpg'),
                 fit: BoxFit.cover,
               ),

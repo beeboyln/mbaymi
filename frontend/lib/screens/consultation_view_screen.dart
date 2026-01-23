@@ -7,10 +7,10 @@ class ConsultationViewScreen extends StatefulWidget {
   final bool isVeterinarian;
 
   const ConsultationViewScreen({
-    Key? key,
+    super.key,
     required this.serviceRequestId,
     this.isVeterinarian = false,
-  }) : super(key: key);
+  });
 
   @override
   State<ConsultationViewScreen> createState() => _ConsultationViewScreenState();
@@ -18,7 +18,7 @@ class ConsultationViewScreen extends StatefulWidget {
 
 class _ConsultationViewScreenState extends State<ConsultationViewScreen> {
   bool _isLoading = true;
-  List<dynamic> _consultations = [];
+  final List<dynamic> _consultations = [];
 
   static const Color _primaryColor = Colors.brown;
 
@@ -115,10 +115,10 @@ class ConsultationCard extends StatefulWidget {
   final bool isVeterinarian;
 
   const ConsultationCard({
-    Key? key,
+    super.key,
     required this.consultation,
     required this.isVeterinarian,
-  }) : super(key: key);
+  });
 
   @override
   State<ConsultationCard> createState() => _ConsultationCardState();
@@ -302,7 +302,7 @@ class _ConsultationCardState extends State<ConsultationCard> {
             if (widget.consultation['scheduling'] != null) ...[
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.calendar_today,
                     size: 16,
                     color: Colors.brown,
@@ -422,7 +422,7 @@ class _ConsultationCardState extends State<ConsultationCard> {
                   children: [
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.verified,
                           size: 16,
                           color: Colors.green,

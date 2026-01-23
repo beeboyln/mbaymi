@@ -10,10 +10,10 @@ class ProfileDetailScreen extends StatefulWidget {
   final bool isDarkMode;
 
   const ProfileDetailScreen({
-    Key? key,
+    super.key,
     required this.userId,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   State<ProfileDetailScreen> createState() => _ProfileDetailScreenState();
@@ -26,7 +26,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
   Future<List<dynamic>>? _farmsFuture;
   
   Map<String, dynamic> _profileData = {};
-  List<dynamic> _postsData = [];
+  final List<dynamic> _postsData = [];
   int _userId = 0;
   int? _followersCount;
   bool? _isFollowing;
@@ -133,9 +133,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
             future: _profileFuture ?? ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null),
             builder: (context, profileSnap) {
               if (profileSnap.connectionState == ConnectionState.waiting) {
-                return Center(
+                return const Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(40),
+                    padding: EdgeInsets.all(40),
                     child: CircularProgressIndicator(color: _primaryColor),
                   ),
                 );
@@ -165,9 +165,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
               final totalPosts = profile['total_posts'] ?? 0;
 
               // Only update from server if local state hasn't been modified
-              if (_followersCount == null) {
-                _followersCount = totalFollowers;
-              }
+              _followersCount ??= totalFollowers;
               if (_isFollowing == null) {
                 if (profile.containsKey('followed_by_user')) {
                   _isFollowing = profile['followed_by_user'] as bool? ?? false;
@@ -258,11 +256,11 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
                                     // Abonnés + follow button
                                     Column(
                                       children: [
-                                        Icon(Icons.people_outline, size: 24, color: _accentColor),
+                                        const Icon(Icons.people_outline, size: 24, color: _accentColor),
                                         const SizedBox(height: 8),
                                         Text(
                                           '${_followersCount ?? 0}',
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: _accentColor,
@@ -391,7 +389,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
                         future: _farmsFuture ?? ApiService.getUserFarms(widget.userId),
                         builder: (context, farmsSnap) {
                           if (farmsSnap.connectionState == ConnectionState.waiting) {
-                            return Center(child: Padding(padding: const EdgeInsets.all(12), child: CircularProgressIndicator(color: _primaryColor)));
+                            return const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: _primaryColor)));
                           }
                           if (farmsSnap.hasError) {
                             return Text('Erreur: ${farmsSnap.error}', style: TextStyle(color: textColor));
@@ -430,7 +428,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
                                     ),
                                     title: Text(farmName, style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
                                     subtitle: Text(location, style: TextStyle(color: secondaryTextColor)),
-                                    trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.favorite, color: _primaryColor, size: 16), const SizedBox(height: 4), Text('$followers', style: TextStyle(color: _primaryColor))]),
+                                    trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.favorite, color: _primaryColor, size: 16), const SizedBox(height: 4), Text('$followers', style: const TextStyle(color: _primaryColor))]),
                                     onTap: () {
                                       Navigator.push(
                                         context,
