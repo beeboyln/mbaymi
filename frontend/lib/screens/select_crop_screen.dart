@@ -28,6 +28,23 @@ class _SelectCropScreenState extends State<SelectCropScreen> {
     _cropsFuture = ApiService.getFarmCrops(widget.farmId);
   }
 
+  DecorationImage? _getImageDecoration(dynamic crop) {
+    // Essayer d'obtenir l'image depuis différentes sources
+    final imageUrl = crop['image_url'] ?? 
+                     crop['imageUrl'] ?? 
+                     (crop['photos'] is List && (crop['photos'] as List).isNotEmpty 
+                         ? (crop['photos'] as List).first 
+                         : null);
+    
+    if (imageUrl != null && imageUrl.toString().isNotEmpty) {
+      return DecorationImage(
+        image: NetworkImage(imageUrl.toString()),
+        fit: BoxFit.cover,
+      );
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,17 +141,22 @@ class _SelectCropScreenState extends State<SelectCropScreen> {
                   ),
                   child: Row(
                     children: [
+                      // Photo de profil de la parcelle
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6B8E23).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
+                          color: widget.isDarkMode ? const Color(0xFF2A2A2A) : Colors.grey.shade200,
+                          image: _getImageDecoration(crop),
                         ),
-                        child: const Icon(
-                          Icons.agriculture,
-                          color: Color(0xFF6B8E23),
-                          size: 24,
-                        ),
+                        child: _getImageDecoration(crop) == null
+                            ? const Icon(
+                                Icons.agriculture,
+                                color: Color(0xFF6B8E23),
+                                size: 24,
+                              )
+                            : null,
                       ),
                       const SizedBox(width: 16),
                       Expanded(

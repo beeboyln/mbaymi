@@ -22,6 +22,7 @@ dependencies:
   url_launcher: ^6.2.0
   cached_network_image: ^3.3.0
   flutter_local_notifications: ^8.2.0
+  video_player: ^2.10.1
 
 dev_dependencies:
   flutter_test:

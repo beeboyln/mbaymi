@@ -15,6 +15,7 @@ import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/create_livestock_screen.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
 import 'package:mbaymi/screens/social_feed_screen.dart';
+import 'package:mbaymi/screens/video_player_widget.dart';
 
 class FarmTab extends StatefulWidget {
   final int? userId;
@@ -369,89 +370,81 @@ class _FarmTabState extends State<FarmTab> {
             // Clean hero
             Container(
               width: double.infinity,
-              height: 320,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/ferme.jpg'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.35),
-                      AppTheme.socialDark.withOpacity(0.55),
-                    ],
+              height: 200,
+              // color supprimé pour laisser le fond hériter du parent
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Vidéo de fond plein écran
+                  const Positioned.fill(
+                    child: VideoPlayerWidget(
+                      assetPath: 'assets/images/v.mp4',
+                      webUrl: 'https://res.cloudinary.com/dcs9vkwe0/video/upload/v1769204706/aispqon3tonh9wuqlrai.mp4',
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 96,
-                        height: 96,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF3D6B1F), Color(0xFF2D5016)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
-                            ),
+                  // Overlay dégradé
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.35),
+                            AppTheme.socialDark.withOpacity(0.55),
                           ],
                         ),
-                        child: const Center(child: Text('🌾', style: TextStyle(fontSize: 36))),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Savana',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white,
-                          letterSpacing: -0.6,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Plateforme agricole, simple & utile',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withOpacity(0.8),
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  // Emoji centré
+                  Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black.withOpacity(0.25),
+                      ),
+                      child: const Center(child: Text('🌾', style: TextStyle(fontSize: 32))),
+                    ),
+                  ),
+                ],
               ),
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
+            // Textes en dehors de la vidéo, centrés
+            const Center(
+              child: Column(
+                children: [
+                  Text(
+                    'Savana',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF0A0A0A),
+                      letterSpacing: -0.6,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Plateforme agricole, simple & utile',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF666666),
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 28),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _smallFeature(icon: '🌱', label: 'Cultures', isDark: isDarkMode),
-                      const SizedBox(width: 12),
-                      _smallFeature(icon: '🐄', label: 'Bétail', isDark: isDarkMode),
-                      const SizedBox(width: 12),
-                      _smallFeature(icon: '📊', label: 'Rendements', isDark: isDarkMode),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(

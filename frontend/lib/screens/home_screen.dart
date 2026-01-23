@@ -18,7 +18,6 @@ import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/parcel_finance_screen.dart';
 import 'package:mbaymi/screens/select_crop_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
-import 'package:mbaymi/screens/activity_screen.dart';
 import 'package:mbaymi/widgets/notification_icon_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/utils/app_spacing.dart';
@@ -393,7 +392,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () async {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
-                  
                   // Get user's farms
                   if (userId == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -405,15 +403,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   try {
                     final farms = await ApiService.getUserFarms(userId!);
                     if (!mounted) return;
-                    
                     if (farms.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Créez une ferme d\'abord')),
                       );
                       return;
                     }
-
-                    // If only one farm, open directly
+                    // Si une seule ferme, ouvrir directement la modale d'ajout de culture
                     if (farms.length == 1) {
                       final farmId = farms[0]['id'] as int;
                       Navigator.push(
@@ -422,11 +418,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           builder: (_) => ParcelScreen(
                             farmId: farmId,
                             userId: userId!,
+                            openAddCultureModal: true,
                           ),
                         ),
                       );
                     } else {
-                      // Show farm selection dialog
+                      // Sinon, demander de choisir la ferme puis ouvrir la modale
                       final rootContext = this.context;
                       _showFarmSelectionDialog(farms, (selectedFarmId) {
                         Navigator.push(
@@ -435,6 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             builder: (_) => ParcelScreen(
                               farmId: selectedFarmId,
                               userId: userId!,
+                              openAddCultureModal: true,
                             ),
                           ),
                         );
@@ -442,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur: ${e.toString()}')),
+                      SnackBar(content: Text('Erreur: \'${e.toString()}\'')),
                     );
                   }
                 },

@@ -16,12 +16,14 @@ class ParcelScreen extends StatefulWidget {
   final int farmId;
   final int userId;
   final bool readOnly;
+  final bool openAddCultureModal;
 
   const ParcelScreen({
     super.key,
     required this.farmId,
     required this.userId,
     this.readOnly = false,
+    this.openAddCultureModal = false,
   });
 
   @override
@@ -38,6 +40,17 @@ class _ParcelScreenState extends State<ParcelScreen> {
   static const Color _bgDark = Color(0xFF0A0A0A);
   static const Color _cardLight = AppColors.lightBg;
   static const Color _cardDark = Color(0xFF1A1A1A);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Ouvre la modale d'ajout de culture si demandé
+    if (widget.openAddCultureModal) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showAddParcel();
+      });
+    }
+  }
 
   @override
   void initState() {
