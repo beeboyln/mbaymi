@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:mbaymi/widgets/empty_state.dart';
 import 'package:mbaymi/services/theme_provider.dart';
@@ -15,7 +16,7 @@ import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/create_livestock_screen.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
 import 'package:mbaymi/screens/social_feed_screen.dart';
-import 'package:mbaymi/screens/video_player_widget.dart';
+import 'package:mbaymi/widgets/video_player_widget.dart';
 
 class FarmTab extends StatefulWidget {
   final int? userId;
@@ -367,50 +368,51 @@ class _FarmTabState extends State<FarmTab> {
       return SingleChildScrollView(
         child: Column(
           children: [
-            // Clean hero
-            Container(
-              width: double.infinity,
-              height: 200,
-              // color supprimé pour laisser le fond hériter du parent
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Vidéo de fond plein écran
-                  const Positioned.fill(
-                    child: VideoPlayerWidget(
-                      assetPath: 'assets/images/v.mp4',
-                      webUrl: 'https://res.cloudinary.com/dcs9vkwe0/video/upload/v1769204706/aispqon3tonh9wuqlrai.mp4',
-                    ),
-                  ),
-                  // Overlay dégradé
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withOpacity(0.35),
-                            AppTheme.socialDark.withOpacity(0.55),
-                          ],
+            // Clean hero - Vidéo avec fallback intelligent
+            Stack(
+              children: [
+                VideoPlayerWidget(
+                  videoUrl: 'https://res.cloudinary.com/dcs9vkwe0/video/upload/v1769204706/aispqon3tonh9wuqlrai.mp4',
+                  assetPath: 'assets/videos/v.mp4',
+                  height: 200,
+                  autoplay: true,
+                  looping: true,
+                  muted: true,
+                ),
+                // Overlay dégradé + Emoji
+                Positioned.fill(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Gradient overlay
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.35),
+                              AppTheme.socialDark.withOpacity(0.55),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  // Emoji centré
-                  Center(
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.black.withOpacity(0.25),
+                      // Emoji centré
+                      Center(
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withOpacity(0.25),
+                          ),
+                          child: const Center(child: Text('🌾', style: TextStyle(fontSize: 32))),
+                        ),
                       ),
-                      child: const Center(child: Text('🌾', style: TextStyle(fontSize: 32))),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 12),
