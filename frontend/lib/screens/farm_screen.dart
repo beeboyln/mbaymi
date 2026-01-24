@@ -16,7 +16,7 @@ import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/create_livestock_screen.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
 import 'package:mbaymi/screens/social_feed_screen.dart';
-import 'package:mbaymi/widgets/video_player_widget.dart';
+import 'package:mbaymi/widgets/fading_images_widget.dart';
 
 class FarmTab extends StatefulWidget {
   final int? userId;
@@ -368,16 +368,21 @@ class _FarmTabState extends State<FarmTab> {
       return SingleChildScrollView(
         child: Column(
           children: [
-            // Clean hero - Vidéo avec fallback intelligent
+            // Clean hero - Images alternées avec fade
             Stack(
               children: [
-                VideoPlayerWidget(
-                  videoUrl: 'https://res.cloudinary.com/dcs9vkwe0/video/upload/v1769204706/aispqon3tonh9wuqlrai.mp4',
-                  assetPath: 'assets/videos/v.mp4',
+                FadingImagesWidget(
+                  imageUrls: [
+                    'https://res.cloudinary.com/dcs9vkwe0/image/upload/v1769257913/kxbovkugo5ertntwwtgv.jpg',
+                    'https://res.cloudinary.com/dcs9vkwe0/image/upload/v1769258097/hcrl7a4o7ttp9idaaf4j.jpg',
+                    'https://res.cloudinary.com/dcs9vkwe0/image/upload/v1769259314/lukvpj3povcqtbahoe0f.jpg',
+                    'https://res.cloudinary.com/dcs9vkwe0/image/upload/v1769259315/xmyyggmzlwr1w1lti5w8.jpg',
+                    'https://res.cloudinary.com/dcs9vkwe0/image/upload/v1769259313/ecjpbmfnxdzlmpmk73gy.jpg',
+                    'https://res.cloudinary.com/dcs9vkwe0/image/upload/v1769259314/l6sbxk2stvbossbgjlyn.jpg',
+                  ],
                   height: 200,
-                  autoplay: true,
-                  looping: true,
-                  muted: true,
+                  displayDuration: const Duration(seconds: 2),
+                  fadeDuration: const Duration(milliseconds: 500),
                 ),
                 // Overlay dégradé + Emoji
                 Positioned.fill(
