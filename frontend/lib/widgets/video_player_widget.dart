@@ -39,12 +39,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   Future<void> _initController() async {
     try {
       if (kIsWeb) {
-        // Pour le web, utilise notre endpoint backend au lieu de Cloudinary direct
-        // Cela bypasse les problèmes de Tracking Prevention des navigateurs
-        final videoUrl = '${ApiService.baseUrl}/media/video/farm-hero';
-        
+        // Pour le web, utilise directement l'URL fournie (Cloudinary)
         _controller = VideoPlayerController.network(
-          videoUrl,
+          widget.videoUrl,
           videoPlayerOptions: VideoPlayerOptions(
             allowBackgroundPlayback: false,
             mixWithOthers: true,
