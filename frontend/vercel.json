@@ -2,7 +2,7 @@
   "cleanUrls": true,
   "headers": [
     {
-      "source": "/assets/(.*)",
+      "source": "/assets/images/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -12,7 +12,7 @@
     }
   ],
   "rewrites": [
-    { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/assets/images/(.*)", "destination": "/assets/assets/images/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

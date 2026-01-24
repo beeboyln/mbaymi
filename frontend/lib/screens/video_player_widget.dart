@@ -67,7 +67,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
             viewType: 'video-container-${widget.hashCode}',
             onPlatformViewCreated: (_) {
               final videoElement = html.VideoElement()
-                ..src = widget.webUrl ?? 'assets/images/v.mp4'
+                ..src = widget.webUrl ?? 'assets/assets/images/v.mp4'
                 ..autoplay = true
                 ..loop = true
                 ..muted = true
