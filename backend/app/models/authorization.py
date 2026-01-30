@@ -27,6 +27,10 @@ class Authorization(Base):
     status = Column(SQLEnum(AuthorizationStatus), default=AuthorizationStatus.PENDING)
     authorization_reason = Column(Text)  # Why they need access
     
+    # Selected livestocks and crops (comma-separated IDs)
+    selected_livestock_ids = Column(String(500), nullable=True)  # e.g., "1,2,3"
+    selected_crop_ids = Column(String(500), nullable=True)  # e.g., "1,2,3"
+    
     # Expiration
     expires_at = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(days=365))
     is_active = Column(Boolean, default=True)

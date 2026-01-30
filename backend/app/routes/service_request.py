@@ -68,6 +68,38 @@ def get_my_requests(
     
     return requests
 
+@router.get("/available-for-me", response_model=List[ServiceRequestResponse])
+def get_available_requests(
+    current_user: User = Depends(get_current_user_obj),
+    db: Session = Depends(get_db),
+):
+    """Get service requests available for current veterinarian based on zone/specialty"""
+    
+    # Get veterinarian's info
+    from app.models.veterinarian import VeterinarianProfile
+    vet_profile = db.query(VeterinarianProfile).filter(
+        VeterinarianProfile.user_id == current_user.id
+    ).first()
+    
+    if not vet_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Veterinarian profile not found"
+        )
+    
+    # Get requests from farms by farm owner's region matching vet's zone
+    # Join: ServiceRequest -> Farm -> User
+    requests = db.query(ServiceRequest).join(
+        Farm, ServiceRequest.farm_id == Farm.id
+    ).join(
+        User, Farm.user_id == User.id
+    ).filter(
+        User.region == vet_profile.zone,
+        ServiceRequest.status == RequestStatus.OPEN,
+    ).order_by(ServiceRequest.priority.desc()).all()
+    
+    return requests
+
 @router.get("/{request_id}", response_model=ServiceRequestResponse)
 def get_service_request(
     request_id: int,
@@ -141,35 +173,6 @@ def update_service_request(
     db.refresh(service_request)
     
     return service_request
-
-@router.get("/available-for-me", response_model=List[ServiceRequestResponse])
-def get_available_requests(
-    current_user: User = Depends(get_current_user_obj),
-    db: Session = Depends(get_db),
-):
-    """Get service requests available for current veterinarian based on zone/specialty"""
-    
-    # Get veterinarian's info
-    from app.models.veterinarian import VeterinarianProfile
-    vet_profile = db.query(VeterinarianProfile).filter(
-        VeterinarianProfile.user_id == current_user.id
-    ).first()
-    
-    if not vet_profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Veterinarian profile not found"
-        )
-    
-    # Get requests from farms in the same zone, not yet assigned
-    requests = db.query(ServiceRequest).join(
-        Farm, ServiceRequest.farm_id == Farm.id
-    ).filter(
-        Farm.zone == vet_profile.zone,
-        ServiceRequest.status == RequestStatus.OPEN,
-    ).order_by(ServiceRequest.priority.desc()).all()
-    
-    return requests
 
 @router.post("/{request_id}/assign", response_model=ServiceRequestResponse)
 def assign_request_to_veterinarian(

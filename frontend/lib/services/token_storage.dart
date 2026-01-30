@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'dart:html' as html;
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// TokenStorage uses browser localStorage for web persistence.
-/// Tokens survive page refresh and are shared across tabs.
+/// TokenStorage uses shared_preferences for persistence.
+/// On web, it uses browser localStorage (via shared_preferences web impl).
+/// On mobile (Android/iOS), uses shared_preferences.
+/// Tokens survive app restart and are unique per device.
 class TokenStorage {
   static const _keyAccessToken = 'mbaymi_access_token';
   static const _keyRefreshToken = 'mbaymi_refresh_token';
@@ -10,7 +12,7 @@ class TokenStorage {
   static const _keyUserEmail = 'mbaymi_user_email';
   static const _keyUserRole = 'mbaymi_user_role';
 
-  /// Save tokens to localStorage (web) or fallback in-memory.
+  /// Save tokens to shared_preferences.
   static Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
@@ -19,71 +21,69 @@ class TokenStorage {
     String? userRole,
   }) async {
     try {
-      final storage = html.window.localStorage;
-      storage[_keyAccessToken] = accessToken;
-      storage[_keyRefreshToken] = refreshToken;
-      storage[_keyUserId] = userId.toString();
-      storage[_keyUserEmail] = userEmail;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyAccessToken, accessToken);
+      await prefs.setString(_keyRefreshToken, refreshToken);
+      await prefs.setInt(_keyUserId, userId);
+      await prefs.setString(_keyUserEmail, userEmail);
       if (userRole != null) {
-        storage[_keyUserRole] = userRole;
+        await prefs.setString(_keyUserRole, userRole);
       }
-      debugPrint('✅ Tokens saved to localStorage');
+      debugPrint('✅ Tokens saved');
     } catch (e) {
       debugPrint('⚠️ TokenStorage.saveTokens failed: $e');
     }
   }
 
-  /// Retrieve access token from localStorage.
+  /// Retrieve access token from shared_preferences.
   static Future<String?> getAccessToken() async {
     try {
-      final storage = html.window.localStorage;
-      return storage[_keyAccessToken];
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyAccessToken);
     } catch (e) {
       debugPrint('⚠️ TokenStorage.getAccessToken failed: $e');
       return null;
     }
   }
 
-  /// Retrieve refresh token from localStorage.
+  /// Retrieve refresh token from shared_preferences.
   static Future<String?> getRefreshToken() async {
     try {
-      final storage = html.window.localStorage;
-      return storage[_keyRefreshToken];
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyRefreshToken);
     } catch (e) {
       debugPrint('⚠️ TokenStorage.getRefreshToken failed: $e');
       return null;
     }
   }
 
-  /// Retrieve userId from localStorage.
+  /// Retrieve userId from shared_preferences.
   static Future<int?> getUserId() async {
     try {
-      final storage = html.window.localStorage;
-      final raw = storage[_keyUserId];
-      if (raw == null) return null;
-      return int.tryParse(raw);
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_keyUserId);
     } catch (e) {
       debugPrint('⚠️ TokenStorage.getUserId failed: $e');
       return null;
     }
   }
 
-  /// Retrieve userEmail from localStorage.
+  /// Retrieve userEmail from shared_preferences.
   static Future<String?> getUserEmail() async {
     try {
-      final storage = html.window.localStorage;
-      return storage[_keyUserEmail];
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyUserEmail);
     } catch (e) {
       debugPrint('⚠️ TokenStorage.getUserEmail failed: $e');
       return null;
     }
   }
 
-  /// Retrieve userRole from localStorage.
+  /// Retrieve userRole from shared_preferences.
   static Future<String?> getUserRole() async {
     try {
-      final storage = html.window.localStorage;
-      return storage[_keyUserRole];
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyUserRole);
     } catch (e) {
       debugPrint('⚠️ TokenStorage.getUserRole failed: $e');
       return null;
@@ -93,13 +93,13 @@ class TokenStorage {
   /// Clear all tokens (logout).
   static Future<void> clear() async {
     try {
-      final storage = html.window.localStorage;
-      storage.remove(_keyAccessToken);
-      storage.remove(_keyRefreshToken);
-      storage.remove(_keyUserId);
-      storage.remove(_keyUserEmail);
-      storage.remove(_keyUserRole);
-      debugPrint('✅ Tokens cleared from localStorage');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyAccessToken);
+      await prefs.remove(_keyRefreshToken);
+      await prefs.remove(_keyUserId);
+      await prefs.remove(_keyUserEmail);
+      await prefs.remove(_keyUserRole);
+      debugPrint('✅ Tokens cleared');
     } catch (e) {
       debugPrint('⚠️ TokenStorage.clear failed: $e');
     }

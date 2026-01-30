@@ -20,8 +20,8 @@ class _ParcelRemindersScreenState extends State<ParcelRemindersScreen> {
   void initState() {
     super.initState();
     _load();
-    // Initialize timezone and local notifications
-    initTimezone().then((_) => LocalNotificationService.init());
+    // Initialize local notifications
+    LocalNotificationService.init();
   }
 
   void _load() {

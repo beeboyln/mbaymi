@@ -58,18 +58,20 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              _isEditing ? Icons.check : Icons.edit,
-              color: widget.isDarkMode ? Colors.white : Colors.black,
+          // Afficher le bouton edit seulement si c'est le propriétaire
+          if (AuthService.currentSession?.userId == widget.userId)
+            IconButton(
+              icon: Icon(
+                _isEditing ? Icons.check : Icons.edit,
+                color: widget.isDarkMode ? Colors.white : Colors.black,
+              ),
+              onPressed: () {
+                if (_isEditing) {
+                  _saveProfile();
+                }
+                setState(() => _isEditing = !_isEditing);
+              },
             ),
-            onPressed: () {
-              if (_isEditing) {
-                _saveProfile();
-              }
-              setState(() => _isEditing = !_isEditing);
-            },
-          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -442,7 +444,7 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
   }
 
   Widget _buildPostCard(dynamic post) {
-    final title = post['title'] as String;
+    final title = (post['title'] ?? 'Post sans titre') as String;
     final description = post['description'] as String?;
     final photoUrl = post['photo_url'] as String?;
     final createdAt = DateTime.parse(post['created_at'] as String);

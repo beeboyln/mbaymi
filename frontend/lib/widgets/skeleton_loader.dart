@@ -219,6 +219,32 @@ class SkeletonImageLoader extends StatelessWidget {
   }
 }
 
+/// Simple centered loading spinner (replaces complex SkeletonPageLoader)
+class SimplePageLoader extends StatelessWidget {
+  final bool isDarkMode;
+
+  const SimplePageLoader({
+    super.key,
+    required this.isDarkMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = AppColors.getBgColor(isDarkMode);
+    
+    return Container(
+      color: bgColor,
+      child: Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(
+            AppColors.primary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Complex skeleton for full page loading
 class SkeletonPageLoader extends StatelessWidget {
   final bool isDarkMode;
@@ -234,39 +260,8 @@ class SkeletonPageLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = AppColors.getBgColor(isDarkMode);
-
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: includeAppBar
-          ? AppBar(
-              backgroundColor: bgColor,
-              elevation: 0,
-              title: SkeletonLoader(
-                height: 20,
-                width: 150,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            )
-          : null,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            children: List.generate(
-              cardCount,
-              (index) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: SkeletonCardLoader(
-                  isDarkMode: isDarkMode,
-                  lineCount: 3,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    // Redirects to SimplePageLoader - SkeletonPageLoader is deprecated
+    return SimplePageLoader(isDarkMode: isDarkMode);
   }
 }
 

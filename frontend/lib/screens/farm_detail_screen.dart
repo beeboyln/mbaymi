@@ -160,6 +160,7 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
                   ),
                 ),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // En-tête avec nom et propriétaire
@@ -483,8 +484,11 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
     final statusColor = config['color'] as Color;
     final statusIcon = config['icon'] as IconData;
 
-    return GestureDetector(
+    return InkWell(
       onTap: () => _showActivitiesModal(crop, textColor, secondaryTextColor, borderColor, isDark),
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      hoverColor: Colors.transparent,
       child: Container(
         decoration: BoxDecoration(
           color: cardColor,
@@ -497,21 +501,23 @@ class _FarmDetailScreenState extends State<FarmDetailScreen> {
             // Image avec badge de statut
             Stack(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
-                  child: Container(
-                    height: 140,
-                    width: double.infinity,
-                    color: _primaryColor.withOpacity(0.1),
-                    child: crop['image_url'] != null
-                        ? Image.network(
-                            crop['image_url'],
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildParcelPlaceholder(),
-                          )
-                        : _buildParcelPlaceholder(),
+                RepaintBoundary(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    child: Container(
+                      height: 140,
+                      width: double.infinity,
+                      color: _primaryColor.withOpacity(0.1),
+                      child: crop['image_url'] != null
+                          ? Image.network(
+                              crop['image_url'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _buildParcelPlaceholder(),
+                            )
+                          : _buildParcelPlaceholder(),
+                    ),
                   ),
                 ),
                 

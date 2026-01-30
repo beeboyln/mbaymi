@@ -1185,20 +1185,19 @@ class ApiService {
     }
   }
 
-  static Future<List<dynamic>> getUserFarms(int userId) async {
+  /// Get farms for any user (public endpoint)
+  static Future<List<dynamic>> getPublicUserFarms(int userId) async {
     try {
-      return await _withRetry(() async {
-        final response = await http.get(
-          Uri.parse('$baseUrl/farms/user/$userId'),
-          headers: {'Content-Type': 'application/json'},
-        );
+      final response = await http.get(
+        Uri.parse('$baseUrl/farms/user/$userId'),
+        headers: {'Content-Type': 'application/json'},
+      );
 
-        if (response.statusCode == 200) {
-          return jsonDecode(response.body) as List;
-        } else {
-          throw Exception('Failed to get farms');
-        }
-      });
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else {
+        throw Exception('Failed to get farms');
+      }
     } catch (e) {
       throw Exception('Error getting farms: $e');
     }
@@ -2890,6 +2889,25 @@ class ApiService {
     }
   }
 
+  static Future<VeterinarianProfile?> getVeterinarianProfileById(int veterinarianId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/veterinarians/profile/$veterinarianId'),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return VeterinarianProfile.fromJson(json);
+      } else if (response.statusCode == 404) {
+        return null;
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération profil vétérinaire: $e');
+    }
+  }
+
   /// Get veterinarians by zone
   static Future<List<dynamic>> getVeterinariansByZone(String zone) async {
     try {
@@ -3007,31 +3025,69 @@ class ApiService {
 
   // 🔐 AUTHORIZATION ENDPOINTS
 
+  /// Get current user's farms (authenticated endpoint)
+  static Future<List<dynamic>> getUserFarms() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      // Try to fetch farms - the backend route should be /api/farms or similar
+      // If that doesn't work, we'll need to add a dedicated endpoint
+      final response = await http.get(
+        Uri.parse('$baseUrl/farms/'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération fermes: $e');
+    }
+  }
+
   /// Create authorization request
   static Future<Map<String, dynamic>> createAuthorization({
-    int farmId = 0,
+    required int farmId,
     required int veterinarianId,
     bool canViewData = true,
     bool canGiveAdvice = true,
     bool canVisit = false,
     String? authorizationReason,
+    String? selectedLivestockIds,  // Comma-separated IDs
+    String? selectedCropIds,  // Comma-separated IDs
   }) async {
     try {
       final headers = await _getAuthHeaders();
       if (headers['Authorization'] == null) throw Exception('Token manquant');
 
+      final payload = {
+        'farm_id': farmId,
+        'veterinarian_id': veterinarianId,
+        'can_view_data': canViewData,
+        'can_give_advice': canGiveAdvice,
+        'can_visit': canVisit,
+        'authorization_reason': authorizationReason,
+        'selected_livestock_ids': selectedLivestockIds,
+        'selected_crop_ids': selectedCropIds,
+      };
+      
+      debugPrint('📤 POST /api/authorizations/');
+      debugPrint('Payload: $payload');
+      debugPrint('Headers: $headers');
+
       final response = await http.post(
         Uri.parse('$baseUrl/authorizations/'),
         headers: headers,
-        body: jsonEncode({
-          'farm_id': farmId,
-          'veterinarian_id': veterinarianId,
-          'can_view_data': canViewData,
-          'can_give_advice': canGiveAdvice,
-          'can_visit': canVisit,
-          'authorization_reason': authorizationReason,
-        }),
+        body: jsonEncode(payload),
       );
+
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -3044,4 +3100,119 @@ class ApiService {
       throw Exception('Erreur création autorisation: $e');
     }
   }
+
+  /// Get pending authorizations for current veterinarian
+  static Future<List<dynamic>> getPendingAuthorizations() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/authorizations/pending'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List<dynamic>;
+        debugPrint('=== API RESPONSE DEBUG ===');
+        debugPrint('Response body: ${response.body}');
+        debugPrint('Parsed data: $data');
+        if (data.isNotEmpty) {
+          debugPrint('First item: ${data[0]}');
+          debugPrint('First item type: ${data[0].runtimeType}');
+          if (data[0] is Map) {
+            final firstMap = data[0] as Map<String, dynamic>;
+            debugPrint('First item keys: ${firstMap.keys.toList()}');
+            debugPrint('Farm in first item: ${firstMap['farm']}');
+          }
+        }
+        debugPrint('========================');
+        return data;
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération autorisations: $e');
+    }
+  }
+
+  /// Accept an authorization request
+  static Future<Map<String, dynamic>> acceptAuthorization(int authorizationId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/authorizations/$authorizationId/accept'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else if (response.statusCode == 404) {
+        throw Exception('Autorisation non trouvée');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur acceptation autorisation: $e');
+    }
+  }
+
+  /// Reject an authorization request
+  static Future<Map<String, dynamic>> rejectAuthorization(int authorizationId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/authorizations/$authorizationId/reject'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else if (response.statusCode == 404) {
+        throw Exception('Autorisation non trouvée');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur rejet autorisation: $e');
+    }
+  }
+
+  /// Get accepted authorizations for current veterinarian
+  static Future<List<dynamic>> getAcceptedAuthorizations() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final currentUser = AuthService.currentSession?.userId;
+      if (currentUser == null) throw Exception('Utilisateur non authentifié');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/authorizations/veterinarian/$currentUser'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List<dynamic>;
+        return data;
+      } else if (response.statusCode == 401) {
+        throw Exception('Non authentifié');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération autorisations acceptées: $e');
+    }
+  }
 }
+

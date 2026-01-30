@@ -53,25 +53,6 @@ def create_veterinarian_profile(
     
     return new_profile
 
-@router.get("/profile/{veterinarian_id}", response_model=VeterinarianProfileResponse)
-def get_veterinarian_profile(
-    veterinarian_id: int,
-    db: Session = Depends(get_db),
-):
-    """Get veterinarian profile by ID"""
-    
-    profile = db.query(VeterinarianProfile).filter(
-        VeterinarianProfile.user_id == veterinarian_id
-    ).first()
-    
-    if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Veterinarian profile not found"
-        )
-    
-    return profile
-
 @router.get("/my-profile", response_model=VeterinarianProfileResponse)
 def get_my_profile(
     current_user: User = Depends(get_current_user_obj),
@@ -88,6 +69,36 @@ def get_my_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Veterinarian profile not found"
         )
+    
+    return profile
+
+@router.get("/profile/{veterinarian_id}", response_model=VeterinarianProfileResponse)
+def get_veterinarian_profile(
+    veterinarian_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get veterinarian profile by ID (user_id)"""
+    
+    # Chercher le profil vétérinaire pour cet utilisateur
+    profile = db.query(VeterinarianProfile).filter(
+        VeterinarianProfile.user_id == veterinarian_id
+    ).first()
+    
+    if not profile:
+        # Vérifier si l'utilisateur existe et a le rôle "veterinarian"
+        user = db.query(User).filter(User.id == veterinarian_id).first()
+        if user and user.role == "veterinarian":
+            # L'utilisateur existe avec le rôle vétérinaire mais n'a pas créé de profil
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cet utilisateur n'a pas terminé son profil vétérinaire"
+            )
+        else:
+            # L'utilisateur n'existe pas ou n'est pas un vétérinaire
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Profil vétérinaire non trouvé"
+            )
     
     return profile
 

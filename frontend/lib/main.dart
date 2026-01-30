@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'dart:io' as io;
 import 'package:mbaymi/screens/home_screen.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
@@ -17,65 +18,116 @@ import 'package:mbaymi/screens/veterinarian_profile_detail_screen.dart';
 import 'package:mbaymi/screens/veterinarian_profile_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
 import 'package:mbaymi/screens/farm_profile_screen.dart';
+import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/user_profile_screen.dart';
+import 'package:mbaymi/screens/animal_detail_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
 Future<void> main() async {
   // Run all initialization inside the same zone as runApp to avoid "Zone mismatch".
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await dotenv.load(fileName: '.env');
+    
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('🚀 MBAYMI APP STARTUP - ${DateTime.now()}');
+    debugPrint('Platform: ${kIsWeb ? "web" : io.Platform.operatingSystem}');
+    debugPrint('Debug Mode: $kDebugMode');
+    debugPrint('═══════════════════════════════════════════════════════');
+    
+    // Load .env file with fallback for mobile (where .env may not exist)
+    try {
+      await dotenv.load(fileName: '.env');
+      debugPrint('✅ .env loaded successfully');
+      debugPrint('API_BASE_URL: ${dotenv.env['API_BASE_URL']}');
+    } catch (e) {
+      debugPrint('⚠️ Failed to load .env: $e');
+      debugPrint('Stack: ${StackTrace.current}');
+      // On mobile, .env might not be accessible as a file. That's OK - use defaults.
+      // The app will work with environment variables or defaults defined in the code.
+      if (kIsWeb) {
+        // On web, .env should exist. Log the error but continue.
+        debugPrint('⚠️ .env file not found on web. Some features may not work.');
+      }
+    }
 
     // Initialize intl locale data required for DateFormat with locales (e.g. 'fr_FR')
     try {
       await initializeDateFormatting('fr_FR');
       Intl.defaultLocale = 'fr_FR';
-    } catch (_) {
+      debugPrint('✅ Locale initialized: fr_FR');
+    } catch (e) {
       // Fallback: initialize default data
+      debugPrint('⚠️ Locale init failed for fr_FR: $e');
       await initializeDateFormatting();
       // leave defaultLocale unset (will use system/default)
     }
 
     // Restore session from localStorage (JWT style persistence)
     debugPrint('🔄 Restoring session from localStorage...');
-    await AuthService.restoreSession();
+    try {
+      await AuthService.restoreSession();
+      debugPrint('✅ Session restored. User ID: ${AuthService.currentSession?.userId}');
+    } catch (e) {
+      debugPrint('⚠️ Session restore failed: $e');
+      debugPrint('Stack: ${StackTrace.current}');
+    }
 
     // 🏥 Wake up backend on cold start (Render free tier)
-    _wakeupBackend();
+    await _wakeupBackend();
 
     // Initialiser le ThemeProvider
-    await ThemeProvider().init();
+    try {
+      await ThemeProvider().init();
+      debugPrint('✅ ThemeProvider initialized');
+    } catch (e) {
+      debugPrint('⚠️ ThemeProvider init failed: $e');
+      debugPrint('Stack: ${StackTrace.current}');
+    }
 
     // Global error handling so uncaught Flutter errors are logged in console
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.dumpErrorToConsole(details);
-      debugPrint('🔥 FlutterError: ${details.exception}');
-      if (details.stack != null) debugPrint(details.stack.toString());
+      debugPrint('🔥 FLUTTER ERROR: ${details.exception}');
+      if (details.stack != null) debugPrint('Stack: ${details.stack.toString()}');
     };
 
-    runApp(const MbaymiApp());
+    try {
+      debugPrint('🎨 Building MbaymiApp...');
+      runApp(const MbaymiApp());
+      debugPrint('✅ MbaymiApp initialized successfully');
+    } catch (e, stack) {
+      debugPrint('💥 Failed to initialize app: $e');
+      debugPrint('Stack: $stack');
+      rethrow;
+    }
   }, (error, stack) {
     // Log uncaught async/zone errors
-    debugPrint('💥 ZONE ERROR: $error');
-    debugPrint(stack.toString());
+    debugPrint('💥 ZONE ERROR (CRITICAL): $error');
+    debugPrint('Stack: $stack');
   });
 }
 
 /// 🏥 Wake up backend on app launch (handles Render free tier cold start)
 Future<void> _wakeupBackend() async {
   try {
-    final apiUrl = dotenv.env['API_URL'] ?? 'http://localhost:8000';
+    final apiUrl = dotenv.env['API_BASE_URL'] ?? 'https://burning-yetty-bigboyme-428f3176.koyeb.app/api';
     final healthUrl = Uri.parse('$apiUrl/health');
     
     debugPrint('🏥 Attempting to wake up backend at $healthUrl...');
     
-    final response = await http.get(healthUrl).timeout(const Duration(seconds: 10));
-    if (response.statusCode == 200) {
-      debugPrint('✅ Backend is awake and ready!');
+    try {
+      final response = await http.get(healthUrl).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        debugPrint('✅ Backend is awake and ready!');
+      } else {
+        debugPrint('⚠️ Backend returned status code: ${response.statusCode}');
+      }
+    } on TimeoutException {
+      debugPrint('⚠️ Health check TIMEOUT (cold start likely), will retry on first request');
     }
   } catch (e) {
     // Silently fail - will retry on first real request
-    debugPrint('⚠️ Health check timed out (cold start), will retry on first request: $e');
+    debugPrint('⚠️ Health check error: $e');
   }
 }
 
@@ -169,6 +221,33 @@ class _MbaymiAppState extends State<MbaymiApp> {
                     veterinarianId: vetId,
                   ),
                 );
+              }
+              // 🌾 Farm Detail (from authorization request)
+              if (settings.name == '/farm-detail') {
+                final farmId = settings.arguments as int?;
+                if (farmId != null) {
+                  return MaterialPageRoute(
+                    builder: (context) => FarmDetailScreen(
+                      farmId: farmId,
+                      farmData: {'id': farmId},
+                      isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                      readOnly: true, // Visiteur ne peut pas éditer
+                    ),
+                  );
+                }
+              }
+              // 🐑 Livestock Detail (from authorization request)
+              if (settings.name == '/livestock-detail') {
+                final livestockId = settings.arguments as int?;
+                if (livestockId != null) {
+                  return MaterialPageRoute(
+                    builder: (context) => AnimalDetailScreen(
+                      livestockId: livestockId,
+                      animal: {},
+                      isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                    ),
+                  );
+                }
               }
               // 🌾 Crop Problems Screen
               if (settings.name?.startsWith('/crop-problems/') == true) {

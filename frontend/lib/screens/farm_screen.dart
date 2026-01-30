@@ -58,7 +58,7 @@ class _FarmTabState extends State<FarmTab> {
 
   void _loadFarms() {
     _farmsFuture = (widget.userId != null
-        ? ApiService.getUserFarms(widget.userId!)
+        ? ApiService.getPublicUserFarms(widget.userId!)
         : ApiService.getPublicFarms());
   }
 
@@ -100,7 +100,7 @@ class _FarmTabState extends State<FarmTab> {
     _checkForAuthChange();
     if (_selectedSection == 0) {
       _farmsFuture = widget.userId != null
-          ? ApiService.getUserFarms(widget.userId!)
+          ? ApiService.getPublicUserFarms(widget.userId!)
           : ApiService.getPublicFarms();
       // clear search on manual refresh
       _searchController.clear();
@@ -120,7 +120,7 @@ class _FarmTabState extends State<FarmTab> {
     required bool isDarkMode,
   }) {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.getCardBgColor(isDarkMode),
         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -137,7 +137,7 @@ class _FarmTabState extends State<FarmTab> {
             icon,
             style: AppTypography.h2,
           ),
-          SizedBox(width: AppSpacing.lg),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,7 +148,7 @@ class _FarmTabState extends State<FarmTab> {
                     color: AppColors.getTextColor(isDarkMode),
                   ),
                 ),
-                SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   description,
                   style: AppTypography.bodySmall.copyWith(
@@ -371,7 +371,7 @@ class _FarmTabState extends State<FarmTab> {
             // Clean hero - Images alternées avec fade
             Stack(
               children: [
-                FadingImagesWidget(
+                const FadingImagesWidget(
                   imageUrls: [
                     'https://res.cloudinary.com/dcs9vkwe0/image/upload/v1769257913/kxbovkugo5ertntwwtgv.jpg',
                     'https://res.cloudinary.com/dcs9vkwe0/image/upload/v1769258097/hcrl7a4o7ttp9idaaf4j.jpg',
@@ -381,8 +381,8 @@ class _FarmTabState extends State<FarmTab> {
                     'https://res.cloudinary.com/dcs9vkwe0/image/upload/v1769259314/l6sbxk2stvbossbgjlyn.jpg',
                   ],
                   height: 200,
-                  displayDuration: const Duration(seconds: 2),
-                  fadeDuration: const Duration(milliseconds: 500),
+                  displayDuration: Duration(seconds: 2),
+                  fadeDuration: Duration(milliseconds: 500),
                 ),
                 // Overlay dégradé + Emoji
                 Positioned.fill(
@@ -500,7 +500,7 @@ class _FarmTabState extends State<FarmTab> {
 
     return FutureBuilder<List<dynamic>>(
       future: _farmsFuture ?? (widget.userId != null
-          ? ApiService.getUserFarms(widget.userId!)
+          ? ApiService.getPublicUserFarms(widget.userId!)
           : ApiService.getPublicFarms()),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

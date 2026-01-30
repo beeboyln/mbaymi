@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
@@ -56,14 +55,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
     // Créer les futures qu'UNE SEULE FOIS
     _profileFuture ??= ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null);
     _postsFuture ??= ApiService.getUserPosts(widget.userId, viewerId: _userId > 0 ? _userId : null);
-    _farmsFuture ??= ApiService.getUserFarms(widget.userId);
+    _farmsFuture ??= ApiService.getPublicUserFarms(widget.userId);
   }
 
   Future<void> _refresh() async {
     // Recharger UNIQUEMENT si on swipe
     _profileFuture = ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null);
     _postsFuture = ApiService.getUserPosts(widget.userId, viewerId: _userId > 0 ? _userId : null);
-    _farmsFuture = ApiService.getUserFarms(widget.userId);
+    _farmsFuture = ApiService.getPublicUserFarms(widget.userId);
     setState(() {});
   }
 
@@ -351,7 +350,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
 
                                     // Fermes count (replace Posts)
                                     FutureBuilder<List<dynamic>>(
-                                      future: _farmsFuture ?? ApiService.getUserFarms(widget.userId),
+                                      future: _farmsFuture ?? ApiService.getPublicUserFarms(widget.userId),
                                       builder: (context, farmsSnap) {
                                         final farms = farmsSnap.data ?? [];
                                         final count = farms.length;
@@ -386,7 +385,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
                       ),
                       const SizedBox(height: 12),
                       FutureBuilder<List<dynamic>>(
-                        future: _farmsFuture ?? ApiService.getUserFarms(widget.userId),
+                        future: _farmsFuture ?? ApiService.getPublicUserFarms(widget.userId),
                         builder: (context, farmsSnap) {
                           if (farmsSnap.connectionState == ConnectionState.waiting) {
                             return const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: _primaryColor)));

@@ -106,7 +106,7 @@ class _DashboardTabState extends State<DashboardTab> {
     if (widget.userId == null) return result;
 
     try {
-      final farms = await ApiService.getUserFarms(widget.userId!);
+      final farms = await ApiService.getUserFarms();
       final livestock = await ApiService.getUserLivestock(widget.userId!);
       result['farms'] = farms.length;
       result['livestock'] = livestock.length;
@@ -213,7 +213,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         ),
                         boxShadow: AppShadows.elevationSmall,
                       ),
-                      padding: EdgeInsets.all(AppSpacing.md),
+                      padding: const EdgeInsets.all(AppSpacing.md),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -259,7 +259,7 @@ class _DashboardTabState extends State<DashboardTab> {
                               child: Row(
                                 children: [
                                   const Icon(Icons.water_drop_outlined, color: Colors.white70, size: 16),
-                                  SizedBox(width: AppSpacing.sm),
+                                  const SizedBox(width: AppSpacing.sm),
                                   Expanded(
                                     child: Text(
                                       wateringAdvice,
@@ -290,14 +290,14 @@ class _DashboardTabState extends State<DashboardTab> {
                   color: isDarkMode ? const Color(0xFF12210D).withOpacity(0.9) : AppColors.lightBg,
                   boxShadow: AppShadows.elevationSmall,
                 ),
-                padding: EdgeInsets.symmetric(
+                padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
                   vertical: AppSpacing.md,
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.lightbulb, color: Color.fromARGB(233, 15, 89, 36), size: 28),
-                    SizedBox(width: AppSpacing.md),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text(
                         _currentTip.isNotEmpty ? _currentTip : 'Chargement...',

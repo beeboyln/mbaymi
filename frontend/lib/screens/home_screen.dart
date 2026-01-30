@@ -18,6 +18,8 @@ import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/parcel_finance_screen.dart';
 import 'package:mbaymi/screens/select_crop_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
+import 'package:mbaymi/screens/search_users_screen.dart';
+import 'package:mbaymi/screens/search_tab.dart';
 import 'package:mbaymi/widgets/notification_icon_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/utils/app_spacing.dart';
@@ -57,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _screens = [
       DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId),
       FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId),
+      SearchTab(isDarkMode: _isDarkMode),
       FarmNetworkScreen(isDarkMode: _isDarkMode),
       LivestockTab(isDarkMode: _isDarkMode),
       MarketTab(isDarkMode: _isDarkMode),
@@ -102,7 +105,6 @@ class _HomeScreenState extends State<HomeScreen> {
         const VeterinarianDashboardScreen(),
         FarmNetworkScreen(isDarkMode: _isDarkMode),
         LivestockTab(isDarkMode: _isDarkMode),
-        MarketTab(isDarkMode: _isDarkMode),
         AdviceTab(isDarkMode: _isDarkMode),
       ];
     } else {
@@ -125,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDarkMode = themeProvider.isDarkMode;
     
     final appBarBg = AppColors.getBgColor(isDarkMode);
-    final appBarIconColor = AppColors.accent;
+    const appBarIconColor = AppColors.accent;
     
     return Scaffold(
       backgroundColor: AppColors.getBgColor(isDarkMode),
@@ -205,6 +207,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.search, color: appBarIconColor),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SearchUsersScreen(isDarkMode: _isDarkMode),
+                ),
+              );
+            },
+          ),
           NotificationIconWidget(iconColor: appBarIconColor),
           IconButton(
             icon: Icon(
@@ -262,7 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildNavItem(Icons.groups_outlined, Icons.groups, 'Réseau', 1, isDarkMode),
           _buildCentralActionButton(),
           _buildNavItem(Icons.pets_outlined, Icons.pets, 'Suivis', 2, isDarkMode),
-          _buildNavItem(Icons.lightbulb_outline, Icons.lightbulb, 'Conseils', 4, isDarkMode),
+          _buildNavItem(Icons.lightbulb_outline, Icons.lightbulb, 'Conseils', 3, isDarkMode),
         ],
       );
     } else {
@@ -401,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
 
                   try {
-                    final farms = await ApiService.getUserFarms(userId!);
+                    final farms = await ApiService.getUserFarms();
                     if (!mounted) return;
                     if (farms.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -506,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
 
                   try {
-                    final farms = await ApiService.getUserFarms(userId!);
+                    final farms = await ApiService.getUserFarms();
                     if (!mounted) return;
                     
                     if (farms.isEmpty) {
@@ -599,7 +612,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
 
                   try {
-                    final farms = await ApiService.getUserFarms(userId!);
+                    final farms = await ApiService.getUserFarms();
                     if (!mounted) return;
                     
                     if (farms.isEmpty) {

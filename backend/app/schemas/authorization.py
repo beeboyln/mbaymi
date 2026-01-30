@@ -16,6 +16,8 @@ class AuthorizationCreate(BaseModel):
     can_give_advice: bool = True
     can_visit: bool = False
     authorization_reason: Optional[str] = None
+    selected_livestock_ids: Optional[str] = None  # Comma-separated IDs
+    selected_crop_ids: Optional[str] = None  # Comma-separated IDs
 
 class AuthorizationUpdate(BaseModel):
     can_view_data: Optional[bool] = None
@@ -33,6 +35,8 @@ class AuthorizationResponse(BaseModel):
     can_visit: bool
     status: AuthorizationStatus
     authorization_reason: Optional[str]
+    selected_livestock_ids: Optional[str]
+    selected_crop_ids: Optional[str]
     expires_at: datetime
     is_active: bool
     created_at: datetime

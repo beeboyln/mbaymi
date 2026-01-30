@@ -4,9 +4,93 @@ from app.database import get_db
 from app.models.farm import Farm, Crop
 from app.models.photo import FarmPhoto
 from app.models.user import User
+from app.models.livestock import Livestock
 from app.schemas.schemas import FarmCreate, FarmResponse, CropCreate, CropResponse
+from app.routes.auth import get_current_user_obj
 
-router = APIRouter(prefix="/farms", tags=["farms"])
+router = APIRouter(tags=["farms"])
+
+@router.get("/", response_model=list)
+def get_current_user_farms(
+    current_user: User = Depends(get_current_user_obj),
+    db: Session = Depends(get_db)
+):
+    """Get all farms for the authenticated user with their livestock"""
+    farms = db.query(Farm).filter(Farm.user_id == current_user.id).all()
+    
+    # Also get user's livestock
+    livestocks = db.query(Livestock).filter(Livestock.user_id == current_user.id).all()
+    livestock_list = [
+        {
+            'id': l.id,
+            'user_id': l.user_id,
+            'animal_type': l.animal_type,
+            'breed': l.breed,
+            'quantity': l.quantity,
+            'age_months': l.age_months,
+            'weight_kg': l.weight_kg,
+            'health_status': l.health_status,
+            'last_vaccination_date': l.last_vaccination_date,
+            'feeding_type': l.feeding_type,
+            'location': l.location,
+            'notes': l.notes,
+            'image_url': l.image_url,
+            'created_at': l.created_at,
+            'updated_at': l.updated_at,
+        }
+        for l in livestocks
+    ]
+    
+    result = []
+    for f in farms:
+        photos = db.query(FarmPhoto).filter(FarmPhoto.farm_id == f.id).all()
+        crops = db.query(Crop).filter(Crop.farm_id == f.id).all()
+        d = {
+            'id': f.id,
+            'user_id': f.user_id,
+            'name': f.name,
+            'location': f.location,
+            'size_hectares': f.size_hectares,
+            'soil_type': f.soil_type,
+            'image_url': f.image_url,
+            'latitude': f.latitude,
+            'longitude': f.longitude,
+            'created_at': f.created_at,
+            'updated_at': f.updated_at,
+            'photos': [{'id': p.id, 'image_url': p.image_url} for p in photos],
+            'crops': [
+                {
+                    'id': c.id,
+                    'crop_name': c.crop_name,
+                    'variety': c.variety,
+                    'status': c.status,
+                    'image_url': c.image_url,
+                }
+                for c in crops
+            ],
+            'livestocks': livestock_list  # Include all user's livestocks
+        }
+        result.append(d)
+    
+    # If user has no farms, return a single entry with their livestock info
+    if not result:
+        result = [{
+            'id': None,
+            'user_id': current_user.id,
+            'name': None,
+            'location': None,
+            'size_hectares': None,
+            'soil_type': None,
+            'image_url': None,
+            'latitude': None,
+            'longitude': None,
+            'created_at': None,
+            'updated_at': None,
+            'photos': [],
+            'livestocks': livestock_list
+        }]
+    
+    return result
 
 @router.post("/", response_model=FarmResponse)
 def create_farm(farm: FarmCreate, user_id: int, db: Session = Depends(get_db)):

@@ -34,7 +34,6 @@ class NotificationService {
       }
 
       final token = await TokenStorage.getAccessToken();
-      debugPrint('🔔 NotificationService.getNotifications: userId=$userId, token=${token != null ? "EXISTS (${token.length} chars)" : "NULL"}');
       
       if (token == null) {
         throw Exception('No access token available');
@@ -48,7 +47,6 @@ class NotificationService {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       };
-      debugPrint('🔔 Request headers: Authorization=${"Bearer ${token.isNotEmpty ? token.substring(0, 20) + "..." : "NULL"}"}');
 
       final response = await http.get(
         url,
@@ -204,7 +202,6 @@ class NotificationService {
       }
 
       final token = await TokenStorage.getAccessToken();
-      debugPrint('🔔 NotificationService.getUnreadCount: userId=$userId, token=${token != null ? "EXISTS" : "NULL"}');
       
       if (token == null) {
         throw Exception('No access token available');
@@ -229,14 +226,11 @@ class NotificationService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final count = data['unread_count'] as int? ?? 0;
-        debugPrint('🔔 Unread count: $count');
         return count;
       } else if (response.statusCode == 401) {
         await _handleUnauthorized();
-        debugPrint('⚠️ Token expired - returning 0');
         return 0;
       } else {
-        debugPrint('⚠️ getUnreadCount status ${response.statusCode}: ${response.body}');
         return 0;
       }
     } catch (e) {

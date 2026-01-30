@@ -57,9 +57,8 @@ if os.path.exists(uploads_dir):
 def include_routes():
     from app.routes import auth, farmers, livestock, market, advice, news, activities, harvests, sales, crops, pasture, animal_photos
     app.include_router(auth.router)
-    app.include_router(farmers.router)
-    # Also expose farmers routes under legacy `/api` prefix to support older frontends
-    app.include_router(farmers.router, prefix="/api")
+    # Register farmers routes with /api/farms prefix for frontend consumption
+    app.include_router(farmers.router, prefix="/api/farms")
     app.include_router(livestock.router)
     app.include_router(market.router)
     app.include_router(advice.router)
@@ -72,7 +71,7 @@ def include_routes():
     app.include_router(animal_photos.router)
     
     # 🌾 Agricultural features
-    from app.routes import crop_problems, farm_network, user_profile, social, farm_posts, market_prices, notifications, veterinarian, authorization, service_request, media
+    from app.routes import crop_problems, farm_network, user_profile, social, farm_posts, market_prices, notifications, veterinarian, authorization, service_request, media, search
     # New agriculture API routes
     from app.routes import api_crops, api_inputs, api_finance, api_reminders
     app.include_router(crop_problems.router)
@@ -83,6 +82,7 @@ def include_routes():
     app.include_router(social.router)  # ✨ Nouvelles interactions sociales
     app.include_router(farm_posts.router)  # 📸 Farm image posts with likes/comments/shares
     app.include_router(market_prices.router)  # 💰 Market prices & trends
+    app.include_router(search.router)  # 🔍 Recherche d'utilisateurs, vétérinaires, fermes
     app.include_router(notifications.router)  # 🔔 Notifications
     # Also expose legacy `/api` prefixed routes to support frontends using `/api/...`
     app.include_router(farm_posts.router, prefix="/api")
@@ -111,6 +111,7 @@ def include_routes():
 
 # ✅ Health check endpoint (wakes up Render free tier)
 @app.get("/health")
+@app.get("/api/health")
 def health():
     """🏥 Health check endpoint - used by UptimeRobot/cron-job to keep server awake"""
     return {"status": "ok", "service": "mbaymi-api"}
