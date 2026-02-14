@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/utils/app_colors.dart';
-import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class ActivityScreen extends StatefulWidget {
   final int farmId;

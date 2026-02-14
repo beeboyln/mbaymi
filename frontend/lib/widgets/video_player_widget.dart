@@ -12,14 +12,14 @@ class VideoPlayerWidget extends StatefulWidget {
   final double height;
 
   const VideoPlayerWidget({
-    Key? key,
+    super.key,
     required this.videoUrl,
     this.assetPath,
     this.autoplay = true,
     this.looping = true,
     this.muted = true,
     this.height = 200,
-  }) : super(key: key);
+  });
 
   @override
   State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();

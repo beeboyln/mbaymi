@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mbaymi/utils/app_colors.dart';
 
 class StatCard extends StatelessWidget {
   final IconData icon;
@@ -27,66 +26,78 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap ?? () => HapticFeedback.lightImpact(),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap?.call();
+      },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isDarkMode 
-            ? const Color(0xFF0D0D0D).withOpacity(0.9)
-            : AppColors.lightBg,
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: isDarkMode 
+                ? Colors.black.withAlpha((0.25 * 255).toInt())
+                : Colors.black.withAlpha((0.08 * 255).toInt()),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+              spreadRadius: 1,
             ),
           ],
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // Icône en haut
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(isDarkMode ? 0.2 : 0.1),
+                color: iconColor.withAlpha((0.12 * 255).toInt()),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: iconColor, size: 20),
+              child: Icon(icon, color: iconColor.withAlpha((0.75 * 255).toInt()), size: 16),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            // Valeur du nombre - centrée
             Text(
               '$value',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 36,
                 fontWeight: FontWeight.w300,
-                color: isDarkMode ? Colors.white : const Color(0xFF2D5016),
-                height: 1,
+                color: isDarkMode 
+                  ? Colors.white.withAlpha((0.95 * 255).toInt())
+                  : const Color(0xFF0A0A0A).withAlpha((0.85 * 255).toInt()),
+                letterSpacing: -0.5,
               ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
+            // Libellé - centré
             Text(
               label,
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: isDarkMode 
+                  ? Colors.white.withAlpha((0.65 * 255).toInt())
+                  : Colors.black.withAlpha((0.55 * 255).toInt()),
+                letterSpacing: 0.2,
               ),
+              textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: subtitleColor?.withOpacity(0.1) ??
-                      const Color(0xFF2D5016).withOpacity(0.1),
+              const SizedBox(height: 10),
+              Text(
+                subtitle!,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w300,
+                  color: (subtitleColor ?? iconColor).withAlpha((0.65 * 255).toInt()),
                 ),
-                child: Text(
-                  subtitle!,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: subtitleColor ?? const Color(0xFF2D5016),
-                  ),
-                ),
+                textAlign: TextAlign.center,
               ),
             ],
           ],

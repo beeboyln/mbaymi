@@ -17,7 +17,7 @@ class AppButton extends StatelessWidget {
   final bool isDarkMode;
 
   const AppButton({
-    Key? key,
+    super.key,
     required this.label,
     this.onPressed,
     this.isLoading = false,
@@ -27,7 +27,7 @@ class AppButton extends StatelessWidget {
     this.icon,
     this.height,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +66,7 @@ class AppButton extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
         ),
@@ -98,7 +98,7 @@ class AppSecondaryButton extends StatelessWidget {
   final bool isDarkMode;
 
   const AppSecondaryButton({
-    Key? key,
+    super.key,
     required this.label,
     this.onPressed,
     this.isLoading = false,
@@ -107,7 +107,7 @@ class AppSecondaryButton extends StatelessWidget {
     this.textColor,
     this.icon,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +145,7 @@ class AppSecondaryButton extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
         ),
@@ -174,13 +174,13 @@ class AppTextButton extends StatelessWidget {
   final double? fontSize;
 
   const AppTextButton({
-    Key? key,
+    super.key,
     required this.label,
     this.onPressed,
     this.textColor,
     this.icon,
     this.fontSize,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +189,7 @@ class AppTextButton extends StatelessWidget {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm,
         ),

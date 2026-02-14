@@ -4,13 +4,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:intl/intl.dart';
-import 'package:mbaymi/screens/create_farm_post_dialog.dart';
 import 'package:mbaymi/screens/farm_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/utils/app_spacing.dart';
 import 'package:mbaymi/utils/app_typography.dart';
 import 'package:mbaymi/utils/app_radius.dart';
-import 'package:mbaymi/utils/app_shadows.dart';
 import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class UserProfileScreen extends StatefulWidget {

@@ -114,12 +114,12 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.pets_outlined, size: 64, color: secondaryTextColor),
-                    SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AppSpacing.md),
                     Text(
                       'Aucun animal',
                       style: AppTypography.h3.copyWith(color: textColor),
                     ),
-                    SizedBox(height: AppSpacing.sm),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       'Ajoutez vos premiers animaux',
                       style: AppTypography.body.copyWith(color: secondaryTextColor),
@@ -179,7 +179,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                         textColor: textColor,
                         cardColor: cardColor,
                       ),
-                      SizedBox(width: AppSpacing.sm),
+                      const SizedBox(width: AppSpacing.sm),
                       ...animalTypes.map((type) => Padding(
                         padding: const EdgeInsets.only(right: AppSpacing.sm),
                         child: _buildFilterChip(
@@ -193,7 +193,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.md),
 
                 // 📋 LISTE DES ANIMAUX FILTRÉS
                 Expanded(
@@ -203,7 +203,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.search_off_outlined, size: 48, color: secondaryTextColor),
-                              SizedBox(height: AppSpacing.sm),
+                              const SizedBox(height: AppSpacing.sm),
                               Text(
                                 'Aucun animal de ce type',
                                 style: AppTypography.body.copyWith(color: secondaryTextColor),
@@ -289,7 +289,7 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.all(Radius.circular(AppRadius.md)),
+            borderRadius: const BorderRadius.all(Radius.circular(AppRadius.md)),
             border: Border.all(color: borderColor, width: 1),
           ),
           child: Row(
@@ -300,14 +300,14 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                   Container(
                     width: 100,
                     height: 140,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(AppRadius.md),
                         bottomLeft: Radius.circular(AppRadius.md),
                       ),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.only(
+                      borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(AppRadius.md),
                         bottomLeft: Radius.circular(AppRadius.md),
                       ),
@@ -317,12 +317,12 @@ class _LivestockManagementScreenState extends State<LivestockManagementScreen> {
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
                                 color: AppColors.primaryLight.withOpacity(0.1),
-                                child: Icon(Icons.pets_outlined, color: AppColors.primaryLight),
+                                child: const Icon(Icons.pets_outlined, color: AppColors.primaryLight),
                               ),
                             )
                           : Container(
                               color: AppColors.primaryLight.withOpacity(0.1),
-                              child: Icon(Icons.pets_outlined, color: AppColors.primaryLight),
+                              child: const Icon(Icons.pets_outlined, color: AppColors.primaryLight),
                             ),
                     ),
                   ),

@@ -32,6 +32,11 @@ class AuthService {
   static bool get isAuthenticated => _currentSession != null;
 
   /// Login and create a session.
+  /// 
+  /// ⚠️ IMPORTANT:
+  /// - Clears cache ONLY when switching users (userId changed)
+  /// - This prevents stale data from previous user
+  /// - Cache invalidation is explicit and targeted
   static Future<void> login({
     required int userId,
     required String email,
@@ -40,8 +45,15 @@ class AuthService {
     required String accessToken,
     required String refreshToken,
   }) async {
-    // Clear cache for previous user
-    ApiService.clearCache();
+    // Guard: if same user already logged in, don't clear cache
+    final isUserSwitch = _currentSession?.userId != userId;
+    
+    if (isUserSwitch) {
+      debugPrint('🔄 User switch detected (old=${ _currentSession?.userId} → new=$userId), clearing cache');
+      ApiService.clearCache();
+    } else {
+      debugPrint('ℹ️ User re-login (same user), NOT clearing cache');
+    }
 
     _currentSession = Session(
       userId: userId,
@@ -64,8 +76,20 @@ class AuthService {
     debugPrint('✅ AuthService.login: Session created for userId=$userId with JWT token');
   }
 
-  /// Restore session from localStorage (called on app startup).
+  /// Restore session from localStorage (called on app startup ONLY).
+  /// 
+  /// ⚠️ IMPORTANT:
+  /// - Called ONCE by AppBootstrap.initialize()
+  /// - Do NOT call this multiple times (use _currentSession instead)
+  /// - Do NOT call this from NotificationService or other dependent services
+  /// - Cache is NOT invalidated here (perf optimization)
   static Future<void> restoreSession() async {
+    // Guard: if already restored, return immediately
+    if (_currentSession != null) {
+      debugPrint('⚠️ AuthService.restoreSession: Already restored, skipping');
+      return;
+    }
+    
     try {
       final userId = await TokenStorage.getUserId();
       final accessToken = await TokenStorage.getAccessToken();
@@ -74,8 +98,8 @@ class AuthService {
       final role = await TokenStorage.getUserRole();
 
       if (userId != null && accessToken != null && refreshToken != null && email != null) {
-        // Clear cache when restoring session
-        ApiService.clearCache();
+        // ⚠️ NO clearCache() here - it's expensive and called too often
+        // Cache invalidation should be explicit (invalidateCache(key)) or on logout only
         
         _currentSession = Session(
           userId: userId,
@@ -87,7 +111,7 @@ class AuthService {
         );
         debugPrint('✅ AuthService.restoreSession: Session restored for userId=$userId with role=$role');
       } else {
-        debugPrint('⚠️ AuthService.restoreSession: No valid tokens found');
+        debugPrint('⚠️ AuthService.restoreSession: No valid tokens found (user will see login screen)');
       }
     } catch (e) {
       debugPrint('❌ AuthService.restoreSession failed: $e');

@@ -135,9 +135,9 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(color: AppColors.primary, width: 2),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
-      contentPadding: EdgeInsets.symmetric(
+      contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.md,
       ),
@@ -162,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: bgColor,
         elevation: 0,
         centerTitle: true,
-        title: Text('Connexion', style: AppTypography.h3),
+        title: const Text('Connexion', style: AppTypography.h3),
         foregroundColor: textColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -185,12 +185,12 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
+                const Icon(
                   Icons.person,
                   size: 90,
                   color: AppColors.primaryLight,
                 ),
-                SizedBox(height: AppSpacing.xxl),
+                const SizedBox(height: AppSpacing.xxl),
 
                 TextField(
                   controller: _emailController,
@@ -205,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: _decoration('Email', borderColor, hintColor),
                 ),
 
-                SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
 
                 TextField(
                   controller: _passwordController,
@@ -231,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.xl),
 
                 AppButton(
                   label: 'SE CONNECTER',
@@ -240,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   isDarkMode: isDark,
                 ),
 
-                SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -262,7 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
 
-                if (isWeb) SizedBox(height: AppSpacing.xxl),
+                if (isWeb) const SizedBox(height: AppSpacing.xxl),
               ],
             ),
           ),

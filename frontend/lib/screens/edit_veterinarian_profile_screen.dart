@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:mbaymi/services/api_service.dart';
-import 'package:mbaymi/services/auth_service.dart';
 
 class EditVeterinarianProfileScreen extends StatefulWidget {
   const EditVeterinarianProfileScreen({super.key});

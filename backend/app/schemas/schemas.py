@@ -54,10 +54,13 @@ class CropCreate(BaseModel):
     objective: str = "consumption"
     status: str = "growing"
     notes: Optional[str] = None
+    coordinates: Optional[List[List[float]]] = None  # [[lat, lon], [lat, lon], ...]
 
 class CropResponse(CropCreate):
     id: int
     farm_id: int
+    created_at: datetime
+    image_url: Optional[str] = None
     created_at: datetime
     
     class Config:

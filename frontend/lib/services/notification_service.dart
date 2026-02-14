@@ -18,25 +18,23 @@ class NotificationService {
   }
 
   /// Récupérer les notifications de l'utilisateur
+  /// 
+  /// ⚠️ GUARD: Raises exception if user is not authenticated
+  /// This prevents accidental requests or loops with restoreSession()
   static Future<List<NotificationModel>> getNotifications({
     int skip = 0,
     int limit = 20,
   }) async {
     try {
-      // Ensure session is restored from localStorage if needed
-      if (AuthService.currentSession == null) {
-        await AuthService.restoreSession();
-      }
-      
+      // GUARD: Strict check - do NOT restore session here
       final userId = AuthService.currentSession?.userId;
       if (userId == null) {
-        throw Exception('User not authenticated');
+        throw Exception('User not authenticated - cannot fetch notifications');
       }
 
       final token = await TokenStorage.getAccessToken();
-      
       if (token == null) {
-        throw Exception('No access token available');
+        throw Exception('No access token available - session is invalid');
       }
 
       final url = Uri.parse(
@@ -66,7 +64,7 @@ class NotificationService {
         await _handleUnauthorized();
         throw Exception('Unauthorized - Token expired');
       } else {
-        throw Exception('Failed to load notifications');
+        throw Exception('Failed to load notifications: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('❌ NotificationService.getNotifications error: $e');
@@ -189,22 +187,25 @@ class NotificationService {
   }
 
   /// Compter les notifications non lues
+  /// 
+  /// ⚠️ GUARD: Returns 0 silently if user is not authenticated
+  /// Does NOT restore session (prevents loops)
+  /// 
+  /// Idéal pour widget de badge (ne doit pas bloquer ou crasher)
   static Future<int> getUnreadCount() async {
     try {
-      // Ensure session is restored from localStorage if needed
-      if (AuthService.currentSession == null) {
-        await AuthService.restoreSession();
-      }
-      
+      // GUARD: Strict check - no restore here
       final userId = AuthService.currentSession?.userId;
       if (userId == null) {
-        throw Exception('User not authenticated');
+        // Silent return - user is not logged in
+        debugPrint('ℹ️ getUnreadCount: User not authenticated, returning 0');
+        return 0;
       }
 
       final token = await TokenStorage.getAccessToken();
-      
       if (token == null) {
-        throw Exception('No access token available');
+        debugPrint('ℹ️ getUnreadCount: No token available, returning 0');
+        return 0;
       }
 
       final url = Uri.parse(
@@ -231,10 +232,12 @@ class NotificationService {
         await _handleUnauthorized();
         return 0;
       } else {
+        // Any other error - return 0 (UI keeps running)
+        debugPrint('⚠️ getUnreadCount failed: status ${response.statusCode}');
         return 0;
       }
     } catch (e) {
-      debugPrint('❌ NotificationService.getUnreadCount error: $e');
+      debugPrint('⚠️ NotificationService.getUnreadCount error (returning 0): $e');
       return 0;
     }
   }

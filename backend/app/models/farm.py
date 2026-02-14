@@ -34,5 +34,11 @@ class Crop(Base):
     status = Column(String(50), default="growing")  # growing, harvested, failed
     notes = Column(String(500))
     image_url = Column(String(500))  # Photo de profil de la parcelle
+    
+    # Géométrie : polygone de la parcelle
+    # Format JSON : [[lat1, lon1], [lat2, lon2], [lat3, lon3], ...]
+    # Coordonnées en WGS84 (GPS standard)
+    coordinates = Column(String(2000), nullable=True)  # JSON stringified polygon
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

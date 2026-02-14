@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' as io;
 import 'package:mbaymi/screens/home_screen.dart';
+import 'package:mbaymi/screens/splash_screen.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/services/app_bootstrap.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/screens/login_screen.dart';
 import 'package:mbaymi/screens/register_screen.dart';
@@ -34,65 +35,45 @@ Future<void> main() async {
     debugPrint('Debug Mode: $kDebugMode');
     debugPrint('═══════════════════════════════════════════════════════');
     
-    // Load .env file with fallback for mobile (where .env may not exist)
+    // 1️⃣ Load .env file (NON-BLOCKING)
     try {
       await dotenv.load(fileName: '.env');
       debugPrint('✅ .env loaded successfully');
       debugPrint('API_BASE_URL: ${dotenv.env['API_BASE_URL']}');
     } catch (e) {
       debugPrint('⚠️ Failed to load .env: $e');
-      debugPrint('Stack: ${StackTrace.current}');
-      // On mobile, .env might not be accessible as a file. That's OK - use defaults.
-      // The app will work with environment variables or defaults defined in the code.
       if (kIsWeb) {
-        // On web, .env should exist. Log the error but continue.
-        debugPrint('⚠️ .env file not found on web. Some features may not work.');
+        debugPrint('⚠️ .env file not found on web.');
       }
     }
 
-    // Initialize intl locale data required for DateFormat with locales (e.g. 'fr_FR')
+    // 2️⃣ Initialize locale data (REQUIRED for date formatting)
     try {
       await initializeDateFormatting('fr_FR');
       Intl.defaultLocale = 'fr_FR';
       debugPrint('✅ Locale initialized: fr_FR');
     } catch (e) {
-      // Fallback: initialize default data
-      debugPrint('⚠️ Locale init failed for fr_FR: $e');
+      debugPrint('⚠️ Locale init failed: $e');
       await initializeDateFormatting();
-      // leave defaultLocale unset (will use system/default)
     }
 
-    // Restore session from localStorage (JWT style persistence)
-    debugPrint('🔄 Restoring session from localStorage...');
-    try {
-      await AuthService.restoreSession();
-      debugPrint('✅ Session restored. User ID: ${AuthService.currentSession?.userId}');
-    } catch (e) {
-      debugPrint('⚠️ Session restore failed: $e');
-      debugPrint('Stack: ${StackTrace.current}');
-    }
-
-    // 🏥 Wake up backend on cold start (Render free tier)
-    await _wakeupBackend();
-
-    // Initialiser le ThemeProvider
+    // 3️⃣ Initialize ThemeProvider (FAST, local)
     try {
       await ThemeProvider().init();
       debugPrint('✅ ThemeProvider initialized');
     } catch (e) {
       debugPrint('⚠️ ThemeProvider init failed: $e');
-      debugPrint('Stack: ${StackTrace.current}');
     }
 
-    // Global error handling so uncaught Flutter errors are logged in console
+    // 4️⃣ Setup global error handlers
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.dumpErrorToConsole(details);
       debugPrint('🔥 FLUTTER ERROR: ${details.exception}');
-      if (details.stack != null) debugPrint('Stack: ${details.stack.toString()}');
     };
 
+    // 5️⃣ BUILD APP with AppBootstrap (async initialization)
     try {
-      debugPrint('🎨 Building MbaymiApp...');
+      debugPrint('🎨 Building MbaymiApp with AppBootstrap...');
       runApp(const MbaymiApp());
       debugPrint('✅ MbaymiApp initialized successfully');
     } catch (e, stack) {
@@ -101,34 +82,9 @@ Future<void> main() async {
       rethrow;
     }
   }, (error, stack) {
-    // Log uncaught async/zone errors
     debugPrint('💥 ZONE ERROR (CRITICAL): $error');
     debugPrint('Stack: $stack');
   });
-}
-
-/// 🏥 Wake up backend on app launch (handles Render free tier cold start)
-Future<void> _wakeupBackend() async {
-  try {
-    final apiUrl = dotenv.env['API_BASE_URL'] ?? 'https://burning-yetty-bigboyme-428f3176.koyeb.app/api';
-    final healthUrl = Uri.parse('$apiUrl/health');
-    
-    debugPrint('🏥 Attempting to wake up backend at $healthUrl...');
-    
-    try {
-      final response = await http.get(healthUrl).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        debugPrint('✅ Backend is awake and ready!');
-      } else {
-        debugPrint('⚠️ Backend returned status code: ${response.statusCode}');
-      }
-    } on TimeoutException {
-      debugPrint('⚠️ Health check TIMEOUT (cold start likely), will retry on first request');
-    }
-  } catch (e) {
-    // Silently fail - will retry on first real request
-    debugPrint('⚠️ Health check error: $e');
-  }
 }
 
 class MbaymiApp extends StatefulWidget {
@@ -141,18 +97,20 @@ class MbaymiApp extends StatefulWidget {
 class _MbaymiAppState extends State<MbaymiApp> {
   late StreamSubscription _authSubscription;
   int? _lastUserId;
+  late StreamSubscription _bootstrapSubscription;
+  bool _bootstrapComplete = false;
 
   @override
   void initState() {
     super.initState();
     _lastUserId = AuthService.currentSession?.userId;
+    // Initialize bootstrap immediately with high priority
+    _initializeApp();
     
-    // 🔍 Écouter les changements d'authentification de manière plus efficace
-    // Vérifier toutes les 2 secondes au lieu de 500ms (moins consommateur d'énergie)
+    // 🔍 Listen to auth state changes (every 2 seconds, less energy consuming)
     _authSubscription = Stream.periodic(const Duration(seconds: 2)).listen((_) {
       if (mounted) {
         final currentUserId = AuthService.currentSession?.userId;
-        // Ne rebuild que si l'userId a changé
         if (_lastUserId != currentUserId) {
           _lastUserId = currentUserId;
           setState(() {});
@@ -161,9 +119,30 @@ class _MbaymiAppState extends State<MbaymiApp> {
     });
   }
 
+  /// Initialize app asynchronously WITHOUT BLOCKING UI
+  void _initializeApp() {
+    // Listen to bootstrap completion
+    _bootstrapSubscription = AppBootstrap().onBootstrapComplete.listen((state) {
+      if (mounted) {
+        debugPrint('✅ Bootstrap complete: auth=${state.authRestored}');
+        setState(() {
+          _bootstrapComplete = true;
+        });
+      }
+    });
+
+    // START bootstrap asynchronously (fire-and-forget)
+    AppBootstrap().initialize().then((state) {
+      debugPrint('✅ AppBootstrap.initialize() completed');
+    }).catchError((e) {
+      debugPrint('⚠️ AppBootstrap.initialize() error: $e');
+    });
+  }
+
   @override
   void dispose() {
     _authSubscription.cancel();
+    _bootstrapSubscription.cancel();
     super.dispose();
   }
 
@@ -173,7 +152,7 @@ class _MbaymiAppState extends State<MbaymiApp> {
       create: (_) => ThemeProvider(),
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
-          // Always show HomeScreen (read-only mode for guests, full access for authenticated users)
+          // Read auth state from AuthService (stateless read)
           final userId = AuthService.currentSession?.userId;
 
           return MaterialApp(
@@ -204,7 +183,10 @@ class _MbaymiAppState extends State<MbaymiApp> {
               ),
             ),
             themeMode: themeProvider.themeMode,
-            home: HomeScreen(key: ValueKey('home_${userId ?? 0}'), userId: userId),
+            // Always show splash first, then home when bootstrap is complete
+            home: _bootstrapComplete 
+              ? HomeScreen(key: ValueKey('home_${userId ?? 0}'), userId: userId)
+              : const SplashScreen(),
             routes: {
               '/login': (context) => const LoginScreen(),
               '/register': (context) => const RegisterScreen(),
@@ -222,7 +204,7 @@ class _MbaymiAppState extends State<MbaymiApp> {
                   ),
                 );
               }
-              // 🌾 Farm Detail (from authorization request)
+              // Farm Detail
               if (settings.name == '/farm-detail') {
                 final farmId = settings.arguments as int?;
                 if (farmId != null) {
@@ -231,12 +213,12 @@ class _MbaymiAppState extends State<MbaymiApp> {
                       farmId: farmId,
                       farmData: {'id': farmId},
                       isDarkMode: Theme.of(context).brightness == Brightness.dark,
-                      readOnly: true, // Visiteur ne peut pas éditer
+                      readOnly: true,
                     ),
                   );
                 }
               }
-              // 🐑 Livestock Detail (from authorization request)
+              // Livestock Detail
               if (settings.name == '/livestock-detail') {
                 final livestockId = settings.arguments as int?;
                 if (livestockId != null) {
@@ -249,7 +231,7 @@ class _MbaymiAppState extends State<MbaymiApp> {
                   );
                 }
               }
-              // 🌾 Crop Problems Screen
+              // Crop Problems
               if (settings.name?.startsWith('/crop-problems/') == true) {
                 final args = settings.arguments as Map<String, dynamic>;
                 return MaterialPageRoute(
@@ -262,7 +244,7 @@ class _MbaymiAppState extends State<MbaymiApp> {
                   ),
                 );
               }
-              // 🌾 Farm Profile Screen
+              // Farm Profile
               if (settings.name?.startsWith('/farm-profile/') == true) {
                 final args = settings.arguments as Map<String, dynamic>;
                 return MaterialPageRoute(
@@ -273,7 +255,7 @@ class _MbaymiAppState extends State<MbaymiApp> {
                   ),
                 );
               }
-              // 👤 User Profile Screen
+              // User Profile
               if (settings.name?.startsWith('/user-profile/') == true) {
                 final args = settings.arguments as Map<String, dynamic>;
                 return MaterialPageRoute(
@@ -287,42 +269,6 @@ class _MbaymiAppState extends State<MbaymiApp> {
             },
           );
         },
-      ),
-    );
-  }
-}
-
-class SplashScreen extends StatefulWidget {
-  final int? userId;
-  const SplashScreen({super.key, this.userId});
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Afficher le splash pendant 2 secondes, puis passer à HomeScreen
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/', arguments: widget.userId);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.lightBg,
-      body: Center(
-        child: Image.asset(
-          'assets/images/aa.png',
-          height: 200,
-          width: 200,
-          fit: BoxFit.contain,
-        ),
       ),
     );
   }

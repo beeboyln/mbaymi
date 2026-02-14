@@ -166,13 +166,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return InputDecoration(
       labelText: label,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-      contentPadding: EdgeInsets.symmetric(
+      contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.md,
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(
+        borderSide: const BorderSide(
           color: AppColors.primary,
           width: 2,
         ),
@@ -191,7 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       resizeToAvoidBottomInset: true,
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: Text('Créer un compte', style: AppTypography.h3),
+        title: const Text('Créer un compte', style: AppTypography.h3),
         backgroundColor: bgColor,
         foregroundColor: textColor,
       ),
@@ -210,12 +210,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             key: _formKey,
             child: Column(
               children: [
-                Icon(
+                const Icon(
                   Icons.person,
                   size: 90,
                   color: AppColors.primaryLight,
                 ),
-                SizedBox(height: AppSpacing.xxl),
+                const SizedBox(height: AppSpacing.xxl),
 
                 TextFormField(
                   controller: _nameController,
@@ -228,7 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   validator: (v) => v == null || v.isEmpty ? 'Nom requis' : null,
                 ),
 
-                SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _emailController,
@@ -240,7 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   validator: email_validator.Validators.email,
                 ),
 
-                SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _phoneController,
@@ -253,7 +253,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   validator: validators.Validators.phone,
                 ),
 
-                SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _passwordController,
@@ -266,7 +266,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   validator: validators.Validators.password,
                 ),
 
-                SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _confirmPasswordController,
@@ -282,10 +282,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           : null,
                 ),
 
-                SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.md),
 
                 DropdownButtonFormField<String>(
-                  value: _selectedRole,
+                  initialValue: _selectedRole,
                   decoration: _input('Rôle', isDark),
                   style: AppTypography.body.copyWith(color: textColor),
                   items: const [
@@ -299,7 +299,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onChanged: (v) => setState(() => _selectedRole = v!),
                 ),
 
-                SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _regionController,
@@ -310,7 +310,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       v == null || v.isEmpty ? 'Région requise' : null,
                 ),
 
-                SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.md),
 
                 TextFormField(
                   controller: _villageController,
@@ -319,7 +319,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: AppTypography.body.copyWith(color: textColor),
                 ),
 
-                SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.xl),
 
                 AppButton(
                   label: 'CRÉER UN COMPTE',
@@ -328,7 +328,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   isDarkMode: isDark,
                 ),
 
-                if (isWeb) SizedBox(height: AppSpacing.xxl),
+                if (isWeb) const SizedBox(height: AppSpacing.xxl),
               ],
             ),
           ),

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/utils/app_colors.dart';
-import 'dart:typed_data';
 
 class EditFarmScreen extends StatefulWidget {
   final Map<String, dynamic> farm;

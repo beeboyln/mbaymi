@@ -54,13 +54,20 @@ class _DashboardTabState extends State<DashboardTab> {
   ];
   String _currentTip = '';
 
+  // Slideshow for farm/livestock images
+  late Future<List<String>> _imagesFuture;
+  int _currentImageIndex = 0;
+  Timer? _slideshowTimer;
+
   @override
   void initState() {
     super.initState();
     ApiService.clearCache();
+    // Load data asynchronously - DON'T BLOCK UI
     _countsFuture = _loadCounts();
     _weatherFuture = _loadWeather();
     _newsFuture = ApiService.getAgriculturalNews();
+    _imagesFuture = _loadFarmAndLivestockImages();
     // Initialize random tip
     _currentTip = _tips[Random().nextInt(_tips.length)];
   }
@@ -79,6 +86,7 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   void dispose() {
     _newsScrollController.dispose();
+    _slideshowTimer?.cancel();
     super.dispose();
   }
 
@@ -134,6 +142,34 @@ class _DashboardTabState extends State<DashboardTab> {
     return result;
   }
 
+  Future<List<String>> _loadFarmAndLivestockImages() async {
+    final images = <String>[];
+    
+    if (widget.userId == null) return images;
+
+    try {
+      // Fetch farms
+      final farms = await ApiService.getUserFarms();
+      for (final farm in farms) {
+        if (farm['image_url'] != null && (farm['image_url'] as String).isNotEmpty) {
+          images.add(farm['image_url'] as String);
+        }
+      }
+
+      // Fetch livestock
+      final livestock = await ApiService.getUserLivestock(widget.userId!);
+      for (final animal in livestock) {
+        if (animal['image_url'] != null && (animal['image_url'] as String).isNotEmpty) {
+          images.add(animal['image_url'] as String);
+        }
+      }
+    } catch (e) {
+      // Silently fail - will show placeholder instead
+    }
+
+    return images;
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -141,15 +177,14 @@ class _DashboardTabState extends State<DashboardTab> {
     
     return Container(
       decoration: BoxDecoration(
-        color: isDarkMode 
-          ? AppColors.darkBg
-          : AppColors.lightBg,
         image: DecorationImage(
-          image: const AssetImage('assets/images/aa.png'),
+          image: const AssetImage('assets/images/ba.jpg'),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(isDarkMode ? 0.15 : 0.03),
-            BlendMode.darken,
+            isDarkMode 
+              ? Colors.black.withAlpha((0.75 * 255).toInt())
+              : Colors.white.withAlpha((0.2 * 255).toInt()),
+            BlendMode.lighten,
           ),
         ),
       ),
@@ -167,20 +202,29 @@ class _DashboardTabState extends State<DashboardTab> {
           cacheExtent: 200.0,
           slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 30, 20, 0),
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
             sliver: SliverToBoxAdapter(
-              child: Text(
-                _getFormattedDate(),
-                style: AppTypography.labelSmall.copyWith(
-                  color: isDarkMode ? Colors.grey.shade400 : const Color.fromARGB(233, 15, 89, 36),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(
+                    _getFormattedDate(),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: isDarkMode 
+                        ? Colors.white.withAlpha((0.5 * 255).toInt())
+                        : Colors.black.withAlpha((0.4 * 255).toInt()),
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
 
-          // Conseil du jour
+          // Conseil météorologique minimaliste
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
             sliver: SliverToBoxAdapter(
               child: FutureBuilder<Map<String, dynamic>>(
                 future: _weatherFuture,
@@ -202,18 +246,18 @@ class _DashboardTabState extends State<DashboardTab> {
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Color.fromARGB(233, 15, 89, 36),
-                            Color.fromARGB(200, 156, 78, 47)
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                      decoration: BoxDecoration(
+                        color: isDarkMode 
+                            ? const Color(0xFF1A1A1A).withAlpha((0.7 * 255).toInt())
+                            : Colors.white.withAlpha((0.75 * 255).toInt()),
+                        border: Border.all(
+                          color: isDarkMode
+                              ? Colors.white.withAlpha((0.08 * 255).toInt())
+                              : Colors.black.withAlpha((0.03 * 255).toInt()),
+                          width: 1,
                         ),
-                        boxShadow: AppShadows.elevationSmall,
                       ),
-                      padding: const EdgeInsets.all(AppSpacing.md),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -225,46 +269,70 @@ class _DashboardTabState extends State<DashboardTab> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '☀️ Aujourd\'hui',
-                                    style: AppTypography.label.copyWith(
-                                      color: Colors.white,
+                                    'Météo',
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: isDarkMode 
+                                        ? Colors.white.withAlpha((0.5 * 255).toInt())
+                                        : Colors.black.withAlpha((0.4 * 255).toInt()),
                                       fontWeight: FontWeight.w400,
+                                      letterSpacing: 0.3,
                                     ),
                                   ),
-                                  if (_isWeatherExpanded)
-                                    Text(
-                                      advice,
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: Colors.white70,
-                                      ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    advice,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: isDarkMode 
+                                        ? Colors.white.withAlpha((0.8 * 255).toInt())
+                                        : Colors.black.withAlpha((0.65 * 255).toInt()),
+                                      fontWeight: FontWeight.w300,
+                                      height: 1.4,
                                     ),
+                                  ),
                                 ],
                               ),
                               if (!isLoading)
-                                Text(
-                                  '${maxTemp.toStringAsFixed(0)}°',
-                                  style: AppTypography.h2.copyWith(
-                                    color: Colors.white,
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
+                                  ),
+                                  child: Text(
+                                    '${maxTemp.toStringAsFixed(0)}°C',
+                                    style: AppTypography.h3.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w400,
+                                    ),
                                   ),
                                 ),
                             ],
                           ),
                           if (_isWeatherExpanded) ...[
-                            const SizedBox(height: AppSpacing.md),
+                            const SizedBox(height: 12),
                             Container(
-                              padding: const EdgeInsets.all(AppSpacing.md),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
+                                color: isDarkMode 
+                                    ? Colors.white.withAlpha((0.05 * 255).toInt())
+                                    : Colors.black.withAlpha((0.02 * 255).toInt()),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.water_drop_outlined, color: Colors.white70, size: 16),
-                                  const SizedBox(width: AppSpacing.sm),
+                                  Icon(
+                                    Icons.water_drop_outlined,
+                                    color: AppColors.primary.withAlpha((0.6 * 255).toInt()),
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       wateringAdvice,
                                       style: AppTypography.bodySmall.copyWith(
-                                        color: Colors.white,
+                                        color: isDarkMode 
+                                          ? Colors.white.withAlpha((0.7 * 255).toInt())
+                                          : Colors.black.withAlpha((0.55 * 255).toInt()),
+                                        fontWeight: FontWeight.w300,
+                                        height: 1.4,
                                       ),
                                     ),
                                   ),
@@ -281,39 +349,64 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ),
 
-          // Astuce aléatoire
+          // Astuce aléatoire minimaliste
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             sliver: SliverToBoxAdapter(
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDarkMode ? const Color(0xFF12210D).withOpacity(0.9) : AppColors.lightBg,
-                  boxShadow: AppShadows.elevationSmall,
+                  color: isDarkMode 
+                    ? const Color(0xFF1A1A1A).withAlpha((0.7 * 255).toInt())
+                    : Colors.white.withAlpha((0.75 * 255).toInt()),
+                  border: Border.all(
+                    color: isDarkMode
+                        ? Colors.white.withAlpha((0.08 * 255).toInt())
+                        : Colors.black.withAlpha((0.03 * 255).toInt()),
+                    width: 1,
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.md,
-                ),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    const Icon(Icons.lightbulb, color: Color.fromARGB(233, 15, 89, 36), size: 28),
-                    const SizedBox(width: AppSpacing.md),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha((0.08 * 255).toInt()),
+                      ),
+                      child: Icon(Icons.lightbulb_outline, 
+                        color: AppColors.primary.withAlpha((0.6 * 255).toInt()),
+                        size: 20
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _currentTip.isNotEmpty ? _currentTip : 'Chargement...',
                         style: AppTypography.bodySmall.copyWith(
-                          color: isDarkMode ? Colors.grey.shade200 : const Color.fromARGB(233, 15, 89, 36),
+                          color: isDarkMode 
+                            ? Colors.white.withAlpha((0.75 * 255).toInt())
+                            : Colors.black.withAlpha((0.6 * 255).toInt()),
+                          fontWeight: FontWeight.w300,
+                          height: 1.4,
                         ),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.refresh, color: Color.fromARGB(233, 15, 89, 36)),
+                      icon: Icon(
+                        Icons.refresh,
+                        color: isDarkMode 
+                          ? Colors.white.withAlpha((0.4 * 255).toInt())
+                          : Colors.black.withAlpha((0.3 * 255).toInt()),
+                        size: 18,
+                      ),
                       onPressed: () {
                         setState(() {
                           _currentTip = _tips[Random().nextInt(_tips.length)];
                         });
                         HapticFeedback.selectionClick();
                       },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
@@ -321,123 +414,209 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ),
 
-          // 📊 STATS RAPIDES
+          // �️ STATS MINIMALISTES - EYE ICON TO VIEW
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
             sliver: SliverToBoxAdapter(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: FutureBuilder<Map<String, dynamic>>(
-                      future: _countsFuture,
-                      builder: (context, snapshot) {
-                        return StatCard(
-                          icon: Icons.agriculture,
-                          iconColor: const Color.fromARGB(233, 15, 89, 36),
-                          label: 'Fermes',
-                          value: snapshot.data?['farms'] ?? 0,
-                          isDarkMode: isDarkMode,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FarmTab(userId: widget.userId, initialSection: 0),
-                              ),
-                            );
-                          },
+              child: FutureBuilder<List<String>>(
+                future: _imagesFuture,
+                builder: (context, imagesSnapshot) {
+                  final images = imagesSnapshot.data ?? [];
+                  
+                  // Start slideshow once images are loaded
+                  if (images.isNotEmpty && imagesSnapshot.connectionState == ConnectionState.done && _slideshowTimer == null) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _startSlideshow(images);
+                    });
+                  }
+                  
+                  return Center(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (images.isNotEmpty) {
+                          _slideshowTimer?.cancel();
+                          setState(() {
+                            _currentImageIndex = (_currentImageIndex + 1) % images.length;
+                          });
+                          _startSlideshow(images);
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FarmTab(userId: widget.userId, initialSection: 0),
+                          ),
                         );
                       },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FutureBuilder<Map<String, dynamic>>(
-                      future: _countsFuture,
-                      builder: (context, snapshot) {
-                        return StatCard(
-                          icon: Icons.pets,
-                          iconColor: const Color(0xFFD2691E),
-                          label: 'Animaux',
-                          value: snapshot.data?['livestock'] ?? 0,
-                          isDarkMode: isDarkMode,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FarmTab(userId: widget.userId, initialSection: 1),
+                      child: Container(
+                        height: 140,
+                        decoration: BoxDecoration(
+                          color: isDarkMode 
+                              ? const Color(0xFF1A1A1A).withAlpha((0.7 * 255).toInt())
+                              : Colors.white.withAlpha((0.75 * 255).toInt()),
+                          border: Border.all(
+                            color: isDarkMode
+                                ? Colors.white.withAlpha((0.08 * 255).toInt())
+                                : Colors.black.withAlpha((0.03 * 255).toInt()),
+                            width: 1,
+                          ),
+                        ),
+                        child: images.isEmpty
+                            ? Container(
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: const AssetImage('assets/images/aa.png'),
+                                    fit: BoxFit.cover,
+                                    colorFilter: ColorFilter.mode(
+                                      isDarkMode
+                                          ? Colors.black.withAlpha((0.2 * 255).toInt())
+                                          : Colors.white.withAlpha((0.05 * 255).toInt()),
+                                      BlendMode.lighten,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Stack(
+                                children: [
+                                  // Image avec fade
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 800),
+                                    transitionBuilder: (child, animation) {
+                                      return FadeTransition(opacity: animation, child: child);
+                                    },
+                                    child: Container(
+                                      key: ValueKey(_currentImageIndex),
+                                      decoration: BoxDecoration(
+                                        image: DecorationImage(
+                                          image: NetworkImage(images[_currentImageIndex]),
+                                          fit: BoxFit.cover,
+                                          onError: (exception, stackTrace) {},
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // Overlay gradient
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.transparent,
+                                          Colors.black.withAlpha((0.4 * 255).toInt()),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  // Texte en bas
+                                  Positioned(
+                                    bottom: 12,
+                                    left: 12,
+                                    right: 12,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            'Aperçu',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.white.withAlpha((0.95 * 255).toInt()),
+                                            ),
+                                          ),
+                                        ),
+                                        // Indicateurs
+                                        Row(
+                                          children: List.generate(
+                                            images.length,
+                                            (index) => Container(
+                                              width: 4,
+                                              height: 4,
+                                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                                              decoration: BoxDecoration(
+                                                color: _currentImageIndex == index
+                                                    ? Colors.white.withAlpha((0.9 * 255).toInt())
+                                                    : Colors.white.withAlpha((0.3 * 255).toInt()),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ).then((_) {
-                              setState(() {
-                                _countsFuture = _loadCounts();
-                              });
-                            });
-                          },
-                        );
-                      },
+                      ),
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
 
           // News Section Header
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
+            padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
             sliver: SliverToBoxAdapter(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.newspaper_rounded,
-                    size: 24,
-                    color: Color.fromARGB(233, 15, 89, 36),
+                  Text(
+                    'Actualités',
+                    style: AppTypography.h3.copyWith(
+                      color: isDarkMode ? Colors.white : const Color(0xFF0A0A0A),
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? const Color.fromARGB(233, 15, 89, 36).withOpacity(0.3)
-                              : const Color.fromARGB(233, 15, 89, 36).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.filter_alt, size: 14, color: Color.fromARGB(233, 15, 89, 36)),
-                            const SizedBox(width: 6),
-                            Text(
-                              _selectedNewsFilter,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Color.fromARGB(233, 15, 89, 36),
-                              ),
-                            ),
-                          ],
-                        ),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+                      border: Border.all(
+                        color: isDarkMode
+                            ? Colors.white.withAlpha((0.1 * 255).toInt())
+                            : Colors.black.withAlpha((0.05 * 255).toInt()),
+                        width: 1,
                       ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => _showFilterMenu(context, isDarkMode),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isDarkMode
-                                ? const Color.fromARGB(233, 15, 89, 36).withOpacity(0.3)
-                                : const Color.fromARGB(233, 15, 89, 36).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.tune,
-                            size: 18,
-                            color: Color.fromARGB(233, 15, 89, 36),
-                          ),
-                        ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: DropdownButton<String>(
+                      value: _selectedNewsFilter,
+                      underline: const SizedBox(),
+                      icon: Icon(
+                        Icons.expand_more,
+                        color: AppColors.primary,
+                        size: 20,
                       ),
-                    ],
+                      dropdownColor: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+                      items: ['Local', 'National', 'International', 'Liens utiles']
+                          .map((filter) => DropdownMenuItem<String>(
+                                value: filter,
+                                child: Text(
+                                  filter,
+                                  style: TextStyle(
+                                    color: isDarkMode ? Colors.white : Colors.black87,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedNewsFilter = value;
+                            _newsFuture = ApiService.getAgriculturalNews();
+                          });
+                        }
+                      },
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      isExpanded: true,
+                    ),
                   ),
                 ],
               ),
@@ -459,7 +638,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         color: isDarkMode 
                           ? const Color(0xFF1a1a1a).withOpacity(0.85)
                           : Colors.white.withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Center(
                         child: CircularProgressIndicator(
@@ -480,7 +659,6 @@ class _DashboardTabState extends State<DashboardTab> {
                         color: isDarkMode 
                           ? const Color(0xFF1a1a1a).withOpacity(0.85)
                           : Colors.white.withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Center(
                         child: Column(
@@ -517,7 +695,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         color: isDarkMode 
                           ? const Color(0xFF1a1a1a).withOpacity(0.85)
                           : Colors.white.withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Center(
                         child: Column(
@@ -603,7 +781,7 @@ class _DashboardTabState extends State<DashboardTab> {
       child: Container(
         decoration: BoxDecoration(
           color: isDarkMode ? const Color(0xFF0D0D0D).withOpacity(0.9) : AppColors.lightBg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(4),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
@@ -626,10 +804,6 @@ class _DashboardTabState extends State<DashboardTab> {
                   alignment: Alignment.center,
                 ),
                 color: Color.fromARGB(255, 255, 255, 255),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
               ),
             ),
             
@@ -790,7 +964,7 @@ class _DashboardTabState extends State<DashboardTab> {
           color: isDarkMode 
             ? const Color(0xFF1a1a1a).withOpacity(0.95)
             : Colors.white.withOpacity(0.95),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
@@ -846,7 +1020,6 @@ class _DashboardTabState extends State<DashboardTab> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: const Color.fromARGB(233, 15, 89, 36),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: const Text(
@@ -886,7 +1059,6 @@ class _DashboardTabState extends State<DashboardTab> {
           color: isSelected
               ? const Color.fromARGB(233, 15, 89, 36).withOpacity(isDarkMode ? 0.3 : 0.1)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
@@ -935,6 +1107,56 @@ class _DashboardTabState extends State<DashboardTab> {
     }
   }
 
+  Widget _buildSkeletonStatCard(bool isDarkMode) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDarkMode 
+            ? const Color(0xFF0D0D0D).withOpacity(0.9)
+            : Colors.grey.shade100,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300.withOpacity(0.5),
+              ),
+              child: const SizedBox(width: 20, height: 20),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 16,
+              width: 40,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 12,
+              width: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String _getFormattedDate() {
     final now = DateTime.now();
     final weekdays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
@@ -945,5 +1167,174 @@ class _DashboardTabState extends State<DashboardTab> {
     final monthName = months[now.month - 1];
     
     return '$dayName ${now.day} $monthName ${now.year}';
+  }
+
+  void _showStatsModal(BuildContext context, Map<String, dynamic> data, bool isDarkMode) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDarkMode 
+                ? const Color(0xFF1A1A1A).withAlpha((0.95 * 255).toInt())
+                : Colors.white.withAlpha((0.95 * 255).toInt()),
+            border: Border.all(
+              color: isDarkMode
+                  ? Colors.white.withAlpha((0.1 * 255).toInt())
+                  : Colors.black.withAlpha((0.05 * 255).toInt()),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Text(
+                'Aperçu rapide',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: isDarkMode 
+                      ? Colors.white.withAlpha((0.9 * 255).toInt())
+                      : Colors.black.withAlpha((0.8 * 255).toInt()),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Stats Grid
+              Row(
+                children: [
+                  // Fermes
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FarmTab(userId: widget.userId, initialSection: 0),
+                          ),
+                        );
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color.fromARGB(233, 15, 89, 36).withAlpha((0.1 * 255).toInt()),
+                            ),
+                            child: Icon(
+                              Icons.agriculture,
+                              color: const Color.fromARGB(233, 15, 89, 36).withAlpha((0.7 * 255).toInt()),
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '${data['farms'] ?? 0}',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w300,
+                              color: isDarkMode 
+                                  ? Colors.white.withAlpha((0.95 * 255).toInt())
+                                  : Colors.black.withAlpha((0.85 * 255).toInt()),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Ferme${(data['farms'] ?? 0) > 1 ? 's' : ''}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: isDarkMode 
+                                  ? Colors.white.withAlpha((0.5 * 255).toInt())
+                                  : Colors.black.withAlpha((0.4 * 255).toInt()),
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Animaux
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FarmTab(userId: widget.userId, initialSection: 1),
+                          ),
+                        ).then((_) {
+                          setState(() {
+                            _countsFuture = _loadCounts();
+                          });
+                        });
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD2691E).withAlpha((0.1 * 255).toInt()),
+                            ),
+                            child: Icon(
+                              Icons.pets,
+                              color: const Color(0xFFD2691E).withAlpha((0.7 * 255).toInt()),
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '${data['livestock'] ?? 0}',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w300,
+                              color: isDarkMode 
+                                  ? Colors.white.withAlpha((0.95 * 255).toInt())
+                                  : Colors.black.withAlpha((0.85 * 255).toInt()),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Animal${(data['livestock'] ?? 0) > 1 ? 'aux' : ''}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: isDarkMode 
+                                  ? Colors.white.withAlpha((0.5 * 255).toInt())
+                                  : Colors.black.withAlpha((0.4 * 255).toInt()),
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _startSlideshow(List<String> images) {
+    if (images.isEmpty) return;
+    
+    _slideshowTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted) {
+        setState(() {
+          _currentImageIndex = (_currentImageIndex + 1) % images.length;
+        });
+      }
+    });
   }
 }

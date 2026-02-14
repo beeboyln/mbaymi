@@ -11,7 +11,6 @@ import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:mbaymi/screens/animal_detail_screen.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
-import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class SocialFeedScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -1216,11 +1215,10 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   // 🔧 HELPERS
   Widget _buildLoadingWidget(bool isDarkMode) {
-    return SkeletonListLoader(
-      itemCount: 5,
-      isDarkMode: isDarkMode,
-      itemHeight: 200,
-      itemPadding: const EdgeInsets.only(bottom: 16),
+    return Center(
+      child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+      ),
     );
   }
 

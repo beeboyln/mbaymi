@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
 class ConsultationViewScreen extends StatefulWidget {

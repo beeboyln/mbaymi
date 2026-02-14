@@ -105,6 +105,33 @@ class ApiService {
     debugPrint('🚪 Full logout completed: session and cache cleared');
   }
 
+  /// 🏥 Health check endpoint (for waking up cold-start backends)
+  /// Returns True if backend responds successfully, False on timeout/error
+  static Future<bool> healthCheck() async {
+    try {
+      final url = Uri.parse('$baseUrl/health');
+      debugPrint('🏥 Health check: GET $url');
+      
+      final response = await http.get(url).timeout(
+        const Duration(seconds: 3),
+      );
+      
+      final isHealthy = response.statusCode == 200;
+      if (isHealthy) {
+        debugPrint('✅ Backend is alive (status ${response.statusCode})');
+      } else {
+        debugPrint('⚠️ Backend returned ${response.statusCode}');
+      }
+      return isHealthy;
+    } on TimeoutException {
+      debugPrint('⚠️ Health check timeout');
+      return false;
+    } catch (e) {
+      debugPrint('❌ Health check error: $e');
+      return false;
+    }
+  }
+
   // For local development on Windows/Web: use localhost
   // For Android Emulator: use 'http://10.0.2.2:8000/api'
   // Read from .env (API_BASE_URL) if provided; otherwise use production URL

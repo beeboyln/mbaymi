@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Farm {
   final int id;
   final int userId;
@@ -49,6 +51,9 @@ class Crop {
   final double? expectedYield;
   final String status; // growing, harvested, failed
   final String? notes;
+  final String? imageUrl;
+  // Géométrie : liste de coordonnées [lat, lon]
+  final List<List<double>>? coordinates;
 
   Crop({
     required this.id,
@@ -60,9 +65,40 @@ class Crop {
     this.expectedYield,
     this.status = 'growing',
     this.notes,
+    this.imageUrl,
+    this.coordinates,
   });
 
   factory Crop.fromJson(Map<String, dynamic> json) {
+    List<List<double>>? coords;
+    if (json['coordinates'] != null) {
+      if (json['coordinates'] is String) {
+        // Si c'est un string JSON, parser
+        try {
+          final parsed = json['coordinates'] as String;
+          final List<dynamic> decoded = jsonDecode(parsed);
+          coords = decoded
+              .map((point) => [point[0] as double, point[1] as double])
+              .toList()
+              .cast<List<double>>();
+        } catch (_) {
+          coords = null;
+        }
+      } else if (json['coordinates'] is List) {
+        // Si c'est déjà une liste
+        coords = (json['coordinates'] as List)
+            .map((point) {
+              if (point is List && point.length >= 2) {
+                return [point[0] as double, point[1] as double];
+              }
+              return <double>[];
+            })
+            .where((p) => p.isNotEmpty)
+            .toList()
+            .cast<List<double>>();
+      }
+    }
+
     return Crop(
       id: json['id'] as int,
       farmId: json['farm_id'] as int,
@@ -77,6 +113,8 @@ class Crop {
       expectedYield: json['expected_yield'] as double?,
       status: json['status'] as String? ?? 'growing',
       notes: json['notes'] as String?,
+      imageUrl: json['image_url'] as String?,
+      coordinates: coords,
     );
   }
 
@@ -89,6 +127,38 @@ class Crop {
       'expected_yield': expectedYield,
       'status': status,
       'notes': notes,
+      'image_url': imageUrl,
+      'coordinates': coordinates,
     };
+  }
+
+  // Helper : obtenir le centre du polygone (centroïde simple)
+  List<double>? getCenter() {
+    if (coordinates == null || coordinates!.isEmpty) return null;
+    
+    double sumLat = 0, sumLon = 0;
+    for (final point in coordinates!) {
+      sumLat += point[0];
+      sumLon += point[1];
+    }
+    return [sumLat / coordinates!.length, sumLon / coordinates!.length];
+  }
+
+  // Générer un polygone fictif si pas de coordonnées (pour démo)
+  List<List<double>> getOrGenerateCoordinates() {
+    if (coordinates != null && coordinates!.isNotEmpty) {
+      return coordinates!;
+    }
+    // Générer un carré fictif pour la démo (centre aléatoire)
+    final seed = id.toString().hashCode;
+    final baseLat = 14.0 + (seed % 5) / 100;
+    final baseLon = -16.0 + (seed % 5) / 100;
+    
+    return [
+      [baseLat, baseLon],
+      [baseLat + 0.01, baseLon],
+      [baseLat + 0.01, baseLon + 0.01],
+      [baseLat, baseLon + 0.01],
+    ];
   }
 }

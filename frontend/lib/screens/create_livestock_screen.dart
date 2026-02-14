@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/utils/app_colors.dart';
-import 'dart:typed_data';
 
 class CreateLivestockScreen extends StatefulWidget {
   final int? userId;

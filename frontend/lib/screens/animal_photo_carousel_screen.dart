@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
 import 'package:mbaymi/services/api_service.dart';
 
 class AnimalPhotoCarouselScreen extends StatefulWidget {

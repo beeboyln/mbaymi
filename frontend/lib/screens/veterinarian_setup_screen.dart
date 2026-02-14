@@ -5,7 +5,6 @@ import 'package:mbaymi/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:mbaymi/utils/app_colors.dart';
-import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class VeterinarianSetupScreen extends StatefulWidget {
   const VeterinarianSetupScreen({super.key});

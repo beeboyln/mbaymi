@@ -16,7 +16,7 @@ class AppCard extends StatelessWidget {
   final bool isDarkMode;
 
   const AppCard({
-    Key? key,
+    super.key,
     required this.child,
     this.padding,
     this.backgroundColor,
@@ -25,7 +25,7 @@ class AppCard extends StatelessWidget {
     this.border,
     this.shadow,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +43,7 @@ class AppCard extends StatelessWidget {
           border: border,
           boxShadow: shadow ?? AppShadows.elevationSmall,
         ),
-        padding: padding ?? EdgeInsets.all(AppSpacing.md),
+        padding: padding ?? const EdgeInsets.all(AppSpacing.md),
         child: child,
       ),
     );
@@ -58,12 +58,12 @@ class AppCompactCard extends StatelessWidget {
   final bool isDarkMode;
 
   const AppCompactCard({
-    Key? key,
+    super.key,
     required this.child,
     this.onTap,
     this.backgroundColor,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +71,7 @@ class AppCompactCard extends StatelessWidget {
       onTap: onTap,
       backgroundColor: backgroundColor,
       isDarkMode: isDarkMode,
-      padding: EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: child,
     );
   }
@@ -86,23 +86,23 @@ class AppElevatedCard extends StatelessWidget {
   final bool isDarkMode;
 
   const AppElevatedCard({
-    Key? key,
+    super.key,
     required this.child,
     this.padding,
     this.backgroundColor,
     this.onTap,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: child,
       padding: padding,
       backgroundColor: backgroundColor,
       onTap: onTap,
       shadow: AppShadows.elevationMedium,
       isDarkMode: isDarkMode,
+      child: child,
     );
   }
 }

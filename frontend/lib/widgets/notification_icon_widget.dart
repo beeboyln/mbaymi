@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/screens/notifications_screen.dart';
 import 'package:mbaymi/services/notification_service.dart';
 import 'package:mbaymi/utils/app_theme.dart';
-import 'package:mbaymi/utils/app_colors.dart';
 
 /// 🔔 Widget d'icône notification avec badge
 class NotificationIconWidget extends StatefulWidget {

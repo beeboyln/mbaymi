@@ -14,6 +14,8 @@ class VeterinarianProfile {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  var email;
+
   VeterinarianProfile({
     required this.id,
     required this.userId,
@@ -53,6 +55,10 @@ class VeterinarianProfile {
           : DateTime.now(),
     );
   }
+
+  get name => null;
+
+  get phone => null;
 
   Map<String, dynamic> toJson() {
     return {

@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
 import 'package:mbaymi/screens/animal_photo_carousel_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';

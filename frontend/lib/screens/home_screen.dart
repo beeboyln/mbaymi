@@ -36,7 +36,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _isDarkMode = false;
-  late List<Widget> _screens;
+  late Map<int, Widget> _screens; // Changed to Map for lazy loading
+  late List<int> _screenIndices; // Track screen order
 
   int? _userId;
 
@@ -47,6 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _userId = widget.userId;
+    _screens = {}; // Initialize as empty map
+    _screenIndices = [];
     
     // Synchroniser _isDarkMode avec le ThemeProvider au démarrage
     Future.microtask(() {
@@ -56,22 +59,11 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     });
 
-    _screens = [
-      DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId),
-      FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId),
-      SearchTab(isDarkMode: _isDarkMode),
-      FarmNetworkScreen(isDarkMode: _isDarkMode),
-      LivestockTab(isDarkMode: _isDarkMode),
-      MarketTab(isDarkMode: _isDarkMode),
-      AdviceTab(isDarkMode: _isDarkMode),
-    ];
-
-    // Ensure screens reflect current role (e.g. veterinarian) at startup
-    if (mounted) {
-      setState(() {
-        _updateScreens();
-      });
-    }
+    // Create only dashboard initially (to show something fast)
+    _createDashboard();
+    
+    // Update screens list based on role (but don't create them all)
+    _updateScreens();
 
     if (_userId == null) {
       TokenStorage.getUserId().then((v) {
@@ -83,6 +75,94 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
     }
+  }
+
+  /// Create dashboard screen (shown by default)
+  void _createDashboard() {
+    // Check if user is a veterinarian
+    final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' ||
+        AuthService.currentSession?.role == 'expert';
+
+    if (isVeterinarian) {
+      _screens[0] = const VeterinarianDashboardScreen();
+    } else {
+      _screens[0] = DashboardTab(
+        key: ValueKey('dashboard_${userId ?? 0}'),
+        isDarkMode: _isDarkMode,
+        userId: userId,
+      );
+    }
+    
+    if (!_screenIndices.contains(0)) _screenIndices.add(0);
+  }
+
+  /// Create screen on-demand (lazy loading)
+  Widget _getScreen(int index) {
+    // Return if already created
+    if (_screens.containsKey(index)) {
+      return _screens[index]!;
+    }
+
+    // Create the screen based on role
+    final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' ||
+        AuthService.currentSession?.role == 'expert';
+
+    Widget screen;
+
+    if (isVeterinarian) {
+      switch (index) {
+        case 0:
+          screen = const VeterinarianDashboardScreen();
+          break;
+        case 1:
+          screen = FarmNetworkScreen(isDarkMode: _isDarkMode);
+          break;
+        case 2:
+          screen = LivestockTab(isDarkMode: _isDarkMode);
+          break;
+        case 3:
+          screen = AdviceTab(isDarkMode: _isDarkMode);
+          break;
+        default:
+          screen = const Placeholder();
+      }
+    } else {
+      switch (index) {
+        case 0:
+          screen = DashboardTab(
+            key: ValueKey('dashboard_${userId ?? 0}'),
+            isDarkMode: _isDarkMode,
+            userId: userId,
+          );
+          break;
+        case 1:
+          screen = FarmTab(
+            key: ValueKey('farm_${userId ?? 0}'),
+            userId: userId,
+          );
+          break;
+        case 2:
+          screen = FarmNetworkScreen(isDarkMode: _isDarkMode);
+          break;
+        case 3:
+          screen = LivestockTab(isDarkMode: _isDarkMode);
+          break;
+        case 4:
+          screen = MarketTab(isDarkMode: _isDarkMode);
+          break;
+        case 5:
+          screen = AdviceTab(isDarkMode: _isDarkMode);
+          break;
+        default:
+          screen = const Placeholder();
+      }
+    }
+
+    // Cache the created screen
+    _screens[index] = screen;
+    if (!_screenIndices.contains(index)) _screenIndices.add(index);
+
+    return screen;
   }
 
   @override
@@ -99,25 +179,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' || 
                           AuthService.currentSession?.role == 'expert';
     
-    if (isVeterinarian) {
-      // For veterinarians, show different screens
-      _screens = [
-        const VeterinarianDashboardScreen(),
-        FarmNetworkScreen(isDarkMode: _isDarkMode),
-        LivestockTab(isDarkMode: _isDarkMode),
-        AdviceTab(isDarkMode: _isDarkMode),
-      ];
-    } else {
-      // For farmers/regular users, show the normal screens
-      _screens = [
-        DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId),
-        FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId),
-        FarmNetworkScreen(isDarkMode: _isDarkMode),
-        LivestockTab(isDarkMode: _isDarkMode),
-        MarketTab(isDarkMode: _isDarkMode),
-        AdviceTab(isDarkMode: _isDarkMode),
-      ];
+    // Clear non-existent screens for vet role
+    if (isVeterinarian && _screens.containsKey(4)) {
+      // Remove extra screens beyond index 3 for vets
+      _screens.remove(4);
+      _screens.remove(5);
     }
+    
+    // Recreate dashboard for current user
+    _createDashboard();
   }
 
   @override
@@ -237,10 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Profile moved to AppBar title (avatar)
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
+      body: _getScreen(_selectedIndex),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: appBarBg,

@@ -28,7 +28,7 @@ class AppInput extends StatefulWidget {
   final bool enableSuggestions;
 
   const AppInput({
-    Key? key,
+    super.key,
     this.controller,
     required this.label,
     this.hint,
@@ -49,7 +49,7 @@ class AppInput extends StatefulWidget {
     this.borderColor,
     this.autocorrect = false,
     this.enableSuggestions = false,
-  }) : super(key: key);
+  });
 
   @override
   State<AppInput> createState() => _AppInputState();
@@ -94,7 +94,7 @@ class _AppInputState extends State<AppInput> {
         hintStyle: AppTypography.body.copyWith(color: labelColor.withOpacity(0.6)),
         filled: true,
         fillColor: bgColor,
-        contentPadding: EdgeInsets.symmetric(
+        contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.md,
         ),
@@ -108,21 +108,21 @@ class _AppInputState extends State<AppInput> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: AppColors.primary,
             width: 2,
           ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: AppColors.error,
             width: 1.5,
           ),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: AppColors.error,
             width: 2,
           ),
@@ -162,13 +162,13 @@ class AppSearchInput extends StatelessWidget {
   final bool isDarkMode;
 
   const AppSearchInput({
-    Key? key,
+    super.key,
     this.controller,
     this.hint,
     this.onChanged,
     this.onClear,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

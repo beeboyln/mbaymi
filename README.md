@@ -15,8 +15,8 @@ Mbaymi connecte **agriculteurs, éleveurs, acheteurs et institutions** pour :
 
 ```
 ┌─────────────────────────────────────┐
-│     Flutter Mobile App (Mbaymi)    │
-│  (Android/iOS - User Interface)    │
+│     Flutter Mobile App (Mbaymi)     │
+│  (Android/iOS - User Interface)     │
 └────────────────┬────────────────────┘
                  │ REST / WebSocket
 ┌────────────────▼────────────────────┐
