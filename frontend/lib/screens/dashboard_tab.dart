@@ -23,6 +23,8 @@ import 'package:mbaymi/screens/farm_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 import 'package:mbaymi/widgets/stat_card.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:mbaymi/widgets/fading_images_widget.dart';
 
 class DashboardTab extends StatefulWidget {
   final bool isDarkMode;
@@ -79,6 +81,9 @@ class _DashboardTabState extends State<DashboardTab> {
       ApiService.clearCache();
       _countsFuture = _loadCounts();
       _weatherFuture = _loadWeather();
+      _imagesFuture = _loadFarmAndLivestockImages();
+      _slideshowTimer?.cancel();
+      _currentImageIndex = 0;
       setState(() {});
     }
   }
@@ -194,6 +199,9 @@ class _DashboardTabState extends State<DashboardTab> {
             _countsFuture = _loadCounts();
             _weatherFuture = _loadWeather();
             _newsFuture = ApiService.getAgriculturalNews();
+            _imagesFuture = _loadFarmAndLivestockImages();
+            _slideshowTimer?.cancel();
+            _currentImageIndex = 0;
           });
           await Future.delayed(const Duration(milliseconds: 500));
         },
@@ -423,6 +431,14 @@ class _DashboardTabState extends State<DashboardTab> {
                 builder: (context, imagesSnapshot) {
                   final images = imagesSnapshot.data ?? [];
                   
+                  // Debug logging
+                  if (imagesSnapshot.connectionState == ConnectionState.done) {
+                    debugPrint('[Slideshow] Images loaded: ${images.length}');
+                    if (images.isNotEmpty) {
+                      debugPrint('[Slideshow] First image: ${images.first}');
+                    }
+                  }
+                  
                   // Start slideshow once images are loaded
                   if (images.isNotEmpty && imagesSnapshot.connectionState == ConnectionState.done && _slideshowTimer == null) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -464,7 +480,7 @@ class _DashboardTabState extends State<DashboardTab> {
                             ? Container(
                                 decoration: BoxDecoration(
                                   image: DecorationImage(
-                                    image: const AssetImage('assets/images/aa.png'),
+                                    image: NetworkImage('https://res.cloudinary.com/dcs9vkwe0/image/upload/v1770190752/gestion_de_boutique/duoglvpzhtwlbym4hbns.jpg'),
                                     fit: BoxFit.cover,
                                     colorFilter: ColorFilter.mode(
                                       isDarkMode
@@ -487,7 +503,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                       key: ValueKey(_currentImageIndex),
                                       decoration: BoxDecoration(
                                         image: DecorationImage(
-                                          image: NetworkImage(images[_currentImageIndex]),
+                                          image: CachedNetworkImageProvider(images[_currentImageIndex]),
                                           fit: BoxFit.cover,
                                           onError: (exception, stackTrace) {},
                                         ),

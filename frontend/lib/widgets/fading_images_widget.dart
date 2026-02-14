@@ -57,15 +57,29 @@ class _FadingImagesWidgetState extends State<FadingImagesWidget>
       if (mounted) {
         setState(() {
           _imagesLoaded = true;
+          // If only one image, set nextImageIndex to 0
+          if (widget.imageUrls.length <= 1) {
+            _currentImageIndex = 0;
+            _nextImageIndex = 0;
+          }
         });
-        _startCycle();
+        // Only start cycle if there are multiple images
+        if (widget.imageUrls.length > 1) {
+          _startCycle();
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _imagesLoaded = true;
+          if (widget.imageUrls.length <= 1) {
+            _currentImageIndex = 0;
+            _nextImageIndex = 0;
+          }
         });
-        _startCycle();
+        if (widget.imageUrls.length > 1) {
+          _startCycle();
+        }
       }
     }
   }
@@ -120,25 +134,28 @@ class _FadingImagesWidgetState extends State<FadingImagesWidget>
         fit: StackFit.expand,
         children: [
           // Image actuelle (en dessous)
-          Image(
-            image: _cachedImages[_currentImageIndex],
-            fit: BoxFit.cover,
-            width: double.infinity,
-          ),
-          // Image suivante (au-dessus) avec fade
-          AnimatedBuilder(
-            animation: _fadeController,
-            builder: (context, child) {
-              return Opacity(
-                opacity: _fadeController.value,
-                child: Image(
-                  image: _cachedImages[_nextImageIndex],
+          _cachedImages.isNotEmpty
+              ? Image(
+                  image: _cachedImages[_currentImageIndex.clamp(0, _cachedImages.length - 1)],
                   fit: BoxFit.cover,
                   width: double.infinity,
-                ),
-              );
-            },
-          ),
+                )
+              : Container(),
+          // Image suivante (au-dessus) avec fade - Only show if multiple images
+          if (_cachedImages.length > 1)
+            AnimatedBuilder(
+              animation: _fadeController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _fadeController.value,
+                  child: Image(
+                    image: _cachedImages[_nextImageIndex.clamp(0, _cachedImages.length - 1)],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

@@ -362,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavItem(IconData icon, IconData activeIcon, String label, int index, bool isDarkMode) {
     final isSelected = _selectedIndex == index;
-    final activeColor = isDarkMode ? const Color(0xFF6B8E23) : const Color(0xFF2D5016);
+    final activeColor = AppColors.primary;
     final inactiveColor = isDarkMode ? const Color(0xFF666666) : const Color(0xFFC0C0C0);
     final inactiveTextColor = isDarkMode ? const Color(0xFF888888) : const Color(0xFFA8A8A8);
     
@@ -408,15 +408,11 @@ class _HomeScreenState extends State<HomeScreen> {
         width: 50,
         height: 50,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF3D6B1F), Color(0xFF2D5016)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF2D5016).withOpacity(0.3),
+              color: AppColors.primary.withOpacity(0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -460,7 +456,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
-                  color: _isDarkMode ? Colors.white : const Color(0xFF2D5016),
+                  color: _isDarkMode ? Colors.white : AppColors.primary,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -468,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildActionButton(
                 icon: Icons.local_florist,
                 label: 'Ajouter une culture',
-                color: const Color(0xFF6B8E23),
+                color: AppColors.primary,
                 onTap: () async {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
@@ -529,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildActionButton(
                 icon: Icons.agriculture,
                 label: 'Ajouter une ferme',
-                color: const Color(0xFF2D5016),
+                color: AppColors.primary,
                 onTap: () async {
                   final rootContext = this.context;
                   Navigator.pop(context);
@@ -784,7 +780,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(
           'Sélectionnez une ferme',
           style: TextStyle(
-            color: _isDarkMode ? Colors.white : const Color(0xFF2D5016),
+            color: _isDarkMode ? Colors.white : AppColors.primary,
             fontWeight: FontWeight.w600,
             fontSize: 16,
           ),

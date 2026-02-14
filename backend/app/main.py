@@ -44,14 +44,14 @@ app.add_middleware(
     max_age=86400,  # 24 hours
 )
 
-print("✅ CORS configured with regex (production-ready)")
+print("[OK] CORS configured with regex (production-ready)")
 print("   Allows: *.vercel.app, *.koyeb.app, localhost:*, mbaymi.com")
 
 # Mount static files for uploads
 uploads_dir = "uploads"
 if os.path.exists(uploads_dir):
     app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
-    print("✅ Static files mounted at /uploads")
+    print("[OK] Static files mounted at /uploads")
 
 # Lazy import routes to avoid circular imports
 def include_routes():
@@ -70,7 +70,7 @@ def include_routes():
     app.include_router(pasture.router)
     app.include_router(animal_photos.router)
     
-    # 🌾 Agricultural features
+    # Agricultural features
     from app.routes import crop_problems, farm_network, user_profile, social, farm_posts, market_prices, notifications, veterinarian, authorization, service_request, media, search
     # New agriculture API routes
     from app.routes import api_crops, api_inputs, api_finance, api_reminders
@@ -79,55 +79,55 @@ def include_routes():
     # Also expose farm_network routes under legacy `/api` prefix to support older frontends
     app.include_router(farm_network.router, prefix="/api")
     app.include_router(user_profile.router)
-    app.include_router(social.router)  # ✨ Nouvelles interactions sociales
-    app.include_router(farm_posts.router)  # 📸 Farm image posts with likes/comments/shares
-    app.include_router(market_prices.router)  # 💰 Market prices & trends
-    app.include_router(search.router)  # 🔍 Recherche d'utilisateurs, vétérinaires, fermes
-    app.include_router(notifications.router)  # 🔔 Notifications
+    app.include_router(social.router)  # Social interactions
+    app.include_router(farm_posts.router)  # Farm image posts with likes/comments/shares
+    app.include_router(market_prices.router)  # Market prices & trends
+    app.include_router(search.router)  # Search users, veterinarians, farms
+    app.include_router(notifications.router)  # Notifications
     # Also expose legacy `/api` prefixed routes to support frontends using `/api/...`
     app.include_router(farm_posts.router, prefix="/api")
     app.include_router(market_prices.router, prefix="/api")
-    app.include_router(media.router)  # 🎬 Media serving (videos, images with CORS)
+    app.include_router(media.router)  # Media serving (videos, images with CORS)
     
-    # 👨‍⚕️ Veterinarian/Expert System
-    app.include_router(veterinarian.router)  # 👨‍⚕️ Veterinarian profiles and management
-    app.include_router(authorization.router)  # 🔐 Farm data access authorization
-    app.include_router(service_request.router)  # 🆘 Service requests and consultations
+    # Veterinarian/Expert System
+    app.include_router(veterinarian.router)  # Veterinarian profiles and management
+    app.include_router(authorization.router)  # Farm data access authorization
+    app.include_router(service_request.router)  # Service requests and consultations
     # Agricultural management APIs (auth required)
     app.include_router(api_crops.router)
     app.include_router(api_inputs.router)
     app.include_router(api_finance.router)
     app.include_router(api_reminders.router)
     
-    print("🔴 DEBUG: farm_posts.router routes:")
+    print("[DEBUG] farm_posts.router routes:")
     for route in app.routes:
         if "farm-posts" in str(route.path):
             print(f"  {route.methods} {route.path}")
     
-    print("🟡 DEBUG: api_inputs.router routes:")
+    print("[DEBUG] api_inputs.router routes:")
     for route in app.routes:
         if "input" in str(route.path).lower():
             print(f"  {route.methods} {route.path}")
 
-# ✅ Health check endpoint (wakes up Render free tier)
+# Health check endpoint (wakes up Render free tier)
 @app.get("/health")
 @app.get("/api/health")
 def health():
-    """🏥 Health check endpoint - used by UptimeRobot/cron-job to keep server awake"""
+    """Health check endpoint - used by UptimeRobot/cron-job to keep server awake"""
     return {"status": "ok", "service": "mbaymi-api"}
 
 @app.on_event("startup")
 def startup():
     include_routes()
-    print("✅ Routes loaded")
-    print("📚 API Docs at http://localhost:8000/docs")
+    print("[OK] Routes loaded")
+    print("[INFO] API Docs at http://localhost:8000/docs")
     # Initialize DB (creates tables if missing)
     try:
         from app.database import init_db
         init_db()
-        print("🗄️ Database initialized")
+        print("[OK] Database initialized")
     except Exception as e:
-        print(f"⚠️ Database init failed: {e}")
+        print(f"[WARN] Database init failed: {e}")
     
     # Start background task to check reminders every 5 minutes
     def check_reminders_periodically():
@@ -137,12 +137,12 @@ def startup():
             try:
                 check_due_reminders()
             except Exception as e:
-                print(f"⚠️ Reminder worker error: {e}")
+                print(f"[WARN] Reminder worker error: {e}")
             time.sleep(300)  # Check every 5 minutes
     
     reminder_thread = threading.Thread(target=check_reminders_periodically, daemon=True)
     reminder_thread.start()
-    print("🔔 Reminder worker started (checks every 5 minutes)")
+    print("[OK] Reminder worker started (checks every 5 minutes)")
 
 
 @app.options("/{full_path:path}")
@@ -178,7 +178,7 @@ def health_check():
 @app.post("/admin/migrate")
 def run_migration(key: str = None):
     """
-    🔧 Apply database migrations (admin only)
+    Apply database migrations (admin only)
     Requires: key=migration_key from environment
     """
     from app.config import settings
@@ -211,11 +211,11 @@ def run_migration(key: str = None):
             "message": f"Migration failed: {str(e)}"
         }
 
-# ✅ Global exception handler to ensure CORS headers are always present
+# Global exception handler to ensure CORS headers are always present
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch all exceptions and return with proper CORS headers"""
-    print(f"❌ Unhandled exception: {exc}")
+    print(f"[ERROR] Unhandled exception: {exc}")
     traceback.print_exc()
     
     # Get origin from request
