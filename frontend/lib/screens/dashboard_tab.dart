@@ -23,8 +23,6 @@ import 'package:mbaymi/screens/farm_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 import 'package:mbaymi/widgets/stat_card.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:mbaymi/widgets/fading_images_widget.dart';
 
 class DashboardTab extends StatefulWidget {
   final bool isDarkMode;
@@ -56,11 +54,6 @@ class _DashboardTabState extends State<DashboardTab> {
   ];
   String _currentTip = '';
 
-  // Slideshow for farm/livestock images
-  late Future<List<String>> _imagesFuture;
-  int _currentImageIndex = 0;
-  Timer? _slideshowTimer;
-
   @override
   void initState() {
     super.initState();
@@ -69,7 +62,6 @@ class _DashboardTabState extends State<DashboardTab> {
     _countsFuture = _loadCounts();
     _weatherFuture = _loadWeather();
     _newsFuture = ApiService.getAgriculturalNews();
-    _imagesFuture = _loadFarmAndLivestockImages();
     // Initialize random tip
     _currentTip = _tips[Random().nextInt(_tips.length)];
   }
@@ -81,9 +73,6 @@ class _DashboardTabState extends State<DashboardTab> {
       ApiService.clearCache();
       _countsFuture = _loadCounts();
       _weatherFuture = _loadWeather();
-      _imagesFuture = _loadFarmAndLivestockImages();
-      _slideshowTimer?.cancel();
-      _currentImageIndex = 0;
       setState(() {});
     }
   }
@@ -91,7 +80,6 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   void dispose() {
     _newsScrollController.dispose();
-    _slideshowTimer?.cancel();
     super.dispose();
   }
 
@@ -148,31 +136,27 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Future<List<String>> _loadFarmAndLivestockImages() async {
-    final images = <String>[];
+    if (widget.userId == null) return [];
     
-    if (widget.userId == null) return images;
-
     try {
-      // Fetch farms
       final farms = await ApiService.getUserFarms();
       for (final farm in farms) {
         if (farm['image_url'] != null && (farm['image_url'] as String).isNotEmpty) {
-          images.add(farm['image_url'] as String);
+          return [farm['image_url'] as String];
         }
       }
-
-      // Fetch livestock
+      
       final livestock = await ApiService.getUserLivestock(widget.userId!);
       for (final animal in livestock) {
         if (animal['image_url'] != null && (animal['image_url'] as String).isNotEmpty) {
-          images.add(animal['image_url'] as String);
+          return [animal['image_url'] as String];
         }
       }
     } catch (e) {
-      // Silently fail - will show placeholder instead
+      // Silently fail
     }
-
-    return images;
+    
+    return [];
   }
 
   @override
@@ -199,9 +183,6 @@ class _DashboardTabState extends State<DashboardTab> {
             _countsFuture = _loadCounts();
             _weatherFuture = _loadWeather();
             _newsFuture = ApiService.getAgriculturalNews();
-            _imagesFuture = _loadFarmAndLivestockImages();
-            _slideshowTimer?.cancel();
-            _currentImageIndex = 0;
           });
           await Future.delayed(const Duration(milliseconds: 500));
         },
@@ -422,150 +403,72 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ),
 
-          // �️ STATS MINIMALISTES - EYE ICON TO VIEW
+          // Stats minimalistes - aperçu des fermes
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
             sliver: SliverToBoxAdapter(
-              child: FutureBuilder<List<String>>(
-                future: _imagesFuture,
-                builder: (context, imagesSnapshot) {
-                  final images = imagesSnapshot.data ?? [];
-                  
-                  // Debug logging
-                  if (imagesSnapshot.connectionState == ConnectionState.done) {
-                    debugPrint('[Slideshow] Images loaded: ${images.length}');
-                    if (images.isNotEmpty) {
-                      debugPrint('[Slideshow] First image: ${images.first}');
-                    }
-                  }
-                  
-                  // Start slideshow once images are loaded
-                  if (images.isNotEmpty && imagesSnapshot.connectionState == ConnectionState.done && _slideshowTimer == null) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _startSlideshow(images);
-                    });
-                  }
-                  
-                  return Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        if (images.isNotEmpty) {
-                          _slideshowTimer?.cancel();
-                          setState(() {
-                            _currentImageIndex = (_currentImageIndex + 1) % images.length;
-                          });
-                          _startSlideshow(images);
-                        }
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FarmTab(userId: widget.userId, initialSection: 0),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: isDarkMode 
-                              ? const Color(0xFF1A1A1A).withAlpha((0.7 * 255).toInt())
-                              : Colors.white.withAlpha((0.75 * 255).toInt()),
-                          border: Border.all(
-                            color: isDarkMode
-                                ? Colors.white.withAlpha((0.08 * 255).toInt())
-                                : Colors.black.withAlpha((0.03 * 255).toInt()),
-                            width: 1,
-                          ),
-                        ),
-                        child: images.isEmpty
-                            ? Container(
-                                decoration: BoxDecoration(
-                                  image: DecorationImage(
-                                    image: NetworkImage('https://res.cloudinary.com/dcs9vkwe0/image/upload/v1770190752/gestion_de_boutique/duoglvpzhtwlbym4hbns.jpg'),
-                                    fit: BoxFit.cover,
-                                    colorFilter: ColorFilter.mode(
-                                      isDarkMode
-                                          ? Colors.black.withAlpha((0.2 * 255).toInt())
-                                          : Colors.white.withAlpha((0.05 * 255).toInt()),
-                                      BlendMode.lighten,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : Stack(
-                                children: [
-                                  // Image avec fade
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 800),
-                                    transitionBuilder: (child, animation) {
-                                      return FadeTransition(opacity: animation, child: child);
-                                    },
-                                    child: Container(
-                                      key: ValueKey(_currentImageIndex),
-                                      decoration: BoxDecoration(
-                                        image: DecorationImage(
-                                          image: CachedNetworkImageProvider(images[_currentImageIndex]),
-                                          fit: BoxFit.cover,
-                                          onError: (exception, stackTrace) {},
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  // Overlay gradient
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.transparent,
-                                          Colors.black.withAlpha((0.4 * 255).toInt()),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  // Texte en bas
-                                  Positioned(
-                                    bottom: 12,
-                                    left: 12,
-                                    right: 12,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            'Aperçu',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.white.withAlpha((0.95 * 255).toInt()),
-                                            ),
-                                          ),
-                                        ),
-                                        // Indicateurs
-                                        Row(
-                                          children: List.generate(
-                                            images.length,
-                                            (index) => Container(
-                                              width: 4,
-                                              height: 4,
-                                              margin: const EdgeInsets.symmetric(horizontal: 2),
-                                              decoration: BoxDecoration(
-                                                color: _currentImageIndex == index
-                                                    ? Colors.white.withAlpha((0.9 * 255).toInt())
-                                                    : Colors.white.withAlpha((0.3 * 255).toInt()),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FarmTab(userId: widget.userId, initialSection: 0),
                     ),
                   );
                 },
+                child: Container(
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: isDarkMode 
+                        ? const Color(0xFF1A1A1A).withAlpha((0.7 * 255).toInt())
+                        : Colors.white.withAlpha((0.75 * 255).toInt()),
+                    border: Border.all(
+                      color: isDarkMode
+                          ? Colors.white.withAlpha((0.08 * 255).toInt())
+                          : Colors.black.withAlpha((0.03 * 255).toInt()),
+                      width: 1,
+                    ),
+                  ),
+                  child: FutureBuilder<List<String>>(
+                    future: _loadFarmAndLivestockImages(),
+                    builder: (context, snapshot) {
+                      final hasImage = snapshot.hasData && 
+                          snapshot.data!.isNotEmpty && 
+                          snapshot.connectionState == ConnectionState.done;
+                      
+                      return Container(
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: hasImage
+                                ? NetworkImage(snapshot.data!.first)
+                                : const NetworkImage('https://res.cloudinary.com/dcs9vkwe0/image/upload/v1770190752/gestion_de_boutique/duoglvpzhtwlbym4hbns.jpg'),
+                            fit: BoxFit.cover,
+                            colorFilter: ColorFilter.mode(
+                              isDarkMode
+                                  ? Colors.black.withAlpha((0.2 * 255).toInt())
+                                  : Colors.white.withAlpha((0.05 * 255).toInt()),
+                              BlendMode.lighten,
+                            ),
+                          ),
+                        ),
+                        child: Align(
+                          alignment: Alignment.bottomLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(
+                              'Fermes',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withAlpha((0.95 * 255).toInt()),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
           ),
@@ -1340,17 +1243,5 @@ class _DashboardTabState extends State<DashboardTab> {
         ),
       ),
     );
-  }
-
-  void _startSlideshow(List<String> images) {
-    if (images.isEmpty) return;
-    
-    _slideshowTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (mounted) {
-        setState(() {
-          _currentImageIndex = (_currentImageIndex + 1) % images.length;
-        });
-      }
-    });
   }
 }

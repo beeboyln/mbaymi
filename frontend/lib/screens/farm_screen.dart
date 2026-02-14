@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
+import 'dart:math' show min;
 import 'package:mbaymi/widgets/empty_state.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_theme.dart';
@@ -457,13 +458,13 @@ class _FarmTabState extends State<FarmTab> {
                     child: ElevatedButton(
                       onPressed: () => Navigator.of(context).pushNamed('/login'),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(154, 106, 142, 35),
-                          foregroundColor: isDarkMode ? Colors.white : Colors.black,
+                        backgroundColor: const Color.fromARGB(154, 106, 142, 35),
+                        foregroundColor: isDarkMode ? Colors.white : Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         elevation: 0,
                       ),
-                        child: const Text('Se connecter', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w300)),
+                      child: const Text('Se connecter', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w300)),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -665,14 +666,153 @@ class _FarmTabState extends State<FarmTab> {
                       );
                     }
 
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) => _buildFarmCard(context, filtered[index] as Map<String, dynamic>, isDarkMode),
+                    return Column(
+                      children: [
+                        // Vue carte géographique minimaliste
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Container(
+                            height: 180,
+                            decoration: BoxDecoration(
+                              color: isDarkMode ? const Color(0xFF0A0A0A) : AppColors.lightBg,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: isDarkMode
+                                    ? Colors.white.withOpacity(0.05)
+                                    : Colors.black.withOpacity(0.03),
+                                width: 1,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(24),
+                              child: Stack(
+                                children: [
+                                  // Fond de carte stylisé
+                                  CustomPaint(
+                                    size: Size.infinite,
+                                    painter: _MapPainter(isDarkMode: isDarkMode),
+                                  ),
+                                  
+                                  // Marqueurs de fermes
+                                  ...List.generate(
+                                    min(filtered.length, 6),
+                                    (index) {
+                                      final farm = filtered[index];
+                                      return Positioned(
+                                        left: 20 + (index * 35) % 200,
+                                        top: 30 + (index * 25) % 120,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => ParcelScreen(
+                                                  farmId: farm['id'] as int,
+                                                  userId: widget.userId!,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: Container(
+                                            width: 36,
+                                            height: 36,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF6B8E23).withOpacity(0.9),
+                                              borderRadius: BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.15),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                '🌾',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  color: Colors.white.withOpacity(0.9),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  
+                                  // Overlay dégradé subtil
+                                  Positioned.fill(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.transparent,
+                                            isDarkMode
+                                                ? Colors.black.withOpacity(0.3)
+                                                : Colors.white.withOpacity(0.2),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  // Légende
+                                  Positioned(
+                                    bottom: 12,
+                                    right: 12,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: isDarkMode
+                                            ? Colors.black.withOpacity(0.5)
+                                            : Colors.white.withOpacity(0.7),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFF6B8E23),
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${filtered.length} ferme${filtered.length > 1 ? 's' : ''}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w300,
+                                              color: isDarkMode ? Colors.white70 : Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        
+                        // Liste des fermes
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) => _buildFarmCard(context, filtered[index] as Map<String, dynamic>, isDarkMode),
+                        ),
+                      ],
                     );
                   }),
-              ] else ...[
+              ] else if (_selectedSection == 1) ...[
                 FutureBuilder<List<dynamic>>(
                   future: _livestockFuture ?? (widget.userId != null ? ApiService.getUserLivestock(widget.userId!) : Future.value([])),
                   builder: (context, lsnap) {
@@ -1063,4 +1203,56 @@ class _FarmTabState extends State<FarmTab> {
       ),
     );
   }
+}
+
+// CustomPainter pour dessiner une carte géographique stylisée
+class _MapPainter extends CustomPainter {
+  final bool isDarkMode;
+  
+  _MapPainter({required this.isDarkMode});
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = isDarkMode 
+          ? const Color(0xFF1A2A1A) 
+          : const Color(0xFFE8F0E8);
+    
+    // Fond
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
+    
+    // Lignes de contour (comme des courbes de niveau)
+    final linePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = isDarkMode
+          ? Colors.white.withOpacity(0.1)
+          : const Color(0xFF6B8E23).withOpacity(0.2);
+    
+    // Dessiner des courbes organiques
+    final path = Path();
+    for (int i = 0; i < 5; i++) {
+      path.reset();
+      final y = 40 + i * 30;
+      path.moveTo(0, y.toDouble());
+      path.quadraticBezierTo(size.width * 0.3, y - 15, size.width * 0.6, y + 10);
+      path.quadraticBezierTo(size.width * 0.8, y + 20, size.width, y - 5);
+      canvas.drawPath(path, linePaint);
+    }
+    
+    // Petits points pour représenter les cultures
+    final dotPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFF6B8E23).withOpacity(0.3);
+    
+    for (int i = 0; i < 20; i++) {
+      final x = 20 + (i * 25) % (size.width - 40);
+      final y = 20 + (i * 15) % (size.height - 40);
+      canvas.drawCircle(Offset(x, y), 2, dotPaint);
+    }
+  }
+  
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
