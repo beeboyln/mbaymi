@@ -6,8 +6,8 @@ class Input(Base):
     __tablename__ = "inputs"
 
     id = Column(Integer, primary_key=True, index=True)
-    farm_id = Column(Integer, ForeignKey("farms.id"), nullable=False)
-    crop_id = Column(Integer, ForeignKey("crops.id"), nullable=True)
+    farm_id = Column(Integer, ForeignKey("farms.id", ondelete="CASCADE"), nullable=False)
+    crop_id = Column(Integer, ForeignKey("crops.id", ondelete="CASCADE"), nullable=True)
     input_type = Column(String(50))  # seeds, fertilizer, pesticide, other
     name = Column(String(150))  # e.g., NPK 15-15-15, hybrid maize seeds
     quantity = Column(Float, nullable=True)

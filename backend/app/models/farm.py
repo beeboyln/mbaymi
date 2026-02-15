@@ -22,7 +22,7 @@ class Crop(Base):
     __tablename__ = "crops"
     
     id = Column(Integer, primary_key=True, index=True)
-    farm_id = Column(Integer, ForeignKey("farms.id"), nullable=False)
+    farm_id = Column(Integer, ForeignKey("farms.id", ondelete="CASCADE"), nullable=False)
     crop_name = Column(String(100), nullable=False)  # maïs, riz, arachide, millet, etc.
     planted_date = Column(DateTime)
     expected_harvest_date = Column(DateTime)

@@ -71,7 +71,11 @@ Future<void> main() async {
       debugPrint('🔥 FLUTTER ERROR: ${details.exception}');
     };
 
-    // 5️⃣ BUILD APP with AppBootstrap (async initialization)
+    // 5️⃣ Limit image cache to prevent memory issues (IMPORTANT for web)
+    PaintingBinding.instance.imageCache.maximumSize = 50;
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20; // 50 MB
+
+    // 6️⃣ BUILD APP with AppBootstrap (async initialization)
     try {
       debugPrint('🎨 Building MbaymiApp with AppBootstrap...');
       runApp(const MbaymiApp());

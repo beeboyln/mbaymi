@@ -135,29 +135,7 @@ class _DashboardTabState extends State<DashboardTab> {
     return result;
   }
 
-  Future<List<String>> _loadFarmAndLivestockImages() async {
-    if (widget.userId == null) return [];
-    
-    try {
-      final farms = await ApiService.getUserFarms();
-      for (final farm in farms) {
-        if (farm['image_url'] != null && (farm['image_url'] as String).isNotEmpty) {
-          return [farm['image_url'] as String];
-        }
-      }
-      
-      final livestock = await ApiService.getUserLivestock(widget.userId!);
-      for (final animal in livestock) {
-        if (animal['image_url'] != null && (animal['image_url'] as String).isNotEmpty) {
-          return [animal['image_url'] as String];
-        }
-      }
-    } catch (e) {
-      // Silently fail
-    }
-    
-    return [];
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -419,9 +397,14 @@ class _DashboardTabState extends State<DashboardTab> {
                 child: Container(
                   height: 140,
                   decoration: BoxDecoration(
-                    color: isDarkMode 
-                        ? const Color(0xFF1A1A1A).withAlpha((0.7 * 255).toInt())
-                        : Colors.white.withAlpha((0.75 * 255).toInt()),
+                    image: DecorationImage(
+                      image: const NetworkImage('https://res.cloudinary.com/dcs9vkwe0/image/upload/v1770190752/gestion_de_boutique/duoglvpzhtwlbym4hbns.jpg'),
+                      fit: BoxFit.cover,
+                      colorFilter: ColorFilter.mode(
+                        Colors.black.withAlpha((0.2 * 255).toInt()),
+                        BlendMode.lighten,
+                      ),
+                    ),
                     border: Border.all(
                       color: isDarkMode
                           ? Colors.white.withAlpha((0.08 * 255).toInt())
@@ -429,44 +412,19 @@ class _DashboardTabState extends State<DashboardTab> {
                       width: 1,
                     ),
                   ),
-                  child: FutureBuilder<List<String>>(
-                    future: _loadFarmAndLivestockImages(),
-                    builder: (context, snapshot) {
-                      final hasImage = snapshot.hasData && 
-                          snapshot.data!.isNotEmpty && 
-                          snapshot.connectionState == ConnectionState.done;
-                      
-                      return Container(
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: hasImage
-                                ? NetworkImage(snapshot.data!.first)
-                                : const NetworkImage('https://res.cloudinary.com/dcs9vkwe0/image/upload/v1770190752/gestion_de_boutique/duoglvpzhtwlbym4hbns.jpg'),
-                            fit: BoxFit.cover,
-                            colorFilter: ColorFilter.mode(
-                              isDarkMode
-                                  ? Colors.black.withAlpha((0.2 * 255).toInt())
-                                  : Colors.white.withAlpha((0.05 * 255).toInt()),
-                              BlendMode.lighten,
-                            ),
-                          ),
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        'Fermes',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withAlpha((0.95 * 255).toInt()),
                         ),
-                        child: Align(
-                          alignment: Alignment.bottomLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(
-                              'Fermes',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white.withAlpha((0.95 * 255).toInt()),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ),
               ),

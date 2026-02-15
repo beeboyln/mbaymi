@@ -972,15 +972,114 @@ class _FarmTabState extends State<FarmTab> {
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: isDarkMode ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.15),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'delete') {
+                  _showDeleteFarmDialog(context, farm['id'] as int, farm['name'] as String? ?? 'Ferme');
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 18, color: Colors.red.withOpacity(0.7)),
+                      const SizedBox(width: 8),
+                      const Text('Supprimer', style: TextStyle(fontSize: 13, color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+              offset: const Offset(-50, 0),
+              child: Icon(
+                Icons.more_vert,
+                size: 20,
+                color: isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.3),
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  void _showDeleteFarmDialog(BuildContext context, int farmId, String farmName) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        backgroundColor: Provider.of<ThemeProvider>(context, listen: false).isDarkMode 
+            ? const Color(0xFF0A0A0A) 
+            : Colors.white,
+        title: Text(
+          'Supprimer la ferme',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w300,
+            color: Provider.of<ThemeProvider>(context, listen: false).isDarkMode ? Colors.white : const Color(0xFF0A0A0A),
+          ),
+        ),
+        content: Text(
+          'Êtes-vous sûr de vouloir supprimer "$farmName" ? Cette action est irréversible.',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w300,
+            color: Provider.of<ThemeProvider>(context, listen: false).isDarkMode 
+                ? Colors.white.withOpacity(0.7)
+                : Colors.black.withOpacity(0.7),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Annuler',
+              style: TextStyle(
+                fontSize: 13,
+                color: Provider.of<ThemeProvider>(context, listen: false).isDarkMode ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteFarm(farmId);
+            },
+            child: const Text(
+              'Supprimer',
+              style: TextStyle(fontSize: 13, color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteFarm(int farmId) async {
+    try {
+      await ApiService.deleteFarm(farmId);
+      if (mounted) {
+        _refreshFarms();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Ferme supprimée avec succès'),
+            backgroundColor: const Color(0xFF6B8E23),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur : ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildFarmAvatar(Map<String, dynamic> farm, bool isDarkMode) {
