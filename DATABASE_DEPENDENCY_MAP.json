@@ -1,0 +1,937 @@
+{
+  "timestamp": "2026-02-15",
+  "project": "MBAYMI Agricultural App",
+  "analysis": "Complete Database Model Dependency Map",
+  "models_analyzed": 24,
+  
+  "root_models": {
+    "User": {
+      "table": "users",
+      "has_farm_id": false,
+      "foreign_keys": [],
+      "has_cascade_delete": false,
+      "reverse_relationships": [
+        "Farm.user_id",
+        "Livestock.user_id",
+        "FarmImagePost.user_id",
+        "FarmPost.user_id",
+        "FarmProfile.user_id",
+        "Activity.user_id",
+        "CropProblem.user_id",
+        "Notification.user_id",
+        "Notification.actor_id",
+        "ServiceRequest.created_by",
+        "ServiceRequest.assigned_veterinarian_id",
+        "Consultation.veterinarian_id",
+        "VeterinarianProfile.user_id",
+        "PastureImage.user_id",
+        "UserFollowing.follower_id",
+        "UserFollowing.following_id",
+        "Sale.user_id",
+        "FarmPostLike.user_id",
+        "FarmPostComment.user_id",
+        "FarmPostShare.user_id",
+        "Authorization.veterinarian_id",
+        "Authorization.authorized_by"
+      ]
+    },
+    "Farm": {
+      "table": "farms",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [
+        "Crop.farm_id (CASCADE)",
+        "FarmImagePost.farm_id (CASCADE)",
+        "FarmPhoto.farm_id (CASCADE)",
+        "Input.farm_id (CASCADE)",
+        "FarmProfile.farm_id",
+        "FarmPost.farm_id",
+        "FarmFollowing.farm_id",
+        "CropProblem.farm_id",
+        "Activity.farm_id",
+        "Authorization.farm_id",
+        "Reminder.farm_id",
+        "Harvest.farm_id",
+        "FinanceTransaction.farm_id",
+        "ServiceRequest.farm_id"
+      ]
+    }
+  },
+
+  "farm_related_models": {
+    "Crop": {
+      "table": "crops",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": true
+        }
+      },
+      "reverse_relationships": [
+        "FarmPost.crop_id",
+        "Activity.crop_id",
+        "CropProblem.crop_id",
+        "Reminder.crop_id",
+        "Harvest.crop_id",
+        "FinanceTransaction.crop_id",
+        "Input.crop_id (CASCADE)",
+        "ServiceRequest.crop_id"
+      ],
+      "cascade_to": [
+        "Input (when crop deleted with cascade=true)"
+      ]
+    },
+
+    "FarmImagePost": {
+      "table": "farm_image_posts",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": true,
+          "cascade": true
+        },
+        "livestock_id": {
+          "references": "livestock.id",
+          "nullable": true,
+          "cascade": true
+        },
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": true
+        }
+      },
+      "reverse_relationships": [
+        "FarmPostLike.farm_post_id (CASCADE)",
+        "FarmPostComment.farm_post_id (CASCADE)",
+        "FarmPostShare.farm_post_id (CASCADE)"
+      ],
+      "cascade_to": [
+        "FarmPostLike",
+        "FarmPostComment",
+        "FarmPostShare"
+      ]
+    },
+
+    "FarmPostLike": {
+      "table": "farm_post_likes",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "farm_post_id": {
+          "references": "farm_image_posts.id",
+          "nullable": false,
+          "cascade": true
+        },
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": true
+        }
+      },
+      "reverse_relationships": [],
+      "dependencies_on": ["FarmImagePost"]
+    },
+
+    "FarmPostComment": {
+      "table": "farm_post_comments",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "farm_post_id": {
+          "references": "farm_image_posts.id",
+          "nullable": false,
+          "cascade": true
+        },
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": true
+        }
+      },
+      "reverse_relationships": [],
+      "dependencies_on": ["FarmImagePost"]
+    },
+
+    "FarmPostShare": {
+      "table": "farm_post_shares",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "farm_post_id": {
+          "references": "farm_image_posts.id",
+          "nullable": false,
+          "cascade": true
+        },
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": true
+        }
+      },
+      "reverse_relationships": [],
+      "dependencies_on": ["FarmImagePost"]
+    },
+
+    "FarmPhoto": {
+      "table": "farm_photos",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": true
+        }
+      },
+      "reverse_relationships": [],
+      "cascade_delete_level": "direct"
+    },
+
+    "FarmProfile": {
+      "table": "farm_profiles",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false,
+          "unique": true
+        },
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "requires_manual_deletion": true,
+      "note": "Must be deleted manually before farm deletion"
+    },
+
+    "FarmPost": {
+      "table": "farm_posts",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "crop_id": {
+          "references": "crops.id",
+          "nullable": true,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "requires_manual_deletion": true
+    },
+
+    "FarmFollowing": {
+      "table": "farm_following",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "follower_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "requires_manual_deletion": true,
+      "note": "DEPRECATED - UserFollowing is preferred"
+    },
+
+    "Activity": {
+      "table": "activities",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "crop_id": {
+          "references": "crops.id",
+          "nullable": true,
+          "cascade": false
+        },
+        "user_id": {
+          "references": "users.id",
+          "nullable": true,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [
+        "ActivityPhoto.activity_id (CASCADE)"
+      ],
+      "cascade_to": ["ActivityPhoto"],
+      "requires_manual_deletion": true
+    },
+
+    "ActivityPhoto": {
+      "table": "activity_photos",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "activity_id": {
+          "references": "activities.id",
+          "nullable": false,
+          "cascade": true
+        }
+      },
+      "reverse_relationships": [],
+      "dependencies_on": ["Activity"]
+    },
+
+    "CropProblem": {
+      "table": "crop_problems",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "crop_id": {
+          "references": "crops.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "requires_manual_deletion": true
+    },
+
+    "Reminder": {
+      "table": "reminders",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "crop_id": {
+          "references": "crops.id",
+          "nullable": true,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "requires_manual_deletion": true
+    },
+
+    "Harvest": {
+      "table": "harvests",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "crop_id": {
+          "references": "crops.id",
+          "nullable": true,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [
+        "Sale.harvest_id"
+      ],
+      "requires_manual_deletion": true
+    },
+
+    "Sale": {
+      "table": "sales",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "harvest_id": {
+          "references": "harvests.id",
+          "nullable": true,
+          "cascade": false
+        },
+        "user_id": {
+          "references": "users.id",
+          "nullable": true,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "requires_manual_deletion": true,
+      "note": "Indirectly depends on farm through harvest"
+    },
+
+    "FinanceTransaction": {
+      "table": "finance_transactions",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "crop_id": {
+          "references": "crops.id",
+          "nullable": true,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "requires_manual_deletion": true
+    },
+
+    "Input": {
+      "table": "inputs",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": true
+        },
+        "crop_id": {
+          "references": "crops.id",
+          "nullable": true,
+          "cascade": true
+        }
+      },
+      "reverse_relationships": [],
+      "cascade_delete_level": "indirect",
+      "note": "Will cascade delete when farm OR crop is deleted"
+    },
+
+    "Authorization": {
+      "table": "authorizations",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false,
+          "note": "No explicit ForeignKey constraint defined"
+        },
+        "veterinarian_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "authorized_by": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "requires_manual_deletion": true,
+      "note": "Missing explicit cascade constraint - potential data integrity issue"
+    },
+
+    "ServiceRequest": {
+      "table": "service_requests",
+      "has_farm_id": true,
+      "foreign_keys": {
+        "farm_id": {
+          "references": "farms.id",
+          "nullable": false,
+          "cascade": false,
+          "note": "No explicit ForeignKey constraint defined"
+        },
+        "created_by": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "assigned_veterinarian_id": {
+          "references": "users.id",
+          "nullable": true,
+          "cascade": false
+        },
+        "animal_id": {
+          "references": "livestock.id",
+          "nullable": true,
+          "cascade": false
+        },
+        "crop_id": {
+          "references": "crops.id",
+          "nullable": true,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [
+        "Consultation.service_request_id"
+      ],
+      "cascade_to": ["Consultation (indirect)"],
+      "requires_manual_deletion": true,
+      "note": "Missing explicit cascade constraint"
+    },
+
+    "Consultation": {
+      "table": "consultations",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "service_request_id": {
+          "references": "service_requests.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "veterinarian_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "requires_manual_deletion": true,
+      "note": "No cascade on service_request_id - must be manually deleted"
+    }
+  },
+
+  "livestock_related_models": {
+    "Livestock": {
+      "table": "livestock",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [
+        "AnimalPhoto.livestock_id (CASCADE)",
+        "FarmImagePost.livestock_id (CASCADE)",
+        "ServiceRequest.animal_id"
+      ],
+      "note": "Livestock is user-based, NOT farm-based (design consideration)"
+    },
+
+    "AnimalPhoto": {
+      "table": "animal_photos",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "livestock_id": {
+          "references": "livestock.id",
+          "nullable": false,
+          "cascade": true
+        }
+      },
+      "reverse_relationships": [],
+      "dependencies_on": ["Livestock"]
+    }
+  },
+
+  "user_following_and_profiles": {
+    "UserFollowing": {
+      "table": "user_following",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "follower_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "following_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "note": "User-based following relationship"
+    },
+
+    "VeterinarianProfile": {
+      "table": "veterinarian_profiles",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "note": "User-based veterinarian profile"
+    },
+
+    "PastureImage": {
+      "table": "pasture_images",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "note": "User-based pasture/enclosure images"
+    }
+  },
+
+  "notification_and_market": {
+    "Notification": {
+      "table": "notifications",
+      "has_farm_id": false,
+      "foreign_keys": {
+        "user_id": {
+          "references": "users.id",
+          "nullable": false,
+          "cascade": false
+        },
+        "actor_id": {
+          "references": "users.id",
+          "nullable": true,
+          "cascade": false
+        }
+      },
+      "reverse_relationships": [],
+      "note": "User-based notifications"
+    },
+
+    "MarketPrice": {
+      "table": "market_prices",
+      "has_farm_id": false,
+      "foreign_keys": [],
+      "reverse_relationships": [],
+      "note": "Global market data - no farm dependency"
+    },
+
+    "MarketTrend": {
+      "table": "market_trends",
+      "has_farm_id": false,
+      "foreign_keys": [],
+      "reverse_relationships": [],
+      "note": "Global market trends - no farm dependency"
+    }
+  },
+
+  "deletion_order_for_farm": {
+    "instructions": "Follow this order exactly when deleting ALL farm data. Some steps can be parallelized where noted.",
+    "total_steps": 22,
+
+    "deletion_phases": [
+      {
+        "phase": "PHASE 1: Delete leaf-level entities (no dependents)",
+        "steps": [
+          {
+            "order": 1,
+            "model": "FarmPostLike",
+            "depends_on": "FarmImagePost",
+            "cascade_from_parent": true,
+            "manual_query": "DELETE FROM farm_post_likes WHERE farm_post_id IN (SELECT id FROM farm_image_posts WHERE farm_id = ?)"
+          },
+          {
+            "order": 2,
+            "model": "FarmPostComment",
+            "depends_on": "FarmImagePost",
+            "cascade_from_parent": true,
+            "manual_query": "DELETE FROM farm_post_comments WHERE farm_post_id IN (SELECT id FROM farm_image_posts WHERE farm_id = ?)"
+          },
+          {
+            "order": 3,
+            "model": "FarmPostShare",
+            "depends_on": "FarmImagePost",
+            "cascade_from_parent": true,
+            "manual_query": "DELETE FROM farm_post_shares WHERE farm_post_id IN (SELECT id FROM farm_image_posts WHERE farm_id = ?)"
+          },
+          {
+            "order": 4,
+            "model": "ActivityPhoto",
+            "depends_on": "Activity",
+            "cascade_from_parent": true,
+            "manual_query": "DELETE FROM activity_photos WHERE activity_id IN (SELECT id FROM activities WHERE farm_id = ?)"
+          },
+          {
+            "order": 5,
+            "model": "AnimalPhoto",
+            "depends_on": "Livestock (user-owned, not farm-owned)",
+            "cascade_from_parent": true,
+            "note": "Only delete if livestock is being deleted",
+            "manual_query": "DELETE FROM animal_photos WHERE livestock_id IN (SELECT id FROM livestock WHERE user_id = ?)"
+          }
+        ],
+        "can_parallelize": true
+      },
+
+      {
+        "phase": "PHASE 2: Delete dependent entities (still have parents)",
+        "steps": [
+          {
+            "order": 6,
+            "model": "Consultation",
+            "depends_on": "ServiceRequest",
+            "cascade_from_parent": false,
+            "requires_manual_deletion": true,
+            "manual_query": "DELETE FROM consultations WHERE service_request_id IN (SELECT id FROM service_requests WHERE farm_id = ?)"
+          },
+          {
+            "order": 7,
+            "model": "Sale",
+            "depends_on": "Harvest",
+            "cascade_from_parent": false,
+            "requires_manual_deletion": true,
+            "manual_query": "DELETE FROM sales WHERE harvest_id IN (SELECT id FROM harvests WHERE farm_id = ?)"
+          }
+        ],
+        "can_parallelize": true
+      },
+
+      {
+        "phase": "PHASE 3: Delete farm data with NO cascade constraints",
+        "steps": [
+          {
+            "order": 8,
+            "model": "CropProblem",
+            "has_farm_id": true,
+            "cascade": false,
+            "requires_manual_deletion": true,
+            "manual_query": "DELETE FROM crop_problems WHERE farm_id = ?"
+          },
+          {
+            "order": 9,
+            "model": "Reminder",
+            "has_farm_id": true,
+            "cascade": false,
+            "requires_manual_deletion": true,
+            "manual_query": "DELETE FROM reminders WHERE farm_id = ?"
+          },
+          {
+            "order": 10,
+            "model": "FinanceTransaction",
+            "has_farm_id": true,
+            "cascade": false,
+            "requires_manual_deletion": true,
+            "manual_query": "DELETE FROM finance_transactions WHERE farm_id = ?"
+          },
+          {
+            "order": 11,
+            "model": "Harvest",
+            "has_farm_id": true,
+            "cascade": false,
+            "requires_manual_deletion": true,
+            "manual_query": "DELETE FROM harvests WHERE farm_id = ?"
+          },
+          {
+            "order": 12,
+            "model": "Activity",
+            "has_farm_id": true,
+            "cascade": false,
+            "requires_manual_deletion": true,
+            "manual_query": "DELETE FROM activities WHERE farm_id = ?"
+          },
+          {
+            "order": 13,
+            "model": "FarmPost",
+            "has_farm_id": true,
+            "cascade": false,
+            "requires_manual_deletion": true,
+            "manual_query": "DELETE FROM farm_posts WHERE farm_id = ?"
+          },
+          {
+            "order": 14,
+            "model": "ServiceRequest",
+            "has_farm_id": true,
+            "cascade": false,
+            "requires_manual_deletion": true,
+            "note": "Must be done after Consultation deletion",
+            "manual_query": "DELETE FROM service_requests WHERE farm_id = ?"
+          },
+          {
+            "order": 15,
+            "model": "Authorization",
+            "has_farm_id": true,
+            "cascade": false,
+            "requires_manual_deletion": true,
+            "note": "No explicit ForeignKey - potential data integrity issue",
+            "manual_query": "DELETE FROM authorizations WHERE farm_id = ?"
+          },
+          {
+            "order": 16,
+            "model": "FarmFollowing",
+            "has_farm_id": true,
+            "cascade": false,
+            "requires_manual_deletion": true,
+            "note": "DEPRECATED model",
+            "manual_query": "DELETE FROM farm_following WHERE farm_id = ?"
+          },
+          {
+            "order": 17,
+            "model": "FarmProfile",
+            "has_farm_id": true,
+            "cascade": false,
+            "unique": true,
+            "requires_manual_deletion": true,
+            "manual_query": "DELETE FROM farm_profiles WHERE farm_id = ?"
+          }
+        ],
+        "can_parallelize": true,
+        "note": "All these have farm_id but NO cascade constraints"
+      },
+
+      {
+        "phase": "PHASE 4: Delete farm-dependent objects WITH CASCADE",
+        "steps": [
+          {
+            "order": 18,
+            "model": "FarmImagePost",
+            "has_farm_id": true,
+            "cascade": true,
+            "note": "Has cascade delete - will automatically delete attached likes, comments, shares",
+            "manual_query": "DELETE FROM farm_image_posts WHERE farm_id = ?"
+          },
+          {
+            "order": 19,
+            "model": "FarmPhoto",
+            "has_farm_id": true,
+            "cascade": true,
+            "manual_query": "DELETE FROM farm_photos WHERE farm_id = ?"
+          },
+          {
+            "order": 20,
+            "model": "Input",
+            "has_farm_id": true,
+            "cascade": true,
+            "note": "Cascades on both farm_id AND crop_id",
+            "manual_query": "DELETE FROM inputs WHERE farm_id = ?"
+          }
+        ],
+        "can_parallelize": true,
+        "note": "These have cascade constraints - SQLAlchemy will auto-delete children"
+      },
+
+      {
+        "phase": "PHASE 5: Delete Crops (root dependency)",
+        "steps": [
+          {
+            "order": 21,
+            "model": "Crop",
+            "parent": "Farm",
+            "cascade": true,
+            "note": "Crops have cascade delete on farm_id - will auto-delete Input rows if any remain",
+            "manual_query": "DELETE FROM crops WHERE farm_id = ?"
+          }
+        ]
+      },
+
+      {
+        "phase": "PHASE 6: Delete Farm (final step)",
+        "steps": [
+          {
+            "order": 22,
+            "model": "Farm",
+            "parent": "User (NOT deleted)",
+            "manual_query": "DELETE FROM farms WHERE id = ?"
+          }
+        ]
+      }
+    ]
+  },
+
+  "python_deletion_function_pseudocode": {
+    "description": "Recommended order for Python/SQLAlchemy deletion",
+    "note": "Some items use CASCADE and will auto-delete; others require manual deletion",
+    "execution_order": [
+      "1. Delete FarmPostLike (cascade from FarmImagePost)",
+      "2. Delete FarmPostComment (cascade from FarmImagePost)",
+      "3. Delete FarmPostShare (cascade from FarmImagePost)",
+      "4. Delete ActivityPhoto (cascade from Activity)",
+      "5. Delete AnimalPhoto (only if deleting livestock too)",
+      "6. Delete Consultation (manual, depends on ServiceRequest)",
+      "7. Delete Sale (manual, depends on Harvest)",
+      "8. Delete CropProblem (manual, depends on Crop)",
+      "9. Delete Reminder (manual, depends on Crop)",
+      "10. Delete FinanceTransaction (manual, depends on Crop)",
+      "11. Delete Harvest (manual, depends on Crop)",
+      "12. Delete Activity (manual, depends on Farm/Crop)",
+      "13. Delete FarmPost (manual, depends on Crop)",
+      "14. Delete ServiceRequest (manual, depends on Farm)",
+      "15. Delete Authorization (manual, depends on Farm)",
+      "16. Delete FarmFollowing (manual, depends on Farm)",
+      "17. Delete FarmProfile (manual, depends on Farm)",
+      "18. Delete FarmImagePost (cascade from Farm)",
+      "19. Delete FarmPhoto (cascade from Farm)",
+      "20. Delete Input (cascade from Farm/Crop)",
+      "21. Delete Crop (cascade from Farm)",
+      "22. Delete Farm"
+    ]
+  },
+
+  "critical_issues_found": [
+    {
+      "severity": "HIGH",
+      "model": "Authorization",
+      "issue": "No explicit ForeignKey constraint defined for farm_id",
+      "impact": "Database won't enforce referential integrity; manual deletion required",
+      "recommendation": "Add ForeignKey constraint: Column(Integer, ForeignKey('farms.id'), nullable=False)"
+    },
+    {
+      "severity": "HIGH",
+      "model": "ServiceRequest",
+      "issue": "No explicit ForeignKey constraint defined for farm_id",
+      "impact": "Database won't enforce referential integrity; manual deletion required",
+      "recommendation": "Add ForeignKey constraint: Column(Integer, ForeignKey('farms.id'), nullable=False)"
+    },
+    {
+      "severity": "MEDIUM",
+      "model": "Consultation",
+      "issue": "No cascade on service_request_id ForeignKey",
+      "impact": "Deleting ServiceRequest won't auto-delete Consultation records",
+      "recommendation": "Add ondelete='CASCADE': Column(Integer, ForeignKey('service_requests.id', ondelete='CASCADE'))"
+    },
+    {
+      "severity": "MEDIUM",
+      "model": "Sale",
+      "issue": "No cascade on harvest_id ForeignKey",
+      "impact": "Deleting Harvest won't auto-delete Sale records",
+      "recommendation": "Add ondelete='CASCADE': Column(Integer, ForeignKey('harvests.id', ondelete='CASCADE'))"
+    },
+    {
+      "severity": "MEDIUM",
+      "model": "FarmProfile",
+      "issue": "farm_id is unique but has no cascade delete",
+      "impact": "1-to-1 relationship without cascade - manual deletion required",
+      "recommendation": "Consider adding ondelete='CASCADE' given the 1-to-1 relationship"
+    },
+    {
+      "severity": "MEDIUM",
+      "model": "Livestock",
+      "issue": "Uses user_id instead of being farm-related",
+      "impact": "FarmImagePost can link to livestock from a different user's farm",
+      "recommendation": "Consider redesign to link livestock to farm instead of/in addition to user"
+    }
+  ],
+
+  "summary": {
+    "total_models": 24,
+    "models_with_farm_id": 14,
+    "models_with_cascade_delete": 5,
+    "models_with_cascade_from_parent": 7,
+    "models_requiring_manual_deletion": 13,
+    "max_dependency_depth": 5,
+    "deletion_complexity": "HIGH - Multiple tables with various cascade behaviors require careful ordering",
+    "recommendation": "Implement comprehensive deletion service with proper transaction handling and logging"
+  }
+}

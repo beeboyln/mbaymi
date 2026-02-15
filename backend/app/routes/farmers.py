@@ -196,75 +196,84 @@ def update_farm(farm_id: int, farm: FarmCreate, db: Session = Depends(get_db)):
 
 
 @router.delete("/{farm_id}")
-def delete_farm(farm_id: int, db: Session = Depends(get_db)):
+def delete_farm(
+    farm_id: int,
+    current_user: User = Depends(get_current_user_obj),
+    db: Session = Depends(get_db)
+):
     farm = db.query(Farm).filter(Farm.id == farm_id).first()
     if not farm:
         raise HTTPException(status_code=404, detail="Farm not found")
+    
+    # Check authorization - only farm owner can delete
+    if farm.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this farm")
     
     try:
         # Import all models that need to be deleted
         from app.models.input import Input
         from app.models.harvest import Harvest
-        from app.models.sale import Sale
-        from app.models.livestock import Livestock
         from app.models.activity import Activity
         from app.models.reminder import Reminder
-        from app.models.finance import Finance
+        from app.models.finance import FinanceTransaction
         from app.models.crop_problem import CropProblem
+        from app.models.farm_post import FarmImagePost
+        from app.models.farm_network import FarmProfile, FarmPost, FarmFollowing
+        from app.models.authorization import Authorization
+        from app.models.service_request import ServiceRequest
         
         # Delete in correct order to avoid foreign key violations:
-        # 1. Delete inputs (references crops)
+        # 1. Delete farm posts
+        db.query(FarmImagePost).filter(FarmImagePost.farm_id == farm_id).delete()
+        db.query(FarmPost).filter(FarmPost.farm_id == farm_id).delete()
+        
+        # 2. Delete farm profile
+        db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).delete()
+        
+        # 3. Delete farm following records
+        db.query(FarmFollowing).filter(FarmFollowing.farm_id == farm_id).delete()
+        
+        # 4. Delete authorization records
+        db.query(Authorization).filter(Authorization.farm_id == farm_id).delete()
+        
+        # 5. Delete service requests
+        db.query(ServiceRequest).filter(ServiceRequest.farm_id == farm_id).delete()
+        
+        # 6. Delete inputs (references crops and farm)
         db.query(Input).filter(Input.farm_id == farm_id).delete()
         
-        # 2. Delete crop-related records
-        db.query(CropProblem).filter(
-            CropProblem.crop_id.in_(
-                db.query(Crop.id).filter(Crop.farm_id == farm_id)
-            )
-        ).delete()
+        # 7. Delete crop-related records that reference crops in this farm
+        crop_ids = db.query(Crop.id).filter(Crop.farm_id == farm_id).all()
+        crop_ids_list = [c[0] for c in crop_ids]
         
-        db.query(Activity).filter(
-            Activity.crop_id.in_(
-                db.query(Crop.id).filter(Crop.farm_id == farm_id)
-            )
-        ).delete()
+        if crop_ids_list:
+            db.query(CropProblem).filter(CropProblem.crop_id.in_(crop_ids_list)).delete()
+            db.query(Activity).filter(Activity.crop_id.in_(crop_ids_list)).delete()
+            db.query(Reminder).filter(Reminder.crop_id.in_(crop_ids_list)).delete()
+            db.query(FinanceTransaction).filter(FinanceTransaction.crop_id.in_(crop_ids_list)).delete()
+            db.query(Harvest).filter(Harvest.crop_id.in_(crop_ids_list)).delete()
         
-        db.query(Reminder).filter(
-            Reminder.crop_id.in_(
-                db.query(Crop.id).filter(Crop.farm_id == farm_id)
-            )
-        ).delete()
+        # 8. Delete farm-level records
+        db.query(CropProblem).filter(CropProblem.farm_id == farm_id).delete()
+        db.query(Activity).filter(Activity.farm_id == farm_id).delete()
+        db.query(Reminder).filter(Reminder.farm_id == farm_id).delete()
+        db.query(FinanceTransaction).filter(FinanceTransaction.farm_id == farm_id).delete()
+        db.query(Harvest).filter(Harvest.farm_id == farm_id).delete()
         
-        db.query(Finance).filter(
-            Finance.crop_id.in_(
-                db.query(Crop.id).filter(Crop.farm_id == farm_id)
-            )
-        ).delete()
-        
-        db.query(Harvest).filter(
-            Harvest.crop_id.in_(
-                db.query(Crop.id).filter(Crop.farm_id == farm_id)
-            )
-        ).delete()
-        
-        # 3. Delete farm photos
+        # 9. Delete farm photos
         db.query(FarmPhoto).filter(FarmPhoto.farm_id == farm_id).delete()
         
-        # 4. Delete crops
+        # 10. Delete crops
         db.query(Crop).filter(Crop.farm_id == farm_id).delete()
         
-        # 5. Delete farm-level records
-        db.query(Harvest).filter(Harvest.farm_id == farm_id).delete()
-        db.query(Sale).filter(Sale.farm_id == farm_id).delete()
-        db.query(Livestock).filter(Livestock.farm_id == farm_id).delete()
-        
-        # 6. Delete the farm
+        # 11. Delete the farm itself
         db.delete(farm)
         db.commit()
         
         return {"status": "deleted", "message": "Farm and all related data deleted successfully"}
     except Exception as e:
         db.rollback()
+        print(f"Error deleting farm {farm_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error deleting farm: {str(e)}")
 
 

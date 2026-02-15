@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
 class PostDetailScreen extends StatefulWidget {
@@ -19,26 +20,17 @@ class PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
-  // ignore: unused_field
-  late Future<Map<String, dynamic>> _postDetailFuture;
   late Future<List<dynamic>> _commentsFuture;
   final TextEditingController _commentController = TextEditingController();
   bool _isLiked = false;
   int _likesCount = 0;
   int _commentsCount = 0;
 
-  static const Color _primaryColor = Color(0xFF8B6B4D);
-  // ignore: unused_field
-  static const Color _primaryLight = Color(0xFFA58A6D);
-  // ignore: unused_field
-  static const Color _accentColor = Color(0xFFC4A484);
-
   @override
   void initState() {
     super.initState();
     _likesCount = widget.postData['likes_count'] ?? 0;
     _commentsCount = widget.postData['comments_count'] ?? 0;
-    _postDetailFuture = Future.value(widget.postData);
     _commentsFuture = ApiService.getPostComments(widget.postId);
   }
 
@@ -64,19 +56,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e')),
-      );
+      _showSnackBar('Erreur lors de l\'action', isError: true);
     }
   }
 
   Future<void> _postComment() async {
-    if (_commentController.text.isEmpty) return;
+    if (_commentController.text.trim().isEmpty) return;
 
     try {
       await ApiService.commentOnPost(
         postId: widget.postId,
-        content: _commentController.text,
+        content: _commentController.text.trim(),
       );
 
       _commentController.clear();
@@ -85,36 +75,106 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         _commentsFuture = ApiService.getPostComments(widget.postId);
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Commentaire ajouté ✅'),
-          backgroundColor: _primaryColor,
-        ),
-      );
+      _showSnackBar('Commentaire ajouté', isError: false);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e')),
-      );
+      _showSnackBar('Erreur: $e', isError: true);
     }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 1.5,
+          ),
+        ),
+        backgroundColor: isError ? Colors.red.shade400 : Colors.black87,
+        behavior: SnackBarBehavior.floating,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      ),
+    );
+  }
+
+  void _deletePost() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF0A0A0A) : Colors.white,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        title: Text(
+          'SUPPRIMER LE POST',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 2.0,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        content: Text(
+          'Êtes-vous sûr de vouloir supprimer ce post?',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w300,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'ANNULER',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 1.5,
+                color: isDark ? Colors.white60 : Colors.black54,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final userId = AuthService.currentSession?.userId ?? 0;
+                await ApiService.deleteFarmPost(widget.postId, userId);
+                if (mounted) {
+                  _showSnackBar('Post supprimé');
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    if (mounted) Navigator.pop(context);
+                  });
+                }
+              } catch (e) {
+                _showSnackBar('Erreur: $e', isError: true);
+              }
+            },
+            child: const Text(
+              'SUPPRIMER',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 1.5,
+                color: Colors.red,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = widget.isDarkMode;
-    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFFAFAFA);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : AppColors.lightBg;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final secondaryTextColor = isDark ? Colors.white60 : Colors.black54;
+    final bgColor = isDark ? const Color(0xFF0A0A0A) : AppColors.lightBg;
+    final currentUserId = AuthService.currentSession?.userId ?? 0;
+    final postOwnerId = widget.postData['user_id'] as int? ?? 0;
+    final isOwner = currentUserId == postOwnerId && currentUserId > 0;
 
-    final postTypeEmoji = {
-      'crop_update': '🌱',
-      'harvest_result': '🌾',
-      'problem_report': '🚨',
-      'tip': '💡',
-    };
-
-    final postType = widget.postData['post_type'] ?? 'crop_update';
-    final emoji = postTypeEmoji[postType] ?? '📝';
     final title = widget.postData['title'] ?? '';
     final description = widget.postData['description'];
     final photoUrl = widget.postData['photo_url'];
@@ -126,297 +186,369 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         ? 'Aujourd\'hui'
         : daysAgo == 1
             ? 'Hier'
-            : '$daysAgo jours';
+            : 'Il y a $daysAgo jours';
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: cardColor,
-        elevation: 0.5,
-        iconTheme: IconThemeData(color: textColor),
+        backgroundColor: bgColor,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
-          'Post Détail',
-          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+          'POST',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 2.5,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
         ),
         centerTitle: true,
+        actions: isOwner
+            ? [
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: Colors.red.shade400,
+                    size: 20,
+                  ),
+                  onPressed: _deletePost,
+                ),
+              ]
+            : null,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 📋 En-tête du post
-            Container(
-              color: cardColor,
-              padding: const EdgeInsets.all(16),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Profil
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: _primaryColor,
-                        child: Text(
-                          ownerName.isNotEmpty ? ownerName[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                  // Image
+                  if (photoUrl != null && photoUrl.isNotEmpty)
+                    Container(
+                      width: double.infinity,
+                      height: 400,
+                      color: isDark ? const Color(0xFF151515) : const Color(0xFFF5F5F5),
+                      child: Image.network(
+                        photoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Icon(
+                            Icons.image_outlined,
+                            size: 48,
+                            color: isDark ? Colors.white12 : Colors.black12,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    farmName,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: textColor,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Text(
-                                  emoji,
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                              ],
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1,
+                                color: isDark ? Colors.white24 : Colors.black12,
+                              ),
                             ),
-                            const SizedBox(height: 4),
+                          );
+                        },
+                      ),
+                    ),
+
+                  // Contenu
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.black.withOpacity(0.05),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Métadonnées
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                farmName.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w300,
+                                  letterSpacing: 1.5,
+                                  color: isDark ? Colors.white38 : Colors.black38,
+                                ),
+                              ),
+                            ),
                             Text(
-                              'par $ownerName • $timeText',
+                              timeText.toUpperCase(),
                               style: TextStyle(
-                                fontSize: 12,
-                                color: secondaryTextColor,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w300,
+                                letterSpacing: 1.2,
+                                color: isDark ? Colors.white24 : Colors.black26,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+
+                        const SizedBox(height: 16),
+
+                        // Titre
+                        if (title.isNotEmpty)
+                          Text(
+                            title.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w300,
+                              letterSpacing: 2.0,
+                              color: isDark ? Colors.white : Colors.black87,
+                              height: 1.4,
+                            ),
+                          ),
+
+                        if (title.isNotEmpty && description != null)
+                          const SizedBox(height: 16),
+
+                        // Description
+                        if (description != null && description.isNotEmpty)
+                          Text(
+                            description,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w300,
+                              letterSpacing: 0.3,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                              height: 1.6,
+                            ),
+                          ),
+
+                        const SizedBox(height: 20),
+
+                        // Auteur
+                        Text(
+                          'PAR $ownerName'.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: 1.5,
+                            color: isDark ? Colors.white24 : Colors.black26,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // Titre
-                  if (title.isNotEmpty)
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
-                        color: textColor,
+
+                  // Actions
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.black.withOpacity(0.05),
+                          width: 1,
+                        ),
                       ),
                     ),
-                  
-                  if (title.isNotEmpty && description != null)
-                    const SizedBox(height: 12),
-                  
-                  // Description
-                  if (description != null && description.isNotEmpty)
-                    Text(
-                      description,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    child: Row(
+                      children: [
+                        _buildActionButton(
+                          icon: _isLiked ? Icons.favorite : Icons.favorite_border,
+                          label: '$_likesCount',
+                          isDark: isDark,
+                          isActive: _isLiked,
+                          onTap: _toggleLike,
+                        ),
+                        const SizedBox(width: 32),
+                        _buildActionButton(
+                          icon: Icons.chat_bubble_outline,
+                          label: '$_commentsCount',
+                          isDark: isDark,
+                          isActive: false,
+                          onTap: () {},
+                        ),
+                        const SizedBox(width: 32),
+                        _buildActionButton(
+                          icon: Icons.share_outlined,
+                          label: '${widget.postData['shares_count'] ?? 0}',
+                          isDark: isDark,
+                          isActive: false,
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Section commentaires
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                    child: Text(
+                      'COMMENTAIRES',
                       style: TextStyle(
-                        fontSize: 14,
-                        color: textColor,
-                        height: 1.5,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 2.0,
+                        color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Liste des commentaires
+                  FutureBuilder<List<dynamic>>(
+                    future: _commentsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1,
+                                color: isDark ? Colors.white24 : Colors.black12,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      final comments = snapshot.data ?? [];
+                      if (comments.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Center(
+                            child: Text(
+                              'AUCUN COMMENTAIRE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w300,
+                                letterSpacing: 1.5,
+                                color: isDark ? Colors.white24 : Colors.black26,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        itemCount: comments.length,
+                        separatorBuilder: (_, __) => Divider(
+                          height: 1,
+                          color: isDark
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.black.withOpacity(0.05),
+                        ),
+                        itemBuilder: (context, index) {
+                          final comment = comments[index];
+                          return _buildCommentTile(comment, isDark);
+                        },
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
+          ),
 
-            const SizedBox(height: 8),
-
-            // 🖼️ Image
-            if (photoUrl != null && photoUrl.isNotEmpty)
-              Container(
-                width: double.infinity,
-                height: 350,
-                color: Colors.grey[300],
-                child: Image.network(
-                  photoUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: _primaryColor.withOpacity(0.1),
-                    child: Center(
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: 64,
-                        color: _primaryColor.withOpacity(0.5),
+          // Barre de commentaire fixe en bas
+          Container(
+            decoration: BoxDecoration(
+              color: bgColor,
+              border: Border(
+                top: BorderSide(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.05)
+                      : Colors.black.withOpacity(0.05),
+                  width: 1,
+                ),
+              ),
+            ),
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w300,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Ajouter un commentaire',
+                      hintStyle: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w300,
+                        color: isDark ? Colors.white24 : Colors.black26,
                       ),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.black.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white : Colors.black87,
+                          width: 1,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
-              ),
-
-            const SizedBox(height: 16),
-
-            // ❤️ Actions
-            Container(
-              color: cardColor,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  _buildActionButton(
-                    icon: _isLiked ? Icons.favorite : Icons.favorite_border,
-                    label: '$_likesCount',
-                    color: _isLiked ? Colors.red : textColor,
-                    onTap: _toggleLike,
-                  ),
-                  const SizedBox(width: 24),
-                  _buildActionButton(
-                    icon: Icons.chat_bubble_outline,
-                    label: '$_commentsCount',
-                    color: textColor,
-                    onTap: () {},
-                  ),
-                  const SizedBox(width: 24),
-                  _buildActionButton(
-                    icon: Icons.share_outlined,
-                    label: '${widget.postData['shares_count'] ?? 0}',
-                    color: textColor,
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // 💬 Commentaires
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Commentaires',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: textColor,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Liste des commentaires
-            FutureBuilder<List<dynamic>>(
-              future: _commentsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: _primaryColor,
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: _postComment,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.black.withOpacity(0.1),
+                        width: 1,
                       ),
                     ),
-                  );
-                }
-
-                final comments = snapshot.data ?? [];
-                if (comments.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: Text(
-                        'Aucun commentaire pour l\'instant',
-                        style: TextStyle(color: secondaryTextColor),
-                      ),
+                    child: const Icon(
+                      Icons.send,
+                      color: Colors.white,
+                      size: 16,
                     ),
-                  );
-                }
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: comments.length,
-                  itemBuilder: (context, index) {
-                    final comment = comments[index];
-                    return _buildCommentTile(comment, cardColor, textColor, secondaryTextColor);
-                  },
-                );
-              },
-            ),
-
-            const SizedBox(height: 80),
-          ],
-        ),
-      ),
-      bottomSheet: Container(
-        color: cardColor,
-        padding: const EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 12,
-          bottom: 12,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _commentController,
-                style: TextStyle(color: textColor),
-                decoration: InputDecoration(
-                  hintText: 'Ajouter un commentaire...',
-                  hintStyle: TextStyle(color: secondaryTextColor),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: secondaryTextColor),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: _postComment,
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: _primaryColor,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.send,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: color,
-              fontWeight: FontWeight.w500,
+              ],
             ),
           ),
         ],
@@ -424,76 +556,137 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  Widget _buildCommentTile(
-    Map<String, dynamic> comment,
-    Color cardColor,
-    Color textColor,
-    Color secondaryTextColor,
-  ) {
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required bool isDark,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: isActive
+                ? Colors.red
+                : (isDark ? Colors.white70 : Colors.black87),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w300,
+              letterSpacing: 0.5,
+              color: isActive
+                  ? Colors.red
+                  : (isDark ? Colors.white70 : Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentTile(Map<String, dynamic> comment, bool isDark) {
     final userName = comment['user_name'] ?? 'Utilisateur';
     final content = comment['content'] ?? '';
     final createdAt = DateTime.tryParse(comment['created_at'] ?? '') ?? DateTime.now();
     final daysAgo = DateTime.now().difference(createdAt).inDays;
-    final timeText = daysAgo == 0 ? 'Maintenant' : daysAgo == 1 ? 'Hier' : '$daysAgo j';
+    final timeText = daysAgo == 0
+        ? 'Maintenant'
+        : daysAgo == 1
+            ? 'Hier'
+            : 'Il y a $daysAgo j';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: widget.isDarkMode ? const Color(0xFF262626) : Colors.grey[100],
-        borderRadius: BorderRadius.circular(10),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: _primaryColor,
-                child: Text(
-                  userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.1),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.2)
+                        : Colors.black.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 0.5,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      userName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        color: textColor,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          userName.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: 1.2,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '•',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isDark ? Colors.white24 : Colors.black26,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          timeText,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: 0.5,
+                            color: isDark ? Colors.white24 : Colors.black26,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 8),
                     Text(
-                      timeText,
+                      content,
                       style: TextStyle(
-                        fontSize: 11,
-                        color: secondaryTextColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 0.3,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        height: 1.5,
                       ),
                     ),
                   ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            content,
-            style: TextStyle(
-              fontSize: 13,
-              color: textColor,
-              height: 1.4,
-            ),
           ),
         ],
       ),

@@ -34,16 +34,11 @@ class _ParcelScreenState extends State<ParcelScreen> {
   late int _userId;
   int _selectedSection = 0; // 0: Parcelles, 1: Posts
 
-  static const Color _primaryColor = Color(0xFF6B8E23);
-  static const Color _bgLight = AppColors.lightBg;
-  static const Color _bgDark = Color(0xFF0A0A0A);
-  static const Color _cardLight = AppColors.lightBg;
-  static const Color _cardDark = Color(0xFF1A1A1A);
+  static const Color _primaryColor = AppColors.accent;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Ouvre la modale d'ajout de culture si demandé
     if (widget.openAddCultureModal) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showAddParcel();
@@ -79,109 +74,109 @@ class _ParcelScreenState extends State<ParcelScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          final cardColor = isDark ? _cardDark : _cardLight;
-          final textColor = isDark ? Colors.white : Colors.black87;
-          final secondaryTextColor = isDark ? Colors.white60 : Colors.black54;
+          final bgColor = isDark ? AppColors.darkBg : AppColors.lightBg;
 
           return Container(
             decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              color: bgColor,
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
             ),
-            padding: const EdgeInsets.only(
-              bottom: 20,
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 32,
               left: 24,
               right: 24,
-              top: 20,
+              top: 32,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // Title
+                // Titre
                 Text(
-                  'Nouvelle parcelle',
+                  'NOUVELLE PARCELLE',
                   style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 2.5,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
 
-                // Name Field
+                // Nom
                 TextField(
                   controller: nameCtrl,
                   autofocus: false,
                   autocorrect: false,
                   enableSuggestions: false,
-                  style: TextStyle(fontSize: 16, color: textColor),
-                  decoration: InputDecoration(
-                    labelText: 'Nom de la parcelle',
-                    hintText: 'Ex: Parcelle Nord',
-                    labelStyle: TextStyle(color: secondaryTextColor),
-                    hintStyle: TextStyle(color: secondaryTextColor),
-                    prefixIcon: const Icon(Icons.landscape_outlined, color: _primaryColor),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: _primaryColor, width: 2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Status
-                Text(
-                  'Statut',
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
+                    fontWeight: FontWeight.w300,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'NOM',
+                    labelStyle: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 1.5,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                    hintText: 'Ex: Parcelle Nord',
+                    hintStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w300,
+                      color: isDark ? Colors.white24 : Colors.black26,
+                    ),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white : Colors.black87,
+                        width: 1,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 32),
+
+                // Statut
+                Text(
+                  'STATUT',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 1.5,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 12,
+                  runSpacing: 12,
                   children: [
-                    _buildStatusChip('En préparation', status, (v) => setModalState(() => status = v), cardColor, textColor),
-                    _buildStatusChip('Semé', status, (v) => setModalState(() => status = v), cardColor, textColor),
-                    _buildStatusChip('En croissance', status, (v) => setModalState(() => status = v), cardColor, textColor),
-                    _buildStatusChip('Récolté', status, (v) => setModalState(() => status = v), cardColor, textColor),
+                    _buildStatusChip('En préparation', status, (v) => setModalState(() => status = v), isDark),
+                    _buildStatusChip('Semé', status, (v) => setModalState(() => status = v), isDark),
+                    _buildStatusChip('En croissance', status, (v) => setModalState(() => status = v), isDark),
+                    _buildStatusChip('Récolté', status, (v) => setModalState(() => status = v), isDark),
                   ],
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 40),
 
-                // Submit Button
+                // Bouton
                 SizedBox(
                   width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
+                  child: TextButton(
                     onPressed: () async {
                       final name = nameCtrl.text.trim();
                       if (name.isEmpty) return;
@@ -193,22 +188,22 @@ class _ParcelScreenState extends State<ParcelScreen> {
                       );
                       Navigator.pop(context);
                       _refresh();
-                      _showSnackBar('Parcelle créée avec succès', isError: false);
+                      _showSnackBar('Parcelle créée', isError: false);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.black87,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
                       ),
-                      elevation: 0,
-                      splashFactory: NoSplash.splashFactory,
                     ),
                     child: const Text(
-                      'Créer la parcelle',
+                      'CRÉER',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 2.0,
                       ),
                     ),
                   ),
@@ -221,25 +216,32 @@ class _ParcelScreenState extends State<ParcelScreen> {
     );
   }
 
-  Widget _buildStatusChip(String label, String currentStatus, Function(String) onTap, Color cardColor, Color textColor) {
+  Widget _buildStatusChip(String label, String currentStatus, Function(String) onTap, bool isDark) {
     final isSelected = currentStatus == label;
     return GestureDetector(
       onTap: () => onTap(label),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryColor : cardColor,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected 
+              ? (isDark ? Colors.white : Colors.black87)
+              : Colors.transparent,
           border: Border.all(
-            color: isSelected ? _primaryColor : (Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.black12),
+            color: isDark 
+                ? Colors.white.withOpacity(0.2)
+                : Colors.black.withOpacity(0.2),
+            width: 1,
           ),
         ),
         child: Text(
-          label,
+          label.toUpperCase(),
           style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : textColor,
+            fontSize: 10,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 1.0,
+            color: isSelected 
+                ? (isDark ? Colors.black : Colors.white)
+                : (isDark ? Colors.white70 : Colors.black87),
           ),
         ),
       ),
@@ -265,8 +267,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
   }
 
   Future<void> _addPost() async {
-    // Implémentez la logique pour ajouter un post
-    _showSnackBar('Fonctionnalité d\'ajout de post à implémenter', isError: false);
+    _showSnackBar('Fonctionnalité en développement', isError: false);
   }
 
   int? _toInt(dynamic v) {
@@ -278,10 +279,19 @@ class _ParcelScreenState extends State<ParcelScreen> {
   void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red.shade400 : _primaryColor,
+        content: Text(
+          message.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 1.5,
+          ),
+        ),
+        backgroundColor: isError ? Colors.red.shade400 : Colors.black87,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+        ),
       ),
     );
   }
@@ -289,55 +299,55 @@ class _ParcelScreenState extends State<ParcelScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? _bgDark : _bgLight;
-    final cardColor = isDark ? _cardDark : _cardLight;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final secondaryTextColor = isDark ? Colors.white60 : Colors.black54;
+    final bgColor = isDark ? AppColors.darkBg : AppColors.lightBg;
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: cardColor,
+        backgroundColor: bgColor,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
           onPressed: () => Navigator.pop(context),
-          splashRadius: 1,
         ),
         title: Text(
-          _selectedSection == 0 ? 'Parcelles' : 'Posts',
+          _selectedSection == 0 ? 'PARCELLES' : 'POSTS',
           style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: textColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 2.5,
+            color: isDark ? Colors.white : Colors.black87,
           ),
         ),
+        centerTitle: true,
         actions: [
-          if (!widget.readOnly && _selectedSection == 0)
+          if (!widget.readOnly)
             IconButton(
-              icon: const Icon(Icons.add, color: _primaryColor),
-              onPressed: _showAddParcel,
-              tooltip: 'Ajouter une parcelle',
-              splashRadius: 1,
-            ),
-          if (!widget.readOnly && _selectedSection == 1)
-            IconButton(
-              icon: const Icon(Icons.add_circle_outline, color: _primaryColor),
-              onPressed: _addPost,
-              tooltip: 'Ajouter un post',
-              splashRadius: 1,
+              icon: Icon(
+                _selectedSection == 0 ? Icons.add : Icons.edit_outlined,
+                color: isDark ? Colors.white70 : Colors.black87,
+                size: 20,
+              ),
+              onPressed: _selectedSection == 0 ? _showAddParcel : _addPost,
             ),
         ],
       ),
       body: Column(
         children: [
-          // Onglets de sections
+          // Tabs
           Container(
             decoration: BoxDecoration(
-              color: cardColor,
+              color: bgColor,
               border: Border(
                 bottom: BorderSide(
-                  color: isDark ? Colors.white12 : Colors.black12,
+                  color: isDark 
+                      ? Colors.white.withOpacity(0.05)
+                      : Colors.black.withOpacity(0.05),
+                  width: 1,
                 ),
               ),
             ),
@@ -346,15 +356,22 @@ class _ParcelScreenState extends State<ParcelScreen> {
                 Expanded(
                   child: _buildSectionTab(
                     index: 0,
-                    label: 'Parcelles',
-                    icon: Icons.landscape_outlined,
+                    label: 'PARCELLES',
+                    isDark: isDark,
                   ),
+                ),
+                Container(
+                  width: 1,
+                  height: 48,
+                  color: isDark 
+                      ? Colors.white.withOpacity(0.05)
+                      : Colors.black.withOpacity(0.05),
                 ),
                 Expanded(
                   child: _buildSectionTab(
                     index: 1,
-                    label: 'Posts',
-                    icon: Icons.chat_bubble_outline,
+                    label: 'POSTS',
+                    isDark: isDark,
                   ),
                 ),
               ],
@@ -362,8 +379,8 @@ class _ParcelScreenState extends State<ParcelScreen> {
           ),
           Expanded(
             child: _selectedSection == 0
-                ? _buildParcelsSection(cardColor, textColor, secondaryTextColor, isDark)
-                : _buildPostsSection(cardColor, textColor, secondaryTextColor, isDark),
+                ? _buildParcelsSection(isDark)
+                : _buildPostsSection(isDark),
           ),
         ],
       ),
@@ -373,63 +390,54 @@ class _ParcelScreenState extends State<ParcelScreen> {
   Widget _buildSectionTab({
     required int index,
     required String label,
-    required IconData icon,
+    required bool isDark,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSelected = _selectedSection == index;
     
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => setState(() => _selectedSection = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isSelected ? _primaryColor : Colors.transparent,
-                width: 2,
-              ),
+    return GestureDetector(
+      onTap: () => setState(() => _selectedSection = index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isSelected
+                  ? (isDark ? Colors.white : Colors.black87)
+                  : Colors.transparent,
+              width: 1.5,
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? _primaryColor : (isDark ? Colors.white60 : Colors.black54),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? _primaryColor : (isDark ? Colors.white60 : Colors.black54),
-                ),
-              ),
-            ],
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 1.5,
+            color: isSelected
+                ? (isDark ? Colors.white : Colors.black87)
+                : (isDark ? Colors.white38 : Colors.black38),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildParcelsSection(
-    Color cardColor,
-    Color textColor,
-    Color secondaryTextColor,
-    bool isDark,
-  ) {
+  Widget _buildParcelsSection(bool isDark) {
     return FutureBuilder<List<dynamic>>(
       future: _parcelsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return SkeletonListLoader(
-            itemCount: 5,
-            isDarkMode: isDark,
-            itemHeight: 120,
+          return Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 1,
+                color: isDark ? Colors.white24 : Colors.black12,
+              ),
+            ),
           );
         }
         
@@ -438,11 +446,20 @@ class _ParcelScreenState extends State<ParcelScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                const SizedBox(height: 16),
+                Icon(
+                  Icons.error_outline,
+                  size: 32,
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
+                const SizedBox(height: 24),
                 Text(
-                  'Erreur de chargement',
-                  style: TextStyle(color: secondaryTextColor),
+                  'ERREUR',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 2.0,
+                    color: isDark ? Colors.white24 : Colors.black26,
+                  ),
                 ),
               ],
             ),
@@ -452,61 +469,51 @@ class _ParcelScreenState extends State<ParcelScreen> {
         final parcels = snapshot.data ?? [];
         
         if (parcels.isEmpty) {
-          return SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.8,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.landscape_outlined,
-                      size: 64,
-                      color: _primaryColor.withOpacity(0.3),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Aucune parcelle',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Créez votre première parcelle',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                    if (!widget.readOnly) ...[
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: _showAddParcel,
-                        icon: const Icon(Icons.add, color: Colors.white),
-                        label: const Text(
-                          'Créer une parcelle',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryColor,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          splashFactory: NoSplash.splashFactory,
-                        ),
-                      ),
-                    ],
-                  ],
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.landscape_outlined,
+                  size: 40,
+                  color: isDark ? Colors.white12 : Colors.black12,
                 ),
-              ),
+                const SizedBox(height: 24),
+                Text(
+                  'AUCUNE PARCELLE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 2.0,
+                    color: isDark ? Colors.white24 : Colors.black26,
+                  ),
+                ),
+                if (!widget.readOnly) ...[
+                  const SizedBox(height: 32),
+                  TextButton(
+                    onPressed: _showAddParcel,
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.black87,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                      ),
+                    ),
+                    child: const Text(
+                      'CRÉER UNE PARCELLE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           );
         }
@@ -514,20 +521,15 @@ class _ParcelScreenState extends State<ParcelScreen> {
         return RefreshIndicator(
           onRefresh: _refresh,
           color: _primaryColor,
+          backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             itemCount: parcels.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 16),
+            separatorBuilder: (_, __) => const SizedBox(height: 24),
             itemBuilder: (context, index) {
               final parcel = parcels[index] as Map<String, dynamic>;
-              return _buildParcelCard(
-                parcel,
-                cardColor,
-                textColor,
-                secondaryTextColor,
-                isDark,
-              );
+              return _buildParcelCard(parcel, isDark, index);
             },
           ),
         );
@@ -535,12 +537,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
     );
   }
 
-  Widget _buildPostsSection(
-    Color cardColor,
-    Color textColor,
-    Color secondaryTextColor,
-    bool isDark,
-  ) {
+  Widget _buildPostsSection(bool isDark) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: FarmPostsWidget(
@@ -551,320 +548,248 @@ class _ParcelScreenState extends State<ParcelScreen> {
     );
   }
 
-  Widget _buildParcelCard(
-    Map<String, dynamic> parcel,
-    Color cardColor,
-    Color textColor,
-    Color secondaryTextColor,
-    bool isDark,
-  ) {
-    final Map<String, Map<String, dynamic>> statusConfig = {
-      'En préparation': {
-        'color': const Color(0xFFFFA726),
-        'icon': Icons.construction_outlined,
-      },
-      'Semé': {
-        'color': const Color(0xFF66BB6A),
-        'icon': Icons.grass_outlined,
-      },
-      'En croissance': {
-        'color': const Color(0xFF42A5F5),
-        'icon': Icons.trending_up_outlined,
-      },
-      'Récolté': {
-        'color': const Color(0xFFAB47BC),
-        'icon': Icons.check_circle_outlined,
-      },
-    };
-
-    final status = parcel['status'] ?? 'En préparation';
-    final config = statusConfig[status] ?? statusConfig['En préparation']!;
-    final statusColor = config['color'] as Color;
-    final statusIcon = config['icon'] as IconData;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.white12 : Colors.black12,
+  Future<void> _deleteParcel(int cropId, String cropName) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkBg : Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image avec overlay
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-                child: Container(
-                  height: 180,
-                  width: double.infinity,
-                  color: _primaryColor.withOpacity(0.1),
-                  child: parcel['image_url'] != null &&
-                          parcel['image_url'].toString().isNotEmpty
-                      ? Image.network(
-                          parcel['image_url'] as String,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                        )
-                      : _buildPlaceholder(),
-                ),
-              ),
-              
-              // Gradient overlay
-              Container(
-                height: 180,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.5),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Bouton ajouter photo
-              if (!widget.readOnly)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: IconButton(
-                    onPressed: () => _addParcelPhoto(_toInt(parcel['id']) ?? 0),
-                    icon: const Icon(Icons.add_photo_alternate, color: Colors.white),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.black.withOpacity(0.6),
-                    ),
-                  ),
-                ),
-
-              // Titre et statut
-              Positioned(
-                bottom: 16,
-                left: 16,
-                right: 16,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      parcel['crop_name'] ?? 'Parcelle',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(statusIcon, size: 14, color: Colors.white),
-                          const SizedBox(width: 6),
-                          Text(
-                            status,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        title: Text(
+          'SUPPRIMER LA PARCELLE',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 2.0,
+            color: isDark ? Colors.white : Colors.black87,
           ),
-
-          // Informations
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.calendar_today_outlined,
-                  size: 14,
-                  color: secondaryTextColor,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  parcel['planted_date'] ?? 'Non défini',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: secondaryTextColor,
-                  ),
-                ),
-              ],
+        ),
+        content: Text(
+          'Confirmer la suppression de "$cropName" ? Cette action est irréversible.',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w300,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'ANNULER',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 1.5,
+                color: isDark ? Colors.white70 : Colors.black54,
+              ),
             ),
           ),
-
-          // Actions
-          if (!widget.readOnly)
-            Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              try {
+                final success = await ApiService.deleteCrop(cropId);
+                if (success && mounted) {
+                  _showSnackBar('Parcelle supprimée', isError: false);
+                  _refresh();
+                } else if (mounted) {
+                  _showSnackBar('Erreur de suppression', isError: true);
+                }
+              } catch (e) {
+                if (mounted) {
+                  _showSnackBar('Erreur: $e', isError: true);
+                }
+              }
+            },
+            child: const Text(
+              'SUPPRIMER',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 1.5,
+                color: Colors.red,
               ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                  _buildActionButton(
-                    label: 'Activités',
-                    icon: Icons.timeline,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ActivityScreen(
-                            farmId: widget.farmId,
-                            cropId: _toInt(parcel['id']) ?? 0,
-                            userId: widget.userId,
-                          ),
-                        ),
-                      ).then((_) => _refresh());
-                    },
-                  ),
-                  Container(
-                    width: 1,
-                    height: 40,
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                  _buildActionButton(
-                    label: 'Problèmes',
-                    icon: Icons.warning_outlined,
-                    color: Colors.orange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CropProblemsScreen(
-                            farmId: widget.farmId,
-                            cropId: _toInt(parcel['id']) ?? 0,
-                            userId: widget.userId,
-                            cropName: parcel['crop_name'] as String? ?? 'Culture',
-                            isDarkMode: isDark,
-                          ),
-                        ),
-                      ).then((_) => _refresh());
-                    },
-                  ),
-                  Container(
-                    width: 1,
-                    height: 40,
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                  _buildActionButton(
-                    label: 'Intrants',
-                    icon: Icons.shopping_bag_outlined,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ParcelInputsScreen(farmId: widget.farmId, cropId: _toInt(parcel['id']) ?? 0),
-                        ),
-                      ).then((_) => _refresh());
-                    },
-                  ),
-                  Container(
-                    width: 1,
-                    height: 40,
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                  _buildActionButton(
-                    label: 'Finances',
-                    icon: Icons.account_balance_wallet_outlined,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ParcelFinanceScreen(farmId: widget.farmId),
-                        ),
-                      ).then((_) => _refresh());
-                    },
-                  ),
-                  Container(
-                    width: 1,
-                    height: 40,
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                  _buildActionButton(
-                    label: 'Rappels',
-                    icon: Icons.calendar_month_outlined,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ParcelRemindersScreen(farmId: widget.farmId, cropId: _toInt(parcel['id']) ?? 0),
-                        ),
-                      ).then((_) => _refresh());
-                    },
-                  ),
-                ],
-              ),
-            )),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-    Color? color,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16, color: color ?? _primaryColor),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: color ?? _primaryColor,
-                  ),
-                ),
-              ),
-            ],
+  Widget _buildParcelCard(
+    Map<String, dynamic> parcel,
+    bool isDark,
+    int index,
+  ) {
+    final statusConfig = {
+      'En préparation': const Color(0xFFFFB74D),
+      'Semé': const Color(0xFF81C784),
+      'En croissance': const Color(0xFF64B5F6),
+      'Récolté': const Color(0xFF9575CD),
+    };
+
+    final status = parcel['status'] ?? 'En préparation';
+    final statusColor = statusConfig[status] ?? statusConfig['En préparation']!;
+    final cropName = parcel['crop_name'] ?? 'Parcelle';
+    final plantedDate = parcel['planted_date'] ?? '—';
+    final expectedHarvest = parcel['expected_harvest_date'] ?? '—';
+    final area = parcel['area'] ?? '—';
+    final imageUrl = parcel['image_url'] as String?;
+    final cropId = _toInt(parcel['id']) ?? 0;
+
+    return _ParcelCardWidget(
+      cropId: cropId,
+      cropName: cropName,
+      status: status,
+      statusColor: statusColor,
+      plantedDate: plantedDate,
+      expectedHarvest: expectedHarvest,
+      area: area,
+      imageUrl: imageUrl,
+      index: index,
+      isDark: isDark,
+      readOnly: widget.readOnly,
+      onPhotoAdd: () => _addParcelPhoto(cropId),
+      onDelete: () => _deleteParcel(cropId, cropName),
+      onNavigate: (screen) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
+            .then((_) => _refresh());
+      },
+      farmId: widget.farmId,
+      userId: widget.userId,
+    );
+  }
+
+  Widget _buildPlaceholder(bool isDark) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.landscape_outlined,
+            size: 40,
+            color: isDark ? Colors.white12 : Colors.black12,
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(
+            'AJOUTER UNE PHOTO',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w300,
+              letterSpacing: 1.5,
+              color: isDark ? Colors.white24 : Colors.black26,
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+// Stateful widget for expandable parcel card
+class _ParcelCardWidget extends StatefulWidget {
+  final int cropId;
+  final String cropName;
+  final String status;
+  final Color statusColor;
+  final String plantedDate;
+  final String expectedHarvest;
+  final String area;
+  final String? imageUrl;
+  final int index;
+  final bool isDark;
+  final bool readOnly;
+  final VoidCallback onPhotoAdd;
+  final VoidCallback onDelete;
+  final Function(Widget) onNavigate;
+  final int farmId;
+  final int userId;
+
+  const _ParcelCardWidget({
+    required this.cropId,
+    required this.cropName,
+    required this.status,
+    required this.statusColor,
+    required this.plantedDate,
+    required this.expectedHarvest,
+    required this.area,
+    required this.imageUrl,
+    required this.index,
+    required this.isDark,
+    required this.readOnly,
+    required this.onPhotoAdd,
+    required this.onDelete,
+    required this.onNavigate,
+    required this.farmId,
+    required this.userId,
+  });
+
+  @override
+  State<_ParcelCardWidget> createState() => _ParcelCardWidgetState();
+}
+
+class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProviderStateMixin {
+  bool _isExpanded = false;
+  bool _isActionsExpanded = false;
+  late AnimationController _animationController;
+  late AnimationController _actionsAnimationController;
+  late Animation<double> _expandAnimation;
+  late Animation<double> _actionsExpandAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _expandAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    
+    _actionsAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _actionsExpandAnimation = CurvedAnimation(
+      parent: _actionsAnimationController,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _actionsAnimationController.dispose();
+    super.dispose();
+  }
+
+  void _toggleExpand() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+      if (_isExpanded) {
+        _animationController.forward();
+      } else {
+        _animationController.reverse();
+      }
+    });
+  }
+
+  void _toggleActionsExpand() {
+    setState(() {
+      _isActionsExpanded = !_isActionsExpanded;
+      if (_isActionsExpanded) {
+        _actionsAnimationController.forward();
+      } else {
+        _actionsAnimationController.reverse();
+      }
+    });
   }
 
   Widget _buildPlaceholder() {
@@ -874,19 +799,478 @@ class _ParcelScreenState extends State<ParcelScreen> {
         children: [
           Icon(
             Icons.landscape_outlined,
-            size: 48,
-            color: _primaryColor.withOpacity(0.3),
+            size: 40,
+            color: widget.isDark ? Colors.white12 : Colors.black12,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            'Ajouter une photo',
+            'AJOUTER UNE PHOTO',
             style: TextStyle(
-              fontSize: 13,
-              color: _primaryColor.withOpacity(0.5),
+              fontSize: 9,
+              fontWeight: FontWeight.w300,
+              letterSpacing: 1.5,
+              color: widget.isDark ? Colors.white24 : Colors.black26,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isDelete = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: widget.isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.black.withOpacity(0.05),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: isDelete
+                    ? Colors.red
+                    : (widget.isDark ? Colors.white70 : Colors.black87),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 1.2,
+                    color: isDelete
+                        ? Colors.red
+                        : (widget.isDark ? Colors.white70 : Colors.black87),
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: widget.isDark ? Colors.white24 : Colors.black26,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.isDark ? AppColors.darkBg : Colors.white,
+        border: Border.all(
+          color: widget.isDark
+              ? Colors.white.withOpacity(0.08)
+              : Colors.black.withOpacity(0.08),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image avec overlay
+          Stack(
+            children: [
+              Container(
+                height: 200,
+                width: double.infinity,
+                color: widget.isDark
+                    ? AppColors.darkCardBg
+                    : AppColors.lightCardBg,
+                child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
+                    ? Image.network(
+                        widget.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1,
+                                color: widget.isDark ? Colors.white24 : Colors.black12,
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : _buildPlaceholder(),
+              ),
+
+              // Gradient overlay
+              Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.75),
+                    ],
+                    stops: const [0.5, 1.0],
+                  ),
+                ),
+              ),
+
+              // Numéro de parcelle
+              Positioned(
+                top: 16,
+                left: 16,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '#${widget.index + 1}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 1.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Bouton photo
+              if (!widget.readOnly)
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: widget.onPhotoAdd,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.add_a_photo_outlined,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Titre et statut
+              Positioned(
+                bottom: 20,
+                left: 16,
+                right: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.cropName.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 2.5,
+                        color: Colors.white,
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: widget.statusColor.withOpacity(0.2),
+                        border: Border.all(
+                          color: widget.statusColor.withOpacity(0.6),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        widget.status.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: 1.2,
+                          color: widget.statusColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Section cliquable pour révéler les détails
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _toggleExpand,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: widget.isDark
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.black.withOpacity(0.05),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: widget.isDark ? Colors.white38 : Colors.black38,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'DÉTAILS',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 1.5,
+                        color: widget.isDark ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                    const Spacer(),
+                    AnimatedRotation(
+                      turns: _isExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 20,
+                        color: widget.isDark ? Colors.white38 : Colors.black38,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Détails expansibles avec animation
+          SizeTransition(
+            sizeFactor: _expandAnimation,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: widget.isDark
+                    ? Colors.white.withOpacity(0.02)
+                    : Colors.black.withOpacity(0.02),
+                border: Border(
+                  bottom: BorderSide(
+                    color: widget.isDark
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.black.withOpacity(0.05),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoRow('SEMIS', widget.plantedDate),
+                  const SizedBox(height: 12),
+                  _buildInfoRow('RÉCOLTE', widget.expectedHarvest),
+                  const SizedBox(height: 12),
+                  _buildInfoRow('SURFACE', widget.area),
+                ],
+              ),
+            ),
+          ),
+
+          // Section cliquable pour révéler les actions
+          if (!widget.readOnly)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _toggleActionsExpand,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: widget.isDark
+                            ? Colors.white.withOpacity(0.05)
+                            : Colors.black.withOpacity(0.05),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.grid_view_outlined,
+                        size: 16,
+                        color: widget.isDark ? Colors.white38 : Colors.black38,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'ACTIONS',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: 1.5,
+                          color: widget.isDark ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                      const Spacer(),
+                      AnimatedRotation(
+                        turns: _isActionsExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 300),
+                        child: Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 20,
+                          color: widget.isDark ? Colors.white38 : Colors.black38,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Actions expansibles avec animation
+          if (!widget.readOnly)
+            SizeTransition(
+              sizeFactor: _actionsExpandAnimation,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: widget.isDark
+                      ? Colors.white.withOpacity(0.02)
+                      : Colors.black.withOpacity(0.02),
+                ),
+                child: Column(
+                  children: [
+                    _buildActionButton(
+                      label: 'ACTIVITÉS',
+                      icon: Icons.timeline_outlined,
+                      onTap: () => widget.onNavigate(
+                        ActivityScreen(
+                          farmId: widget.farmId,
+                          cropId: widget.cropId,
+                          userId: widget.userId,
+                        ),
+                      ),
+                    ),
+                    _buildActionButton(
+                      label: 'PROBLÈMES',
+                      icon: Icons.warning_outlined,
+                      onTap: () => widget.onNavigate(
+                        CropProblemsScreen(
+                          farmId: widget.farmId,
+                          cropId: widget.cropId,
+                          userId: widget.userId,
+                          cropName: widget.cropName,
+                          isDarkMode: widget.isDark,
+                        ),
+                      ),
+                    ),
+                    _buildActionButton(
+                      label: 'INTRANTS',
+                      icon: Icons.inventory_2_outlined,
+                      onTap: () => widget.onNavigate(
+                        ParcelInputsScreen(
+                          farmId: widget.farmId,
+                          cropId: widget.cropId,
+                        ),
+                      ),
+                    ),
+                    _buildActionButton(
+                      label: 'FINANCES',
+                      icon: Icons.analytics_outlined,
+                      onTap: () => widget.onNavigate(
+                        ParcelFinanceScreen(
+                          farmId: widget.farmId,
+                        ),
+                      ),
+                    ),
+                    _buildActionButton(
+                      label: 'RAPPELS',
+                      icon: Icons.notifications_outlined,
+                      onTap: () => widget.onNavigate(
+                        ParcelRemindersScreen(
+                          farmId: widget.farmId,
+                          cropId: widget.cropId,
+                        ),
+                      ),
+                    ),
+                    _buildActionButton(
+                      label: 'SUPPRIMER',
+                      icon: Icons.delete_outline,
+                      onTap: widget.onDelete,
+                      isDelete: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 1.5,
+            color: widget.isDark ? Colors.white38 : Colors.black38,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w300,
+            letterSpacing: 0.5,
+            color: widget.isDark ? Colors.white70 : Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 }

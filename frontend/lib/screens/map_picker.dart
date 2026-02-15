@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert' show jsonDecode;
 
 class MapPickerScreen extends StatefulWidget {
   const MapPickerScreen({super.key});
@@ -13,9 +15,18 @@ class MapPickerScreen extends StatefulWidget {
 
 class _MapPickerScreenState extends State<MapPickerScreen> {
   final MapController _mapController = MapController();
+  final TextEditingController _searchController = TextEditingController();
+  
   LatLng? _selectedLocation;
   bool _isLoading = false;
+  bool _isSearching = false;
   String? _locationName;
+  
+  // Résultats de recherche
+  List<Map<String, dynamic>> _searchResults = [];
+  
+  // Débounce pour la recherche
+  Future<void>? _searchFuture;
 
   @override
   void initState() {
@@ -103,6 +114,74 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     }
   }
 
+  /// Recherche des localités via Nominatim OpenStreetMap
+  Future<void> _searchLocalities(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() => _searchResults = []);
+      return;
+    }
+
+    setState(() => _isSearching = true);
+    
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/search'
+        '?q=$query'
+        '&format=json'
+        '&limit=8'
+        '&countrycodes=sn' // Limiter au Sénégal
+      );
+
+      final response = await http.get(url).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => http.Response('{"error": "timeout"}', 500),
+      );
+
+      if (response.statusCode == 200) {
+        final results = (jsonDecode(response.body) as List<dynamic>)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+
+        if (mounted) {
+          setState(() => _searchResults = results);
+        }
+      } else {
+        if (mounted) {
+          setState(() => _searchResults = []);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error searching localities: $e');
+      if (mounted) {
+        setState(() => _searchResults = []);
+      }
+    } finally {
+      if (mounted) setState(() => _isSearching = false);
+    }
+  }
+
+  /// Sélectionner une localité depuis les résultats
+  void _selectResultLocation(Map<String, dynamic> result) {
+    try {
+      final lat = double.parse(result['lat'].toString());
+      final lng = double.parse(result['lon'].toString());
+      final location = LatLng(lat, lng);
+      final displayName = result['display_name'] ?? 'Localisation sélectionnée';
+
+      setState(() {
+        _selectedLocation = location;
+        _locationName = displayName;
+        _searchResults = [];
+        _searchController.clear();
+      });
+
+      // Déplacer la carte vers cette localisation
+      _mapController.move(location, 13.0);
+    } catch (e) {
+      debugPrint('Error selecting location: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -179,6 +258,106 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
               Icons.add_circle_outline,
               size: 48,
               color: AppColors.primary.withAlpha((0.5 * 255).toInt()),
+            ),
+          ),
+          
+          // SEARCH BOX EN HAUT
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: Column(
+              children: [
+                // Champ de recherche
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha((0.15 * 255).toInt()),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      // Debounce la recherche
+                      _searchFuture?.ignore();
+                      _searchFuture = Future.delayed(
+                        const Duration(milliseconds: 500),
+                        () => _searchLocalities(value),
+                      );
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher une localité...',
+                      hintStyle: TextStyle(color: textColor.withAlpha((0.5 * 255).toInt())),
+                      prefixIcon: Icon(Icons.location_on_outlined, color: AppColors.primary),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () {
+                                _searchController.clear();
+                                setState(() => _searchResults = []);
+                              },
+                              child: Icon(Icons.close, color: textColor.withAlpha((0.7 * 255).toInt())),
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    style: TextStyle(color: textColor),
+                  ),
+                ),
+                
+                // Résultats de recherche
+                if (_searchResults.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha((0.15 * 255).toInt()),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: _searchResults.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        color: isDark ? Colors.white.withAlpha((0.1 * 255).toInt()) : Colors.black.withAlpha((0.1 * 255).toInt()),
+                      ),
+                      itemBuilder: (_, idx) {
+                        final result = _searchResults[idx];
+                        final displayName = result['display_name'] ?? 'Localité inconnue';
+                        final type = result['type'] ?? '';
+                        
+                        return ListTile(
+                          dense: true,
+                          leading: Icon(Icons.location_on, color: AppColors.primary, size: 20),
+                          title: Text(
+                            displayName.length > 60 ? '${displayName.substring(0, 60)}...' : displayName,
+                            style: TextStyle(fontSize: 12, color: textColor),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            type,
+                            style: TextStyle(fontSize: 10, color: textColor.withAlpha((0.6 * 255).toInt())),
+                          ),
+                          onTap: () => _selectResultLocation(result),
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
           // Info box en bas avec coordonnées
@@ -277,6 +456,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   @override
   void dispose() {
     _mapController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 }

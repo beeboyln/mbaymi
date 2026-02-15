@@ -435,7 +435,6 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => Container(
         decoration: BoxDecoration(
           color: _isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
@@ -447,7 +446,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 24),
@@ -455,7 +453,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Nouvelle action',
                 style: TextStyle(
                   fontSize: 22,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w300,
                   color: _isDarkMode ? Colors.white : AppColors.primary,
                   letterSpacing: -0.5,
                 ),

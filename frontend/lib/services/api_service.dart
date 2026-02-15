@@ -421,9 +421,25 @@ class ApiService {
 
   static Future<void> deleteFarm(int farmId) async {
     try {
-      final response = await http.delete(Uri.parse('$baseUrl/farms/$farmId'));
-      if (response.statusCode != 200) {
-        throw Exception('Failed to delete farm: ${response.body}');
+      final token = AuthService.currentSession?.accessToken;
+      final url = '$baseUrl/farms/$farmId';
+
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: token != null
+            ? {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              }
+            : {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 401) {
+        await _handleUnauthorized((headers) async {
+          return await http.delete(Uri.parse(url), headers: headers);
+        });
+      } else if (response.statusCode != 200) {
+        throw Exception('Failed to delete farm: ${response.statusCode} ${response.body}');
       }
     } catch (e) {
       throw Exception('Error deleting farm: $e');
@@ -1376,6 +1392,25 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error deleting livestock: $e');
+    }
+  }
+
+  // Get livestock - supports both farmId and userId (livestock is user-level)
+  static Future<List<dynamic>> getLivestock({
+    int? farmId,
+    int? userId,
+  }) async {
+    try {
+      // If userId is provided, use it; otherwise use the current user's ID
+      final effectiveUserId = userId ?? (AuthService.currentSession?.userId ?? 0);
+      
+      if (effectiveUserId == 0) {
+        return [];
+      }
+
+      return getUserLivestock(effectiveUserId);
+    } catch (e) {
+      return [];
     }
   }
 
