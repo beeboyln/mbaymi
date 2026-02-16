@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mbaymi/services/api_service.dart';
@@ -20,171 +21,504 @@ class MarketTab extends StatefulWidget {
 }
 
 class _MarketTabState extends State<MarketTab> {
-  late Future<List<dynamic>> _salesFuture;
-  late Future<List<dynamic>> _mySalesFuture;
-  late Future<List<MarketPrice>> _marketPricesFuture;
   String _searchQuery = '';
   String _selectedCategory = 'Tous';
   final int _userId = AuthService.currentSession?.userId ?? 0;
   bool _showMyAds = true;
   bool _showPrices = false;
   
-  final List<String> _categories = ['Tous', 'Cultures', 'Bétail', 'Légumes', 'Fruits', 'Grains'];
+  // ✅ STATIC PERSISTENT CACHE - survives widget rebuilds and navigation
+  static final Map<String, Future<List<dynamic>>> _globalSalesCache = {};
+  static final Map<String, Future<List<MarketPrice>>> _globalPricesCache = {};
+  
+  final List<String> _categories = [
+    'Tous',
+    'Cultures',
+    'Bétail',
+    'Légumes',
+    'Fruits',
+    'Grains'
+  ];
+  
   final TextEditingController _searchController = TextEditingController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // Data is loaded via getters - no need for explicit _loadData()
   }
 
-  void _loadData() {
-    _salesFuture = ApiService.getAllSales().catchError((_) => <dynamic>[]);
-    _marketPricesFuture = ApiService.getMarketPrices().catchError((_) => <MarketPrice>[]);
-    if (_userId > 0) {
-      _mySalesFuture = ApiService.getSalesByUser(_userId).catchError((_) => <dynamic>[]);
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+  
+  /// Get all sales with persistent caching
+  Future<List<dynamic>> _getSalesCached() {
+    const cacheKey = 'sales_all';
+    if (!_globalSalesCache.containsKey(cacheKey)) {
+      _globalSalesCache[cacheKey] = ApiService.getAllSales().catchError((_) => <dynamic>[]);
     }
+    return _globalSalesCache[cacheKey]!;
+  }
+  
+  /// Get my sales with persistent caching
+  Future<List<dynamic>> _getMyCliSalesCached() {
+    if (_userId <= 0) return Future.value([]);
+    final cacheKey = 'sales_user_$_userId';
+    if (!_globalSalesCache.containsKey(cacheKey)) {
+      _globalSalesCache[cacheKey] = ApiService.getSalesByUser(_userId).catchError((_) => <dynamic>[]);
+    }
+    return _globalSalesCache[cacheKey]!;
+  }
+  
+  /// Get market prices with persistent caching
+  Future<List<MarketPrice>> _getMarketPricesCached() {
+    const cacheKey = 'prices_market';
+    if (!_globalPricesCache.containsKey(cacheKey)) {
+      _globalPricesCache[cacheKey] = ApiService.getMarketPrices().catchError((_) => <MarketPrice>[]);
+    }
+    return _globalPricesCache[cacheKey]!;
   }
 
   Future<void> _refreshData() async {
-    setState(() => _loadData());
+    HapticFeedback.mediumImpact();
+    // Clear all caches for refresh
+    _globalSalesCache.remove('sales_all');
+    _globalSalesCache.remove('sales_user_$_userId');
+    _globalPricesCache.remove('prices_market');
+    _searchController.clear();
+    _searchQuery = '';
+    if (mounted) {
+      setState(() {});
+    }
+    // Reload all data
     await Future.wait([
-      _salesFuture,
-      _marketPricesFuture,
-      if (_userId > 0) _mySalesFuture,
+      _getSalesCached(),
+      _getMarketPricesCached(),
+      if (_userId > 0) _getMyCliSalesCached(),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+    final bgColor = AppColors.getBgColor(isDark);
+    final textColor = AppColors.getTextColor(isDark);
+    final secondaryTextColor = AppColors.getSecondaryTextColor(isDark);
     
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.socialDark : AppColors.lightBg,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateSaleScreen()))
-            .then((r) => r == true ? _refreshData() : null),
-        mini: true,
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add_rounded, size: 20),
+      key: _scaffoldKey,
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: bgColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.menu, color: textColor, size: 24),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
+        title: Text(
+          'MARCHÉ',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 2.5,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add, color: textColor, size: 24),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CreateSaleScreen()),
+              ).then((r) => r == true ? _refreshData() : null);
+            },
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 0.5,
+            color: AppColors.getBorderColor(isDark),
+          ),
+        ),
       ),
+      drawer: _buildDrawer(isDark, textColor, secondaryTextColor),
       body: RefreshIndicator(
         onRefresh: _refreshData,
         color: AppColors.primary,
+        backgroundColor: AppColors.getCardBgColor(isDark),
         child: CustomScrollView(
           slivers: [
-            _buildHeader(isDark),
-            _buildSearchBar(isDark),
-            _buildCategoryFilters(isDark),
-            if (_userId > 0) _buildMyAdsHeader(isDark),
-            if (_userId > 0 && _showMyAds) _buildMyAdsGrid(),
-            _buildMarketPricesHeader(isDark),
-            if (_showPrices) _buildMarketPrices(),
-            _buildRecentOffersHeader(isDark),
+            _buildSearchBar(isDark, textColor, secondaryTextColor),
+            
+            if (_userId > 0) ...[
+              _buildMyAdsHeader(isDark, textColor, secondaryTextColor),
+              if (_showMyAds) _buildMyAdsGrid(isDark),
+            ],
+            
+            _buildRecentOffersHeader(isDark, textColor, secondaryTextColor),
             _buildOffersGrid(isDark),
+            
+            // Bottom padding
+            const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
           ],
         ),
       ),
     );
   }
-
-  // Header optimisé
-  SliverAppBar _buildHeader(bool isDark) {
-    return SliverAppBar(
-      automaticallyImplyLeading: false,
-      expandedHeight: 120,
-      collapsedHeight: 80,
-      backgroundColor: isDark ? AppTheme.socialDark : AppColors.lightBg,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
+  
+  Widget _buildDrawer(bool isDark, Color textColor, Color secondaryTextColor) {
+    final bgColor = AppColors.getBgColor(isDark);
+    final borderColor = AppColors.getBorderColor(isDark);
+    
+    return Drawer(
+      backgroundColor: bgColor,
+      width: 280,
+      child: SafeArea(
+        child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Marché', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w300, color: AppColors.primary)),
-                  IconButton(onPressed: _refreshData, icon: Icon(Icons.refresh_rounded, color: isDark ? Colors.grey.shade600 : Colors.grey.shade400)),
-                ],
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.shopping_bag_outlined,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'FILTRES',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 2,
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Text('Produits agricoles', style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade500 : Colors.grey.shade600)),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Divider(
+                  color: borderColor,
+                  thickness: 0.5,
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Section CATÉGORIES
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text(
+                  'CATÉGORIES',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 2,
+                    color: secondaryTextColor,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              ..._categories.map((cat) => _buildDrawerCategoryItem(
+                cat,
+                _selectedCategory == cat,
+                isDark,
+                textColor,
+                () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _selectedCategory = cat);
+                  Navigator.pop(context);
+                },
+              )),
+              
+              const SizedBox(height: 16),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Divider(
+                  color: borderColor,
+                  thickness: 0.5,
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Section PRIX DU MARCHÉ
+              InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _showPrices = !_showPrices);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'PRIX DU MARCHÉ',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 2,
+                          color: secondaryTextColor,
+                        ),
+                      ),
+                      Icon(
+                        _showPrices ? Icons.expand_less : Icons.expand_more,
+                        color: textColor,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              if (_showPrices) ...[
+                const SizedBox(height: 8),
+                _buildDrawerMarketPrices(isDark, textColor, secondaryTextColor),
+              ],
+              
+              const SizedBox(height: 24),
             ],
           ),
         ),
       ),
     );
   }
-
-  SliverPadding _buildSearchBar(bool isDark) {
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      sliver: SliverToBoxAdapter(
-        child: Container(
-          height: 45,
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-            borderRadius: BorderRadius.circular(25),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+  
+  Widget _buildDrawerCategoryItem(
+    String category,
+    bool isSelected,
+    bool isDark,
+    Color textColor,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: isSelected
+              ? Border(
+                  left: BorderSide(
+                    color: AppColors.primary,
+                    width: 3,
+                  ),
+                )
+              : null,
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.08)
+              : Colors.transparent,
+        ),
+        child: Text(
+          category.toUpperCase(),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+            letterSpacing: 1.5,
+            color: isSelected ? AppColors.primary : textColor,
           ),
-          child: TextField(
-            controller: _searchController,
-            onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-            decoration: InputDecoration(
-              hintText: 'Rechercher...',
-              prefixIcon: Icon(Icons.search_rounded, size: 20, color: isDark ? Colors.grey.shade500 : Colors.grey.shade400),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildDrawerMarketPrices(bool isDark, Color textColor, Color secondaryTextColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: FutureBuilder<List<MarketPrice>>(
+        future: _getMarketPricesCached(),
+        builder: (_, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  ),
+                ),
+              ),
+            );
+          }
+          
+          if (!snap.hasData || snap.data!.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Aucun prix disponible',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: secondaryTextColor,
+                  letterSpacing: 0.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+          
+          return Column(
+            children: snap.data!.map((price) => 
+              _buildDrawerPriceItem(price, isDark, textColor, secondaryTextColor)
+            ).toList(),
+          );
+        },
+      ),
+    );
+  }
+  
+  Widget _buildDrawerPriceItem(
+    MarketPrice price,
+    bool isDark,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
+    final borderColor = AppColors.getBorderColor(isDark);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.eco_outlined,
+            color: AppColors.primary,
+            size: 16,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  price.productName,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                    color: textColor,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  price.region,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: secondaryTextColor,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  SliverPadding _buildCategoryFilters(bool isDark) {
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-      sliver: SliverToBoxAdapter(
-        child: SizedBox(
-          height: 35,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _categories.length,
-            itemBuilder: (ctx, i) {
-              final cat = _categories[i];
-              final sel = _selectedCategory == cat;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedCategory = sel ? 'Tous' : cat),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: sel ? AppColors.primary : (isDark ? const Color(0xFF1A1A1A) : Colors.white),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: sel ? Colors.transparent : (isDark ? Colors.grey.shade800 : Colors.grey.shade200)),
-                  ),
-                  child: Text(cat, style: TextStyle(fontSize: 13, color: sel ? Colors.white : (isDark ? Colors.grey.shade400 : Colors.grey.shade600))),
-                ),
-              );
-            },
+          Text(
+            '${price.pricePerKg.toStringAsFixed(0)}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+              letterSpacing: 0.3,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  SliverToBoxAdapter _buildMyAdsHeader(bool isDark) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  SliverPadding _buildSearchBar(bool isDark, Color textColor, Color secondaryTextColor) {
+    final borderColor = AppColors.getBorderColor(isDark);
+    
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+      sliver: SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Mes annonces', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w300, color: isDark ? Colors.white : const Color(0xFF2C2416))),
-            IconButton(
-              onPressed: () => setState(() => _showMyAds = !_showMyAds),
-              icon: Icon(_showMyAds ? Icons.expand_less : Icons.expand_more, color: AppColors.primary, size: 20),
+            Text(
+              'RECHERCHER',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 2,
+                color: secondaryTextColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _searchController,
+              onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+              style: TextStyle(
+                color: textColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 0.3,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Nom du produit...',
+                hintStyle: TextStyle(
+                  color: secondaryTextColor.withOpacity(0.5),
+                  letterSpacing: 0.3,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: secondaryTextColor,
+                  size: 20,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: borderColor, width: 1),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: isDark 
+                        ? AppColors.primary.withOpacity(0.5)
+                        : AppColors.primary,
+                    width: 1.5,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -192,84 +526,127 @@ class _MarketTabState extends State<MarketTab> {
     );
   }
 
-  SliverPadding _buildMyAdsGrid() {
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      sliver: FutureBuilder<List<dynamic>>(
-        future: _mySalesFuture,
-        builder: (_, snap) {
-          if (!snap.hasData || snap.data!.isEmpty) {
-            return SliverToBoxAdapter(child: _buildEmptyState('Aucune annonce', Icons.add_photo_alternate_outlined));
-          }
-          return SliverGrid(
-            delegate: SliverChildBuilderDelegate((ctx, i) => _buildSaleCard(snap.data![i], true),
-                childCount: snap.data!.length),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.7),
-          );
-        },
-      ),
-    );
-  }
-
-  SliverToBoxAdapter _buildMarketPricesHeader(bool isDark) {
+  SliverToBoxAdapter _buildMyAdsHeader(bool isDark, Color textColor, Color secondaryTextColor) {
     return SliverToBoxAdapter(
-      child: GestureDetector(
-        onTap: () => setState(() => _showPrices = !_showPrices),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Prix du marché', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w300, color: isDark ? Colors.white : const Color(0xFF2C2416))),
-              Icon(_showPrices ? Icons.expand_less : Icons.expand_more, color: isDark ? Colors.white70 : Colors.grey.shade700),
-            ],
-          ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 16, 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'MES ANNONCES',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 2,
+                color: textColor,
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                setState(() => _showMyAds = !_showMyAds);
+              },
+              icon: Icon(
+                _showMyAds ? Icons.expand_less : Icons.expand_more,
+                color: textColor,
+                size: 20,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  SliverPadding _buildMarketPrices() {
+  SliverPadding _buildMyAdsGrid(bool isDark) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-      sliver: FutureBuilder<List<MarketPrice>>(
-        future: _marketPricesFuture,
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      sliver: FutureBuilder<List<dynamic>>(
+        future: _getMyCliSalesCached(),
         builder: (_, snap) {
           if (!snap.hasData || snap.data!.isEmpty) {
-            return SliverToBoxAdapter(child: _buildEmptyState('Aucun prix', Icons.trending_up_outlined));
+            return SliverToBoxAdapter(
+              child: _buildEmptyState(
+                'Aucune annonce',
+                'Créez votre première annonce',
+                Icons.add_photo_alternate_outlined,
+                isDark,
+              ),
+            );
           }
-          return SliverList(
-            delegate: SliverChildBuilderDelegate((ctx, i) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildPriceCard(snap.data![i]),
-            ), childCount: snap.data!.length),
+          return SliverGrid(
+            delegate: SliverChildBuilderDelegate(
+              (ctx, i) => _buildSaleCard(snap.data![i], true, isDark),
+              childCount: snap.data!.length,
+            ),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 0.7,
+            ),
           );
         },
       ),
     );
   }
 
-  SliverToBoxAdapter _buildRecentOffersHeader(bool isDark) {
+  SliverToBoxAdapter _buildRecentOffersHeader(bool isDark, Color textColor, Color secondaryTextColor) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Text('Offres récentes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w300, color: isDark ? Colors.white : const Color(0xFF2C2416))),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'TOUTES LES OFFRES',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 2,
+                color: textColor,
+              ),
+            ),
+            if (_selectedCategory != 'Tous')
+              InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _selectedCategory = 'Tous');
+                },
+                child: Text(
+                  'Réinitialiser',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 1,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   SliverPadding _buildOffersGrid(bool isDark) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 40),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
       sliver: FutureBuilder<List<dynamic>>(
-        future: _salesFuture,
+        future: _getSalesCached(),
         builder: (_, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return SliverToBoxAdapter(child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: SkeletonGridLoader(crossAxisCount: 2, itemCount: 4, isDarkMode: isDark),
-            ));
+            return SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: SkeletonGridLoader(
+                  crossAxisCount: 2,
+                  itemCount: 4,
+                  isDarkMode: isDark,
+                ),
+              ),
+            );
           }
           
           final sales = snap.data ?? [];
@@ -281,209 +658,311 @@ class _MarketTabState extends State<MarketTab> {
           }).toList();
 
           if (filtered.isEmpty) {
-            return SliverToBoxAdapter(child: _buildEmptyState('Aucun résultat', Icons.search_off_rounded));
+            return SliverToBoxAdapter(
+              child: _buildEmptyState(
+                'Aucun résultat',
+                'Essayez d\'autres filtres',
+                Icons.search_off,
+                isDark,
+              ),
+            );
           }
 
           return SliverGrid(
-            delegate: SliverChildBuilderDelegate((ctx, i) => _buildSaleCard(filtered[i], false),
-                childCount: filtered.length),
+            delegate: SliverChildBuilderDelegate(
+              (ctx, i) => _buildSaleCard(filtered[i], false, isDark),
+              childCount: filtered.length,
+            ),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.7),
+              crossAxisCount: 2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 0.7,
+            ),
           );
         },
       ),
     );
   }
 
-  // Carte de vente unifiée avec images améliorées
-  Widget _buildSaleCard(dynamic sale, bool isMyAd) {
+  Widget _buildSaleCard(dynamic sale, bool isMyAd, bool isDark) {
+    final textColor = AppColors.getTextColor(isDark);
+    final borderColor = AppColors.getBorderColor(isDark);
+    
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SaleDetailScreen(sale: sale))),
-      child: Stack(
-        children: [
-          // Image container avec héritage et ratio fixe
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: AspectRatio(
-              aspectRatio: 0.7,
-              child: Container(
-                color: Colors.grey.shade900,
-                child: _buildProductImage(sale['image_url']),
-              ),
-            ),
-          ),
-          // Overlay gradient pour lisibilité
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 70,
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
-                ),
-              ),
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => SaleDetailScreen(sale: sale)),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: borderColor, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            Expanded(
+              flex: 7,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Text(sale['product_name'] ?? 'Produit',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(Icons.place, size: 8, color: Colors.white70),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(sale['delivery_location'] ?? '',
-                            style: const TextStyle(color: Colors.white70, fontSize: 9),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ),
-                      Text('${sale['price_per_unit']} ${sale['currency']}',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11)),
-                    ],
-                  ),
+                  _buildProductImage(sale['image_url'], isDark),
+                  if (isMyAd) _buildEditButtons(sale['id'], isDark),
                 ],
               ),
             ),
-          ),
-          // Boutons d'édition pour mes annonces
-          if (isMyAd) _buildEditButtons(sale['id']),
-        ],
-      ),
-    );
-  }
-
-  // Image optimisée avec CachedNetworkImage
-  Widget _buildProductImage(String? url) {
-    return CachedNetworkImage(
-      imageUrl: url ?? '',
-      fit: BoxFit.cover,
-      memCacheHeight: 200, // Cache optimisé
-      memCacheWidth: 150,
-      placeholder: (_, __) => Container(
-        color: Colors.grey.shade800,
-        child: const Center(child: Icon(Icons.image, color: Colors.white54, size: 30)),
-      ),
-      errorWidget: (_, __, ___) => Container(
-        color: Colors.grey.shade800,
-        child: const Center(child: Icon(Icons.broken_image, color: Colors.white54, size: 30)),
-      ),
-    );
-  }
-
-  Widget _buildEditButtons(int saleId) {
-    return Positioned(
-      top: 8,
-      right: 8,
-      child: Row(
-        children: [
-          _buildIconButton(Icons.edit, AppColors.primary, () async {
-            final r = await Navigator.push(context, MaterialPageRoute(builder: (_) => CreateSaleScreen(saleId: saleId)));
-            if (r == true) _refreshData();
-          }),
-          const SizedBox(width: 6),
-          _buildIconButton(Icons.delete, Colors.red, () => _showDeleteDialog(saleId)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIconButton(IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        child: Icon(icon, size: 14, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildPriceCard(MarketPrice price) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1A1A1A) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.eco, color: AppColors.primary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(price.productName, style: const TextStyle(fontWeight: FontWeight.w500)),
-                Text(price.region, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-              ],
+            
+            // Info
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      (sale['product_name'] ?? 'Produit').toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.5,
+                        color: textColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 12,
+                                color: AppColors.getSecondaryTextColor(isDark),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  sale['delivery_location'] ?? '',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.getSecondaryTextColor(isDark),
+                                    letterSpacing: 0.3,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '${sale['price_per_unit']} ${sale['currency']}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          Column(
-            children: [
-              Text('${price.pricePerKg.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
-              Text('${price.currency}/kg', style: TextStyle(fontSize: 9, color: Colors.grey.shade500)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String msg, IconData icon) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      height: 120,
-      margin: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: isDark ? Colors.grey.shade700 : Colors.grey.shade300),
-            const SizedBox(height: 8),
-            Text(msg, style: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey.shade400)),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildProductImage(String? url, bool isDark) {
+    return CachedNetworkImage(
+      imageUrl: url ?? '',
+      fit: BoxFit.cover,
+      memCacheHeight: 400,
+      memCacheWidth: 300,
+      placeholder: (_, __) => Container(
+        color: AppColors.getCardBgColor(isDark),
+        child: Icon(
+          Icons.image_outlined,
+          color: AppColors.getSecondaryTextColor(isDark),
+          size: 40,
+        ),
+      ),
+      errorWidget: (_, __, ___) => Container(
+        color: AppColors.getCardBgColor(isDark),
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: AppColors.getSecondaryTextColor(isDark),
+          size: 40,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditButtons(int saleId, bool isDark) {
+    return Positioned(
+      top: 8,
+      right: 8,
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () async {
+              HapticFeedback.lightImpact();
+              final r = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CreateSaleScreen(saleId: saleId),
+                ),
+              );
+              if (r == true) _refreshData();
+            },
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              color: Colors.black.withOpacity(0.7),
+              child: const Icon(Icons.edit_outlined, size: 16, color: Colors.white),
+            ),
+          ),
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              _showDeleteDialog(saleId);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              color: Colors.black.withOpacity(0.7),
+              child: const Icon(Icons.delete_outline, size: 16, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String title, String subtitle, IconData icon, bool isDark) {
+    final textColor = AppColors.getTextColor(isDark);
+    final secondaryTextColor = AppColors.getSecondaryTextColor(isDark);
+    final borderColor = AppColors.getBorderColor(isDark);
+    
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 48,
+            color: secondaryTextColor.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 2,
+              color: textColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 13,
+              color: secondaryTextColor,
+              letterSpacing: 0.3,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showDeleteDialog(int saleId) {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final bgColor = AppColors.getBgColor(isDark);
+    final textColor = AppColors.getTextColor(isDark);
+    
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer'),
-        content: const Text('Confirmer la suppression?'),
+        backgroundColor: bgColor,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        title: Text(
+          'SUPPRIMER L\'ANNONCE',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 2,
+          ),
+        ),
+        content: Text(
+          'Voulez-vous vraiment supprimer cette annonce ?',
+          style: TextStyle(
+            color: AppColors.getSecondaryTextColor(isDark),
+            fontSize: 14,
+            letterSpacing: 0.3,
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'ANNULER',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 11,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
           TextButton(
             onPressed: () async {
+              HapticFeedback.mediumImpact();
               Navigator.pop(ctx);
               await ApiService.deleteSale(saleId);
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Annonce supprimée')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text(
+                      'Annonce supprimée',
+                      style: TextStyle(letterSpacing: 0.5),
+                    ),
+                    backgroundColor: AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                );
                 _refreshData();
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            child: const Text(
+              'SUPPRIMER',
+              style: TextStyle(
+                color: Color(0xFFD32F2F),
+                fontSize: 11,
+                letterSpacing: 1.5,
+              ),
+            ),
           ),
         ],
       ),

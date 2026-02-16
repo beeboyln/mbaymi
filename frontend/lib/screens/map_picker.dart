@@ -98,13 +98,12 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
         _selectedLocation = widget.initialLocation;
         _locationName = widget.initialAddress ?? await _reverseGeocode(widget.initialLocation!);
         _mapController.move(_selectedLocation!, widget.initialZoom);
-      } else if (widget.enableCurrentLocation) {
-        final position = await _getCurrentLocation();
-        if (position != null && mounted) {
-          _selectedLocation = LatLng(position.latitude, position.longitude);
-          _locationName = await _reverseGeocode(_selectedLocation!);
-          _mapController.move(_selectedLocation!, widget.initialZoom);
-        }
+      } else {
+        // Localisation par défaut sans demander de permission automatiquement
+        // L'utilisateur cliquera sur le bouton "Ma position" s'il veut
+        _selectedLocation = const LatLng(14.6928, -17.0467); // Dakar par défaut
+        _locationName = 'Dakar, Sénégal';
+        _mapController.move(_selectedLocation!, widget.initialZoom);
       }
     } catch (e) {
       debugPrint('Error initializing map: $e');
@@ -139,11 +138,13 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
     return null;
   }
 
-  Future<Position?> _getCurrentLocation() async {
+  Future<Position?> _getCurrentLocation({bool showDialogs = true}) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _showLocationServiceDialog();
+        if (showDialogs) {
+          _showLocationServiceDialog();
+        }
         return null;
       }
 
@@ -151,13 +152,17 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _showPermissionDeniedDialog();
+          if (showDialogs) {
+            _showPermissionDeniedDialog();
+          }
           return null;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _showPermissionPermanentlyDeniedDialog();
+        if (showDialogs) {
+          _showPermissionPermanentlyDeniedDialog();
+        }
         return null;
       }
 
@@ -406,7 +411,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
   Future<void> _recenterOnUserLocation() async {
     setState(() => _isLoading = true);
     try {
-      final position = await _getCurrentLocation();
+      final position = await _getCurrentLocation(showDialogs: true);
       if (position != null && mounted) {
         final location = LatLng(position.latitude, position.longitude);
         final address = await _reverseGeocode(location);

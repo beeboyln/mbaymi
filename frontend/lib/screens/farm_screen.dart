@@ -107,6 +107,24 @@ class _FarmTabState extends State<FarmTab> {
     return _globalCropsCache[farmId]!;
   }
 
+  /// Sort farms by creation date (newest first)
+  List<dynamic> _sortFarmsByDate(List<dynamic> farms) {
+    final sorted = List<dynamic>.from(farms);
+    sorted.sort((a, b) {
+      final dateA = a['created_at'] as String?;
+      final dateB = b['created_at'] as String?;
+      if (dateA == null || dateB == null) return 0;
+      try {
+        final parsedA = DateTime.parse(dateA);
+        final parsedB = DateTime.parse(dateB);
+        return parsedB.compareTo(parsedA); // Descending (newest first)
+      } catch (e) {
+        return 0;
+      }
+    });
+    return sorted;
+  }
+
   Future<Map<String, dynamic>> _getFirstFarmData() async {
     try {
       final farms = await _farmsFuture;
@@ -114,7 +132,7 @@ class _FarmTabState extends State<FarmTab> {
         final firstFarm = farms.first as Map<String, dynamic>;
         return {
           'id': (firstFarm['id'] as int?) ?? 0,
-          'name': (firstFarm['farm_name'] as String?) ?? 'Ferme',
+          'name': (firstFarm['name'] as String?) ?? 'Ferme',
         };
       }
       return {'id': 0, 'name': 'Ferme'};
@@ -887,6 +905,7 @@ class _FarmTabState extends State<FarmTab> {
   }
 
   Widget _buildFarmsGrid(List<dynamic> farms, bool isDarkMode) {
+    final sortedFarms = _sortFarmsByDate(farms);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: GridView.builder(
@@ -898,9 +917,9 @@ class _FarmTabState extends State<FarmTab> {
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
-        itemCount: farms.length,
+        itemCount: sortedFarms.length,
         itemBuilder: (context, index) {
-          final farm = farms[index] as Map<String, dynamic>;
+          final farm = sortedFarms[index] as Map<String, dynamic>;
           return _buildFarmCard(farm, isDarkMode);
         },
       ),
@@ -908,7 +927,7 @@ class _FarmTabState extends State<FarmTab> {
   }
 
   Widget _buildFarmCard(Map<String, dynamic> farm, bool isDarkMode) {
-    final farmName = farm['farm_name'] ?? 'Ferme';
+    final farmName = farm['name'] ?? 'Ferme';
     final farmImage = farm['image_url'] as String?;
     final farmId = farm['id'] as int?;
     final location = farm['location'] ?? '';
@@ -1376,7 +1395,10 @@ class _FarmTabState extends State<FarmTab> {
                             return name.contains(query) || location.contains(query);
                           }).toList();
 
-                    if (filtered.isEmpty) {
+                    // Sort by date (newest first)
+                    final sortedFiltered = _sortFarmsByDate(filtered);
+
+                    if (sortedFiltered.isEmpty) {
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 80),
                         child: Center(
@@ -1406,10 +1428,10 @@ class _FarmTabState extends State<FarmTab> {
                     return ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: filtered.length,
+                      itemCount: sortedFiltered.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 16),
                       itemBuilder: (context, index) => _buildFarmCard(
-                        filtered[index] as Map<String, dynamic>,
+                        sortedFiltered[index] as Map<String, dynamic>,
                         isDarkMode,
                       ),
                     );

@@ -457,6 +457,29 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 24),
               _buildActionButton(
+                icon: Icons.agriculture,
+                label: 'Ajouter une ferme',
+                color: AppColors.primary,
+                onTap: () async {
+                  final rootContext = this.context;
+                  Navigator.pop(context);
+                  HapticFeedback.lightImpact();
+                  final result = await Navigator.push(
+                    rootContext,
+                    MaterialPageRoute(builder: (_) => CreateFarmScreen(userId: userId)),
+                  );
+                  if (result != null) {
+                    if (!mounted) return;
+                    setState(() {
+                      _screens[1] = FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId);
+                      _screens[0] = DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId);
+                    });
+                    ScaffoldMessenger.of(rootContext).showSnackBar(const SnackBar(content: Text('Ferme créée')));
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildActionButton(
                 icon: Icons.local_florist,
                 label: 'Ajouter une culture',
                 color: AppColors.primary,
@@ -518,46 +541,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
               _buildActionButton(
-                icon: Icons.agriculture,
-                label: 'Ajouter une ferme',
-                color: AppColors.primary,
-                onTap: () async {
-                  final rootContext = this.context;
-                  Navigator.pop(context);
-                  HapticFeedback.lightImpact();
-                  final result = await Navigator.push(
-                    rootContext,
-                    MaterialPageRoute(builder: (_) => CreateFarmScreen(userId: userId)),
-                  );
-                  if (result != null) {
-                    if (!mounted) return;
-                    setState(() {
-                      _screens[1] = FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId);
-                      _screens[0] = DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId);
-                    });
-                    ScaffoldMessenger.of(rootContext).showSnackBar(const SnackBar(content: Text('Ferme créée')));
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildActionButton(
                 icon: Icons.pets,
                 label: 'Ajouter un animal',
                 color: const Color(0xFFD2691E),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
-                  if (userId != null) {
-                    Navigator.push(
-                      this.context,
-                      MaterialPageRoute(
-                        builder: (_) => LivestockManagementScreen(
-                          userId: userId!,
-                          isDarkMode: _isDarkMode,
-                        ),
-                      ),
+                  if (userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Veuillez vous connecter d\'abord')),
                     );
+                    return;
                   }
+                  Navigator.push(
+                    this.context,
+                    MaterialPageRoute(
+                      builder: (_) => LivestockManagementScreen(
+                        userId: userId!,
+                        isDarkMode: _isDarkMode,
+                      ),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 12),

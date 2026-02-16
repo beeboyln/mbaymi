@@ -123,7 +123,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
         title: Text(
-          'Mbaymi',
+          'MBAYMI',
           style: TextStyle(
             color: secondaryTextColor,
             fontSize: 18,
