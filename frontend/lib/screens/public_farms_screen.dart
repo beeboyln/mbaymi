@@ -309,6 +309,7 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen> {
     final farmName = farm['farm_name'] ?? 'Ferme';
     final farmImage = (farm['profile_image_farm'] ?? farm['image_url']) as String?;
     final farmId = (farm['farm_id'] ?? farm['id']) as int?;
+    final farmOwnerId = (farm['user_id']) as int?;  // Get farm owner ID
     final location = farm['location'] ?? '';
 
     return Container(
@@ -420,6 +421,8 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen> {
                                 builder: (_) => ParcelScreen(
                                   farmId: farmId ?? 0,
                                   userId: 0,
+                                  farmOwnerId: farmOwnerId,
+
                                   readOnly: true,
                                 ),
                               ),
@@ -509,6 +512,7 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen> {
                                   builder: (_) => ParcelScreen(
                                     farmId: farmId ?? 0,
                                     userId: 0,
+                                    farmOwnerId: farmOwnerId,
                                     readOnly: true,
                                   ),
                                 ),

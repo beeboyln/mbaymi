@@ -1122,7 +1122,23 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
             ),
           ),
 
-          // Section cliquable pour révéler les actions
+          // Mode lecture seule: afficher seulement le bouton ACTIVITÉS
+          if (widget.readOnly)
+            _buildActionButton(
+              label: 'VOIR LES ACTIVITÉS',
+              icon: Icons.timeline_outlined,
+              onTap: () => widget.onNavigate(
+                ActivityScreen(
+                  farmId: widget.farmId,
+                  cropId: widget.cropId,
+                  userId: widget.userId,
+                  farmOwnerId: widget.farmOwnerId,
+                  readOnly: widget.readOnly,
+                ),
+              ),
+            ),
+
+          // Mode édition: afficher la section complète ACTIONS
           if (!widget.readOnly)
             Material(
               color: Colors.transparent,
