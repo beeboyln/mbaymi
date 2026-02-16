@@ -24,14 +24,15 @@ class SocialFeedScreen extends StatefulWidget {
 class _SocialFeedScreenState extends State<SocialFeedScreen> {
   int _userId = 0;
   late StreamSubscription<void> _farmPostSub;
+  late StreamSubscription<dynamic> _followChangedSub;
   
   // ✅ STORE FEED DATA IN STATE - NOT REBUILT ON EACH setState()
   late Future<Map<String, dynamic>> _feedFuture;
   List<Map<String, dynamic>> _combinedItems = [];
   
-  // ✅ STORE EXPLORE & TRENDING DATA
-  late Future<List<dynamic>> _exploreFuture;
-  late Future<List<dynamic>> _trendingFuture;
+  // ✅ STATIC PERSISTENT CACHE - survives widget rebuilds and navigation
+  static final Map<String, Future<Map<String, dynamic>>> _globalFeedCache = {};
+  static final Map<String, Future<List<dynamic>>> _globalExploreCache = {};
   
   static const Color _primaryColor = Color(0xFF8B6B4D);
   static const Color _accentColor = Color(0xFF6B8E23);
@@ -42,24 +43,18 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   void initState() {
     super.initState();
     _userId = AuthService.currentSession?.userId ?? 0;
-    // Load all data ONCE and store in futures
-    _feedFuture = _loadCombinedFeed();
-    _exploreFuture = ApiService.getPublicFarms();
-    _trendingFuture = ApiService.getPublicFarms(); // Same data for now
+    // Load all data ONCE from cache or create new future
+    _feedFuture = _getOrCreateFeed();
     // Listen for farm post creations and refresh feed
     _farmPostSub = ApiService.onFarmPostCreated.listen((_) {
       if (mounted) {
-        setState(() {
-          _feedFuture = _loadCombinedFeed();
-        });
+        _refreshFeed();
       }
     });
-    // Listen for follow/unfollow changes
-    ApiService.onFollowChanged.listen((payload) {
+    // Listen for follow/unfollow changes - CANCEL IN DISPOSE
+    _followChangedSub = ApiService.onFollowChanged.listen((payload) {
       if (mounted) {
-        setState(() {
-          _feedFuture = _loadCombinedFeed();
-        });
+        _refreshFeed();
       }
     });
   }
@@ -67,7 +62,37 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   @override
   void dispose() {
     _farmPostSub.cancel();
+    _followChangedSub.cancel();
     super.dispose();
+  }
+  
+  /// Get or create feed with persistent caching by userId
+  Future<Map<String, dynamic>> _getOrCreateFeed() {
+    final cacheKey = 'feed_$_userId';
+    if (!_globalFeedCache.containsKey(cacheKey)) {
+      _globalFeedCache[cacheKey] = _loadCombinedFeed();
+    }
+    return _globalFeedCache[cacheKey]!;
+  }
+  
+  /// Get or create explore data with persistent caching
+  Future<List<dynamic>> _getOrCreateExplore() {
+    const cacheKey = 'explore_public_farms';
+    if (!_globalExploreCache.containsKey(cacheKey)) {
+      _globalExploreCache[cacheKey] = ApiService.getPublicFarms();
+    }
+    return _globalExploreCache[cacheKey]!;
+  }
+  
+  /// Refresh feed by clearing cache and reloading
+  void _refreshFeed() {
+    final cacheKey = 'feed_$_userId';
+    _globalFeedCache.remove(cacheKey);
+    if (mounted) {
+      setState(() {
+        _feedFuture = _getOrCreateFeed();
+      });
+    }
   }
 
   @override
@@ -87,10 +112,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   Widget _buildFeedTab(bool isDarkMode) {
     return RefreshIndicator(
       onRefresh: () async {
-        // Reload the feed from server
-        setState(() {
-          _feedFuture = _loadCombinedFeed();
-        });
+        // Reload the feed from server by clearing cache
+        _refreshFeed();
       },
       color: _primaryColor,
       child: FutureBuilder<Map<String, dynamic>>(
@@ -135,34 +158,44 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       List<dynamic> items = [];
       Set<int> subscriptionPostIds = {};
 
-      // Charger les posts des abonnements d'abord (pour les identifier)
+      // OPTIMIZED: Load both in parallel with Future.wait()
       try {
         if (_userId > 0) {
-          final subscriptionPosts = await ApiService.getSubscriptionsFeed(userId: _userId);
-          subscriptionPostIds = subscriptionPosts.map((post) => post['id'] as int).toSet();
-        }
-      } catch (e) {
-        print('Erreur chargement posts abonnements: $e');
-      }
+          final results = await Future.wait<dynamic>([
+            ApiService.getSubscriptionsFeed(userId: _userId),
+            ApiService.getFarmPostsFeed(userId: _userId),
+          ], eagerError: false);
 
-      // Charger les posts d'images des fermes (farm posts)
-      try {
-        final farmPosts = await ApiService.getFarmPostsFeed(userId: _userId);
-        items.addAll(farmPosts.map((post) {
-          final postId = post['id'] as int;
-          final isSubscription = subscriptionPostIds.contains(postId);
-          return {
+          final subscriptionPosts = (results[0] as List<dynamic>?) ?? [];
+          final farmPosts = (results[1] as List<dynamic>?) ?? [];
+
+          subscriptionPostIds = subscriptionPosts.map((post) => post['id'] as int).toSet();
+
+          items.addAll(farmPosts.map((post) {
+            final postId = post['id'] as int;
+            final isSubscription = subscriptionPostIds.contains(postId);
+            return {
+              'type': 'farm_post',
+              'data': post,
+              'timestamp': DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now(),
+              'isSubscription': isSubscription,
+            };
+          }));
+        } else {
+          // Not logged in - just get farm posts
+          final farmPosts = await ApiService.getFarmPostsFeed(userId: _userId);
+          items.addAll(farmPosts.map((post) => {
             'type': 'farm_post',
             'data': post,
             'timestamp': DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now(),
-            'isSubscription': isSubscription,
-          };
-        }));
+            'isSubscription': false,
+          }));
+        }
       } catch (e) {
-        print('Erreur chargement farm posts: $e');
+        print('Erreur chargement feed: $e');
       }
 
-      // Trier par date décroissante (les plus récents en premier)
+      // Sort by date descending (most recent first)
       items.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
 
       return {'items': items};
@@ -177,13 +210,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return RefreshIndicator(
       onRefresh: () async {
         // Reload explore data on pull-to-refresh
+        _globalExploreCache.clear();
         setState(() {
-          _exploreFuture = ApiService.getPublicFarms();
+          // Futures will be recreated on next build
         });
       },
       color: _primaryColor,
       child: FutureBuilder<List<dynamic>>(
-        future: _exploreFuture,
+        future: _getOrCreateExplore(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoadingWidget(isDarkMode);
@@ -222,13 +256,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return RefreshIndicator(
       onRefresh: () async {
         // Reload trending data on pull-to-refresh
+        _globalExploreCache.clear();
         setState(() {
-          _trendingFuture = ApiService.getPublicFarms();
+          // Futures will be recreated on next build
         });
       },
       color: _primaryColor,
       child: FutureBuilder<List<dynamic>>(
-        future: _trendingFuture,
+        future: _getOrCreateExplore(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoadingWidget(isDarkMode);

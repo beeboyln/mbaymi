@@ -131,7 +131,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                     hintStyle: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w300,
-                      color: isDark ? Colors.white24 : Colors.black26,
+                      color: isDark ? Colors.white38 : Colors.black26,
                     ),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(
@@ -241,7 +241,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
             letterSpacing: 1.0,
             color: isSelected 
                 ? (isDark ? Colors.black : Colors.white)
-                : (isDark ? Colors.white70 : Colors.black87),
+                : (isDark ? Colors.white60 : Colors.black87),
           ),
         ),
       ),
@@ -329,7 +329,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
             IconButton(
               icon: Icon(
                 _selectedSection == 0 ? Icons.add : Icons.edit_outlined,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: isDark ? Colors.white60 : Colors.black87,
                 size: 20,
               ),
               onPressed: _selectedSection == 0 ? _showAddParcel : _addPost,
@@ -435,7 +435,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
               height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 1,
-                color: isDark ? Colors.white24 : Colors.black12,
+                color: isDark ? Colors.white38 : Colors.black12,
               ),
             ),
           );
@@ -458,7 +458,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                     fontSize: 11,
                     fontWeight: FontWeight.w300,
                     letterSpacing: 2.0,
-                    color: isDark ? Colors.white24 : Colors.black26,
+                    color: isDark ? Colors.white38 : Colors.black26,
                   ),
                 ),
               ],
@@ -485,7 +485,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                     fontSize: 11,
                     fontWeight: FontWeight.w300,
                     letterSpacing: 2.0,
-                    color: isDark ? Colors.white24 : Colors.black26,
+                    color: isDark ? Colors.white38 : Colors.black26,
                   ),
                 ),
                 if (!widget.readOnly) ...[
@@ -543,7 +543,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
       child: FarmPostsWidget(
         farmId: widget.farmId,
         farmName: 'Posts de la ferme',
-        isOwner: _userId == widget.userId,
+        isOwner: !widget.readOnly && (_userId == widget.userId),
       ),
     );
   }
@@ -572,7 +572,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w300,
-            color: isDark ? Colors.white70 : Colors.black54,
+            color: isDark ? Colors.white60 : Colors.black54,
           ),
         ),
         actions: [
@@ -584,7 +584,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                 fontSize: 10,
                 fontWeight: FontWeight.w300,
                 letterSpacing: 1.5,
-                color: isDark ? Colors.white70 : Colors.black54,
+                color: isDark ? Colors.white60 : Colors.black54,
               ),
             ),
           ),
@@ -682,7 +682,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
               fontSize: 9,
               fontWeight: FontWeight.w300,
               letterSpacing: 1.5,
-              color: isDark ? Colors.white24 : Colors.black26,
+              color: isDark ? Colors.white38 : Colors.black26,
             ),
           ),
         ],
@@ -809,7 +809,7 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
               fontSize: 9,
               fontWeight: FontWeight.w300,
               letterSpacing: 1.5,
-              color: widget.isDark ? Colors.white24 : Colors.black26,
+              color: widget.isDark ? Colors.white38 : Colors.black26,
             ),
           ),
         ],
@@ -846,7 +846,7 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                 size: 18,
                 color: isDelete
                     ? Colors.red
-                    : (widget.isDark ? Colors.white70 : Colors.black87),
+                    : (widget.isDark ? Colors.white60 : Colors.black87),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -858,14 +858,14 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                     letterSpacing: 1.2,
                     color: isDelete
                         ? Colors.red
-                        : (widget.isDark ? Colors.white70 : Colors.black87),
+                        : (widget.isDark ? Colors.white60 : Colors.black87),
                   ),
                 ),
               ),
               Icon(
                 Icons.chevron_right,
                 size: 16,
-                color: widget.isDark ? Colors.white24 : Colors.black26,
+                color: widget.isDark ? Colors.white38 : Colors.black26,
               ),
             ],
           ),
@@ -911,7 +911,7 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 1,
-                                color: widget.isDark ? Colors.white24 : Colors.black12,
+                                color: widget.isDark ? Colors.white38 : Colors.black12,
                               ),
                             ),
                           );
@@ -1067,7 +1067,7 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                         fontSize: 10,
                         fontWeight: FontWeight.w300,
                         letterSpacing: 1.5,
-                        color: widget.isDark ? Colors.white70 : Colors.black54,
+                        color: widget.isDark ? Colors.white60 : Colors.black54,
                       ),
                     ),
                     const Spacer(),
@@ -1149,7 +1149,7 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                           fontSize: 10,
                           fontWeight: FontWeight.w300,
                           letterSpacing: 1.5,
-                          color: widget.isDark ? Colors.white70 : Colors.black54,
+                          color: widget.isDark ? Colors.white60 : Colors.black54,
                         ),
                       ),
                       const Spacer(),
@@ -1267,7 +1267,7 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
             fontSize: 11,
             fontWeight: FontWeight.w300,
             letterSpacing: 0.5,
-            color: widget.isDark ? Colors.white70 : Colors.black87,
+            color: widget.isDark ? Colors.white60 : Colors.black87,
           ),
         ),
       ],

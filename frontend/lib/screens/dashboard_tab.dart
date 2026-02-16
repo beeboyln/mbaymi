@@ -57,8 +57,7 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   void initState() {
     super.initState();
-    ApiService.clearCache();
-    // Load data asynchronously - DON'T BLOCK UI
+    // Load data asynchronously - NO CACHE CLEARING ON INIT
     _countsFuture = _loadCounts();
     _weatherFuture = _loadWeather();
     _newsFuture = ApiService.getAgriculturalNews();
@@ -69,10 +68,11 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   void didUpdateWidget(DashboardTab oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Only reload if userId actually changed
     if (oldWidget.userId != widget.userId) {
-      ApiService.clearCache();
       _countsFuture = _loadCounts();
       _weatherFuture = _loadWeather();
+      _newsFuture = ApiService.getAgriculturalNews();
       setState(() {});
     }
   }

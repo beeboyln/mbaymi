@@ -7,8 +7,11 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
 import 'package:mbaymi/screens/edit_farm_screen.dart';
+import 'package:mbaymi/screens/create_farm_screen.dart';
+import 'package:mbaymi/screens/create_livestock_screen.dart';
 import 'package:mbaymi/screens/social_feed_screen.dart';
 import 'package:mbaymi/screens/parcel_screen.dart';
+import 'package:mbaymi/screens/public_farms_screen.dart';
 import 'package:mbaymi/widgets/fading_images_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
@@ -59,13 +62,31 @@ class _FarmTabState extends State<FarmTab> {
   
   /// Get farms with persistent caching by userId
   Future<List<dynamic>> _getFarmsCached() {
-    final cacheKey = 'farms_${widget.userId ?? 'public'}';
-    if (!_globalDataCache.containsKey(cacheKey)) {
-      _globalDataCache[cacheKey] = (widget.userId != null
-          ? ApiService.getPublicUserFarms(widget.userId!)
-          : ApiService.getPublicFarms());
+    final isAuthenticated = AuthService.currentSession != null;
+    final currentUserId = AuthService.currentSession?.userId;
+    
+    // If authenticated and viewing own farms (userId is null), get user's farms
+    if (isAuthenticated && widget.userId == null) {
+      final cacheKey = 'farms_user_$currentUserId';
+      if (!_globalDataCache.containsKey(cacheKey)) {
+        _globalDataCache[cacheKey] = currentUserId != null
+            ? ApiService.getPublicUserFarms(currentUserId)
+            : Future.value([]);
+      }
+      return _globalDataCache[cacheKey]!;
     }
-    return _globalDataCache[cacheKey]!;
+    
+    // If viewing other user's public farms
+    if (widget.userId != null) {
+      final cacheKey = 'farms_${widget.userId}';
+      if (!_globalDataCache.containsKey(cacheKey)) {
+        _globalDataCache[cacheKey] = ApiService.getPublicUserFarms(widget.userId!);
+      }
+      return _globalDataCache[cacheKey]!;
+    }
+    
+    // Fallback: return empty list
+    return Future.value([]);
   }
   
   /// Get livestock with persistent caching by userId
@@ -287,6 +308,20 @@ class _FarmTabState extends State<FarmTab> {
               _buildMinimalSidebarItem(1, 'ANIMAUX', Icons.pets_outlined, isDarkMode),
               _buildMinimalSidebarItem(0, 'SERRE', Icons.thermostat_outlined, isDarkMode),
               _buildMinimalSidebarItem(0, 'ÉQUIPEMENTS', Icons.build_outlined, isDarkMode),
+              const SizedBox(height: 32),
+              Padding(
+                padding: const EdgeInsets.only(left: 24, bottom: 16),
+                child: Text(
+                  'PUBLIC',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w300,
+                    color: isDarkMode ? Colors.white38 : Colors.black38,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+              ),
+              _buildPublicNavItem('VISITER FERMES', Icons.public_outlined, isDarkMode),
             ],
           ),
         ),
@@ -356,6 +391,51 @@ class _FarmTabState extends State<FarmTab> {
     );
   }
 
+  Widget _buildPublicNavItem(String label, IconData icon, bool isDarkMode) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const PublicFarmsScreen(),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(left: 16, right: 16, bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isDarkMode ? Colors.white38 : Colors.black38,
+            ),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 1.5,
+                color: isDarkMode ? Colors.white38 : Colors.black38,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildDesktopLayout(bool isDarkMode) {
     return Row(
       children: [
@@ -371,29 +451,47 @@ class _FarmTabState extends State<FarmTab> {
               ),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 40),
-              Padding(
-                padding: const EdgeInsets.only(left: 24),
-                child: Text(
-                  'MA FERME',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: 2.5,
-                    color: isDarkMode ? Colors.white : Colors.black87,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 40),
+                Padding(
+                  padding: const EdgeInsets.only(left: 24),
+                  child: Text(
+                    'MA FERME',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 2.5,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 48),
-              _buildMinimalSidebarItem(0, 'VUE D\'ENSEMBLE', Icons.home_outlined, isDarkMode),
-              _buildMinimalSidebarItem(0, 'CULTURES', Icons.landscape_outlined, isDarkMode),
-              _buildMinimalSidebarItem(1, 'ANIMAUX', Icons.pets_outlined, isDarkMode),
-              _buildMinimalSidebarItem(0, 'SERRE', Icons.thermostat_outlined, isDarkMode),
-              _buildMinimalSidebarItem(0, 'ÉQUIPEMENTS', Icons.build_outlined, isDarkMode),
-            ],
+                const SizedBox(height: 48),
+                _buildMinimalSidebarItem(0, 'VUE D\'ENSEMBLE', Icons.home_outlined, isDarkMode),
+                _buildMinimalSidebarItem(0, 'CULTURES', Icons.landscape_outlined, isDarkMode),
+                _buildMinimalSidebarItem(1, 'ANIMAUX', Icons.pets_outlined, isDarkMode),
+                _buildMinimalSidebarItem(0, 'SERRE', Icons.thermostat_outlined, isDarkMode),
+                _buildMinimalSidebarItem(0, 'ÉQUIPEMENTS', Icons.build_outlined, isDarkMode),
+                const SizedBox(height: 48),
+                Padding(
+                  padding: const EdgeInsets.only(left: 24, bottom: 24),
+                  child: Text(
+                    'PUBLIC',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w300,
+                      color: isDarkMode ? Colors.white38 : Colors.black38,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                ),
+                _buildPublicNavItem('VISITER FERMES', Icons.public_outlined, isDarkMode),
+                const SizedBox(height: 48),
+              ],
+            ),
           ),
         ),
         // Main content
@@ -484,6 +582,13 @@ class _FarmTabState extends State<FarmTab> {
   }
 
   Widget _buildFarmMapView(bool isDarkMode) {
+    final isAuthenticated = AuthService.currentSession != null;
+
+    // If not authenticated, show welcome screen directly
+    if (!isAuthenticated) {
+      return _buildWelcomeScreen(isDarkMode);
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -508,35 +613,9 @@ class _FarmTabState extends State<FarmTab> {
             }
             
             final items = snapshot.data ?? [];
-            if (items.isEmpty && widget.userId == null) {
-              return _buildWelcomeScreen(isDarkMode);
-            }
 
             if (items.isEmpty) {
-              return Container(
-                height: 400,
-                alignment: Alignment.center,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _selectedSection == 1 ? Icons.pets_outlined : Icons.landscape_outlined,
-                      size: 40,
-                      color: isDarkMode ? Colors.white12 : Colors.black12,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      _selectedSection == 1 ? 'AUCUN ANIMAL' : 'AUCUNE FERME',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: 2.0,
-                        color: isDarkMode ? Colors.white24 : Colors.black26,
-                      ),
-                    ),
-                  ],
-                ),
-              );
+              return _buildEmptyAuthenticatedState(isDarkMode);
             }
 
             if (_selectedSection == 0) {
@@ -694,6 +773,111 @@ class _FarmTabState extends State<FarmTab> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 64),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyAuthenticatedState(bool isDarkMode) {
+    return Container(
+      height: 400,
+      alignment: Alignment.center,
+      color: isDarkMode ? AppColors.darkBg : Colors.transparent,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _selectedSection == 1 ? Icons.pets_outlined : Icons.landscape_outlined,
+            size: 40,
+            color: isDarkMode ? Colors.white38 : Colors.black26,
+          ),
+          const SizedBox(height: 32),
+          Text(
+            _selectedSection == 1 ? 'AUCUN ANIMAL' : 'AUCUNE FERME',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w300,
+              letterSpacing: 2.0,
+              color: isDarkMode ? Colors.white70 : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 48),
+          // Two action buttons
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              children: [
+                // Button 1: Create Farm
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CreateFarmScreen(
+                            userId: AuthService.currentSession?.userId,
+                          ),
+                        ),
+                      ).then((_) => _refreshFarms());
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.black87,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                      ),
+                    ),
+                    child: const Text(
+                      'CRÉER UNE FERME',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Button 2: Add Livestock
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CreateLivestockScreen(
+                            userId: AuthService.currentSession?.userId,
+                          ),
+                        ),
+                      ).then((_) => _refreshFarms());
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                      ),
+                      side: BorderSide(
+                        color: isDarkMode ? Colors.white24 : Colors.black26,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      'AJOUTER DU BÉTAIL',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 2.0,
+                        color: isDarkMode ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

@@ -62,16 +62,12 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     });
 
-    // If running on web, listen to visualViewport messages from index.html and ensure focused field is visible
     if (isWeb) {
       try {
-        // Platform-specific function is defined in lib/src/visual_viewport_listener_web.dart or stub.
         // ignore: undefined_function
-        addVisualViewportListener((height, offsetTop) {
-          // Callback for visual viewport changes
-        });
+        addVisualViewportListener((height, offsetTop) {});
       } catch (e) {
-        // ignore if the function isn't available (non-web builds)
+        // ignore if the function isn't available
       }
     }
   }
@@ -86,8 +82,13 @@ class _LoginScreenState extends State<LoginScreen> {
     if (emailError != null || passwordError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(emailError ?? passwordError ?? 'Champs invalides'),
-          backgroundColor: Colors.red.shade700,
+          content: Text(
+            emailError ?? passwordError ?? 'Champs invalides',
+            style: const TextStyle(letterSpacing: 0.5),
+          ),
+          backgroundColor: const Color(0xFFD32F2F),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
       );
       return;
@@ -112,161 +113,341 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(e.toString(), style: const TextStyle(letterSpacing: 0.5)),
+          backgroundColor: const Color(0xFFD32F2F),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  InputDecoration _decoration(
-    String label,
-    Color border,
-    Color hint, {
-    Widget? suffix,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: hint),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(color: border),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.md,
-      ),
-      suffixIcon: suffix,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final bgColor = AppColors.getBgColor(isDark);
-    final textColor = AppColors.getTextColor(isDark);
-    final hintColor = AppColors.getSecondaryTextColor(isDark);
-    final borderColor = AppColors.getBorderColor(isDark);
+    final bgColor = isDark ? const Color(0xFF000000) : const Color(0xFFFFFBF5);
+    final textColor = isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A1A);
+    final subtleColor = isDark ? const Color(0xFF6B6B6B) : const Color(0xFF757575);
 
     return Scaffold(
       backgroundColor: bgColor,
       resizeToAvoidBottomInset: true,
-
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
         centerTitle: true,
-        title: const Text('Connexion', style: AppTypography.h3),
-        foregroundColor: textColor,
+        title: Text(
+          'CONNEXION',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 2.5,
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back_ios, size: 18, color: textColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 0.5,
+            color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+          ),
+        ),
       ),
-
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(
-                  Icons.person,
-                  size: 90,
-                  color: AppColors.primaryLight,
+        child: Center(
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  32,
+                  48,
+                  32,
+                  32 + MediaQuery.of(context).viewInsets.bottom,
                 ),
-                const SizedBox(height: AppSpacing.xxl),
-
-                TextField(
-                  controller: _emailController,
-                  focusNode: _emailFocus,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_passwordFocus),
-                  style: AppTypography.body.copyWith(color: textColor),
-                  decoration: _decoration('Email', borderColor, hintColor),
-                ),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                TextField(
-                  controller: _passwordController,
-                  focusNode: _passwordFocus,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _handleLogin(),
-                  style: AppTypography.body.copyWith(color: textColor),
-                  decoration: _decoration(
-                    'Mot de passe',
-                    borderColor,
-                    hintColor,
-                    suffix: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        color: hintColor,
-                      ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: AppSpacing.xl),
-
-                AppButton(
-                  label: 'SE CONNECTER',
-                  onPressed: _isLoading ? null : _handleLogin,
-                  isLoading: _isLoading,
-                  isDarkMode: isDark,
-                ),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                Row(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      "Pas encore de compte ? ",
-                      style: AppTypography.body.copyWith(color: textColor),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pushNamed('/register'),
-                      child: Text(
-                        "S'inscrire",
-                        style: AppTypography.body.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
+                    // Logo de l'app
+                    Center(
+                      child: SizedBox(
+                        width: 80,
+                        height: 80,
+                        child: Image.asset(
+                          'assets/images/aa.png',
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
+                    
+                    const SizedBox(height: 56),
+
+                    // Email field
+                    _buildTextField(
+                      controller: _emailController,
+                      focusNode: _emailFocus,
+                      label: 'ADRESSE EMAIL',
+                      isDark: isDark,
+                      textColor: textColor,
+                      subtleColor: subtleColor,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // Password field
+                    _buildPasswordField(
+                      controller: _passwordController,
+                      focusNode: _passwordFocus,
+                      label: 'MOT DE PASSE',
+                      isDark: isDark,
+                      textColor: textColor,
+                      subtleColor: subtleColor,
+                      onSubmitted: (_) => _handleLogin(),
+                    ),
+
+                    const SizedBox(height: 48),
+
+                    // Login button
+                    _buildLoginButton(isDark, textColor),
+
+                    const SizedBox(height: 32),
+
+                    // Divider
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 0.5,
+                            color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'OU',
+                            style: TextStyle(
+                              color: subtleColor,
+                              fontSize: 11,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Container(
+                            height: 0.5,
+                            color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Register link
+                    Center(
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pushNamed('/register'),
+                        child: RichText(
+                          text: TextSpan(
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 13,
+                              letterSpacing: 0.3,
+                            ),
+                            children: [
+                              const TextSpan(text: 'Pas de compte ? '),
+                              TextSpan(
+                                text: 'Créer un compte',
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    if (isWeb) const SizedBox(height: 48),
                   ],
                 ),
-
-                if (isWeb) const SizedBox(height: AppSpacing.xxl),
-              ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required bool isDark,
+    required Color textColor,
+    required Color subtleColor,
+    TextInputType? keyboardType,
+    TextInputAction? textInputAction,
+    void Function(String)? onSubmitted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: subtleColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          autocorrect: false,
+          enableSuggestions: false,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          onSubmitted: onSubmitted,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.3,
+          ),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                width: 1,
+              ),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF757575) : const Color(0xFF1A1A1A),
+                width: 1.5,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required bool isDark,
+    required Color textColor,
+    required Color subtleColor,
+    void Function(String)? onSubmitted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: subtleColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          autocorrect: false,
+          enableSuggestions: false,
+          obscureText: _obscurePassword,
+          textInputAction: TextInputAction.done,
+          onSubmitted: onSubmitted,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.3,
+          ),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                width: 1,
+              ),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF757575) : const Color(0xFF1A1A1A),
+                width: 1.5,
+              ),
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                size: 20,
+                color: subtleColor,
+              ),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginButton(bool isDark, Color textColor) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleLogin,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isDark ? Colors.white : const Color(0xFF1A1A1A),
+          foregroundColor: isDark ? Colors.black : Colors.white,
+          disabledBackgroundColor: isDark ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
+        child: _isLoading
+            ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isDark ? Colors.black : Colors.white,
+                  ),
+                ),
+              )
+            : Text(
+                'SE CONNECTER',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 2.5,
+                  color: isDark ? Colors.black : Colors.white,
+                ),
+              ),
       ),
     );
   }

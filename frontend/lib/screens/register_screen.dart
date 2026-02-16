@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/token_storage.dart';
-
-// 🔹 ALIAS POUR ÉVITER LE CONFLIT
 import 'package:mbaymi/utils/email_validator.dart' as email_validator;
 import 'package:mbaymi/utils/validators.dart' as validators;
 import 'package:mbaymi/utils/app_colors.dart';
@@ -23,7 +21,6 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -32,7 +29,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _regionController = TextEditingController();
   final _villageController = TextEditingController();
 
-  // Focus
   final _nameFocus = FocusNode();
   final _emailFocus = FocusNode();
   final _phoneFocus = FocusNode();
@@ -44,6 +40,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final ScrollController _scrollController = ScrollController();
 
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   String _selectedRole = 'farmer';
 
   bool get isWeb => kIsWeb;
@@ -136,7 +134,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inscription réussie')),
+        SnackBar(
+          content: const Text('Inscription réussie', style: TextStyle(letterSpacing: 0.5)),
+          backgroundColor: Colors.black87,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
       );
 
       Navigator.pushReplacementNamed(
@@ -149,8 +152,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red.shade700,
+          content: Text(e.toString(), style: const TextStyle(letterSpacing: 0.5)),
+          backgroundColor: const Color(0xFFD32F2F),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
       );
     } finally {
@@ -158,181 +163,458 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  InputDecoration _input(
-    String label,
-    bool isDark,
-  ) {
-    final borderColor = isDark ? Colors.white12 : Colors.black12;
-    return InputDecoration(
-      labelText: label,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.md,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(
-          color: AppColors.primary,
-          width: 2,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final bgColor = AppColors.getBgColor(isDark);
-    final textColor = AppColors.getTextColor(isDark);
+    final bgColor = isDark ? const Color(0xFF000000) : const Color(0xFFFFFBF5);
+    final textColor = isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A1A);
+    final subtleColor = isDark ? const Color(0xFF6B6B6B) : const Color(0xFF757575);
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text('Créer un compte', style: AppTypography.h3),
         backgroundColor: bgColor,
-        foregroundColor: textColor,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          'CRÉER UN COMPTE',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 2.5,
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, size: 18, color: textColor),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 0.5,
+            color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+          ),
+        ),
       ),
       body: SafeArea(
         bottom: false,
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          padding: EdgeInsets.only(
-            left: AppSpacing.lg,
-            right: AppSpacing.lg,
-            top: AppSpacing.lg,
-            bottom: bottomInset + AppSpacing.lg,
-          ),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                const Icon(
-                  Icons.person,
-                  size: 90,
-                  color: AppColors.primaryLight,
+        child: Center(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 32,
+                  right: 32,
+                  top: 32,
+                  bottom: bottomInset + 32,
                 ),
-                const SizedBox(height: AppSpacing.xxl),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Logo de l'app
+                      Center(
+                        child: SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: Image.asset(
+                            'assets/images/aa.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 48),
 
-                TextFormField(
-                  controller: _nameController,
-                  focusNode: _nameFocus,
-                  textInputAction: TextInputAction.next,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  decoration: _input('Nom complet', isDark),
-                  style: AppTypography.body.copyWith(color: textColor),
-                  validator: (v) => v == null || v.isEmpty ? 'Nom requis' : null,
+                      // Nom complet
+                      _buildTextField(
+                        controller: _nameController,
+                        focusNode: _nameFocus,
+                        label: 'NOM COMPLET',
+                        isDark: isDark,
+                        textColor: textColor,
+                        subtleColor: subtleColor,
+                        validator: (v) => v == null || v.isEmpty ? 'Nom requis' : null,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Email
+                      _buildTextField(
+                        controller: _emailController,
+                        focusNode: _emailFocus,
+                        label: 'ADRESSE EMAIL',
+                        isDark: isDark,
+                        textColor: textColor,
+                        subtleColor: subtleColor,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: email_validator.Validators.email,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Téléphone
+                      _buildTextField(
+                        controller: _phoneController,
+                        focusNode: _phoneFocus,
+                        label: 'TÉLÉPHONE',
+                        isDark: isDark,
+                        textColor: textColor,
+                        subtleColor: subtleColor,
+                        keyboardType: TextInputType.phone,
+                        validator: validators.Validators.phone,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Mot de passe
+                      _buildPasswordField(
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        label: 'MOT DE PASSE',
+                        isDark: isDark,
+                        textColor: textColor,
+                        subtleColor: subtleColor,
+                        obscureText: _obscurePassword,
+                        onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+                        validator: validators.Validators.password,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Confirmer mot de passe
+                      _buildPasswordField(
+                        controller: _confirmPasswordController,
+                        focusNode: _confirmPasswordFocus,
+                        label: 'CONFIRMER MOT DE PASSE',
+                        isDark: isDark,
+                        textColor: textColor,
+                        subtleColor: subtleColor,
+                        obscureText: _obscureConfirmPassword,
+                        onToggle: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                        validator: (v) => v != _passwordController.text
+                            ? 'Les mots de passe ne correspondent pas'
+                            : null,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Rôle
+                      _buildRoleSelector(isDark, textColor, subtleColor),
+
+                      const SizedBox(height: 24),
+
+                      // Région
+                      _buildTextField(
+                        controller: _regionController,
+                        focusNode: _regionFocus,
+                        label: 'RÉGION',
+                        isDark: isDark,
+                        textColor: textColor,
+                        subtleColor: subtleColor,
+                        validator: (v) => v == null || v.isEmpty ? 'Région requise' : null,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Village (optionnel)
+                      _buildTextField(
+                        controller: _villageController,
+                        focusNode: _villageFocus,
+                        label: 'VILLAGE (OPTIONNEL)',
+                        isDark: isDark,
+                        textColor: textColor,
+                        subtleColor: subtleColor,
+                      ),
+
+                      const SizedBox(height: 48),
+
+                      // Register button
+                      _buildRegisterButton(isDark, textColor),
+
+                      const SizedBox(height: 32),
+
+                      // Login link
+                      Center(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(context).pushNamed('/login'),
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 13,
+                                letterSpacing: 0.3,
+                              ),
+                              children: [
+                                const TextSpan(text: 'Déjà un compte ? '),
+                                TextSpan(
+                                  text: 'Se connecter',
+                                  style: TextStyle(
+                                    color: textColor,
+                                    fontWeight: FontWeight.w500,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: textColor,
+                                    decorationThickness: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      if (isWeb) const SizedBox(height: 48),
+                    ],
+                  ),
                 ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                TextFormField(
-                  controller: _emailController,
-                  focusNode: _emailFocus,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  decoration: _input('Email', isDark),
-                  style: AppTypography.body.copyWith(color: textColor),
-                  validator: email_validator.Validators.email,
-                ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                TextFormField(
-                  controller: _phoneController,
-                  focusNode: _phoneFocus,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  keyboardType: TextInputType.phone,
-                  decoration: _input('Téléphone', isDark),
-                  style: AppTypography.body.copyWith(color: textColor),
-                  validator: validators.Validators.phone,
-                ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                TextFormField(
-                  controller: _passwordController,
-                  focusNode: _passwordFocus,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  obscureText: true,
-                  decoration: _input('Mot de passe', isDark),
-                  style: AppTypography.body.copyWith(color: textColor),
-                  validator: validators.Validators.password,
-                ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  focusNode: _confirmPasswordFocus,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  obscureText: true,
-                  decoration: _input('Confirmer mot de passe', isDark),
-                  style: AppTypography.body.copyWith(color: textColor),
-                  validator: (v) =>
-                      v != _passwordController.text
-                          ? 'Les mots de passe ne correspondent pas'
-                          : null,
-                ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedRole,
-                  decoration: _input('Rôle', isDark),
-                  style: AppTypography.body.copyWith(color: textColor),
-                  items: const [
-                    DropdownMenuItem(value: 'farmer', child: Text('Agriculteur')),
-                    DropdownMenuItem(value: 'livestock_breeder', child: Text('Éleveur')),
-                    DropdownMenuItem(value: 'veterinarian', child: Text('Vétérinaire')),
-                    DropdownMenuItem(value: 'expert', child: Text('Expert Agricole')),
-                    DropdownMenuItem(value: 'buyer', child: Text('Acheteur')),
-                    DropdownMenuItem(value: 'seller', child: Text('Vendeur')),
-                  ],
-                  onChanged: (v) => setState(() => _selectedRole = v!),
-                ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                TextFormField(
-                  controller: _regionController,
-                  focusNode: _regionFocus,
-                  decoration: _input('Région', isDark),
-                  style: AppTypography.body.copyWith(color: textColor),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Région requise' : null,
-                ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                TextFormField(
-                  controller: _villageController,
-                  focusNode: _villageFocus,
-                  decoration: _input('Village (optionnel)', isDark),
-                  style: AppTypography.body.copyWith(color: textColor),
-                ),
-
-                const SizedBox(height: AppSpacing.xl),
-
-                AppButton(
-                  label: 'CRÉER UN COMPTE',
-                  onPressed: _isLoading ? null : _register,
-                  isLoading: _isLoading,
-                  isDarkMode: isDark,
-                ),
-
-                if (isWeb) const SizedBox(height: AppSpacing.xxl),
-              ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required bool isDark,
+    required Color textColor,
+    required Color subtleColor,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: subtleColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          autocorrect: false,
+          enableSuggestions: false,
+          keyboardType: keyboardType,
+          textInputAction: TextInputAction.next,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.3,
+          ),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                width: 1,
+              ),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF757575) : const Color(0xFF1A1A1A),
+                width: 1.5,
+              ),
+            ),
+            errorBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFFD32F2F), width: 1),
+            ),
+            focusedErrorBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFFD32F2F), width: 1.5),
+            ),
+            errorStyle: const TextStyle(fontSize: 11, letterSpacing: 0.5),
+          ),
+          validator: validator,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required bool isDark,
+    required Color textColor,
+    required Color subtleColor,
+    required bool obscureText,
+    required VoidCallback onToggle,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: subtleColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          autocorrect: false,
+          enableSuggestions: false,
+          obscureText: obscureText,
+          textInputAction: TextInputAction.next,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.3,
+          ),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                width: 1,
+              ),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF757575) : const Color(0xFF1A1A1A),
+                width: 1.5,
+              ),
+            ),
+            errorBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFFD32F2F), width: 1),
+            ),
+            focusedErrorBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFFD32F2F), width: 1.5),
+            ),
+            errorStyle: const TextStyle(fontSize: 11, letterSpacing: 0.5),
+            suffixIcon: IconButton(
+              icon: Icon(
+                obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                size: 20,
+                color: subtleColor,
+              ),
+              onPressed: onToggle,
+            ),
+          ),
+          validator: validator,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoleSelector(bool isDark, Color textColor, Color subtleColor) {
+    final roles = {
+      'farmer': 'Agriculteur',
+      'livestock_breeder': 'Éleveur',
+      'veterinarian': 'Vétérinaire',
+      'expert': 'Expert Agricole',
+      'buyer': 'Acheteur',
+      'seller': 'Vendeur',
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'RÔLE',
+          style: TextStyle(
+            color: subtleColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: _selectedRole,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.3,
+          ),
+          dropdownColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                width: 1,
+              ),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF757575) : const Color(0xFF1A1A1A),
+                width: 1.5,
+              ),
+            ),
+          ),
+          items: roles.entries.map((entry) {
+            return DropdownMenuItem<String>(
+              value: entry.key,
+              child: Text(entry.value),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _selectedRole = value);
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRegisterButton(bool isDark, Color textColor) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _register,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isDark ? Colors.white : const Color(0xFF1A1A1A),
+          foregroundColor: isDark ? Colors.black : Colors.white,
+          disabledBackgroundColor: isDark ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
+        child: _isLoading
+            ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isDark ? Colors.black : Colors.white,
+                  ),
+                ),
+              )
+            : Text(
+                'CRÉER UN COMPTE',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 2.5,
+                  color: isDark ? Colors.black : Colors.white,
+                ),
+              ),
       ),
     );
   }

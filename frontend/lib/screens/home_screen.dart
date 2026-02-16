@@ -51,13 +51,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _screens = {}; // Initialize as empty map
     _screenIndices = [];
     
-    // Synchroniser _isDarkMode avec le ThemeProvider au démarrage
-    Future.microtask(() {
-      final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-      setState(() {
-        _isDarkMode = themeProvider.isDarkMode;
-      });
-    });
+    // NO setState for theme - get from Provider in build() instead
+    // Get initial theme value WITHOUT setState
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    _isDarkMode = themeProvider.isDarkMode;
 
     // Create only dashboard initially (to show something fast)
     _createDashboard();
