@@ -599,6 +599,50 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 
+@router.get("/public-farms/{farm_id}/crops")
+def get_public_farm_crops(farm_id: int, db: Session = Depends(get_db)):
+    """
+    🌿 Récupérer les cultures/parcelles d'une ferme publique (sans authentification requise).
+    
+    Permet aux utilisateurs non-authentifiés de voir les cultures d'une ferme publique.
+    """
+    try:
+        # Vérifier que la ferme est publique
+        farm_profile = db.query(FarmProfile).filter(
+            FarmProfile.farm_id == farm_id,
+            FarmProfile.is_public == True
+        ).first()
+        
+        if not farm_profile:
+            # Farm doesn't exist or is not public
+            return []
+        
+        # Récupérer les cultures de cette ferme
+        crops = db.query(Crop).filter(
+            Crop.farm_id == farm_id
+        ).all()
+        
+        crops_list = []
+        for crop in crops:
+            crop_data = {
+                "id": crop.id,
+                "farm_id": crop.farm_id,
+                "crop_name": crop.crop_name,
+                "status": crop.status,
+                "planted_date": crop.planted_date.isoformat() if crop.planted_date else None,
+                "expected_harvest_date": crop.expected_harvest_date.isoformat() if crop.expected_harvest_date else None,
+                "area": crop.area,
+                "image_url": crop.image_url,
+            }
+            crops_list.append(crop_data)
+        
+        return crops_list
+        
+    except Exception as e:
+        logger.error(f"❌ [get_public_farm_crops] ERREUR: {type(e).__name__}: {str(e)}", exc_info=True)
+        return []  # Return empty list instead of error for graceful degradation
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # SOCIAL INTERACTIONS - Likes, Comments, Shares
 # ═══════════════════════════════════════════════════════════════════════════

@@ -2022,6 +2022,36 @@ class ApiService {
     }
   }
 
+  static Future<List<dynamic>> getPublicFarmCrops(int farmId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farm-network/public-farms/$farmId/crops'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          // Handle both array and object response formats
+          if (data is List) {
+            return data;
+          } else if (data is Map && data.containsKey('crops')) {
+            return data['crops'] as List;
+          }
+          return [];
+        } else if (response.statusCode == 404) {
+          // Farm not found or no crops
+          return [];
+        } else {
+          throw Exception('Failed to get public farm crops: ${response.statusCode}');
+        }
+      });
+    } catch (e) {
+      // Return empty list instead of throwing to handle gracefully
+      return [];
+    }
+  }
+
   static Future<Map<String, dynamic>> updateUserProfile({
     required int userId,
     String? name,
