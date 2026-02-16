@@ -14,6 +14,7 @@ import 'package:mbaymi/widgets/skeleton_loader.dart';
 class ParcelScreen extends StatefulWidget {
   final int farmId;
   final int userId;
+  final int? farmOwnerId;  // ID of the farm owner for read-only mode
   final bool readOnly;
   final bool openAddCultureModal;
 
@@ -21,6 +22,7 @@ class ParcelScreen extends StatefulWidget {
     super.key,
     required this.farmId,
     required this.userId,
+    this.farmOwnerId,
     this.readOnly = false,
     this.openAddCultureModal = false,
   });
@@ -654,6 +656,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
       index: index,
       isDark: isDark,
       readOnly: widget.readOnly,
+      farmOwnerId: widget.farmOwnerId,
       onPhotoAdd: () => _addParcelPhoto(cropId),
       onDelete: () => _deleteParcel(cropId, cropName),
       onNavigate: (screen) {
@@ -704,6 +707,7 @@ class _ParcelCardWidget extends StatefulWidget {
   final int index;
   final bool isDark;
   final bool readOnly;
+  final int? farmOwnerId;
   final VoidCallback onPhotoAdd;
   final VoidCallback onDelete;
   final Function(Widget) onNavigate;
@@ -722,6 +726,7 @@ class _ParcelCardWidget extends StatefulWidget {
     required this.index,
     required this.isDark,
     required this.readOnly,
+    this.farmOwnerId,
     required this.onPhotoAdd,
     required this.onDelete,
     required this.onNavigate,
@@ -1188,6 +1193,8 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                           farmId: widget.farmId,
                           cropId: widget.cropId,
                           userId: widget.userId,
+                          farmOwnerId: widget.farmOwnerId,
+                          readOnly: widget.readOnly,
                         ),
                       ),
                     ),

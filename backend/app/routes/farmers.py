@@ -5,6 +5,7 @@ from app.models.farm import Farm, Crop
 from app.models.photo import FarmPhoto
 from app.models.user import User
 from app.models.livestock import Livestock
+from app.models.farm_network import FarmProfile
 from app.schemas.schemas import FarmCreate, FarmResponse, CropCreate, CropResponse
 from app.routes.auth import get_current_user_obj
 
@@ -114,6 +115,17 @@ def create_farm(farm: FarmCreate, user_id: int, db: Session = Depends(get_db)):
     db.add(new_farm)
     db.commit()
     db.refresh(new_farm)
+    
+    # Automatically create a FarmProfile for the new farm
+    farm_profile = FarmProfile(
+        farm_id=new_farm.id,
+        user_id=user_id,
+        is_public=True,  # Default to public
+        description="",
+        specialties="",
+    )
+    db.add(farm_profile)
+    db.commit()
     
     return new_farm
 

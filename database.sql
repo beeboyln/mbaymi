@@ -50,6 +50,31 @@ CREATE TABLE farms (
 CREATE INDEX idx_farms_user_id ON farms(user_id);
 CREATE INDEX idx_farms_location ON farms(location);
 
+-- Add image_url column to farms if not exists
+ALTER TABLE farms ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
+ALTER TABLE farms ADD COLUMN IF NOT EXISTS latitude FLOAT;
+ALTER TABLE farms ADD COLUMN IF NOT EXISTS longitude FLOAT;
+
+-- ====================================
+-- 2.5 FARM_PROFILES TABLE (Farm Network Visibility)
+-- ====================================
+CREATE TABLE IF NOT EXISTS farm_profiles (
+  id SERIAL PRIMARY KEY,
+  farm_id INTEGER NOT NULL UNIQUE REFERENCES farms(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  is_public BOOLEAN DEFAULT true,
+  description TEXT,
+  specialties VARCHAR(500),
+  total_followers INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for farm_profiles
+CREATE INDEX IF NOT EXISTS idx_farm_profiles_farm_id ON farm_profiles(farm_id);
+CREATE INDEX IF NOT EXISTS idx_farm_profiles_user_id ON farm_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_farm_profiles_is_public ON farm_profiles(is_public);
+
 -- ====================================
 -- 3. CROPS TABLE
 -- ====================================

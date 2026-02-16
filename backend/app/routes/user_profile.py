@@ -4,6 +4,7 @@ from typing import Optional
 from app.database import get_db
 from app.models import User, Farm, FarmPost, Crop, Livestock, UserFollowing
 from app.models.farm_post import FarmPostLike
+from app.models.farm_network import FarmProfile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -227,6 +228,7 @@ def toggle_farm_visibility(user_id: int, farm_id: int, is_public: bool, db: Sess
                 specialties="",
             )
             db.add(profile)
+            db.flush()  # Flush to ensure the object has an ID before commit
         else:
             # Mettre à jour la visibilité
             profile.is_public = is_public
@@ -239,9 +241,13 @@ def toggle_farm_visibility(user_id: int, farm_id: int, is_public: bool, db: Sess
             "is_public": profile.is_public,
             "message": f"Ferme {'✅ rendue publique' if is_public else '🔒 rendue privée'}"
         }
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+        import traceback
+        error_detail = f"Error toggling visibility: {str(e)} | {traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 
 

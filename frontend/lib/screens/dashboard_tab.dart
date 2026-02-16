@@ -43,6 +43,11 @@ class _DashboardTabState extends State<DashboardTab> {
   final ScrollController _newsScrollController = ScrollController();
   bool _isWeatherExpanded = false;
   
+  // STATIC PERSISTENT CACHE - survives widget rebuilds and navigation
+  static final Map<String, Future<Map<String, dynamic>>> _globalCountsCache = {};
+  static final Map<String, Future<Map<String, dynamic>>> _globalWeatherCache = {};
+  static final Map<String, Future<List<NewsArticle>>> _globalNewsCache = {};
+  
   // Random tip feature
   final List<String> _tips = [
     'Arrosez tôt le matin pour réduire l\'évaporation et économiser l\'eau.',
@@ -57,10 +62,10 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   void initState() {
     super.initState();
-    // Load data asynchronously - NO CACHE CLEARING ON INIT
-    _countsFuture = _loadCounts();
-    _weatherFuture = _loadWeather();
-    _newsFuture = ApiService.getAgriculturalNews();
+    // Load data using cached getters - reuse if already exists
+    _countsFuture = _getOrCreateCounts();
+    _weatherFuture = _getOrCreateWeather();
+    _newsFuture = _getOrCreateNews();
     // Initialize random tip
     _currentTip = _tips[Random().nextInt(_tips.length)];
   }
@@ -70,9 +75,13 @@ class _DashboardTabState extends State<DashboardTab> {
     super.didUpdateWidget(oldWidget);
     // Only reload if userId actually changed
     if (oldWidget.userId != widget.userId) {
-      _countsFuture = _loadCounts();
-      _weatherFuture = _loadWeather();
-      _newsFuture = ApiService.getAgriculturalNews();
+      // Clear caches when user changes
+      _globalCountsCache.clear();
+      _globalWeatherCache.clear();
+      _globalNewsCache.clear();
+      _countsFuture = _getOrCreateCounts();
+      _weatherFuture = _getOrCreateWeather();
+      _newsFuture = _getOrCreateNews();
       setState(() {});
     }
   }
@@ -135,6 +144,46 @@ class _DashboardTabState extends State<DashboardTab> {
     return result;
   }
 
+  /// Get counts with persistent caching
+  Future<Map<String, dynamic>> _getOrCreateCounts() {
+    const cacheKey = 'dashboard_counts';
+    if (!_globalCountsCache.containsKey(cacheKey)) {
+      _globalCountsCache[cacheKey] = _loadCounts();
+    }
+    return _globalCountsCache[cacheKey]!;
+  }
+
+  /// Get weather with persistent caching
+  Future<Map<String, dynamic>> _getOrCreateWeather() {
+    const cacheKey = 'dashboard_weather';
+    if (!_globalWeatherCache.containsKey(cacheKey)) {
+      _globalWeatherCache[cacheKey] = _loadWeather();
+    }
+    return _globalWeatherCache[cacheKey]!;
+  }
+
+  /// Get news with persistent caching
+  Future<List<NewsArticle>> _getOrCreateNews() {
+    final cacheKey = 'dashboard_news_${_selectedNewsFilter}';
+    if (!_globalNewsCache.containsKey(cacheKey)) {
+      _globalNewsCache[cacheKey] = ApiService.getAgriculturalNews();
+    }
+    return _globalNewsCache[cacheKey]!;
+  }
+
+  /// Refresh dashboard by clearing caches
+  Future<void> _refreshDashboard() async {
+    _globalCountsCache.clear();
+    _globalWeatherCache.clear();
+    _globalNewsCache.clear();
+    
+    _countsFuture = _getOrCreateCounts();
+    _weatherFuture = _getOrCreateWeather();
+    _newsFuture = _getOrCreateNews();
+    
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
 
 
   @override
@@ -156,14 +205,7 @@ class _DashboardTabState extends State<DashboardTab> {
         ),
       ),
       child: RefreshIndicator(
-        onRefresh: () async {
-          setState(() {
-            _countsFuture = _loadCounts();
-            _weatherFuture = _loadWeather();
-            _newsFuture = ApiService.getAgriculturalNews();
-          });
-          await Future.delayed(const Duration(milliseconds: 500));
-        },
+        onRefresh: _refreshDashboard,
         child: CustomScrollView(
           physics: const ClampingScrollPhysics(),
           cacheExtent: 200.0,
@@ -483,7 +525,9 @@ class _DashboardTabState extends State<DashboardTab> {
                         if (value != null) {
                           setState(() {
                             _selectedNewsFilter = value;
-                            _newsFuture = ApiService.getAgriculturalNews();
+                            // Clear old cache and get new cached news for filter
+                            _globalNewsCache.clear();
+                            _newsFuture = _getOrCreateNews();
                           });
                         }
                       },
@@ -1149,7 +1193,9 @@ class _DashboardTabState extends State<DashboardTab> {
                           ),
                         ).then((_) {
                           setState(() {
-                            _countsFuture = _loadCounts();
+                            // Clear cache and reload counts after returning from FarmTab
+                            _globalCountsCache.clear();
+                            _countsFuture = _getOrCreateCounts();
                           });
                         });
                       },

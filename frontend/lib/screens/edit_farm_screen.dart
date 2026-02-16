@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
@@ -31,6 +32,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
   XFile? _profileFile;
   Uint8List? _profileBytes;
   bool _loading = false;
+  bool _isPublic = false;
 
   bool get isWeb => kIsWeb;
 
@@ -40,6 +42,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
     _nameCtrl = TextEditingController(text: widget.farm['name'] ?? '');
     _locationCtrl = TextEditingController(text: widget.farm['location'] ?? '');
     _sizeCtrl = TextEditingController(text: widget.farm['size_hectares']?.toString() ?? '');
+    _isPublic = widget.farm['is_public'] as bool? ?? false;
     
     final soilType = (widget.farm['soil_type'] ?? '').toString().trim();
     if (soilType.isNotEmpty) {
@@ -127,8 +130,9 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
         if (u != null) profileUrl = u;
       }
 
+      final farmId = widget.farm['id'] as int;
       final Map<String, dynamic> updated = await ApiService.updateFarm(
-        farmId: widget.farm['id'] as int,
+        farmId: farmId,
         name: _nameCtrl.text.trim(),
         location: _locationCtrl.text.trim(),
         sizeHectares: _sizeCtrl.text.isNotEmpty ? double.tryParse(_sizeCtrl.text) : null,
@@ -136,9 +140,23 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
         imageUrl: profileUrl,
       );
 
+      // Update farm visibility if it changed
+      final userId = AuthService.currentSession?.userId;
+      if (userId != null) {
+        final wasPublic = widget.farm['is_public'] as bool? ?? false;
+        if (wasPublic != _isPublic) {
+          await ApiService.toggleFarmVisibility(
+            userId: userId,
+            farmId: farmId,
+            isPublic: _isPublic,
+          );
+        }
+      }
+
       setState(() {
         widget.farm.clear();
         widget.farm.addAll(updated);
+        widget.farm['is_public'] = _isPublic;
       });
 
       if (!mounted) return;
@@ -260,6 +278,10 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
                 const SizedBox(height: 28),
                 
                 _buildTypeSelector(isDark, textColor, subtleColor),
+                
+                const SizedBox(height: 48),
+                
+                _buildVisibilityToggle(isDark, textColor, subtleColor),
                 
                 const SizedBox(height: 56),
                 
@@ -626,6 +648,62 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildVisibilityToggle(bool isDark, Color textColor, Color subtleColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'VISIBILITÉ',
+                  style: TextStyle(
+                    color: subtleColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _isPublic ? 'Publique' : 'Privée',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+            Switch(
+              value: _isPublic,
+              onChanged: (value) {
+                setState(() => _isPublic = value);
+              },
+              activeColor: AppColors.accent,
+              inactiveTrackColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _isPublic
+              ? 'Cette ferme est visible publiquement et peut être découverte par d\'autres utilisateurs.'
+              : 'Cette ferme est privée et ne sera visible que pour vous.',
+          style: TextStyle(
+            color: subtleColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w300,
+            height: 1.5,
+          ),
+        ),
+      ],
     );
   }
 

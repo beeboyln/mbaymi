@@ -7,6 +7,7 @@ import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/utils/app_spacing.dart';
 import 'package:mbaymi/utils/app_typography.dart';
 import 'package:mbaymi/utils/app_radius.dart';
+import 'package:flutter/foundation.dart';
 
 class CreateFarmScreen extends StatefulWidget {
   final int? userId;
@@ -38,6 +39,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
   XFile? _imageFile;
   Uint8List? _imageBytes;
   bool _loading = false;
+  bool _isPublic = true;  // Default: farm is public when created
 
   // Constantes pour les dimensions
   static const double _defaultPadding = AppSpacing.lg;
@@ -144,6 +146,19 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
         latitude: lat,
         longitude: lng,
       );
+      
+      // Set farm visibility if needed
+      if (!_isPublic && res['id'] != null) {
+        try {
+          await ApiService.toggleFarmVisibility(
+            userId: widget.userId!,
+            farmId: res['id'] as int,
+            isPublic: _isPublic,
+          );
+        } catch (e) {
+          debugPrint('Warning: Could not set farm visibility: $e');
+        }
+      }
 
       _showSuccessSnackBar('Ferme créée avec succès !');
       
@@ -317,6 +332,12 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
                         ),
                         const SizedBox(height: _mediumPadding),
                         _buildMapSelector(cardColor, textColor, secondaryTextColor, borderColor),
+                        const SizedBox(height: _largePadding),
+
+                        // Visibility
+                        _buildSectionTitle('Paramètres'),
+                        const SizedBox(height: _mediumPadding),
+                        _buildVisibilityToggle(cardColor, textColor, secondaryTextColor, borderColor),
                         const SizedBox(height: _largePadding),
 
                         // Description
@@ -611,6 +632,65 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
             Icon(Icons.arrow_forward_ios_rounded, color: secondaryTextColor, size: 16),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildVisibilityToggle(Color cardColor, Color textColor, Color secondaryTextColor, Color borderColor) {
+    return Container(
+      padding: const EdgeInsets.all(_mediumPadding),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    _isPublic ? Icons.public_outlined : Icons.lock_outlined,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isPublic ? 'Publique' : 'Privée',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _isPublic
+                    ? 'Visible par les autres agriculteurs'
+                    : 'Visible pour vous uniquement',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w300,
+                  color: secondaryTextColor,
+                ),
+              ),
+            ],
+          ),
+          Switch(
+            value: _isPublic,
+            onChanged: (value) {
+              HapticFeedback.lightImpact();
+              setState(() => _isPublic = value);
+            },
+            activeColor: AppColors.primary,
+            inactiveTrackColor: borderColor,
+          ),
+        ],
       ),
     );
   }
