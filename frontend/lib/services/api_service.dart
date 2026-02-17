@@ -1876,41 +1876,6 @@ class ApiService {
       throw Exception('Error unfollowing user: $e');
     }
   }
-  
-  // DEPRECATED: Méthodes anciennes conservées pour compatibilité
-  @deprecated
-  static Future<void> followFarm({required int farmId, required int userId}) async {
-    try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/farm-network/follow/$farmId?user_id=$userId'),
-        headers: headers,
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to follow farm');
-      }
-    } catch (e) {
-      throw Exception('Error following farm: $e');
-    }
-  }
-
-  @deprecated
-  static Future<void> unfollowFarm({required int farmId, required int userId}) async {
-    try {
-      final headers = await _getAuthHeaders();
-      final response = await http.delete(
-        Uri.parse('$baseUrl/farm-network/follow/$farmId?user_id=$userId'),
-        headers: headers,
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to unfollow farm');
-      }
-    } catch (e) {
-      throw Exception('Error unfollowing farm: $e');
-    }
-  }
 
   static Future<List<dynamic>> getUserFollowing(int userId) async {
     try {
@@ -1929,6 +1894,82 @@ class ApiService {
       });
     } catch (e) {
       throw Exception('Error getting following: $e');
+    }
+  }
+
+  static Future<List<int>> getUserFollowingIds(int userId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farm-network/user-following/$userId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final followingList = data['following'] as List? ?? [];
+          return followingList.map<int>((f) => f['following_id'] as int).toList();
+        } else {
+          return [];
+        }
+      });
+    } catch (e) {
+      debugPrint('Error getting user following IDs: $e');
+      return [];
+    }
+  }
+
+  static Future<List<int>> getFarmFollowingIds(int userId) async {
+    try {
+      return await _withRetry(() async {
+        final response = await http.get(
+          Uri.parse('$baseUrl/farm-network/farm-following/$userId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final farmList = data['following'] as List? ?? [];
+          return farmList.map<int>((f) => f['farm_id'] as int).toList();
+        } else {
+          return [];
+        }
+      });
+    } catch (e) {
+      debugPrint('Error getting farm following IDs: $e');
+      return [];
+    }
+  }
+
+  static Future<void> followFarm({required int farmId, required int userId}) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/farm-network/follow-farm/$farmId?user_id=$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to follow farm');
+      }
+    } catch (e) {
+      throw Exception('Error following farm: $e');
+    }
+  }
+
+  static Future<void> unfollowFarm({required int farmId, required int userId}) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/farm-network/follow-farm/$farmId?user_id=$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to unfollow farm');
+      }
+    } catch (e) {
+      throw Exception('Error unfollowing farm: $e');
     }
   }
 

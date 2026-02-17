@@ -28,10 +28,14 @@ class UserProfileScreen extends StatefulWidget {
 class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKeepAliveClientMixin {
   // ✅ Futures créées une seule fois et cachées
   Future<Map<String, dynamic>>? _profileFuture;
-  Future<List<dynamic>>? _postsFuture;
+  Future<List<dynamic>>? _farmsFuture;
+  Future<List<dynamic>>? _livestockFuture;
   
   Map<String, dynamic> _profileData = {};
-  List<dynamic> _postsData = [];
+  List<dynamic> _farmsData = [];
+  List<dynamic> _livestockData = [];
+  
+  int _selectedTab = 0; // 0: Fermes, 1: Bétail
   
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -44,7 +48,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
     // Créer les futures qu'UNE SEULE FOIS
     final viewerId = AuthService.currentSession?.userId ?? 0;
     _profileFuture ??= ApiService.getUserProfile(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
-    _postsFuture ??= ApiService.getUserPosts(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
+    _farmsFuture ??= ApiService.getPublicUserFarms(widget.userId);
+    _livestockFuture ??= ApiService.getUserLivestock(widget.userId);
   }
 
   @override
@@ -54,7 +59,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
     if (oldWidget.userId != widget.userId) {
       final viewerId = AuthService.currentSession?.userId ?? 0;
       _profileFuture = ApiService.getUserProfile(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
-      _postsFuture = ApiService.getUserPosts(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
+      _farmsFuture = ApiService.getPublicUserFarms(widget.userId);
+      _livestockFuture = ApiService.getUserLivestock(widget.userId);
       setState(() {});
     }
   }
@@ -63,7 +69,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
     // Recharger UNIQUEMENT si on swipe
     final viewerId = AuthService.currentSession?.userId ?? 0;
     _profileFuture = ApiService.getUserProfile(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
-    _postsFuture = ApiService.getUserPosts(widget.userId, viewerId: viewerId > 0 ? viewerId : null);
+    _farmsFuture = ApiService.getPublicUserFarms(widget.userId);
+    _livestockFuture = ApiService.getUserLivestock(widget.userId);
     setState(() {});
   }
 
@@ -836,9 +843,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                     ),
                     const SizedBox(height: 32),
 
-                    // 📰 Mes publications
+                    // 🌾 Fermes et Bétail avec tabs
                     Text(
-                      'Mes Publications',
+                      'Mes Ressources',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
@@ -847,201 +854,405 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                       ),
                     ),
                     const SizedBox(height: 12),
-                    FutureBuilder<List<dynamic>>(
-                      future: _postsFuture!,
-                      builder: (context, postsSnap) {
-                        if (postsSnap.connectionState == ConnectionState.waiting) {
-                          return SkeletonListLoader(
-                            itemCount: 3,
-                            isDarkMode: isDark,
-                            itemHeight: 150,
-                          );
-                        }
-
-                        if (postsSnap.hasError) {
-                          return Text(
-                            'Erreur: ${postsSnap.error}',
-                            style: TextStyle(color: textColor),
-                          );
-                        }
-
-                        // Store posts data in state
-                        _postsData = postsSnap.data ?? [];
-                        
-                        final posts = _postsData;
-                        if (posts.isEmpty) {
-                          return Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 40),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.newspaper_outlined,
-                                    size: 48,
-                                    color: AppColors.primary.withOpacity(0.5),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'Aucune publication',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: secondaryTextColor,
-                                      fontWeight: FontWeight.w300,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Créez votre première publication',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: secondaryTextColor.withOpacity(0.7),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-
-                        return GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          shrinkWrap: true,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 1,
+                    
+                    // Tabs pour switcher
+                    Container(
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: borderColor,
+                            width: 1,
                           ),
-                          itemCount: posts.length,
-                          itemBuilder: (context, index) {
-                            final post = posts[index];
-                            final title = post['title'] ?? '';
-                            final farmName = post['farm_name'] ?? '';
-                            final imageUrl = post['image_url'] as String?;
-                            final createdAt = post['created_at'] ?? '';
-                            final postType = post['post_type'] ?? 'crop_update';
-                            
-                            DateTime? dateTime;
-                            try {
-                              dateTime = DateTime.parse(createdAt);
-                            } catch (_) {}
-                            
-                            final formattedDate = dateTime != null
-                                ? DateFormat('dd/MM/yyyy').format(dateTime)
-                                : 'Date inconnue';
-
-                            final postTypeEmoji = _getPostTypeEmoji(postType);
-
-                            return GestureDetector(
-                              onTap: () {
-                                // Afficher les détails du post
-                                _showPostDetails(context, post, cardColor, textColor, secondaryTextColor, borderColor);
-                              },
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedTab = 0),
                               child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
                                 decoration: BoxDecoration(
-                                  color: cardColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: borderColor, width: 1),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: _selectedTab == 0 ? AppColors.accent : Colors.transparent,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.landscape_outlined,
+                                      size: 18,
+                                      color: _selectedTab == 0 ? AppColors.accent : secondaryTextColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Fermes',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: _selectedTab == 0 ? AppColors.accent : secondaryTextColor,
+                                      ),
                                     ),
                                   ],
                                 ),
-                                child: Stack(
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedTab = 1),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: _selectedTab == 1 ? AppColors.accent : Colors.transparent,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    // Image de fond
-                                    if (imageUrl != null && imageUrl.isNotEmpty)
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(
-                                          imageUrl,
-                                          fit: BoxFit.cover,
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                          errorBuilder: (_, __, ___) => Container(
-                                            color: AppColors.primary.withOpacity(0.1),
-                                            child: const Icon(Icons.image_not_supported_outlined, size: 32),
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Icon(Icons.image_outlined, size: 32),
-                                      ),
-                                    
-                                    // Overlay au hover
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        gradient: LinearGradient(
-                                          begin: Alignment.bottomCenter,
-                                          end: Alignment.topCenter,
-                                          colors: [
-                                            Colors.black.withOpacity(0.8),
-                                            Colors.transparent,
-                                          ],
-                                        ),
+                                    Icon(
+                                      Icons.pets_outlined,
+                                      size: 18,
+                                      color: _selectedTab == 1 ? AppColors.accent : secondaryTextColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Bétail',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: _selectedTab == 1 ? AppColors.accent : secondaryTextColor,
                                       ),
                                     ),
-                                    
-                                    // Contenu en bas
-                                    Positioned(
-                                      bottom: 0,
-                                      left: 0,
-                                      right: 0,
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Text(
-                                                  postTypeEmoji,
-                                                  style: const TextStyle(fontSize: 14),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Text(
-                                                    title,
-                                                    style: const TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: Colors.white,
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              formattedDate,
-                                              style: const TextStyle(
-                                                fontSize: 9,
-                                                color: Colors.white70,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Contenu des tabs
+                    if (_selectedTab == 0)
+                      FutureBuilder<List<dynamic>>(
+                        future: _farmsFuture!,
+                        builder: (context, farmsSnap) {
+                          if (farmsSnap.connectionState == ConnectionState.waiting) {
+                            return SkeletonListLoader(
+                              itemCount: 3,
+                              isDarkMode: isDark,
+                              itemHeight: 120,
+                            );
+                          }
+
+                          if (farmsSnap.hasError) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 40),
+                                child: Text(
+                                  'Erreur: ${farmsSnap.error}',
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ),
+                            );
+                          }
+
+                          _farmsData = farmsSnap.data ?? [];
+                          final farms = _farmsData;
+                          
+                          if (farms.isEmpty) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 40),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.landscape_outlined,
+                                      size: 48,
+                                      color: AppColors.primary.withOpacity(0.5),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Aucune ferme',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: secondaryTextColor,
+                                        fontWeight: FontWeight.w300,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                             );
-                          },
-                        );
-                      },
-                    ),
+                          }
+
+                          return ListView.separated(
+                            physics: const NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
+                            itemCount: farms.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final farm = farms[index] as Map<String, dynamic>;
+                              final farmName = farm['name'] ?? 'Ferme';
+                              final farmImage = farm['image_url'] as String?;
+                              final location = farm['location'] ?? '';
+
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: cardColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: borderColor, width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Image
+                                    Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(12),
+                                          bottomLeft: Radius.circular(12),
+                                        ),
+                                        color: AppColors.getCardBgColor(isDark),
+                                      ),
+                                      child: farmImage != null && farmImage.isNotEmpty
+                                          ? ClipRRect(
+                                              borderRadius: const BorderRadius.only(
+                                                topLeft: Radius.circular(12),
+                                                bottomLeft: Radius.circular(12),
+                                              ),
+                                              child: Image.network(
+                                                farmImage,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Icon(
+                                                  Icons.landscape_outlined,
+                                                  color: secondaryTextColor,
+                                                ),
+                                              ),
+                                            )
+                                          : Icon(
+                                              Icons.landscape_outlined,
+                                              color: secondaryTextColor,
+                                            ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Info
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            farmName.toUpperCase(),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                              color: textColor,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (location.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              location,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: secondaryTextColor,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 16,
+                                      color: secondaryTextColor,
+                                    ),
+                                    const SizedBox(width: 12),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      )
+                    else
+                      FutureBuilder<List<dynamic>>(
+                        future: _livestockFuture!,
+                        builder: (context, livestockSnap) {
+                          if (livestockSnap.connectionState == ConnectionState.waiting) {
+                            return SkeletonListLoader(
+                              itemCount: 3,
+                              isDarkMode: isDark,
+                              itemHeight: 100,
+                            );
+                          }
+
+                          if (livestockSnap.hasError) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 40),
+                                child: Text(
+                                  'Erreur: ${livestockSnap.error}',
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ),
+                            );
+                          }
+
+                          _livestockData = livestockSnap.data ?? [];
+                          final animals = _livestockData;
+                          
+                          if (animals.isEmpty) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 40),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.pets_outlined,
+                                      size: 48,
+                                      color: AppColors.primary.withOpacity(0.5),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Aucun bétail',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: secondaryTextColor,
+                                        fontWeight: FontWeight.w300,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+
+                          return ListView.separated(
+                            physics: const NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
+                            itemCount: animals.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final animal = animals[index] as Map<String, dynamic>;
+                              final animalType = animal['animal_type'] as String? ?? 'Animal';
+                              final breed = animal['breed'] as String? ?? '';
+                              final quantity = animal['quantity'] as int? ?? 1;
+                              final photo = animal['image_url'] ?? 
+                                            animal['imageUrl'] ?? 
+                                            (animal['photos'] is List && (animal['photos'] as List).isNotEmpty 
+                                                ? (animal['photos'] as List).first 
+                                                : null);
+
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: cardColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: borderColor, width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Image
+                                    Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(12),
+                                          bottomLeft: Radius.circular(12),
+                                        ),
+                                        color: AppColors.getCardBgColor(isDark),
+                                        image: photo != null 
+                                            ? DecorationImage(
+                                                image: NetworkImage(photo),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : null,
+                                      ),
+                                      child: photo == null 
+                                          ? Icon(
+                                              Icons.pets,
+                                              color: secondaryTextColor,
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Info
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            animalType.toUpperCase(),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                              color: textColor,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (breed.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              breed,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: secondaryTextColor,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: borderColor,
+                                          width: 1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'x$quantity',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: textColor,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                   ],
                 ),
               );

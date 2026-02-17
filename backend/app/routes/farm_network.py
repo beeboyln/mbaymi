@@ -436,6 +436,108 @@ def unfollow_user(user_id_to_unfollow: int, user_id: int, db: Session = Depends(
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 
+@router.post("/follow-farm/{farm_id}")
+def follow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
+    """
+    🌾 Suivre une ferme spécifique.
+    """
+    try:
+        existing = db.query(FarmFollowing).filter(
+            FarmFollowing.follower_id == user_id,
+            FarmFollowing.farm_id == farm_id
+        ).first()
+        
+        if existing:
+            return {"message": "Déjà suivi"}
+        
+        following = FarmFollowing(follower_id=user_id, farm_id=farm_id)
+        db.add(following)
+        db.commit()
+        
+        print(f'✅ User {user_id} following farm {farm_id}')
+        return {"message": "Ferme suivie"}
+    except Exception as e:
+        db.rollback()
+        print(f'❌ Error following farm: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.delete("/follow-farm/{farm_id}")
+def unfollow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
+    """
+    🌾 Arrêter de suivre une ferme.
+    """
+    try:
+        following = db.query(FarmFollowing).filter(
+            FarmFollowing.follower_id == user_id,
+            FarmFollowing.farm_id == farm_id
+        ).first()
+        
+        if not following:
+            print(f'⚠️ User {user_id} is not following farm {farm_id}')
+            return {"message": "Ferme non suivie"}
+        
+        db.delete(following)
+        db.commit()
+        
+        print(f'✅ User {user_id} unfollowed farm {farm_id}')
+        return {"message": "Ferme non suivie"}
+    except Exception as e:
+        db.rollback()
+        print(f'❌ Error unfollowing farm: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.get("/farm-following/{user_id}")
+def get_farm_following_ids(user_id: int, db: Session = Depends(get_db)):
+    """
+    🌾 Récupérer la liste des fermes qu'un user suit.
+    """
+    try:
+        following = db.query(FarmFollowing).filter(FarmFollowing.follower_id == user_id).all()
+        
+        return {
+            "count": len(following),
+            "farm_ids": [f.farm_id for f in following],
+            "following": [
+                {
+                    "farm_id": f.farm_id,
+                }
+                for f in following
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
+@router.get("/user-following/{user_id}")
+def get_users_following(user_id: int, db: Session = Depends(get_db)):
+    """
+    👥 Récupérer la liste des utilisateurs qu'un user suit (UserFollowing).
+    Retourne les IDs des utilisateurs suivis pour les fermes publiques.
+    """
+    try:
+        # Récupérer tous les enregistrements UserFollowing où ce user est le follower
+        following = db.query(UserFollowing).filter(UserFollowing.follower_id == user_id).all()
+        
+        return {
+            "count": len(following),
+            "following_ids": [f.following_id for f in following],
+            "following": [
+                {
+                    "following_id": f.following_id,
+                }
+                for f in following
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+
 @router.get("/following/{user_id}")
 def get_user_following(user_id: int, db: Session = Depends(get_db)):
     """

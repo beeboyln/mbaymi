@@ -161,7 +161,7 @@ class _FarmTabState extends State<FarmTab> {
     await showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: isDarkMode ? AppColors.darkBg : AppColors.lightBgAlt,
+        backgroundColor: isDarkMode ? AppColors.getBgColor(isDarkMode) : AppColors.lightBgAlt,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         title: Text(
           'SUPPRIMER LA FERME',
@@ -278,7 +278,7 @@ class _FarmTabState extends State<FarmTab> {
     final isMobile = MediaQuery.of(context).size.width < 768;
     
     return Scaffold(
-      backgroundColor: isDarkMode ? AppColors.darkBg : AppColors.lightBg,
+      backgroundColor: AppColors.getBgColor(isDarkMode),
       body: isMobile 
           ? _buildMobileLayout(isDarkMode)
           : _buildDesktopLayout(isDarkMode),
@@ -287,9 +287,9 @@ class _FarmTabState extends State<FarmTab> {
 
   Widget _buildMobileLayout(bool isDarkMode) {
     return Scaffold(
-      backgroundColor: isDarkMode ? AppColors.darkBg : AppColors.lightBg,
+      backgroundColor: AppColors.getBgColor(isDarkMode),
       appBar: AppBar(
-        backgroundColor: isDarkMode ? AppColors.darkBg : AppColors.lightBg,
+        backgroundColor: AppColors.getBgColor(isDarkMode),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: Text(
@@ -304,7 +304,7 @@ class _FarmTabState extends State<FarmTab> {
         centerTitle: true,
       ),
       drawer: Drawer(
-        backgroundColor: isDarkMode ? AppColors.darkBg : AppColors.lightBg,
+        backgroundColor: AppColors.getBgColor(isDarkMode),
         child: SafeArea(
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 32),
@@ -346,7 +346,7 @@ class _FarmTabState extends State<FarmTab> {
       ),
       body: RefreshIndicator(
         color: AppColors.accent,
-        backgroundColor: isDarkMode ? AppColors.darkBg : AppColors.lightBg,
+        backgroundColor: AppColors.getBgColor(isDarkMode),
         onRefresh: _refreshFarms,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -461,7 +461,7 @@ class _FarmTabState extends State<FarmTab> {
         Container(
           width: 240,
           decoration: BoxDecoration(
-            color: isDarkMode ? AppColors.darkBg : AppColors.lightBg,
+            color: AppColors.getBgColor(isDarkMode),
             border: Border(
               right: BorderSide(
                 color: isDarkMode ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
@@ -517,7 +517,7 @@ class _FarmTabState extends State<FarmTab> {
           child: RefreshIndicator(
             onRefresh: _refreshFarms,
             color: AppColors.accent,
-            backgroundColor: isDarkMode ? AppColors.darkBg : AppColors.lightBg,
+            backgroundColor: AppColors.getBgColor(isDarkMode),
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
@@ -803,7 +803,7 @@ class _FarmTabState extends State<FarmTab> {
     return Container(
       height: 400,
       alignment: Alignment.center,
-      color: isDarkMode ? AppColors.darkBg : Colors.transparent,
+      color: isDarkMode ? AppColors.getBgColor(isDarkMode) : Colors.transparent,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -941,7 +941,7 @@ class _FarmTabState extends State<FarmTab> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isDarkMode ? AppColors.darkBg : AppColors.lightBgAlt,
+          color: isDarkMode ? AppColors.getCardBgColor(isDarkMode) : AppColors.lightBgAlt,
           border: Border.all(
             color: isDarkMode ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08),
             width: 1,
@@ -1556,7 +1556,7 @@ class _FarmTabState extends State<FarmTab> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isDarkMode ? AppColors.darkBg : AppColors.lightBgAlt,
+          color: isDarkMode ? AppColors.getCardBgColor(isDarkMode) : AppColors.lightBgAlt,
           border: Border.all(
             color: isDarkMode ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08),
             width: 1,

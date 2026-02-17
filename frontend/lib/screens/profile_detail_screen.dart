@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
@@ -18,32 +19,41 @@ class ProfileDetailScreen extends StatefulWidget {
   State<ProfileDetailScreen> createState() => _ProfileDetailScreenState();
 }
 
-class _ProfileDetailScreenState extends State<ProfileDetailScreen> with AutomaticKeepAliveClientMixin {
-  // ✅ Futures créées une seule fois et cachées
+class _ProfileDetailScreenState extends State<ProfileDetailScreen>
+    with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   Future<Map<String, dynamic>>? _profileFuture;
-  Future<List<dynamic>>? _postsFuture;
   Future<List<dynamic>>? _farmsFuture;
-  
+
   Map<String, dynamic> _profileData = {};
-  final List<dynamic> _postsData = [];
   int _userId = 0;
   int? _followersCount;
   bool? _isFollowing;
+  final Set<int> _followedFarmIds = {};
+  bool _isLoadingFollows = false;
+  
+  // Track followers count per farm ID for real-time updates
+  Map<int, int> _farmFollowersCount = {};
 
-  // Couleurs
-  static const Color _primaryColor = Color(0xFF8B6B4D);
-  static const Color _primaryLight = Color(0xFFA58A6D);
-  static const Color _accentColor = Color(0xFFC4A484);
-  static const Color _bgLight = Color(0xFFFAF8F5);
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = AppColors.lightBg;
-  static const Color _cardDark = Color(0xFF1E1E1E);
-  static const Color _borderLight = Color(0xFFE8E2D8);
-  static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _textLight = Color(0xFF1A1A1A);
-  static const Color _textDark = Colors.white;
-  static const Color _textSecondaryLight = Color(0xFF6B6B6B);
-  static const Color _textSecondaryDark = Color(0xFF8E8E93);
+  late AnimationController _pageController;
+  late AnimationController _followController;
+  late Animation<double> _pageFade;
+  late Animation<Offset> _pageSlide;
+  late Animation<double> _followScale;
+
+  // ── Palette Zara : blanc/noir/taupe ──────────────────────────────────────
+  static const Color _ink = Color(0xFF111111);
+  static const Color _inkSoft = Color(0xFF444444);
+  static const Color _inkMuted = Color(0xFF999999);
+  static const Color _taupe = Color(0xFF9B8B7A);
+  static const Color _taupeLight = Color(0xFFD4C8BB);
+  static const Color _pageBgLight = Color(0xFFFCFBF9);
+  static const Color _pageBgDark = Color(0xFF0C0C0C);
+  static const Color _surfaceDark = Color(0xFF161616);
+  static const Color _dividerLight = Color(0xFFEAE6E0);
+  static const Color _dividerDark = Color(0xFF252525);
+  static const Color _inkDark = Color(0xFFF5F5F0);
+  static const Color _inkSoftDark = Color(0xFFB0A89E);
+  static const Color _inkMutedDark = Color(0xFF5A5A5A);
 
   @override
   bool get wantKeepAlive => true;
@@ -52,455 +62,639 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> with Automati
   void initState() {
     super.initState();
     _userId = AuthService.currentSession?.userId ?? 0;
-    // Créer les futures qu'UNE SEULE FOIS
-    _profileFuture ??= ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null);
-    _postsFuture ??= ApiService.getUserPosts(widget.userId, viewerId: _userId > 0 ? _userId : null);
+    _profileFuture ??= ApiService.getUserProfile(
+        widget.userId, viewerId: _userId > 0 ? _userId : null);
     _farmsFuture ??= ApiService.getPublicUserFarms(widget.userId);
+    _loadFollowedFarms();
+    _initAnimations();
+  }
+
+  void _initAnimations() {
+    _pageController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 640));
+    _followController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 140));
+
+    _pageFade =
+        CurvedAnimation(parent: _pageController, curve: Curves.easeOut);
+    _pageSlide = Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
+        .animate(CurvedAnimation(
+            parent: _pageController, curve: Curves.easeOutCubic));
+    _followScale = Tween<double>(begin: 1.0, end: 0.94).animate(
+        CurvedAnimation(parent: _followController, curve: Curves.easeInOut));
+
+    Future.microtask(() {
+      if (mounted) _pageController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _followController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFollowedFarms() async {
+    if (_userId == 0) return;
+    setState(() => _isLoadingFollows = true);
+    try {
+      final ids = await ApiService.getFarmFollowingIds(_userId);
+      if (mounted) {
+        setState(() {
+          _followedFarmIds..clear()..addAll(ids);
+        });
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingFollows = false);
+  }
+
+  Future<void> _toggleFollowFarm(int farmId) async {
+    if (_userId == 0) { _toast('Connectez-vous pour suivre'); return; }
+    HapticFeedback.selectionClick();
+    final following = _followedFarmIds.contains(farmId);
+    final currentCount = _farmFollowersCount[farmId] ?? 0;
+    
+    setState(() {
+      if (following) {
+        _followedFarmIds.remove(farmId);
+        _farmFollowersCount[farmId] = (currentCount - 1).clamp(0, double.infinity).toInt();
+      } else {
+        _followedFarmIds.add(farmId);
+        _farmFollowersCount[farmId] = currentCount + 1;
+      }
+    });
+    
+    try {
+      if (following) {
+        await ApiService.unfollowFarm(farmId: farmId, userId: _userId);
+      } else {
+        await ApiService.followFarm(farmId: farmId, userId: _userId);
+      }
+      
+      // Refetch farms to sync followers count
+      _farmsFuture = ApiService.getPublicUserFarms(widget.userId);
+      if (mounted) setState(() {});
+      
+    } catch (_) {
+      // Revert on error
+      final revertedCount = _farmFollowersCount[farmId] ?? 0;
+      setState(() {
+        if (following) {
+          _followedFarmIds.add(farmId);
+          _farmFollowersCount[farmId] = revertedCount + 1;
+        } else {
+          _followedFarmIds.remove(farmId);
+          _farmFollowersCount[farmId] = (revertedCount - 1).clamp(0, double.infinity).toInt();
+        }
+      });
+    }
+  }
+
+  Future<void> _doFollow() async {
+    HapticFeedback.mediumImpact();
+    final prev = _isFollowing;
+    setState(() { _isFollowing = true; _followersCount = (_followersCount ?? 0) + 1; });
+    try {
+      await ApiService.followUser(userIdToFollow: widget.userId, userId: _userId);
+      ApiService.notifyFollowChanged(widget.userId, 'follow');
+      ApiService.getUserProfile(widget.userId, viewerId: _userId).then((fresh) {
+        if (!mounted) return;
+        setState(() {
+          _profileData = fresh;
+          _followersCount = fresh['total_followers'] ?? _followersCount;
+          _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
+        });
+      }).catchError((_) {});
+    } catch (_) {
+      setState(() { _isFollowing = prev; _followersCount = (_followersCount ?? 1) - 1; });
+    }
+  }
+
+  Future<void> _doUnfollow() async {
+    HapticFeedback.lightImpact();
+    final prev = _isFollowing;
+    setState(() { _isFollowing = false; _followersCount = (_followersCount ?? 1) - 1; });
+    try {
+      await ApiService.unfollowUser(userIdToUnfollow: widget.userId, userId: _userId);
+      ApiService.notifyFollowChanged(widget.userId, 'unfollow');
+      ApiService.getUserProfile(widget.userId, viewerId: _userId).then((fresh) {
+        if (!mounted) return;
+        setState(() {
+          _profileData = fresh;
+          _followersCount = fresh['total_followers'] ?? _followersCount;
+          _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
+        });
+      }).catchError((_) {});
+    } catch (_) {
+      setState(() { _isFollowing = prev; _followersCount = (_followersCount ?? 0) + 1; });
+    }
   }
 
   Future<void> _refresh() async {
-    // Recharger UNIQUEMENT si on swipe
-    _profileFuture = ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null);
-    _postsFuture = ApiService.getUserPosts(widget.userId, viewerId: _userId > 0 ? _userId : null);
+    _profileFuture = ApiService.getUserProfile(
+        widget.userId, viewerId: _userId > 0 ? _userId : null);
     _farmsFuture = ApiService.getPublicUserFarms(widget.userId);
+    _followersCount = null;
+    _isFollowing = null;
+    _pageController.reset();
     setState(() {});
+    _pageController.forward();
   }
 
-  Widget _buildDefaultAvatar(String name) => Container(
-    width: 80,
-    height: 80,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(40),
-      color: _primaryColor,
-      border: Border.all(
-        color: _primaryColor,
-        width: 2,
-      ),
-    ),
-    child: Center(
-      child: Text(
-        name.isNotEmpty ? name[0].toUpperCase() : '?',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    ),
-  );
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg,
+          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+      backgroundColor: _ink,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      duration: const Duration(seconds: 2),
+    ));
+  }
 
+  String _fmt(num n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return '$n';
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
-    final isDark = widget.isDarkMode;
-    final bgColor = isDark ? _bgDark : _bgLight;
-    final cardColor = isDark ? _cardDark : _cardLight;
-    final textColor = isDark ? _textDark : _textLight;
-    final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
-    final borderColor = isDark ? _borderDark : _borderLight;
+    final d = widget.isDarkMode;
+    final bg = d ? _pageBgDark : _pageBgLight;
+    final ink = d ? _inkDark : _ink;
+    final inkSoft = d ? _inkSoftDark : _inkSoft;
+    final inkMuted = d ? _inkMutedDark : _inkMuted;
+    final div = d ? _dividerDark : _dividerLight;
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: bgColor,
+        backgroundColor: bg,
         elevation: 0,
-        title: const Text('Profil', style: TextStyle(fontWeight: FontWeight.w300)),
-        centerTitle: true,
-        iconTheme: IconThemeData(color: textColor),
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: bgColor.withOpacity(0.95),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: Icon(Icons.arrow_back, color: textColor),
-              onPressed: () => Navigator.pop(context),
+        scrolledUnderElevation: 0,
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Icon(Icons.arrow_back_ios_new_rounded, size: 15, color: inkSoft),
             ),
           ),
         ),
-        // ❌ Pas de bouton logout - c'est un profil de lecture seule
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: div),
+        ),
       ),
       body: RefreshIndicator(
-        color: _primaryColor,
+        color: _taupe,
+        strokeWidth: 1.5,
         onRefresh: _refresh,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: FutureBuilder<Map<String, dynamic>>(
-            future: _profileFuture ?? ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null),
-            builder: (context, profileSnap) {
-              if (profileSnap.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: CircularProgressIndicator(color: _primaryColor),
-                  ),
-                );
-              }
-
-              if (profileSnap.hasError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Text(
-                      'Erreur: ${profileSnap.error}',
-                      style: TextStyle(color: textColor),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                );
-              }
-
-              // Store profile data in state
-              _profileData = profileSnap.data ?? {};
-              
-              final profile = _profileData;
-              final name = profile['name'] ?? 'Utilisateur';
-              final email = profile['email'] ?? '';
-              final profileImage = profile['profile_image'] as String?;
-              final totalFollowers = profile['total_followers'] ?? profile['followers'] ?? 0;
-              final totalPosts = profile['total_posts'] ?? 0;
-
-              // Only update from server if local state hasn't been modified
-              _followersCount ??= totalFollowers;
-              if (_isFollowing == null) {
-                if (profile.containsKey('followed_by_user')) {
-                  _isFollowing = profile['followed_by_user'] as bool? ?? false;
-                } else if (profile.containsKey('is_following')) {
-                  _isFollowing = profile['is_following'] as bool? ?? false;
-                } else {
-                  _isFollowing = false;
-                }
-              }
-
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 👤 En-tête du profil (LECTURE SEULE)
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: const BorderRadius.all(Radius.circular(16)),
-                        border: Border.all(color: borderColor, width: 1),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Avatar + Nom (pas d'édition)
-                            Row(
-                              children: [
-                                // Avatar - pas de GestureDetector (lecture seule)
-                                profileImage != null && profileImage.isNotEmpty
-                                    ? Container(
-                                        width: 80,
-                                        height: 80,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(40),
-                                          border: Border.all(
-                                            color: _primaryColor,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(40),
-                                          child: Image.network(
-                                            profileImage,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) =>
-                                                _buildDefaultAvatar(name),
-                                          ),
-                                        ),
-                                      )
-                                    : _buildDefaultAvatar(name),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Nom - pas de bouton edit
-                                      Text(
-                                        name,
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w400,
-                                          color: textColor,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      // Email - pas de bouton edit
-                                      Text(
-                                        email,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: secondaryTextColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            
-                            // Stats simplifiées (uniquement abonnés et posts)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                    // Abonnés + follow button
-                                    Column(
-                                      children: [
-                                        const Icon(Icons.people_outline, size: 24, color: _accentColor),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          '${_followersCount ?? 0}',
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: _accentColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        SizedBox(
-                                          height: 30,
-                                          child: widget.userId == _userId
-                                              ? const SizedBox.shrink()
-                                              : (_userId == 0
-                                                  ? OutlinedButton(
-                                                      onPressed: () {
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          const SnackBar(content: Text('Veuillez vous connecter pour vous abonner')),
-                                                        );
-                                                      },
-                                                      child: const Text("S'abonner"),
-                                                    )
-                                                  : (_isFollowing == true
-                                                      ? OutlinedButton(
-                                                          onPressed: () async {
-                                                            // unfollow
-                                                            final prev = _isFollowing;
-                                                            setState(() {
-                                                              _isFollowing = false;
-                                                              _followersCount = (_followersCount ?? 0) - 1;
-                                                            });
-                                                            try {
-                                                              await ApiService.unfollowUser(userIdToUnfollow: widget.userId, userId: _userId);
-                                                              // notify other components (dashboard) that follow state changed IMMEDIATELY
-                                                              ApiService.notifyFollowChanged(widget.userId, 'unfollow');
-                                                              // fetch authoritative profile in background and merge results without triggering loader
-                                                              ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null).then((fresh) {
-                                                                if (!mounted) return;
-                                                                setState(() {
-                                                                  _profileData = fresh;
-                                                                  _followersCount = fresh['total_followers'] ?? _followersCount;
-                                                                  _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
-                                                                });
-                                                              }).catchError((_) {});
-                                                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Désabonné')));
-                                                            } catch (e) {
-                                                              setState(() {
-                                                                _isFollowing = prev;
-                                                                _followersCount = (_followersCount ?? 0) + 1;
-                                                              });
-                                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                                                            }
-                                                          },
-                                                          child: const Text('Abonné'),
-                                                        )
-                                                      : ElevatedButton(
-                                                          style: ElevatedButton.styleFrom(backgroundColor: _accentColor),
-                                                          onPressed: () async {
-                                                            final prev = _isFollowing;
-                                                            setState(() {
-                                                              _isFollowing = true;
-                                                              _followersCount = (_followersCount ?? 0) + 1;
-                                                            });
-                                                            try {
-                                                              await ApiService.followUser(userIdToFollow: widget.userId, userId: _userId);
-                                                              // fetch authoritative profile in background and merge results without triggering loader
-                                                              ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null).then((fresh) {
-                                                                if (!mounted) return;
-                                                                setState(() {
-                                                                  _profileData = fresh;
-                                                                  _followersCount = fresh['total_followers'] ?? _followersCount;
-                                                                  _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
-                                                                });
-                                                              }).catchError((_) {});
-                                                              // notify other components (dashboard) that follow state changed
-                                                              ApiService.notifyFollowChanged(widget.userId, 'follow');
-                                                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Abonné')));
-                                                            } catch (e) {
-                                                              setState(() {
-                                                                _isFollowing = prev;
-                                                                _followersCount = (_followersCount ?? 0) - 1;
-                                                              });
-                                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                                                            }
-                                                          },
-                                                          child: const Text("S'abonner"),
-                                                        ))),
-                                        ),
-                                      ],
-                                    ),
-
-                                    // Fermes count (replace Posts)
-                                    FutureBuilder<List<dynamic>>(
-                                      future: _farmsFuture ?? ApiService.getPublicUserFarms(widget.userId),
-                                      builder: (context, farmsSnap) {
-                                        final farms = farmsSnap.data ?? [];
-                                        final count = farms.length;
-                                        return _buildStatWidget(
-                                          icon: Icons.landscape_outlined,
-                                          label: 'Fermes',
-                                          value: '$count',
-                                          color: _primaryLight,
-                                        );
-                                      },
-                                    ),
-                              ],
-                            ),
-                            // ❌ Pas de bouton "Créer du contenu" - c'est un profil d'autre utilisateur
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    const SizedBox(height: 16),
-
-                      // 🐄 Fermes du profil (lecture seule)
-                      Text(
-                        'Fermes',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: textColor,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      FutureBuilder<List<dynamic>>(
-                        future: _farmsFuture ?? ApiService.getPublicUserFarms(widget.userId),
-                        builder: (context, farmsSnap) {
-                          if (farmsSnap.connectionState == ConnectionState.waiting) {
-                            return const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: _primaryColor)));
-                          }
-                          if (farmsSnap.hasError) {
-                            return Text('Erreur: ${farmsSnap.error}', style: TextStyle(color: textColor));
-                          }
-
-                          final farms = farmsSnap.data ?? [];
-                          if (farms.isEmpty) {
-                            return Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: 24), child: Text('Aucune ferme', style: TextStyle(color: secondaryTextColor))));
-                          }
-
-                          return DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: const BorderRadius.all(Radius.circular(16)),
-                              border: Border.all(color: borderColor, width: 1),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                children: farms.map<Widget>((f) {
-                                  final farm = f as Map<String, dynamic>;
-                                  final farmName = farm['farm_name'] ?? farm['name'] ?? farm['title'] ?? 'Ferme';
-                                  final location = farm['farm_location'] ?? farm['location'] ?? farm['address'] ?? '';
-                                  final imageUrl = (farm['profile_image_farm'] ?? farm['image_url'] ?? farm['profile_image'] ?? farm['image']) as String?;
-                                  final followers = farm['followers'] ?? farm['total_followers'] ?? 0;
-
-                                  return ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                                    leading: Container(
-                                      width: 56,
-                                      height: 56,
-                                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[200]),
-                                      child: imageUrl != null && imageUrl.isNotEmpty
-                                          ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(imageUrl, fit: BoxFit.cover))
-                                          : const Icon(Icons.landscape_outlined, size: 32, color: Colors.grey),
-                                    ),
-                                    title: Text(farmName, style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
-                                    subtitle: Text(location, style: TextStyle(color: secondaryTextColor)),
-                                    trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.favorite, color: _primaryColor, size: 16), const SizedBox(height: 4), Text('$followers', style: const TextStyle(color: _primaryColor))]),
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => FarmDetailScreen(
-                                            farmId: farm['farm_id'] ?? farm['id'] ?? farm['farmId'] ?? 0,
-                                            farmData: farm,
-                                            isDarkMode: widget.isDarkMode,
-                                            readOnly: true,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                  ],
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: _profileFuture ??
+              ApiService.getUserProfile(widget.userId,
+                  viewerId: _userId > 0 ? _userId : null),
+          builder: (context, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(color: _taupe, strokeWidth: 1.5),
                 ),
               );
-            },
-          ),
+            }
+            if (snap.hasError) {
+              return Center(
+                child: Text('Une erreur est survenue',
+                    style: TextStyle(color: inkMuted, fontSize: 13)),
+              );
+            }
+
+            _profileData = snap.data ?? {};
+            final name = _profileData['name'] ?? 'Utilisateur';
+            final email = _profileData['email'] ?? '';
+            final imgUrl = _profileData['profile_image'] as String?;
+            final totalFollowers =
+                _profileData['total_followers'] ?? _profileData['followers'] ?? 0;
+
+            _followersCount ??= totalFollowers;
+            if (_isFollowing == null) {
+              _isFollowing = (_profileData['followed_by_user'] ??
+                  _profileData['is_following'] ?? false) as bool;
+            }
+
+            return FadeTransition(
+              opacity: _pageFade,
+              child: SlideTransition(
+                position: _pageSlide,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(d, ink, inkSoft, inkMuted, div, name, email, imgUrl),
+                      if (widget.userId != _userId)
+                        _buildFollowStrip(d, ink, inkSoft, div),
+                      _buildFarmsSection(d, ink, inkSoft, inkMuted, div),
+                      const SizedBox(height: 56),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildStatWidget({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    final isDark = widget.isDarkMode;
+  // ── Header ─────────────────────────────────────────────────────────────────
+  Widget _buildHeader(bool d, Color ink, Color inkSoft, Color inkMuted,
+      Color div, String name, String email, String? imgUrl) {
+    final count = _followersCount ?? 0;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 36, 24, 32),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar carré — style éditorial
+          _avatar(imgUrl, name, d),
+          const SizedBox(width: 22),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 2),
+                Text(
+                  name.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: ink,
+                    letterSpacing: 2.0,
+                    height: 1.2,
+                  ),
+                ),
+                if (email.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(email,
+                      style: TextStyle(
+                          fontSize: 12, color: inkMuted, letterSpacing: 0.1)),
+                ],
+                const SizedBox(height: 20),
+                // Gros chiffre abonnés
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    TweenAnimationBuilder<int>(
+                      tween: IntTween(begin: 0, end: count),
+                      duration: const Duration(milliseconds: 900),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, val, __) => Text(
+                        _fmt(val),
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w200,
+                          color: ink,
+                          letterSpacing: -1.5,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      count == 1 ? 'abonné' : 'abonnés',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: inkMuted,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatar(String? imgUrl, String name, bool d) {
+    const s = 76.0;
+    Widget child;
+    if (imgUrl != null && imgUrl.isNotEmpty) {
+      child = Image.network(imgUrl, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _letterBox(name, s, d));
+    } else {
+      child = _letterBox(name, s, d);
+    }
+    return SizedBox(
+      width: s, height: s,
+      child: ClipRRect(borderRadius: BorderRadius.circular(2), child: child),
+    );
+  }
+
+  Widget _letterBox(String name, double s, bool d) => Container(
+        width: s, height: s,
+        color: d ? _surfaceDark : _dividerLight,
+        child: Center(
+          child: Text(
+            name.isNotEmpty ? name[0].toUpperCase() : '?',
+            style: TextStyle(
+              color: d ? _inkSoftDark : _inkSoft,
+              fontSize: s * 0.36,
+              fontWeight: FontWeight.w200,
+              letterSpacing: -1,
+            ),
+          ),
+        ),
+      );
+
+  // ── Follow strip ────────────────────────────────────────────────────────────
+  Widget _buildFollowStrip(bool d, Color ink, Color inkSoft, Color div) {
+    final isFollowing = _isFollowing ?? false;
     return Column(
       children: [
-        Icon(icon, size: 24, color: color),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
+        Divider(height: 1, thickness: 1, color: div),
+        GestureDetector(
+          onTapDown: (_) => _followController.forward(),
+          onTapUp: (_) {
+            _followController.reverse();
+            if (_userId == 0) { _toast('Connectez-vous pour vous abonner'); return; }
+            isFollowing ? _doUnfollow() : _doFollow();
+          },
+          onTapCancel: () => _followController.reverse(),
+          child: ScaleTransition(
+            scale: _followScale,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: SizedBox(
+                height: 54,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 240),
+                      child: Text(
+                        isFollowing ? 'ABONNÉ' : "S'ABONNER",
+                        key: ValueKey(isFollowing),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2.2,
+                          color: isFollowing ? _taupe : ink,
+                        ),
+                      ),
+                    ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 240),
+                      child: Icon(
+                        isFollowing ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                        key: ValueKey(isFollowing),
+                        size: 16,
+                        color: isFollowing ? _taupe : inkSoft,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: isDark ? _textSecondaryDark : _textSecondaryLight,
-          ),
-        ),
+        Divider(height: 1, thickness: 1, color: div),
+        const SizedBox(height: 36),
       ],
     );
   }
 
-  String _getPostTypeEmoji(String postType) {
-    switch (postType) {
-      case 'crop_update':
-        return '🌱';
-      case 'harvest_result':
-        return '🌾';
-      case 'problem_report':
-        return '🚨';
-      case 'tip':
-        return '💡';
-      default:
-        return '📝';
-    }
+  // ── Farms ───────────────────────────────────────────────────────────────────
+  Widget _buildFarmsSection(
+      bool d, Color ink, Color inkSoft, Color inkMuted, Color div) {
+    return FutureBuilder<List<dynamic>>(
+      future: _farmsFuture ?? ApiService.getPublicUserFarms(widget.userId),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(40),
+            child: Center(
+              child: SizedBox(
+                width: 18, height: 18,
+                child: CircularProgressIndicator(color: _taupe, strokeWidth: 1.5),
+              ),
+            ),
+          );
+        }
+
+        final farms = snap.data ?? [];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Label section
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('FERMES',
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: inkMuted,
+                          letterSpacing: 3)),
+                  if (farms.isNotEmpty)
+                    Text('${farms.length}',
+                        style: TextStyle(fontSize: 9, color: inkMuted, letterSpacing: 1)),
+                ],
+              ),
+            ),
+
+            if (farms.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                child: Text('Aucune ferme',
+                    style: TextStyle(color: inkMuted, fontSize: 13)),
+              )
+            else
+              ...List.generate(farms.length, (i) => _buildFarmRow(
+                  farms[i] as Map<String, dynamic>, i, d, ink, inkSoft, inkMuted, div)),
+          ],
+        );
+      },
+    );
   }
+
+  Widget _buildFarmRow(Map<String, dynamic> farm, int i, bool d, Color ink,
+      Color inkSoft, Color inkMuted, Color div) {
+    final name = farm['farm_name'] ?? farm['name'] ?? farm['title'] ?? 'Ferme';
+    final loc = farm['farm_location'] ?? farm['location'] ?? farm['address'] ?? '';
+    final imgUrl =
+        (farm['profile_image_farm'] ?? farm['image_url'] ?? farm['profile_image'] ?? farm['image'])
+            as String?;
+    
+    final farmId = (farm['farm_id'] ?? farm['id'] ?? 0) as int;
+    
+    // Initialize followers count from farm data on first load
+    final initialFollowers = farm['followers'] ?? farm['total_followers'] ?? 0;
+    if (!_farmFollowersCount.containsKey(farmId)) {
+      _farmFollowersCount[farmId] = initialFollowers;
+    }
+    
+    // Use tracked followers count if available, otherwise use farm data
+    final followers = _farmFollowersCount.containsKey(farmId)
+        ? _farmFollowersCount[farmId]!
+        : initialFollowers;
+    
+    final isFollowed = _followedFarmIds.contains(farmId);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 380 + i * 55),
+      curve: Curves.easeOut,
+      builder: (_, v, child) =>
+          Opacity(opacity: v, child: Transform.translate(offset: Offset(0, 8 * (1 - v)), child: child)),
+      child: Column(
+        children: [
+          Divider(height: 1, thickness: 1, color: div),
+          InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FarmDetailScreen(
+                  farmId: farmId,
+                  farmData: farm,
+                  isDarkMode: widget.isDarkMode,
+                  readOnly: true,
+                ),
+              ),
+            ),
+            splashColor: Colors.transparent,
+            highlightColor: d
+                ? Colors.white.withOpacity(0.03)
+                : Colors.black.withOpacity(0.02),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+              child: Row(
+                children: [
+                  // Thumbnail carré
+                  _thumb(imgUrl, d),
+                  const SizedBox(width: 18),
+                  // Infos
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.3,
+                            color: ink,
+                            height: 1.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (loc.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(loc,
+                              style: TextStyle(
+                                  fontSize: 12, color: inkMuted, height: 1.3),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ],
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            // Followers badge proéminent
+                            Text(
+                              _fmt(followers as num),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: _taupe,
+                                letterSpacing: -0.5,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              (followers as num) == 1 ? 'abonné' : 'abonnés',
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  color: inkMuted,
+                                  letterSpacing: 1.0,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                            const Spacer(),
+                            // Follow chip — minimal, borderless sur fond
+                            GestureDetector(
+                              onTap: () => _toggleFollowFarm(farmId),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: isFollowed ? _taupe : Colors.transparent,
+                                  border:
+                                      Border.all(color: isFollowed ? _taupe : _taupeLight, width: 1),
+                                ),
+                                child: Text(
+                                  isFollowed ? 'SUIVI' : 'SUIVRE',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.8,
+                                    color: isFollowed ? Colors.white : _taupe,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(Icons.arrow_forward_ios_rounded, size: 11, color: inkMuted),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _thumb(String? imgUrl, bool d) {
+    const s = 62.0;
+    return SizedBox(
+      width: s, height: s,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: imgUrl != null && imgUrl.isNotEmpty
+            ? Image.network(imgUrl, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _thumbFallback(d))
+            : _thumbFallback(d),
+      ),
+    );
+  }
+
+  Widget _thumbFallback(bool d) => Container(
+        color: d ? _surfaceDark : _dividerLight,
+        child: Center(
+          child: Icon(Icons.landscape_outlined,
+              size: 20, color: d ? _inkMutedDark : _taupeLight),
+        ),
+      );
 }

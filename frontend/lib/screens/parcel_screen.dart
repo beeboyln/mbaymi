@@ -76,7 +76,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          final bgColor = isDark ? AppColors.darkBg : AppColors.lightBg;
+          final bgColor = AppColors.getBgColor(isDark);
 
           return Container(
             decoration: BoxDecoration(
@@ -301,7 +301,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.darkBg : AppColors.lightBg;
+    final bgColor = AppColors.getBgColor(isDark);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -523,7 +523,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
         return RefreshIndicator(
           onRefresh: _refresh,
           color: _primaryColor,
-          backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+          backgroundColor: AppColors.getBgColor(isDark),
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),
@@ -556,7 +556,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? AppColors.darkBg : Colors.white,
+        backgroundColor: isDark ? AppColors.getBgColor(isDark) : Colors.white,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
         ),
@@ -883,7 +883,7 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: widget.isDark ? AppColors.darkBg : Colors.white,
+        color: widget.isDark ? AppColors.getCardBgColor(widget.isDark) : Colors.white,
         border: Border.all(
           color: widget.isDark
               ? Colors.white.withOpacity(0.08)
