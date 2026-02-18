@@ -3,23 +3,47 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
+// ─── ZARA-STYLE DESIGN TOKENS ───────────────────────────────────────────────
+class _Z {
+  static const bg = Color(0xFFF7F6F4);
+  static const ink = Color(0xFF111111);
+  static const muted = Color(0xFF888888);
+  static const faint = Color(0xFFE8E6E1);
+  static const expenseAccent = Color(0xFF111111);
+  static const incomeAccent = Color(0xFF4A7C59);
+  static const cardBg = Color(0xFFFFFFFF);
+  static const serif = TextStyle(fontFamily: 'Georgia', color: Color(0xFF111111));
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 class ParcelFinanceScreen extends StatefulWidget {
   final int farmId;
-
   const ParcelFinanceScreen({super.key, required this.farmId});
 
   @override
   State<ParcelFinanceScreen> createState() => _ParcelFinanceScreenState();
 }
 
-class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
+class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
+    with SingleTickerProviderStateMixin {
   late Future<List<dynamic>> _listFuture;
   late Future<Map<String, dynamic>> _summaryFuture;
+  late AnimationController _fadeCtrl;
+  late Animation<double> _fadeAnim;
 
   @override
   void initState() {
     super.initState();
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _load();
+    _fadeCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeCtrl.dispose();
+    super.dispose();
   }
 
   void _load() {
@@ -27,717 +51,686 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen> {
     _summaryFuture = ApiService.getFinanceSummary(widget.farmId);
   }
 
-  String _formatDate(String? dateString) {
-    if (dateString == null || dateString.isEmpty) return '';
+  String _formatDate(String? d) {
+    if (d == null || d.isEmpty) return '';
     try {
-      final dt = DateTime.parse(dateString);
-      return DateFormat('d MMMM yyyy HH:mm', 'fr_FR').format(dt);
-    } catch (e) {
-      return dateString;
+      return DateFormat('d MMM yyyy · HH:mm', 'fr_FR').format(DateTime.parse(d));
+    } catch (_) {
+      return d;
     }
   }
 
+  String _formatAmount(dynamic v) {
+    if (v == null) return '0';
+    final n = (v is num) ? v.toDouble() : double.tryParse(v.toString()) ?? 0.0;
+    return NumberFormat('#,##0', 'fr_FR').format(n);
+  }
+
+  // ─── SHARED BOTTOM SHEET LAYOUT ─────────────────────────────────────────
+  Widget _buildBottomSheet({
+    required BuildContext ctx,
+    required String title,
+    required String actionLabel,
+    required String type,
+    required TextEditingController categoryCtrl,
+    required TextEditingController amountCtrl,
+    required TextEditingController notesCtrl,
+    required void Function(String) onTypeChanged,
+    required VoidCallback onSubmit,
+  }) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _Z.bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
+        top: 32,
+        left: 28,
+        right: 28,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 32,
+                height: 2,
+                color: _Z.faint,
+                margin: const EdgeInsets.only(bottom: 32),
+              ),
+            ),
+            Text(title.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 11,
+                  letterSpacing: 3,
+                  fontWeight: FontWeight.w500,
+                  color: _Z.muted,
+                )),
+            const SizedBox(height: 24),
+
+            // Type toggle — minimal pill-less version
+            Row(
+              children: ['expense', 'income'].map((t) {
+                final selected = type == t;
+                final label = t == 'expense' ? 'DÉPENSE' : 'REVENU';
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => onTypeChanged(t),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: EdgeInsets.only(right: t == 'expense' ? 8 : 0),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: selected ? _Z.ink : Colors.transparent,
+                        border: Border.all(color: selected ? _Z.ink : _Z.faint),
+                      ),
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          letterSpacing: 2.5,
+                          fontWeight: FontWeight.w500,
+                          color: selected ? Colors.white : _Z.muted,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+
+            // Fields
+            _ZField(controller: categoryCtrl, label: 'CATÉGORIE', hint: "Main-d'œuvre, semences…"),
+            const SizedBox(height: 16),
+            _ZField(controller: amountCtrl, label: 'MONTANT (FCFA)', hint: '0', numeric: true),
+            const SizedBox(height: 16),
+            _ZField(controller: notesCtrl, label: 'NOTES', hint: 'Détails…', maxLines: 3),
+            const SizedBox(height: 32),
+
+            // Action
+            GestureDetector(
+              onTap: onSubmit,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                color: _Z.ink,
+                child: Text(
+                  actionLabel.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    letterSpacing: 3,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── ADD ─────────────────────────────────────────────────────────────────
   Future<void> _showAddTransaction() async {
     final amountCtrl = TextEditingController();
     final categoryCtrl = TextEditingController();
-    String type = 'expense';
     final notesCtrl = TextEditingController();
+    String type = 'expense';
 
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            top: 24,
-            left: 24,
-            right: 24,
-          ),
-          child: StatefulBuilder(builder: (context, setModalState) {
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Nouvelle transaction',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setModalState(() => type = 'expense'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                color: type == 'expense' ? Colors.red[400] : Colors.transparent,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                'Dépense',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w300,
-                                  color: type == 'expense' ? Colors.white : Colors.grey[700],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setModalState(() => type = 'income'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                color: type == 'income' ? Colors.green[400] : Colors.transparent,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                'Revenu',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w300,
-                                  color: type == 'income' ? Colors.white : Colors.grey[700],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: categoryCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Catégorie',
-                      hintText: "Main-d'œuvre, semences...",
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: amountCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Montant',
-                      prefixText: 'FCFA ',
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                      ),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: notesCtrl,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: 'Notes',
-                      hintText: 'Détails supplémentaires...',
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final payload = {
-                        'farm_id': widget.farmId,
-                        'transaction_type': type,
-                        'category': categoryCtrl.text.trim(),
-                        'amount': double.tryParse(amountCtrl.text) ?? 0.0,
-                        'notes': notesCtrl.text.trim(),
-                      };
-                      try {
-                        await ApiService.createTransaction(payload);
-                        Navigator.pop(context);
-                        setState(() => _load());
-                      } catch (e) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Erreur: $e'),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    child: const Text('Ajouter la transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300)),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            );
-          }),
-        );
-      },
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => _buildBottomSheet(
+          ctx: ctx,
+          title: 'Nouvelle transaction',
+          actionLabel: 'Ajouter',
+          type: type,
+          categoryCtrl: categoryCtrl,
+          amountCtrl: amountCtrl,
+          notesCtrl: notesCtrl,
+          onTypeChanged: (t) => setS(() => type = t),
+          onSubmit: () async {
+            try {
+              await ApiService.createTransaction({
+                'farm_id': widget.farmId,
+                'transaction_type': type,
+                'category': categoryCtrl.text.trim(),
+                'amount': double.tryParse(amountCtrl.text) ?? 0.0,
+                'notes': notesCtrl.text.trim(),
+              });
+              Navigator.pop(ctx);
+              setState(() => _load());
+            } catch (e) {
+              Navigator.pop(ctx);
+              _showError(e.toString());
+            }
+          },
+        ),
+      ),
     );
   }
 
-  Future<void> _showEditTransaction(Map<String, dynamic> transaction) async {
-    final amountCtrl = TextEditingController(text: (transaction['amount'] ?? '').toString());
-    final categoryCtrl = TextEditingController(text: transaction['category'] ?? '');
-    String type = transaction['transaction_type'] ?? 'expense';
-    final notesCtrl = TextEditingController(text: transaction['notes'] ?? '');
+  // ─── EDIT ────────────────────────────────────────────────────────────────
+  Future<void> _showEditTransaction(Map<String, dynamic> t) async {
+    final amountCtrl = TextEditingController(text: (t['amount'] ?? '').toString());
+    final categoryCtrl = TextEditingController(text: t['category'] ?? '');
+    final notesCtrl = TextEditingController(text: t['notes'] ?? '');
+    String type = t['transaction_type'] ?? 'expense';
 
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            top: 24,
-            left: 24,
-            right: 24,
-          ),
-          child: StatefulBuilder(builder: (context, setModalState) {
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Modifier la transaction',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setModalState(() => type = 'expense'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                color: type == 'expense' ? Colors.red[400] : Colors.transparent,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                'Dépense',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w300,
-                                  color: type == 'expense' ? Colors.white : Colors.grey[700],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setModalState(() => type = 'income'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                color: type == 'income' ? Colors.green[400] : Colors.transparent,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                'Revenu',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w300,
-                                  color: type == 'income' ? Colors.white : Colors.grey[700],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: categoryCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Catégorie',
-                      hintText: "Main-d'œuvre, semences...",
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: amountCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Montant',
-                      prefixText: 'FCFA ',
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                      ),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: notesCtrl,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: 'Notes',
-                      hintText: 'Détails supplémentaires...',
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final updates = {
-                        'transaction_type': type,
-                        'category': categoryCtrl.text.trim(),
-                        'amount': double.tryParse(amountCtrl.text) ?? 0.0,
-                        'notes': notesCtrl.text.trim(),
-                      };
-                      try {
-                        await ApiService.updateTransaction(transaction['id'], updates);
-                        Navigator.pop(context);
-                        setState(() => _load());
-                      } catch (e) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Erreur: $e'),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    child: const Text('Modifier la transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300)),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            );
-          }),
-        );
-      },
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => _buildBottomSheet(
+          ctx: ctx,
+          title: 'Modifier',
+          actionLabel: 'Enregistrer',
+          type: type,
+          categoryCtrl: categoryCtrl,
+          amountCtrl: amountCtrl,
+          notesCtrl: notesCtrl,
+          onTypeChanged: (v) => setS(() => type = v),
+          onSubmit: () async {
+            try {
+              await ApiService.updateTransaction(t['id'], {
+                'transaction_type': type,
+                'category': categoryCtrl.text.trim(),
+                'amount': double.tryParse(amountCtrl.text) ?? 0.0,
+                'notes': notesCtrl.text.trim(),
+              });
+              Navigator.pop(ctx);
+              setState(() => _load());
+            } catch (e) {
+              Navigator.pop(ctx);
+              _showError(e.toString());
+            }
+          },
+        ),
+      ),
     );
   }
 
-  Future<void> _deleteTransaction(int transactionId) async {
+  // ─── DELETE ──────────────────────────────────────────────────────────────
+  Future<void> _deleteTransaction(int id) async {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer cette transaction?'),
-        content: const Text('Cette action ne peut pas être annulée.'),
+      builder: (_) => AlertDialog(
+        backgroundColor: _Z.bg,
+        shape: const RoundedRectangleBorder(),
+        title: const Text('SUPPRIMER',
+            style: TextStyle(fontSize: 11, letterSpacing: 3, fontWeight: FontWeight.w500, color: _Z.ink)),
+        content: const Text('Cette action est irréversible.',
+            style: TextStyle(color: _Z.muted, fontSize: 13)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: const Text('ANNULER',
+                style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted)),
           ),
           TextButton(
             onPressed: () async {
               try {
-                await ApiService.deleteTransaction(transactionId);
+                await ApiService.deleteTransaction(id);
                 Navigator.pop(context);
                 setState(() => _load());
               } catch (e) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Erreur: $e')),
-                );
+                _showError(e.toString());
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            child: const Text('SUPPRIMER',
+                style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.red)),
           ),
         ],
       ),
     );
   }
 
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: const TextStyle(fontSize: 12, letterSpacing: 0.5)),
+      backgroundColor: _Z.ink,
+      behavior: SnackBarBehavior.floating,
+      shape: const RoundedRectangleBorder(),
+    ));
+  }
+
+  // ─── BUILD ───────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightBg,
+      backgroundColor: _Z.bg,
       appBar: AppBar(
-        title: const Text('Finances', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: _Z.bg,
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black87,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, size: 20, color: _Z.ink),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
+        title: const Text(
+          'FINANCES',
+          style: TextStyle(
+            fontSize: 11,
+            letterSpacing: 4,
+            fontWeight: FontWeight.w500,
+            color: _Z.ink,
+          ),
+        ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => setState(() => _load()),
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            FutureBuilder<Map<String, dynamic>>(
-              future: _summaryFuture,
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return Container(
-                    height: 180,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue[400]!, Colors.blue[600]!],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: const Center(child: CircularProgressIndicator(color: Colors.white)),
-                  );
-                }
-                final s = snap.data ?? {};
-                final totalExpenses = s['total_expenses'] ?? 0;
-                final totalIncome = s['total_income'] ?? 0;
-                final netProfit = s['net_profit'] ?? 0;
-                final isProfit = netProfit >= 0;
+      body: FadeTransition(
+        opacity: _fadeAnim,
+        child: RefreshIndicator(
+          color: _Z.ink,
+          backgroundColor: _Z.bg,
+          onRefresh: () async => setState(() => _load()),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+            children: [
+              // ── SUMMARY CARD ──────────────────────────────────────────────
+              FutureBuilder<Map<String, dynamic>>(
+                future: _summaryFuture,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(height: 200,
+                        child: Center(child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1)));
+                  }
+                  final s = snap.data ?? {};
+                  final expenses = s['total_expenses'] ?? 0;
+                  final income = s['total_income'] ?? 0;
+                  final net = s['net_profit'] ?? 0;
+                  final isProfit = (net is num) ? net >= 0 : true;
 
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isProfit 
-                        ? [Colors.green[400]!, Colors.green[600]!]
-                        : [Colors.orange[400]!, Colors.orange[600]!],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isProfit ? Colors.green[200]! : Colors.orange[200]!).withOpacity(0.5),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Solde actuel',
-                        style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$netProfit FCFA',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(Icons.arrow_downward, color: Colors.white, size: 16),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('Dépenses', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                                        Text('$totalExpenses', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(Icons.arrow_upward, color: Colors.white, size: 16),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('Revenus', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                                        Text('$totalIncome', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                'Transactions récentes',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<List<dynamic>>(
-              future: _listFuture,
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(),
-                  ));
-                }
-                final items = snap.data ?? [];
-                if (items.isEmpty) {
                   return Container(
-                    padding: const EdgeInsets.all(48),
+                    color: _Z.ink,
+                    padding: const EdgeInsets.all(28),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[300]),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Aucune transaction',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                        const Text('SOLDE ACTUEL',
+                            style: TextStyle(
+                              fontSize: 9,
+                              letterSpacing: 3,
+                              color: Colors.white54,
+                              fontWeight: FontWeight.w500,
+                            )),
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              _formatAmount(net),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 42,
+                                fontWeight: FontWeight.w300,
+                                letterSpacing: -1,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('FCFA',
+                                style: TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 12,
+                                  letterSpacing: 1.5,
+                                )),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          height: 1,
+                          color: Colors.white12,
+                          margin: const EdgeInsets.symmetric(vertical: 20),
+                        ),
+                        Row(
+                          children: [
+                            _SummaryPill(label: 'DÉPENSES', value: _formatAmount(expenses), up: false),
+                            const SizedBox(width: 32),
+                            _SummaryPill(label: 'REVENUS', value: _formatAmount(income), up: true),
+                          ],
                         ),
                       ],
                     ),
                   );
-                }
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, i) {
-                    final it = items[i] as Map<String, dynamic>;
-                    final isExpense = it['transaction_type'] == 'expense';
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey[200]!),
+                },
+              ),
+
+              const SizedBox(height: 40),
+
+              // ── SECTION LABEL ─────────────────────────────────────────────
+              const Text('TRANSACTIONS',
+                  style: TextStyle(
+                    fontSize: 9,
+                    letterSpacing: 3,
+                    color: _Z.muted,
+                    fontWeight: FontWeight.w500,
+                  )),
+              const SizedBox(height: 2),
+              Container(height: 1, color: _Z.faint),
+              const SizedBox(height: 16),
+
+              // ── LIST ──────────────────────────────────────────────────────
+              FutureBuilder<List<dynamic>>(
+                future: _listFuture,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                        child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1),
+                    ));
+                  }
+                  final items = snap.data ?? [];
+                  if (items.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: _Z.faint),
+                              ),
+                              child: const Icon(Icons.receipt_long_outlined, size: 20, color: _Z.muted),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text('AUCUNE TRANSACTION',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  letterSpacing: 3,
+                                  color: _Z.muted,
+                                )),
+                          ],
+                        ),
                       ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        leading: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: isExpense ? Colors.red[50] : Colors.green[50],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            isExpense ? Icons.arrow_downward : Icons.arrow_upward,
-                            color: isExpense ? Colors.red[400] : Colors.green[400],
-                            size: 20,
-                          ),
-                        ),
-                        title: Text(
-                          it['category'] ?? '-',
-                          style: const TextStyle(fontWeight: FontWeight.w300, fontSize: 15),
-                        ),
-                        subtitle: Text(
-                          _formatDate(it['transaction_date']),
-                          style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                        ),
-                        trailing: Text(
-                          '${isExpense ? "-" : "+"}${it['amount'] ?? ''}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: isExpense ? Colors.red[600] : Colors.green[600],
-                          ),
-                        ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => Container(height: 1, color: _Z.faint),
+                    itemBuilder: (context, i) {
+                      final it = items[i] as Map<String, dynamic>;
+                      final isExpense = it['transaction_type'] == 'expense';
+                      return GestureDetector(
                         onLongPress: () {
                           showModalBottomSheet(
                             context: context,
-                            builder: (context) => Container(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ListTile(
-                                    leading: const Icon(Icons.edit, color: Colors.blue),
-                                    title: const Text('Modifier'),
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      _showEditTransaction(it);
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(Icons.delete, color: Colors.red),
-                                    title: const Text('Supprimer', style: TextStyle(color: Colors.red)),
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      _deleteTransaction(it['id']);
-                                    },
-                                  ),
-                                ],
-                              ),
+                            backgroundColor: _Z.bg,
+                            shape: const RoundedRectangleBorder(),
+                            builder: (_) => Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  height: 1,
+                                  color: _Z.faint,
+                                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                                ),
+                                _ActionTile(
+                                  icon: Icons.edit_outlined,
+                                  label: 'MODIFIER',
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _showEditTransaction(it);
+                                  },
+                                ),
+                                Container(height: 1, color: _Z.faint, margin: const EdgeInsets.symmetric(horizontal: 24)),
+                                _ActionTile(
+                                  icon: Icons.delete_outline,
+                                  label: 'SUPPRIMER',
+                                  color: Colors.red[700]!,
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _deleteTransaction(it['id']);
+                                  },
+                                ),
+                                const SizedBox(height: 24),
+                              ],
                             ),
                           );
                         },
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-            const SizedBox(height: 80),
-          ],
+                        child: Container(
+                          color: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Row(
+                            children: [
+                              // Type indicator
+                              Container(
+                                width: 2,
+                                height: 36,
+                                color: isExpense ? _Z.ink : _Z.incomeAccent,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      (it['category'] ?? '-').toString().toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        letterSpacing: 1.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: _Z.ink,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _formatDate(it['transaction_date']),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: _Z.muted,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${isExpense ? "−" : "+"}${_formatAmount(it['amount'])}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                      color: isExpense ? _Z.ink : _Z.incomeAccent,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'FCFA',
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      letterSpacing: 1.5,
+                                      color: _Z.muted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddTransaction,
-        icon: const Icon(Icons.add),
-        label: const Text('Ajouter'),
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+
+      // ── FAB ──────────────────────────────────────────────────────────────
+      floatingActionButton: GestureDetector(
+        onTap: _showAddTransaction,
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          color: _Z.ink,
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'AJOUTER',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  letterSpacing: 3,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+// ─── HELPER WIDGETS ──────────────────────────────────────────────────────────
+
+class _SummaryPill extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool up;
+  const _SummaryPill({required this.label, required this.value, required this.up});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 9, letterSpacing: 2.5, color: Colors.white38)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Icon(
+              up ? Icons.north : Icons.south,
+              size: 10,
+              color: up ? const Color(0xFF7EC8A4) : Colors.white54,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: TextStyle(
+                color: up ? const Color(0xFF7EC8A4) : Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ZField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final int maxLines;
+  final bool numeric;
+
+  const _ZField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.maxLines = 1,
+    this.numeric = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+              fontSize: 9,
+              letterSpacing: 2.5,
+              color: _Z.muted,
+              fontWeight: FontWeight.w500,
+            )),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: numeric ? TextInputType.number : TextInputType.text,
+          style: const TextStyle(fontSize: 14, color: _Z.ink, letterSpacing: 0.3),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: _Z.muted, fontSize: 14),
+            filled: true,
+            fillColor: _Z.cardBg,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: const OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.zero),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.zero,
+              borderSide: BorderSide(color: _Z.faint),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.zero,
+              borderSide: BorderSide(color: _Z.ink, width: 1),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color = _Z.ink,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 4),
+      leading: Icon(icon, size: 18, color: color),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          letterSpacing: 2.5,
+          fontWeight: FontWeight.w500,
+          color: color,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }

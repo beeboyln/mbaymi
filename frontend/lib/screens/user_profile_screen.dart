@@ -5,6 +5,8 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/screens/farm_screen.dart';
+import 'package:mbaymi/screens/parcel_screen.dart';
+import 'package:mbaymi/screens/edit_livestock_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/utils/app_spacing.dart';
 import 'package:mbaymi/utils/app_typography.dart';
@@ -1007,86 +1009,105 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                               final farmName = farm['name'] ?? 'Ferme';
                               final farmImage = farm['image_url'] as String?;
                               final location = farm['location'] ?? '';
+                              final farmId = farm['id'] as int?;
 
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: cardColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: borderColor, width: 1),
-                                ),
-                                child: Row(
-                                  children: [
-                                    // Image
-                                    Container(
-                                      width: 80,
-                                      height: 80,
-                                      decoration: BoxDecoration(
-                                        borderRadius: const BorderRadius.only(
-                                          topLeft: Radius.circular(12),
-                                          bottomLeft: Radius.circular(12),
-                                        ),
-                                        color: AppColors.getCardBgColor(isDark),
-                                      ),
-                                      child: farmImage != null && farmImage.isNotEmpty
-                                          ? ClipRRect(
-                                              borderRadius: const BorderRadius.only(
-                                                topLeft: Radius.circular(12),
-                                                bottomLeft: Radius.circular(12),
-                                              ),
-                                              child: Image.network(
-                                                farmImage,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) => Icon(
-                                                  Icons.landscape_outlined,
-                                                  color: secondaryTextColor,
-                                                ),
-                                              ),
-                                            )
-                                          : Icon(
-                                              Icons.landscape_outlined,
-                                              color: secondaryTextColor,
+                              return GestureDetector(
+                                onTap: farmId != null
+                                    ? () {
+                                        HapticFeedback.lightImpact();
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ParcelScreen(
+                                              farmId: farmId,
+                                              userId: widget.userId,
+                                              farmOwnerId: widget.userId,
+                                              readOnly: false,
                                             ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Info
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            farmName.toUpperCase(),
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                              color: textColor,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          if (location.isNotEmpty) ...[
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              location,
-                                              style: TextStyle(
-                                                fontSize: 11,
+                                        );
+                                      }
+                                    : null,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: cardColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: borderColor, width: 1),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      // Image
+                                      Container(
+                                        width: 80,
+                                        height: 80,
+                                        decoration: BoxDecoration(
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(12),
+                                            bottomLeft: Radius.circular(12),
+                                          ),
+                                          color: AppColors.getCardBgColor(isDark),
+                                        ),
+                                        child: farmImage != null && farmImage.isNotEmpty
+                                            ? ClipRRect(
+                                                borderRadius: const BorderRadius.only(
+                                                  topLeft: Radius.circular(12),
+                                                  bottomLeft: Radius.circular(12),
+                                                ),
+                                                child: Image.network(
+                                                  farmImage,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) => Icon(
+                                                    Icons.landscape_outlined,
+                                                    color: secondaryTextColor,
+                                                  ),
+                                                ),
+                                              )
+                                            : Icon(
+                                                Icons.landscape_outlined,
                                                 color: secondaryTextColor,
+                                              ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              farmName.toUpperCase(),
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: textColor,
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
+                                            if (location.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                location,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: secondaryTextColor,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
                                           ],
-                                        ],
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Icon(
-                                      Icons.arrow_forward_ios,
-                                      size: 16,
-                                      color: secondaryTextColor,
-                                    ),
-                                    const SizedBox(width: 12),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.arrow_forward_ios,
+                                        size: 16,
+                                        color: secondaryTextColor,
+                                      ),
+                                      const SizedBox(width: 12),
+                                    ],
+                                  ),
                                 ),
                               );
                             },
@@ -1156,97 +1177,114 @@ class _UserProfileScreenState extends State<UserProfileScreen> with AutomaticKee
                               final animalType = animal['animal_type'] as String? ?? 'Animal';
                               final breed = animal['breed'] as String? ?? '';
                               final quantity = animal['quantity'] as int? ?? 1;
+                              final livestockId = animal['id'] as int?;
                               final photo = animal['image_url'] ?? 
                                             animal['imageUrl'] ?? 
                                             (animal['photos'] is List && (animal['photos'] as List).isNotEmpty 
                                                 ? (animal['photos'] as List).first 
                                                 : null);
 
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: cardColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: borderColor, width: 1),
-                                ),
-                                child: Row(
-                                  children: [
-                                    // Image
-                                    Container(
-                                      width: 80,
-                                      height: 80,
-                                      decoration: BoxDecoration(
-                                        borderRadius: const BorderRadius.only(
-                                          topLeft: Radius.circular(12),
-                                          bottomLeft: Radius.circular(12),
+                              return GestureDetector(
+                                onTap: livestockId != null
+                                    ? () {
+                                        HapticFeedback.lightImpact();
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => EditLivestockScreen(
+                                              livestockId: livestockId,
+                                              livestock: animal,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    : null,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: cardColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: borderColor, width: 1),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      // Image
+                                      Container(
+                                        width: 80,
+                                        height: 80,
+                                        decoration: BoxDecoration(
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(12),
+                                            bottomLeft: Radius.circular(12),
+                                          ),
+                                          color: AppColors.getCardBgColor(isDark),
+                                          image: photo != null 
+                                              ? DecorationImage(
+                                                  image: NetworkImage(photo),
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : null,
                                         ),
-                                        color: AppColors.getCardBgColor(isDark),
-                                        image: photo != null 
-                                            ? DecorationImage(
-                                                image: NetworkImage(photo),
-                                                fit: BoxFit.cover,
+                                        child: photo == null 
+                                            ? Icon(
+                                                Icons.pets,
+                                                color: secondaryTextColor,
                                               )
                                             : null,
                                       ),
-                                      child: photo == null 
-                                          ? Icon(
-                                              Icons.pets,
-                                              color: secondaryTextColor,
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Info
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            animalType.toUpperCase(),
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                              color: textColor,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          if (breed.isNotEmpty) ...[
-                                            const SizedBox(height: 4),
+                                      const SizedBox(width: 12),
+                                      // Info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
                                             Text(
-                                              breed,
+                                              animalType.toUpperCase(),
                                               style: TextStyle(
-                                                fontSize: 11,
-                                                color: secondaryTextColor,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: textColor,
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
+                                            if (breed.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                breed,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: secondaryTextColor,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
                                           ],
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: borderColor,
-                                          width: 1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'x$quantity',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                          color: textColor,
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: borderColor,
+                                            width: 1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'x$quantity',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: textColor,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                    ],
+                                  ),
                                 ),
                               );
                             },

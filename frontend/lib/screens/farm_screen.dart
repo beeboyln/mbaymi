@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:provider/provider.dart';
 
@@ -302,6 +303,71 @@ class _FarmTabState extends State<FarmTab> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.add,
+              color: isDarkMode ? Colors.white : Colors.black87,
+              size: 24,
+            ),
+            onSelected: (value) {
+              HapticFeedback.lightImpact();
+              if (value == 'farm') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateFarmScreen()),
+                ).then((result) => result == true ? _refreshFarms() : null);
+              } else if (value == 'livestock') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateLivestockScreen()),
+                ).then((result) => result == true ? _refreshFarms() : null);
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'farm',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.landscape_outlined,
+                      size: 18,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Ajouter une ferme',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'livestock',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.pets_outlined,
+                      size: 18,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Ajouter un animal',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       drawer: Drawer(
         backgroundColor: AppColors.getBgColor(isDarkMode),

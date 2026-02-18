@@ -31,6 +31,10 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
 
   static final Map<String, Future<List<dynamic>>> _globalDataCache = {};
   static final Map<int, Future<List<dynamic>>> _globalCropsCache = {};
+  static final Map<int, Future<List<dynamic>>> _globalLivestockCache = {};
+  
+  // Track selected tab per farm (true = crops, false = livestock)
+  final Map<int, bool> _farmTabSelection = {};
 
   @override
   void initState() {
@@ -179,6 +183,13 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
     return _globalCropsCache[farmId]!;
   }
 
+  Future<List<dynamic>> _getLivestockCached(int farmId) {
+    if (!_globalLivestockCache.containsKey(farmId)) {
+      _globalLivestockCache[farmId] = ApiService.getUserLivestock(farmId).catchError((_) => <dynamic>[]);
+    }
+    return _globalLivestockCache[farmId]!;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
@@ -192,6 +203,7 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
         onRefresh: () async {
           _globalDataCache.remove('public_farms');
           _globalCropsCache.clear();
+          _globalLivestockCache.clear();
           _farmsFuture = _getPublicFarmsCached();
           _searchController.clear();
           _searchQuery = '';
@@ -752,28 +764,11 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
                 ),
                 const SizedBox(height: 14),
 
-                // Parcelles section
-                FutureBuilder<List<dynamic>>(
-                  future: _getCropsCached(farmId ?? 0),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return SizedBox(
-                        height: 4,
-                        child: LinearProgressIndicator(
-                          minHeight: 2,
-                          borderRadius: BorderRadius.circular(2),
-                          color: AppColors.accent.withOpacity(0.3),
-                          backgroundColor: isDarkMode
-                              ? Colors.white.withOpacity(0.05)
-                              : Colors.black.withOpacity(0.05),
-                        ),
-                      );
-                    }
-
-                    final parcels = snapshot.data ?? [];
-                    return _buildParcelsSection(farmId, farmOwnerId, parcels, isDarkMode);
-                  },
-                ),
+                // Onglets CULTURES / BÉTAIL
+                _buildResourceTabs(farmId, isDarkMode),
+                const SizedBox(height: 12),
+                // Contenu des onglets
+                _buildResourceContent(farmId, farmOwnerId, isDarkMode),
               ],
             ),
           ),
@@ -867,6 +862,147 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
         ),
       ),
     );
+  }
+
+  Widget _buildResourceTabs(int? farmId, bool isDarkMode) {
+    if (farmId == null) return const SizedBox();
+    
+    final isCropsTab = _farmTabSelection[farmId] ?? true;
+    
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _farmTabSelection[farmId] = true),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: isCropsTab ? AppColors.accent : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.landscape_outlined,
+                    size: 14,
+                    color: isCropsTab
+                        ? AppColors.accent
+                        : (isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4)),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'CULTURES',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isCropsTab ? FontWeight.w600 : FontWeight.w400,
+                      letterSpacing: 1.2,
+                      color: isCropsTab
+                          ? AppColors.accent
+                          : (isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _farmTabSelection[farmId] = false),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: !isCropsTab ? AppColors.accent : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.pets_outlined,
+                    size: 14,
+                    color: !isCropsTab
+                        ? AppColors.accent
+                        : (isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4)),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'BÉTAIL',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: !isCropsTab ? FontWeight.w600 : FontWeight.w400,
+                      letterSpacing: 1.2,
+                      color: !isCropsTab
+                          ? AppColors.accent
+                          : (isDarkMode ? Colors.white.withOpacity(0.4) : Colors.black.withOpacity(0.4)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResourceContent(int? farmId, int? farmOwnerId, bool isDarkMode) {
+    if (farmId == null) return const SizedBox();
+    
+    final isCropsTab = _farmTabSelection[farmId] ?? true;
+    
+    if (isCropsTab) {
+      return FutureBuilder<List<dynamic>>(
+        future: _getCropsCached(farmId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return SizedBox(
+              height: 4,
+              child: LinearProgressIndicator(
+                minHeight: 2,
+                borderRadius: BorderRadius.circular(2),
+                color: AppColors.accent.withOpacity(0.3),
+                backgroundColor: isDarkMode
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.black.withOpacity(0.05),
+              ),
+            );
+          }
+          final parcels = snapshot.data ?? [];
+          return _buildParcelsSection(farmId, farmOwnerId, parcels, isDarkMode);
+        },
+      );
+    } else {
+      return FutureBuilder<List<dynamic>>(
+        future: _getLivestockCached(farmId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return SizedBox(
+              height: 4,
+              child: LinearProgressIndicator(
+                minHeight: 2,
+                borderRadius: BorderRadius.circular(2),
+                color: AppColors.accent.withOpacity(0.3),
+                backgroundColor: isDarkMode
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.black.withOpacity(0.05),
+              ),
+            );
+          }
+          final livestock = snapshot.data ?? [];
+          return _buildLivestockSection(livestock, isDarkMode);
+        },
+      );
+    }
   }
 
   Widget _buildParcelsSection(
@@ -1000,6 +1136,101 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
           textAlign: TextAlign.center,
         ),
       ),
+    );
+  }
+
+  Widget _buildLivestockSection(List<dynamic> livestock, bool isDarkMode) {
+    if (livestock.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.pets_outlined,
+                  size: 12,
+                  color: isDarkMode ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.3)),
+              const SizedBox(width: 6),
+              Text(
+                'AUCUN ANIMAL',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 1.2,
+                  color: isDarkMode ? Colors.white.withOpacity(0.35) : Colors.black.withOpacity(0.35),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.pets_outlined,
+                size: 12,
+                color: isDarkMode ? Colors.white.withOpacity(0.3) : Colors.black.withOpacity(0.3)),
+            const SizedBox(width: 6),
+            Text(
+              '${livestock.length} ANIMAL${livestock.length > 1 ? 'UX' : ''}',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1.2,
+                color: isDarkMode ? Colors.white.withOpacity(0.35) : Colors.black.withOpacity(0.35),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: livestock.take(4).map((animal) {
+            final animalType = (animal['animal_type'] ?? 'N/A').toString();
+            final breed = (animal['breed'] ?? '').toString();
+            final display = breed.isNotEmpty
+                ? '$animalType ($breed)'
+                : animalType;
+            final truncated = display.length > 16 ? '${display.substring(0, 16)}…' : display;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: Colors.orange.withOpacity(0.25),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                truncated,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.3,
+                  color: Colors.orange[700],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        if (livestock.length > 4)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              '+${livestock.length - 4} autres animaux',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w300,
+                color: isDarkMode ? Colors.white.withOpacity(0.22) : Colors.black.withOpacity(0.22),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

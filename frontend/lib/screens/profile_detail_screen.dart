@@ -111,6 +111,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 
   Future<void> _toggleFollowFarm(int farmId) async {
     if (_userId == 0) { _toast('Connectez-vous pour suivre'); return; }
+    if (farmId <= 0) { _toast('Ferme invalide'); return; }
+    
     HapticFeedback.selectionClick();
     final following = _followedFarmIds.contains(farmId);
     final currentCount = _farmFollowersCount[farmId] ?? 0;
@@ -158,14 +160,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     try {
       await ApiService.followUser(userIdToFollow: widget.userId, userId: _userId);
       ApiService.notifyFollowChanged(widget.userId, 'follow');
-      ApiService.getUserProfile(widget.userId, viewerId: _userId).then((fresh) {
-        if (!mounted) return;
-        setState(() {
-          _profileData = fresh;
-          _followersCount = fresh['total_followers'] ?? _followersCount;
-          _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
-        });
-      }).catchError((_) {});
+      // Refresh profile future to sync all data from server
+      _profileFuture = ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null);
+      _followersCount = null; // Force re-sync from server on next build
+      setState(() {});
     } catch (_) {
       setState(() { _isFollowing = prev; _followersCount = (_followersCount ?? 1) - 1; });
     }
@@ -178,14 +176,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     try {
       await ApiService.unfollowUser(userIdToUnfollow: widget.userId, userId: _userId);
       ApiService.notifyFollowChanged(widget.userId, 'unfollow');
-      ApiService.getUserProfile(widget.userId, viewerId: _userId).then((fresh) {
-        if (!mounted) return;
-        setState(() {
-          _profileData = fresh;
-          _followersCount = fresh['total_followers'] ?? _followersCount;
-          _isFollowing = fresh['followed_by_user'] ?? _isFollowing;
-        });
-      }).catchError((_) {});
+      // Refresh profile future to sync all data from server
+      _profileFuture = ApiService.getUserProfile(widget.userId, viewerId: _userId > 0 ? _userId : null);
+      _followersCount = null; // Force re-sync from server on next build
+      setState(() {});
     } catch (_) {
       setState(() { _isFollowing = prev; _followersCount = (_followersCount ?? 0) + 1; });
     }
@@ -197,6 +191,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     _farmsFuture = ApiService.getPublicUserFarms(widget.userId);
     _followersCount = null;
     _isFollowing = null;
+    _farmFollowersCount.clear(); // Reset farm followers count cache on refresh
     _pageController.reset();
     setState(() {});
     _pageController.forward();
@@ -284,7 +279,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
             final totalFollowers =
                 _profileData['total_followers'] ?? _profileData['followers'] ?? 0;
 
-            _followersCount ??= totalFollowers;
+            // Force sync from server even if previously set to 0
+            if (_followersCount == null || _followersCount == 0) {
+              _followersCount = totalFollowers;
+            }
             if (_isFollowing == null) {
               _isFollowing = (_profileData['followed_by_user'] ??
                   _profileData['is_following'] ?? false) as bool;
@@ -543,14 +541,20 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
     
     final farmId = (farm['farm_id'] ?? farm['id'] ?? 0) as int;
     
-    // Initialize followers count from farm data on first load
-    final initialFollowers = farm['followers'] ?? farm['total_followers'] ?? 0;
-    if (!_farmFollowersCount.containsKey(farmId)) {
+    // Initialize followers count from farm data on first load - try multiple field names
+    final initialFollowers = farm['followers'] ?? 
+                           farm['total_followers'] ?? 
+                           farm['followers_count'] ?? 
+                           farm['farm_followers'] ??
+                           0;
+    
+    // Only cache if farmId is valid (> 0) to avoid collisions
+    if (farmId > 0 && !_farmFollowersCount.containsKey(farmId)) {
       _farmFollowersCount[farmId] = initialFollowers;
     }
     
     // Use tracked followers count if available, otherwise use farm data
-    final followers = _farmFollowersCount.containsKey(farmId)
+    final followers = (farmId > 0 && _farmFollowersCount.containsKey(farmId))
         ? _farmFollowersCount[farmId]!
         : initialFollowers;
     

@@ -2,6 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/local_notification_service.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:intl/intl.dart';
+
+// ─── DESIGN TOKENS (identiques au ParcelFinanceScreen) ───────────────────────
+class _Z {
+  static const bg = Color(0xFFF7F6F4);
+  static const ink = Color(0xFF111111);
+  static const muted = Color(0xFF888888);
+  static const faint = Color(0xFFE8E6E1);
+  static const cardBg = Color(0xFFFFFFFF);
+
+  // Statuts rappels
+  static const past = Color(0xFF9E3A3A);
+  static const soon = Color(0xFF8B6914);
+  static const ok = Color(0xFF4A7C59);
+
+  static const pastBg = Color(0xFFF5EDED);
+  static const soonBg = Color(0xFFF5F0E8);
+  static const okBg = Color(0xFFEDF5F0);
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 class ParcelRemindersScreen extends StatefulWidget {
   final int farmId;
@@ -13,70 +33,241 @@ class ParcelRemindersScreen extends StatefulWidget {
   State<ParcelRemindersScreen> createState() => _ParcelRemindersScreenState();
 }
 
-class _ParcelRemindersScreenState extends State<ParcelRemindersScreen> {
+class _ParcelRemindersScreenState extends State<ParcelRemindersScreen>
+    with SingleTickerProviderStateMixin {
   late Future<List<dynamic>> _listFuture;
+  late AnimationController _fadeCtrl;
+  late Animation<double> _fadeAnim;
 
   @override
   void initState() {
     super.initState();
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _load();
-    // Initialize local notifications
+    _fadeCtrl.forward();
     LocalNotificationService.init();
+  }
+
+  @override
+  void dispose() {
+    _fadeCtrl.dispose();
+    super.dispose();
   }
 
   void _load() {
     _listFuture = ApiService.listRemindersForFarm(widget.farmId);
   }
 
-  String _getRepeatLabel(String repeat) {
-    switch (repeat) {
-      case 'daily':
-        return 'Quotidien';
-      case 'weekly':
-        return 'Hebdomadaire';
-      case 'monthly':
-        return 'Mensuel';
-      default:
-        return 'Une fois';
+  String _repeatLabel(String r) {
+    switch (r) {
+      case 'daily': return 'QUOTIDIEN';
+      case 'weekly': return 'HEBDO';
+      case 'monthly': return 'MENSUEL';
+      default: return 'UNE FOIS';
     }
   }
 
-  IconData _getRepeatIcon(String repeat) {
-    switch (repeat) {
-      case 'daily':
-        return Icons.today;
-      case 'weekly':
-        return Icons.date_range;
-      case 'monthly':
-        return Icons.calendar_month;
-      default:
-        return Icons.event;
-    }
+  // Couleur & fond selon statut
+  Color _statusColor(Map<String, dynamic> r) {
+    final dt = DateTime.tryParse(r['remind_at'] ?? '');
+    if (dt == null) return _Z.muted;
+    final diff = dt.difference(DateTime.now());
+    if (diff.isNegative) return _Z.past;
+    if (diff.inHours < 24) return _Z.soon;
+    return _Z.ok;
   }
 
-  Color _getStatusColor(Map<String, dynamic> reminder) {
-    final remindAt = DateTime.tryParse(reminder['remind_at'] ?? '');
-    if (remindAt == null) return Colors.grey;
-    
-    final now = DateTime.now();
-    final diff = remindAt.difference(now);
-    
-    if (diff.isNegative) return Colors.red; // Passé
-    if (diff.inHours < 24) return Colors.orange; // Moins de 24h
-    return Colors.green; // Plus de 24h
+  Color _statusBg(Map<String, dynamic> r) {
+    final dt = DateTime.tryParse(r['remind_at'] ?? '');
+    if (dt == null) return _Z.faint;
+    final diff = dt.difference(DateTime.now());
+    if (diff.isNegative) return _Z.pastBg;
+    if (diff.inHours < 24) return _Z.soonBg;
+    return _Z.okBg;
   }
 
-  String _getTimeRemaining(DateTime remindAt) {
-    final now = DateTime.now();
-    final diff = remindAt.difference(now);
-    
-    if (diff.isNegative) return 'Expiré';
-    if (diff.inDays > 0) return 'Dans ${diff.inDays}j';
-    if (diff.inHours > 0) return 'Dans ${diff.inHours}h';
-    if (diff.inMinutes > 0) return 'Dans ${diff.inMinutes}min';
-    return 'Maintenant';
+  String _timeRemaining(DateTime dt) {
+    final diff = dt.difference(DateTime.now());
+    if (diff.isNegative) return 'EXPIRÉ';
+    if (diff.inDays > 0) return 'DANS ${diff.inDays}J';
+    if (diff.inHours > 0) return 'DANS ${diff.inHours}H';
+    if (diff.inMinutes > 0) return 'DANS ${diff.inMinutes}MIN';
+    return 'MAINTENANT';
   }
 
+  String _formatDt(DateTime dt) =>
+      DateFormat("d MMM yyyy · HH'h'mm", 'fr_FR').format(dt);
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: const TextStyle(fontSize: 12, letterSpacing: 0.5)),
+      backgroundColor: _Z.ink,
+      behavior: SnackBarBehavior.floating,
+      shape: const RoundedRectangleBorder(),
+    ));
+  }
+
+  // ─── BOTTOM SHEET PARTAGÉ ─────────────────────────────────────────────────
+  Widget _buildSheet({
+    required BuildContext ctx,
+    required String title,
+    required String actionLabel,
+    required TextEditingController titleCtrl,
+    required TextEditingController descCtrl,
+    required DateTime remindAt,
+    required String repeatRule,
+    required void Function(DateTime) onDateChanged,
+    required void Function(String) onRepeatChanged,
+    required VoidCallback onSubmit,
+  }) {
+    return Container(
+      decoration: const BoxDecoration(color: _Z.bg),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
+        top: 32,
+        left: 28,
+        right: 28,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(width: 32, height: 2, color: _Z.faint,
+                  margin: const EdgeInsets.only(bottom: 32)),
+            ),
+
+            Text(title.toUpperCase(),
+                style: const TextStyle(fontSize: 11, letterSpacing: 3,
+                    fontWeight: FontWeight.w500, color: _Z.muted)),
+            const SizedBox(height: 24),
+
+            _ZField(controller: titleCtrl, label: 'TITRE', hint: 'Ex: Arroser les plants'),
+            const SizedBox(height: 16),
+            _ZField(controller: descCtrl, label: 'DESCRIPTION', hint: 'Détails…', maxLines: 3),
+            const SizedBox(height: 24),
+
+            // Date picker row
+            const Text('DATE & HEURE',
+                style: TextStyle(fontSize: 9, letterSpacing: 2.5,
+                    color: _Z.muted, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: ctx,
+                  initialDate: remindAt,
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 3650)),
+                  builder: (c, child) => Theme(
+                    data: Theme.of(c).copyWith(
+                      colorScheme: const ColorScheme.light(primary: _Z.ink),
+                    ),
+                    child: child!,
+                  ),
+                );
+                if (date == null) return;
+                final time = await showTimePicker(
+                  context: ctx,
+                  initialTime: TimeOfDay.fromDateTime(remindAt),
+                  builder: (c, child) => Theme(
+                    data: Theme.of(c).copyWith(
+                      colorScheme: const ColorScheme.light(primary: _Z.ink),
+                    ),
+                    child: child!,
+                  ),
+                );
+                if (time == null) return;
+                onDateChanged(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: _Z.cardBg,
+                  border: Border.all(color: _Z.faint),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today_outlined, size: 16, color: _Z.muted),
+                    const SizedBox(width: 12),
+                    Text(
+                      _formatDt(remindAt),
+                      style: const TextStyle(fontSize: 14, color: _Z.ink, letterSpacing: 0.3),
+                    ),
+                    const Spacer(),
+                    const Icon(Icons.chevron_right, size: 16, color: _Z.muted),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Repeat selector
+            const Text('RÉPÉTITION',
+                style: TextStyle(fontSize: 9, letterSpacing: 2.5,
+                    color: _Z.muted, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            Row(
+              children: ['none', 'daily', 'weekly'].map((r) {
+                final label = r == 'none' ? 'UNE FOIS' : r == 'daily' ? 'QUOTIDIEN' : 'HEBDO';
+                final selected = repeatRule == r;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => onRepeatChanged(r),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: EdgeInsets.only(right: r != 'weekly' ? 6 : 0),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: selected ? _Z.ink : Colors.transparent,
+                        border: Border.all(color: selected ? _Z.ink : _Z.faint),
+                      ),
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 9,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w500,
+                          color: selected ? Colors.white : _Z.muted,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 32),
+
+            GestureDetector(
+              onTap: onSubmit,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                color: _Z.ink,
+                child: Text(
+                  actionLabel.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white, fontSize: 11,
+                    letterSpacing: 3, fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── ADD ─────────────────────────────────────────────────────────────────
   Future<void> _showAddReminder() async {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -87,801 +278,457 @@ class _ParcelRemindersScreenState extends State<ParcelRemindersScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            top: 24,
-            left: 24,
-            right: 24,
-          ),
-          child: StatefulBuilder(
-            builder: (context, setModalState) {
-              return SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Nouveau rappel',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: titleCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Titre',
-                        hintText: 'Ex: Arroser les plants',
-                        prefixIcon: const Icon(Icons.title_outlined),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey[200]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: descCtrl,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'Description',
-                        hintText: 'Détails du rappel...',
-                        prefixIcon: const Padding(
-                          padding: EdgeInsets.only(bottom: 48),
-                          child: Icon(Icons.description_outlined),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey[200]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.blue[100]!),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[100],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Icons.access_time, color: Colors.blue[700], size: 24),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Date et heure',
-                                  style: TextStyle(fontSize: 12, color: Colors.black54),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${remindAt.day}/${remindAt.month}/${remindAt.year} à ${remindAt.hour.toString().padLeft(2, '0')}:${remindAt.minute.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w300,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () async {
-                              final date = await showDatePicker(
-                                context: context,
-                                initialDate: remindAt,
-                                firstDate: DateTime.now(),
-                                lastDate: DateTime.now().add(const Duration(days: 3650)),
-                              );
-                              if (date == null) return;
-                              final time = await showTimePicker(
-                                context: context,
-                                initialTime: TimeOfDay.fromDateTime(remindAt),
-                              );
-                              if (time == null) return;
-                              setModalState(() {
-                                remindAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-                              });
-                            },
-                            icon: Icon(Icons.edit_calendar, color: Colors.blue[700]),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey[200]!),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: DropdownButtonFormField<String>(
-                        initialValue: repeatRule,
-                        decoration: const InputDecoration(
-                          labelText: 'Répétition',
-                          border: InputBorder.none,
-                          prefixIcon: Icon(Icons.repeat),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 'none', child: Text('Aucune répétition')),
-                          DropdownMenuItem(value: 'daily', child: Text('Quotidien')),
-                          DropdownMenuItem(value: 'weekly', child: Text('Hebdomadaire')),
-                        ],
-                        onChanged: (v) => setModalState(() => repeatRule = v ?? 'none'),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final title = titleCtrl.text.trim();
-                        if (title.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Le titre est requis'),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          );
-                          return;
-                        }
-
-                        final payload = {
-                          'farm_id': widget.farmId,
-                          'crop_id': widget.cropId,
-                          'title': title,
-                          'description': descCtrl.text.trim(),
-                          'remind_at': remindAt.toIso8601String(),
-                          'repeat_rule': repeatRule,
-                        };
-
-                        try {
-                          final result = await ApiService.createReminder(payload);
-                          Navigator.pop(context);
-                          setState(() => _load());
-
-                          // Schedule local notification
-                          final int notifId = (result['id'] as int?) ?? DateTime.now().millisecondsSinceEpoch.remainder(100000);
-                          await LocalNotificationService.scheduleNotification(
-                            id: notifId,
-                            title: title,
-                            body: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : 'Rappel agricole',
-                            scheduledDate: remindAt,
-                          );
-                        } catch (e) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Erreur: $e'),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 0,
-                      ),
-                      child: const Text('Créer le rappel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300)),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => _buildSheet(
+          ctx: ctx,
+          title: 'Nouveau rappel',
+          actionLabel: 'Créer',
+          titleCtrl: titleCtrl,
+          descCtrl: descCtrl,
+          remindAt: remindAt,
+          repeatRule: repeatRule,
+          onDateChanged: (d) => setS(() => remindAt = d),
+          onRepeatChanged: (r) => setS(() => repeatRule = r),
+          onSubmit: () async {
+            final t = titleCtrl.text.trim();
+            if (t.isEmpty) { _showError('Le titre est requis'); return; }
+            try {
+              final result = await ApiService.createReminder({
+                'farm_id': widget.farmId,
+                'crop_id': widget.cropId,
+                'title': t,
+                'description': descCtrl.text.trim(),
+                'remind_at': remindAt.toIso8601String(),
+                'repeat_rule': repeatRule,
+              });
+              Navigator.pop(ctx);
+              setState(() => _load());
+              final int notifId = (result['id'] as int?) ??
+                  DateTime.now().millisecondsSinceEpoch.remainder(100000);
+              await LocalNotificationService.scheduleNotification(
+                id: notifId,
+                title: t,
+                body: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : 'Rappel agricole',
+                scheduledDate: remindAt,
               );
-            },
-          ),
-        );
-      },
+            } catch (e) {
+              Navigator.pop(ctx);
+              _showError(e.toString());
+            }
+          },
+        ),
+      ),
     );
   }
 
-  Future<void> _showEditReminder(Map<String, dynamic> reminder) async {
-    final titleCtrl = TextEditingController(text: reminder['title'] ?? '');
-    final descCtrl = TextEditingController(text: reminder['description'] ?? '');
-    DateTime remindAt = DateTime.tryParse(reminder['remind_at'] ?? '') ?? DateTime.now();
-    String repeatRule = reminder['repeat_rule'] ?? 'none';
+  // ─── EDIT ────────────────────────────────────────────────────────────────
+  Future<void> _showEditReminder(Map<String, dynamic> r) async {
+    final titleCtrl = TextEditingController(text: r['title'] ?? '');
+    final descCtrl = TextEditingController(text: r['description'] ?? '');
+    DateTime remindAt = DateTime.tryParse(r['remind_at'] ?? '') ?? DateTime.now();
+    String repeatRule = r['repeat_rule'] ?? 'none';
 
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            top: 24,
-            left: 24,
-            right: 24,
-          ),
-          child: StatefulBuilder(
-            builder: (context, setModalState) {
-              return SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Modifier le rappel',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: titleCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Titre',
-                        hintText: 'Ex: Arroser les plants',
-                        prefixIcon: const Icon(Icons.title_outlined),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey[200]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: descCtrl,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'Description',
-                        hintText: 'Détails supplémentaires',
-                        prefixIcon: const Padding(
-                          padding: EdgeInsets.only(bottom: 48),
-                          child: Icon(Icons.description_outlined),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey[200]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.calendar_today_outlined, size: 20),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                final date = await showDatePicker(
-                                  context: context,
-                                  initialDate: remindAt,
-                                  firstDate: DateTime.now(),
-                                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                                );
-                                if (date != null) {
-                                  final time = await showTimePicker(
-                                    context: context,
-                                    initialTime: TimeOfDay.fromDateTime(remindAt),
-                                  );
-                                  if (time != null) {
-                                    setModalState(() {
-                                      remindAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-                                    });
-                                  }
-                                }
-                              },
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Date et heure',
-                                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${remindAt.day}/${remindAt.month}/${remindAt.year} ${remindAt.hour.toString().padLeft(2, '0')}:${remindAt.minute.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: repeatRule,
-                      decoration: InputDecoration(
-                        labelText: 'Répétition',
-                        prefixIcon: const Icon(Icons.repeat_outlined),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey[200]!),
-                        ),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'none', child: Text('Aucune répétition')),
-                        DropdownMenuItem(value: 'daily', child: Text('Quotidien')),
-                        DropdownMenuItem(value: 'weekly', child: Text('Hebdomadaire')),
-                      ],
-                      onChanged: (v) => setModalState(() => repeatRule = v ?? 'none'),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final title = titleCtrl.text.trim();
-                        if (title.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Le titre est requis'),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          );
-                          return;
-                        }
-
-                        final updates = {
-                          'title': title,
-                          'description': descCtrl.text.trim(),
-                          'remind_at': remindAt.toIso8601String(),
-                          'repeat_rule': repeatRule,
-                        };
-
-                        try {
-                          await ApiService.updateReminder(reminder['id'], updates);
-                          Navigator.pop(context);
-                          setState(() => _load());
-                        } catch (e) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Erreur: $e'),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 0,
-                      ),
-                      child: const Text('Modifier', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300)),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => _buildSheet(
+          ctx: ctx,
+          title: 'Modifier le rappel',
+          actionLabel: 'Enregistrer',
+          titleCtrl: titleCtrl,
+          descCtrl: descCtrl,
+          remindAt: remindAt,
+          repeatRule: repeatRule,
+          onDateChanged: (d) => setS(() => remindAt = d),
+          onRepeatChanged: (v) => setS(() => repeatRule = v),
+          onSubmit: () async {
+            final t = titleCtrl.text.trim();
+            if (t.isEmpty) { _showError('Le titre est requis'); return; }
+            try {
+              await ApiService.updateReminder(r['id'], {
+                'title': t,
+                'description': descCtrl.text.trim(),
+                'remind_at': remindAt.toIso8601String(),
+                'repeat_rule': repeatRule,
+              });
+              Navigator.pop(ctx);
+              setState(() => _load());
+            } catch (e) {
+              Navigator.pop(ctx);
+              _showError(e.toString());
+            }
+          },
+        ),
+      ),
     );
   }
 
-  Future<void> _deleteReminder(int reminderId) async {
+  // ─── DELETE ──────────────────────────────────────────────────────────────
+  Future<void> _deleteReminder(int id) async {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer ce rappel?'),
-        content: const Text('Cette action ne peut pas être annulée.'),
+      builder: (_) => AlertDialog(
+        backgroundColor: _Z.bg,
+        shape: const RoundedRectangleBorder(),
+        title: const Text('SUPPRIMER',
+            style: TextStyle(fontSize: 11, letterSpacing: 3,
+                fontWeight: FontWeight.w500, color: _Z.ink)),
+        content: const Text('Cette action est irréversible.',
+            style: TextStyle(color: _Z.muted, fontSize: 13)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: const Text('ANNULER',
+                style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted)),
           ),
           TextButton(
             onPressed: () async {
               try {
-                await ApiService.deleteReminder(reminderId);
+                await ApiService.deleteReminder(id);
                 Navigator.pop(context);
                 setState(() => _load());
               } catch (e) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Erreur: $e')),
-                );
+                _showError(e.toString());
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            child: const Text('SUPPRIMER',
+                style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.red)),
           ),
         ],
       ),
     );
   }
 
+  // ─── BUILD ───────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightBg,
+      backgroundColor: _Z.bg,
       appBar: AppBar(
-        title: const Text('Rappels', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: _Z.bg,
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black87,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, size: 20, color: _Z.ink),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
+        title: const Text('RAPPELS',
+            style: TextStyle(fontSize: 11, letterSpacing: 4,
+                fontWeight: FontWeight.w500, color: _Z.ink)),
       ),
-      body: FutureBuilder<List<dynamic>>(
-        future: _listFuture,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final items = snap.data ?? [];
-          if (items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.notifications_none, size: 64, color: Colors.grey[400]),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Aucun rappel',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w300,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Créez votre premier rappel',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            );
-          }
+      body: FadeTransition(
+        opacity: _fadeAnim,
+        child: FutureBuilder<List<dynamic>>(
+          future: _listFuture,
+          builder: (context, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Center(
+                  child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1));
+            }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: items.length,
-            itemBuilder: (context, i) {
-              final it = items[i] as Map<String, dynamic>;
-              final remindAt = DateTime.tryParse(it['remind_at'] ?? '');
-              final statusColor = _getStatusColor(it);
-              final repeatRule = it['repeat_rule'] ?? 'none';
+            final items = snap.data ?? [];
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: statusColor.withOpacity(0.3), width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: statusColor.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
+            if (items.isEmpty) {
+              return Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.notifications_active, color: statusColor, size: 24),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      it['title'] ?? '-',
-                                      style: const TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    if (it['description']?.toString().isNotEmpty ?? false) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        it['description'],
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontSize: 14,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.schedule, size: 16, color: statusColor),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        remindAt != null ? _getTimeRemaining(remindAt) : '-',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w300,
-                                          fontSize: 13,
-                                          color: statusColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(_getRepeatIcon(repeatRule), size: 16, color: Colors.grey[700]),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      _getRepeatLabel(repeatRule),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w300,
-                                        fontSize: 13,
-                                        color: Colors.grey[700],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (remindAt != null) ...[
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${remindAt.day}/${remindAt.month}/${remindAt.year} à ${remindAt.hour.toString().padLeft(2, '0')}:${remindAt.minute.toString().padLeft(2, '0')}',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
                     Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(18),
-                          bottomRight: Radius.circular(18),
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton.icon(
-                              onPressed: () {
-                                _showEditReminder(it);
-                              },
-                              icon: const Icon(Icons.edit_outlined, size: 18),
-                              label: const Text('Modifier'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.blue[700],
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: () async {
-                                try {
-                                  await ApiService.markReminderDone(it['id'] as int);
-                                  setState(() => _load());
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text('Rappel marqué comme terminé'),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Erreur: $e'),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                  );
-                                }
-                              },
-                              icon: const Icon(Icons.check_circle_outline, size: 18),
-                              label: const Text('Terminé'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.green[700],
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                    title: const Text('Supprimer le rappel ?'),
-                                    content: const Text('Cette action est irréversible.'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, false),
-                                        child: const Text('Annuler'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, true),
-                                        style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                        child: const Text('Supprimer'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                if (confirm != true) return;
-                                try {
-                                  await ApiService.deleteReminder(it['id'] as int);
-                                  setState(() => _load());
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Erreur: $e'),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                  );
-                                }
-                              },
-                              icon: const Icon(Icons.delete_outline, size: 18),
-                              label: const Text('Supprimer'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red[700],
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(border: Border.all(color: _Z.faint)),
+                      child: const Icon(Icons.notifications_none_outlined,
+                          size: 28, color: _Z.muted),
                     ),
+                    const SizedBox(height: 20),
+                    const Text('AUCUN RAPPEL',
+                        style: TextStyle(fontSize: 9, letterSpacing: 3, color: _Z.muted)),
+                    const SizedBox(height: 8),
+                    const Text('Créez votre premier rappel',
+                        style: TextStyle(fontSize: 13, color: _Z.muted)),
                   ],
                 ),
               );
-            },
-          );
-        },
+            }
+
+            return RefreshIndicator(
+              color: _Z.ink,
+              backgroundColor: _Z.bg,
+              onRefresh: () async => setState(() => _load()),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+                children: [
+                  const Text('PROGRAMMÉS',
+                      style: TextStyle(fontSize: 9, letterSpacing: 3,
+                          color: _Z.muted, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 2),
+                  Container(height: 1, color: _Z.faint),
+                  const SizedBox(height: 16),
+
+                  ...items.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final it = entry.value as Map<String, dynamic>;
+                    final dt = DateTime.tryParse(it['remind_at'] ?? '');
+                    final color = _statusColor(it);
+                    final bgColor = _statusBg(it);
+                    final repeat = it['repeat_rule'] ?? 'none';
+                    final isLast = i == items.length - 1;
+
+                    return Column(
+                      children: [
+                        _ReminderRow(
+                          item: it,
+                          dt: dt,
+                          color: color,
+                          bgColor: bgColor,
+                          repeatLabel: _repeatLabel(repeat),
+                          timeRemaining: dt != null ? _timeRemaining(dt) : '–',
+                          formattedDate: dt != null ? _formatDt(dt) : '–',
+                          onEdit: () => _showEditReminder(it),
+                          onDone: () async {
+                            try {
+                              await ApiService.markReminderDone(it['id'] as int);
+                              setState(() => _load());
+                            } catch (e) {
+                              _showError(e.toString());
+                            }
+                          },
+                          onDelete: () => _deleteReminder(it['id'] as int),
+                        ),
+                        if (!isLast) Container(height: 1, color: _Z.faint),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+            );
+          },
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddReminder,
-        icon: const Icon(Icons.add),
-        label: const Text('Nouveau'),
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      floatingActionButton: GestureDetector(
+        onTap: _showAddReminder,
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          color: _Z.ink,
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('AJOUTER',
+                  style: TextStyle(color: Colors.white, fontSize: 10,
+                      letterSpacing: 3, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+// ─── REMINDER ROW ─────────────────────────────────────────────────────────────
+class _ReminderRow extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final DateTime? dt;
+  final Color color;
+  final Color bgColor;
+  final String repeatLabel;
+  final String timeRemaining;
+  final String formattedDate;
+  final VoidCallback onEdit;
+  final VoidCallback onDone;
+  final VoidCallback onDelete;
+
+  const _ReminderRow({
+    required this.item,
+    required this.dt,
+    required this.color,
+    required this.bgColor,
+    required this.repeatLabel,
+    required this.timeRemaining,
+    required this.formattedDate,
+    required this.onEdit,
+    required this.onDone,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status bar
+          Container(width: 2, height: 72, color: color),
+          const SizedBox(width: 16),
+
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title + time badge
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        (item['title'] ?? '-').toString().toUpperCase(),
+                        style: const TextStyle(fontSize: 13, letterSpacing: 1.5,
+                            fontWeight: FontWeight.w500, color: _Z.ink),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      color: color.withOpacity(0.1),
+                      child: Text(
+                        timeRemaining,
+                        style: TextStyle(fontSize: 9, letterSpacing: 1.5,
+                            fontWeight: FontWeight.w600, color: color),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Description
+                if ((item['description'] ?? '').toString().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item['description'].toString(),
+                    style: const TextStyle(fontSize: 12, color: _Z.muted),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+
+                const SizedBox(height: 10),
+
+                // Meta row
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 11, color: _Z.muted),
+                    const SizedBox(width: 4),
+                    Text(formattedDate,
+                        style: const TextStyle(fontSize: 11, color: _Z.muted, letterSpacing: 0.2)),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(border: Border.all(color: _Z.faint)),
+                      child: Text(repeatLabel,
+                          style: const TextStyle(fontSize: 8, letterSpacing: 1.5,
+                              color: _Z.muted, fontWeight: FontWeight.w500)),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Actions
+                Row(
+                  children: [
+                    _MiniAction(label: 'MODIFIER', onTap: onEdit),
+                    const SizedBox(width: 8),
+                    Container(width: 1, height: 10, color: _Z.faint),
+                    const SizedBox(width: 8),
+                    _MiniAction(label: 'TERMINÉ', onTap: onDone, color: _Z.ok),
+                    const SizedBox(width: 8),
+                    Container(width: 1, height: 10, color: _Z.faint),
+                    const SizedBox(width: 8),
+                    _MiniAction(label: 'SUPPRIMER', onTap: onDelete, color: _Z.past),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniAction extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _MiniAction({
+    required this.label,
+    required this.onTap,
+    this.color = _Z.muted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 9,
+          letterSpacing: 1.5,
+          fontWeight: FontWeight.w500,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── SHARED FIELD ─────────────────────────────────────────────────────────────
+class _ZField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final int maxLines;
+  final bool numeric;
+
+  const _ZField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.maxLines = 1,
+    this.numeric = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 9, letterSpacing: 2.5,
+                color: _Z.muted, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: numeric ? TextInputType.number : TextInputType.text,
+          style: const TextStyle(fontSize: 14, color: _Z.ink, letterSpacing: 0.3),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: _Z.muted, fontSize: 14),
+            filled: true,
+            fillColor: _Z.cardBg,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: const OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.zero),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.zero,
+              borderSide: BorderSide(color: _Z.faint),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.zero,
+              borderSide: BorderSide(color: _Z.ink, width: 1),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
