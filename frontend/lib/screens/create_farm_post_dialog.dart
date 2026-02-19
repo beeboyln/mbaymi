@@ -148,7 +148,7 @@ class _CreateFarmPostDialogState extends State<CreateFarmPostDialog> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nouveau Post'),
+        title: Text(widget.livestockId != null ? 'Nouveau Post — Bétail' : 'Nouveau Post'),
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,

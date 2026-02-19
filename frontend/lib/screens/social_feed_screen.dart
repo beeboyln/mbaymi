@@ -12,6 +12,7 @@ import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:mbaymi/screens/animal_detail_screen.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
+import 'package:mbaymi/screens/create_farm_post_dialog.dart';
 
 class SocialFeedScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -66,6 +67,15 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
       controller.dispose();
     }
     super.dispose();
+  }
+
+  String? _extractImageUrl(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is Map) {
+      return (value['url'] ?? value['image_url'] ?? value['image'] ?? value['photo'] ?? value['src'])?.toString();
+    }
+    return null;
   }
   
   AnimationController _getLikeAnimation(int postId) {
@@ -132,6 +142,17 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
           ),
         ),
         centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton(
+              icon: const Icon(Icons.add, size: 20),
+              color: textColor,
+              tooltip: 'Nouveau post',
+              onPressed: () => _onAddPostPressed(isDarkMode),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(
@@ -143,6 +164,205 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
       drawer: _buildDrawer(isDarkMode),
       body: _buildFeedTab(isDarkMode),
     );
+  }
+
+  Future<void> _onAddPostPressed(bool isDarkMode) async {
+    if (_userId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Connectez-vous pour créer une publication'),
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
+    try {
+      final farms = await ApiService.getUserFarms();
+      if (!mounted) return;
+      
+      final livestocks = await ApiService.getAllLivestockWithPhotos(userId: _userId);
+      if (!mounted) return;
+      
+      if (farms.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Vous n\'avez aucune ferme. Créez-en une d\'abord.'),
+          behavior: SnackBarBehavior.floating,
+        ));
+        return;
+      }
+
+      final selected = await showModalBottomSheet<Map<String, dynamic>>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.getBgColor(isDarkMode),
+        builder: (ctx) {
+          return SingleChildScrollView(
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text('Choisissez une ferme ou un bétail', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.getTextColor(isDarkMode))),
+                  ),
+                  Divider(height: 1, color: AppColors.getBorderColor(isDarkMode)),
+
+                  // FARMS SECTION
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Fermes', style: TextStyle(fontSize: 12, color: AppColors.getSecondaryTextColor(isDarkMode), fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 140,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: farms.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, i) {
+                        final f = farms[i] as Map<String, dynamic>;
+                        final fid = (f['farm_id'] ?? f['id'] ?? 0) as int;
+                        final fname = (f['farm_name'] ?? f['name'] ?? 'Ferme') as String;
+                        final img = _extractImageUrl(f['profile_image_farm'] ?? f['profile_image'] ?? f['image_url'] ?? f['image']);
+                        return GestureDetector(
+                          onTap: () => Navigator.of(ctx).pop({'type': 'farm', 'id': fid, 'name': fname}),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 84,
+                                height: 84,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.getCardBgColor(isDarkMode),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: img != null && img.isNotEmpty
+                                      ? Image.network(img, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.landscape_outlined, color: AppColors.getSecondaryTextColor(isDarkMode)))
+                                      : Icon(Icons.landscape_outlined, color: AppColors.getSecondaryTextColor(isDarkMode)),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(width: 88, child: Text(fname, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center)),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // LIVESTOCK SECTION
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Bétail', style: TextStyle(fontSize: 12, color: AppColors.getSecondaryTextColor(isDarkMode), fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  if (livestocks.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      child: Text('Aucun bétail', style: TextStyle(color: AppColors.getSecondaryTextColor(isDarkMode))),
+                    )
+                  else
+                    SizedBox(
+                      height: 120,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: livestocks.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, j) {
+                          final a = livestocks[j] as Map<String, dynamic>;
+                          final lid = (() {
+                            final v = a['id'] ?? a['livestock_id'];
+                            if (v is int) return v;
+                            return int.tryParse(v?.toString() ?? '') ?? 0;
+                          })();
+                          final lname = (a['animal_type'] ?? 'Bétail').toString();
+                          final photos = (a['photos'] as List?) ?? [];
+                          final thumb = photos.isNotEmpty ? _extractImageUrl(photos[0]) : null;
+                          final farmIdFromAnimal = (() {
+                            final fv = a['farm_id'] ?? a['farmId'] ?? a['owner_farm_id'];
+                            if (fv == null) return 0;
+                            if (fv is int) return fv;
+                            return int.tryParse(fv.toString()) ?? 0;
+                          })();
+                          return GestureDetector(
+                            onTap: () => Navigator.of(ctx).pop({'type': 'livestock', 'id': lid, 'name': lname, 'farm_id': farmIdFromAnimal}),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 84,
+                                  height: 84,
+                                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: AppColors.getCardBgColor(isDarkMode)),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: thumb != null && thumb.isNotEmpty
+                                        ? Image.network(thumb, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.pets, color: AppColors.getSecondaryTextColor(isDarkMode)))
+                                        : Icon(Icons.pets, color: AppColors.getSecondaryTextColor(isDarkMode)),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(width: 88, child: Text(lname, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center)),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ));
+        },
+      );
+
+      if (!mounted) return;
+      if (selected != null && selected['id'] != null && selected['id'] > 0) {
+        final selType = selected['type'] as String? ?? 'farm';
+        if (selType == 'farm') {
+          final farmId = selected['id'] as int;
+          final farmName = selected['name'] as String? ?? 'Ferme';
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CreateFarmPostDialog(
+                farmId: farmId,
+                farmName: farmName,
+                onPostCreated: () => _refreshFeed(),
+              ),
+            ),
+          );
+        } else if (selType == 'livestock') {
+          final livestockId = selected['id'] as int;
+          final name = selected['name'] as String? ?? 'Bétail';
+          final farmId = (selected['farm_id'] as int?) ?? 0;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CreateFarmPostDialog(
+                farmId: farmId,
+                farmName: name,
+                onPostCreated: () => _refreshFeed(),
+                livestockId: livestockId,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur: $e'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
   
   Widget _buildDrawer(bool isDarkMode) {
@@ -454,10 +674,10 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
   }
 
   Widget _buildFarmPostCard(dynamic post, Map<String, dynamic> itemWrapper, bool isDarkMode) {
-    final farmName = post['farm_name'] as String? ?? 'Ferme';
-    final ownerName = post['owner_name'] as String? ?? 'Agriculteur';
-    final caption = post['caption'] as String? ?? '';
-    final imageUrl = post['image_url'] as String?;
+    final farmName = post['farm_name']?.toString() ?? 'Ferme';
+    final ownerName = post['owner_name']?.toString() ?? 'Agriculteur';
+    final caption = post['caption']?.toString() ?? '';
+    final imageUrl = _extractImageUrl(post['image_url']);
     final postId = post['id'] as int? ?? 0;
     final farmId = post['farm_id'] as int? ?? 0;
     final livestockId = post['livestock_id'] as int?;
@@ -530,21 +750,13 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
                           : null,
                     ),
                     child: ClipOval(
-                      child: (post['owner_profile_image'] != null && 
-                             (post['owner_profile_image'] as String).isNotEmpty)
-                          ? Image.network(
-                              post['owner_profile_image'] as String,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) => Container(
-                                color: AppColors.primary.withOpacity(0.2),
-                                child: Icon(
-                                  Icons.person_outline,
-                                  color: AppColors.primary,
-                                  size: 20,
-                                ),
-                              ),
-                            )
-                          : Container(
+                      child: (() {
+                        final ownerImg = _extractImageUrl(post['owner_profile_image']);
+                        if (ownerImg != null && ownerImg.isNotEmpty) {
+                          return Image.network(
+                            ownerImg,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => Container(
                               color: AppColors.primary.withOpacity(0.2),
                               child: Icon(
                                 Icons.person_outline,
@@ -552,6 +764,17 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
                                 size: 20,
                               ),
                             ),
+                          );
+                        }
+                        return Container(
+                          color: AppColors.primary.withOpacity(0.2),
+                          child: Icon(
+                            Icons.person_outline,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                        );
+                      })(),
                     ),
                   ),
                   const SizedBox(width: 12),
