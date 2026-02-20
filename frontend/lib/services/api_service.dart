@@ -2888,14 +2888,14 @@ class ApiService {
       final headers = await _getAuthHeaders();
       if (headers['Authorization'] == null) throw Exception('Token manquant');
 
-      String url = '$baseUrl/farm-posts/$postId/comments?comment_text=$commentText&user_id=$userId';
-      if (parentId != null) {
-        url += '&parent_id=$parentId';
-      }
-
       final response = await http.post(
-        Uri.parse(url),
+        Uri.parse('$baseUrl/farm-posts/$postId/comments'),
         headers: headers,
+        body: jsonEncode({
+          'comment_text': commentText,
+          'user_id': userId,
+          'parent_id': parentId,
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -2903,8 +2903,13 @@ class ApiService {
       } else if (response.statusCode == 401) {
         await _handleUnauthorized((newHeaders) async {
           return await http.post(
-            Uri.parse(url),
+            Uri.parse('$baseUrl/farm-posts/$postId/comments'),
             headers: newHeaders,
+            body: jsonEncode({
+              'comment_text': commentText,
+              'user_id': userId,
+              'parent_id': parentId,
+            }),
           );
         });
         return await addComment(postId, commentText, userId, parentId: parentId);

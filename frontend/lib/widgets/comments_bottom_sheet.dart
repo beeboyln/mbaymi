@@ -22,7 +22,14 @@ class CommentsBottomSheet extends StatefulWidget {
 class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   late TextEditingController _commentController;
   late FocusNode _commentFocus;
+
+  // Only top-level comments (no parent_id)
   List<dynamic> _comments = [];
+  // Map of parentCommentId -> list of replies
+  Map<int, List<dynamic>> _replies = {};
+  // Set of comment IDs whose replies are expanded
+  Set<int> _expandedReplies = {};
+
   bool _isLoading = true;
   bool _isSubmitting = false;
   int? _replyingToCommentId;
@@ -45,113 +52,197 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
   void _loadComments() async {
     try {
-      final comments = await ApiService.getPostComments(widget.postId);
+      final allComments = await ApiService.getPostComments(widget.postId);
+
+      // Separate top-level comments from replies
+      // Assumes replies have a 'parent_id' field (non-null) in the API response
+      final topLevel = <dynamic>[];
+      final repliesMap = <int, List<dynamic>>{};
+
+      for (final c in allComments) {
+        final parentId = c['parent_id'];
+        if (parentId == null) {
+          topLevel.add(c);
+        } else {
+          repliesMap.putIfAbsent(parentId as int, () => []).add(c);
+        }
+      }
+
       setState(() {
-        _comments = comments;
+        _comments = topLevel;
+        _replies = repliesMap;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e', style: const TextStyle(letterSpacing: 0.5)),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          ),
-        );
+        _showSnack('Erreur: $e', isError: true);
       }
     }
   }
 
   void _submitComment() async {
     if (widget.currentUserId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Connexion requise', style: TextStyle(letterSpacing: 0.5)),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        ),
-      );
+      _showSnack('Connexion requise', isError: true);
       return;
     }
 
     var text = _commentController.text.trim();
     if (text.isEmpty) return;
 
+    // If replying, ensure @username mention is at the start
     if (_replyingToCommentId != null && _replyingToUserName != null) {
-      text = '@$_replyingToUserName $text';
+      final mention = '@${_replyingToUserName} ';
+      if (!text.startsWith(mention)) {
+        text = mention + text;
+      }
+    }
+
+    // Check that there's actual content (not just @username)
+    final contentWithoutMention = text.replaceFirst(RegExp(r'^@\w+\s+'), '').trim();
+    if (contentWithoutMention.isEmpty) {
+      _showSnack('Écrivez un commentaire', isError: true);
+      return;
     }
 
     HapticFeedback.lightImpact();
     setState(() => _isSubmitting = true);
 
     try {
-      await ApiService.addComment(widget.postId, text, widget.currentUserId);
+      // Pass parent_id when replying
+      await ApiService.addComment(
+        widget.postId,
+        text,
+        widget.currentUserId,
+        parentId: _replyingToCommentId,
+      );
+
       _commentController.clear();
+
+      // Auto-expand the thread we just replied to
+      if (_replyingToCommentId != null) {
+        _expandedReplies.add(_replyingToCommentId!);
+      }
+
       setState(() {
         _replyingToCommentId = null;
         _replyingToUserName = null;
         _isSubmitting = false;
       });
-      _loadComments();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Commentaire ajouté', style: TextStyle(letterSpacing: 0.5)),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            duration: const Duration(milliseconds: 800),
-          ),
-        );
-      }
+      _loadComments();
+      _showSnack('Commentaire ajouté');
     } catch (e) {
       setState(() => _isSubmitting = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e', style: const TextStyle(letterSpacing: 0.5)),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          ),
-        );
-      }
+      _showSnack('Erreur: $e', isError: true);
     }
   }
 
   void _deleteComment(int commentId) async {
     HapticFeedback.mediumImpact();
-    
     try {
       await ApiService.deleteComment(widget.postId, commentId, widget.currentUserId);
       _loadComments();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Commentaire supprimé', style: TextStyle(letterSpacing: 0.5)),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          ),
-        );
-      }
+      _showSnack('Commentaire supprimé');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e', style: const TextStyle(letterSpacing: 0.5)),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      _showSnack('Erreur: $e', isError: true);
+    }
+  }
+
+  void _showSnack(String msg, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(letterSpacing: 0.5)),
+        backgroundColor: isError ? AppColors.error : AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        duration: Duration(milliseconds: isError ? 2500 : 800),
+      ),
+    );
+  }
+
+  // Build comment thread with nested replies (recursive)
+  List<Widget> _buildCommentThread(
+    dynamic comment,
+    Color borderColor,
+    Color textColor,
+    Color secondaryTextColor,
+    bool isReply,
+  ) {
+    final widgets = <Widget>[];
+    final commentId = comment['id'] as int;
+    final directReplies = _replies[commentId] ?? [];
+    final isExpanded = _expandedReplies.contains(commentId);
+
+    // Add the comment itself
+    widgets.add(
+      _buildCommentTile(
+        comment: comment,
+        borderColor: borderColor,
+        textColor: textColor,
+        secondaryTextColor: secondaryTextColor,
+        isReply: isReply,
+        showBorder: directReplies.isNotEmpty,
+      ),
+    );
+
+    // Only show "View/Hide replies" toggle for TOP-LEVEL comments (not nested)
+    if (directReplies.isNotEmpty && !isReply) {
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(left: 72, bottom: 4, top: 4),
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                if (isExpanded) {
+                  _expandedReplies.remove(commentId);
+                } else {
+                  _expandedReplies.add(commentId);
+                }
+              });
+            },
+            child: Text(
+              isExpanded
+                  ? 'Masquer les réponses'
+                  : 'Voir ${directReplies.length} réponse${directReplies.length > 1 ? 's' : ''}',
+              style: TextStyle(
+                color: secondaryTextColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // If expanded, recursively build nested replies
+    if (isExpanded) {
+      for (final reply in directReplies) {
+        widgets.addAll(
+          _buildCommentThread(
+            reply,
+            borderColor,
+            textColor,
+            secondaryTextColor,
+            true, // nested replies are marked as replies
           ),
         );
       }
     }
+
+    widgets.add(
+      Divider(
+        height: 1,
+        thickness: 0.5,
+        color: borderColor,
+      ),
+    );
+
+    return widgets;
   }
 
   @override
@@ -162,24 +253,19 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     final secondaryTextColor = AppColors.getSecondaryTextColor(isDark);
     final borderColor = AppColors.getBorderColor(isDark);
 
+    final totalCount = _comments.length +
+        _replies.values.fold(0, (sum, list) => sum + list.length);
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(0),
-          topRight: Radius.circular(0),
-        ),
-      ),
+      decoration: BoxDecoration(color: bgColor),
       child: Column(
         children: [
-          // Header
+          // ── Header ──────────────────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: borderColor, width: 0.5),
-              ),
+              border: Border(bottom: BorderSide(color: borderColor, width: 0.5)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -206,19 +292,17 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             ),
           ),
 
-          // Comments count
-          if (_comments.isNotEmpty)
+          // ── Count ────────────────────────────────────────────────────────────
+          if (totalCount > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: borderColor, width: 0.5),
-                ),
+                border: Border(bottom: BorderSide(color: borderColor, width: 0.5)),
               ),
               child: Row(
                 children: [
                   Text(
-                    '${_comments.length}',
+                    '$totalCount',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -228,7 +312,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    _comments.length == 1 ? 'commentaire' : 'commentaires',
+                    totalCount == 1 ? 'commentaire' : 'commentaires',
                     style: TextStyle(
                       fontSize: 13,
                       color: secondaryTextColor,
@@ -239,7 +323,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               ),
             ),
 
-          // Comments list
+          // ── List ─────────────────────────────────────────────────────────────
           Expanded(
             child: _isLoading
                 ? Center(
@@ -289,144 +373,21 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         itemCount: _comments.length,
                         itemBuilder: (context, index) {
                           final comment = _comments[index];
-                          final isAuthor = comment['user_id'] == widget.currentUserId;
 
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: index < _comments.length - 1
-                                    ? BorderSide(color: borderColor, width: 0.5)
-                                    : BorderSide.none,
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Avatar circulaire
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: borderColor,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: ClipOval(
-                                    child: comment['user_profile_image'] != null &&
-                                            (comment['user_profile_image'] as String).isNotEmpty
-                                        ? Image.network(
-                                            comment['user_profile_image'],
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (c, e, s) => Icon(
-                                              Icons.person_outline,
-                                              color: secondaryTextColor,
-                                              size: 18,
-                                            ),
-                                          )
-                                        : Icon(
-                                            Icons.person_outline,
-                                            color: secondaryTextColor,
-                                            size: 18,
-                                          ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-
-                                // Comment content
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              (comment['user_name'] ?? 'Utilisateur').toUpperCase(),
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500,
-                                                letterSpacing: 1.5,
-                                                color: textColor,
-                                              ),
-                                            ),
-                                          ),
-                                          Text(
-                                            _formatTime(comment['created_at']),
-                                            style: TextStyle(
-                                              color: secondaryTextColor,
-                                              fontSize: 10,
-                                              letterSpacing: 0.3,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        comment['comment'] ?? '',
-                                        style: TextStyle(
-                                          color: textColor,
-                                          fontSize: 14,
-                                          letterSpacing: 0.3,
-                                          height: 1.5,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          // Bouton Répondre
-                                          InkWell(
-                                            onTap: () {
-                                              HapticFeedback.lightImpact();
-                                              setState(() {
-                                                _replyingToCommentId = comment['id'];
-                                                _replyingToUserName = comment['user_name'] ?? 'Utilisateur';
-                                              });
-                                              _commentFocus.requestFocus();
-                                            },
-                                            child: Text(
-                                              'RÉPONDRE',
-                                              style: TextStyle(
-                                                color: AppColors.primary,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w500,
-                                                letterSpacing: 1.5,
-                                              ),
-                                            ),
-                                          ),
-                                          if (isAuthor) ...[
-                                            const SizedBox(width: 16),
-                                            InkWell(
-                                              onTap: () => _showDeleteDialog(comment['id']),
-                                              child: Text(
-                                                'SUPPRIMER',
-                                                style: TextStyle(
-                                                  color: AppColors.error,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w500,
-                                                  letterSpacing: 1.5,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                          return Column(
+                            children: _buildCommentThread(
+                              comment,
+                              borderColor,
+                              textColor,
+                              secondaryTextColor,
+                              false, // top-level comments are not replies
                             ),
                           );
                         },
                       ),
           ),
 
-          // Comment input
+          // ── Input ─────────────────────────────────────────────────────────
           Container(
             padding: EdgeInsets.only(
               left: 24,
@@ -436,9 +397,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             ),
             decoration: BoxDecoration(
               color: bgColor,
-              border: Border(
-                top: BorderSide(color: borderColor, width: 0.5),
-              ),
+              border: Border(top: BorderSide(color: borderColor, width: 0.5)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -454,11 +413,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.reply,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
+                        Icon(Icons.reply, size: 16, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -478,17 +433,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                               _replyingToUserName = null;
                             });
                           },
-                          child: Icon(
-                            Icons.close,
-                            size: 16,
-                            color: secondaryTextColor,
-                          ),
+                          child: Icon(Icons.close, size: 16, color: secondaryTextColor),
                         ),
                       ],
                     ),
                   ),
-                
-                // Input field
+
                 Row(
                   children: [
                     Expanded(
@@ -502,22 +452,19 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                           letterSpacing: 0.3,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Ajouter un commentaire...',
+                          hintText: _replyingToCommentId != null
+                              ? 'Ajouter une réponse...'
+                              : 'Ajouter un commentaire...',
                           hintStyle: TextStyle(
                             color: secondaryTextColor.withOpacity(0.5),
                             letterSpacing: 0.3,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
                           enabledBorder: UnderlineInputBorder(
                             borderSide: BorderSide(color: borderColor, width: 1),
                           ),
                           focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: AppColors.primary,
-                              width: 1.5,
-                            ),
+                            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
                           ),
                         ),
                       ),
@@ -534,12 +481,13 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                           shape: BoxShape.circle,
                         ),
                         child: _isSubmitting
-                            ? SizedBox(
+                            ? const SizedBox(
                                 width: 16,
                                 height: 16,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
                               )
                             : const Icon(
@@ -559,12 +507,159 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     );
   }
 
+  // ── Reusable comment tile ──────────────────────────────────────────────────
+  Widget _buildCommentTile({
+    required dynamic comment,
+    required Color borderColor,
+    required Color textColor,
+    required Color secondaryTextColor,
+    bool isReply = false,
+    bool showBorder = true,
+  }) {
+    final isAuthor = comment['user_id'] == widget.currentUserId;
+
+    return Container(
+      padding: EdgeInsets.only(
+        // Indent replies to the right (like Instagram)
+        left: isReply ? 72 : 24,
+        right: 24,
+        top: 12,
+        bottom: 12,
+      ),
+      decoration: showBorder && !isReply
+          ? null
+          : null, // borders handled by Column separators
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar
+          Container(
+            width: isReply ? 28 : 36,
+            height: isReply ? 28 : 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: borderColor, width: 1),
+            ),
+            child: ClipOval(
+              child: comment['user_profile_image'] != null &&
+                      (comment['user_profile_image'] as String).isNotEmpty
+                  ? Image.network(
+                      comment['user_profile_image'],
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => Icon(
+                        Icons.person_outline,
+                        color: secondaryTextColor,
+                        size: isReply ? 14 : 18,
+                      ),
+                    )
+                  : Icon(
+                      Icons.person_outline,
+                      color: secondaryTextColor,
+                      size: isReply ? 14 : 18,
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        (comment['user_name'] ?? 'Utilisateur').toUpperCase(),
+                        style: TextStyle(
+                          fontSize: isReply ? 10 : 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 1.5,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      _formatTime(comment['created_at']),
+                      style: TextStyle(
+                        color: secondaryTextColor,
+                        fontSize: 10,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  comment['comment'] ?? '',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14,
+                    letterSpacing: 0.3,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    // All comments (including replies) can be replied to
+                    InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        final userName = comment['user_name'] ?? 'Utilisateur';
+                        setState(() {
+                          _replyingToCommentId = comment['id'];
+                          _replyingToUserName = userName;
+                          // Pre-fill with @username mention
+                          _commentController.text = '@$userName ';
+                          // Position cursor at end
+                          _commentController.selection = TextSelection.fromPosition(
+                            TextPosition(offset: _commentController.text.length),
+                          );
+                        });
+                        _commentFocus.requestFocus();
+                      },
+                      child: Text(
+                        'RÉPONDRE',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                    if (isAuthor) ...[
+                      const SizedBox(width: 16),
+                      InkWell(
+                        onTap: () => _showDeleteDialog(comment['id']),
+                        child: Text(
+                          'SUPPRIMER',
+                          style: TextStyle(
+                            color: AppColors.error,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showDeleteDialog(int commentId) {
     final isDark = widget.isDarkMode;
     final bgColor = AppColors.getBgColor(isDark);
     final textColor = AppColors.getTextColor(isDark);
     final secondaryTextColor = AppColors.getSecondaryTextColor(isDark);
-    
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -595,11 +690,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             },
             child: Text(
               'ANNULER',
-              style: TextStyle(
-                color: textColor,
-                fontSize: 11,
-                letterSpacing: 1.5,
-              ),
+              style: TextStyle(color: textColor, fontSize: 11, letterSpacing: 1.5),
             ),
           ),
           TextButton(
