@@ -19,7 +19,7 @@ import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/animal_detail_screen.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
-import 'package:mbaymi/screens/farm_screen.dart';
+import 'package:mbaymi/screens/farm_tab/farm_tab.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 import 'package:mbaymi/widgets/stat_card.dart';

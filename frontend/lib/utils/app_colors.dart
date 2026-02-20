@@ -66,4 +66,26 @@ class AppColors {
   static Color withOpacityByTheme(Color color, double opacity, bool isDarkMode) {
     return color.withOpacity(opacity);
   }
+  
+  /// Crée un SnackBar stylisé au look Zara
+  static SnackBar createSnackBar({
+    required String message,
+    required bool isError,
+    int durationMs = 0,
+  }) {
+    final duration = durationMs > 0 
+        ? Duration(milliseconds: durationMs)
+        : Duration(milliseconds: isError ? 2500 : 800);
+    
+    return SnackBar(
+      content: Text(
+        message,
+        style: const TextStyle(letterSpacing: 0.5),
+      ),
+      backgroundColor: isError ? error : success,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      duration: duration,
+    );
+  }
 }

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import Optional
+from pydantic import BaseModel
 from app.database import get_db
 from app.models.farm_post import FarmImagePost, FarmPostLike, FarmPostComment, FarmPostShare
 from app.models.farm import Farm
@@ -13,6 +14,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SCHEMAS
+# ═══════════════════════════════════════════════════════════════════════════
+
+class AddCommentRequest(BaseModel):
+    comment_text: str
+    user_id: int
+    parent_id: Optional[int] = None
 
 router = APIRouter(prefix="/farm-posts", tags=["farm_posts"])
 
@@ -390,49 +400,70 @@ def delete_farm_post(post_id: int, user_id: int, db: Session = Depends(get_db)):
 @router.get("/{post_id}/comments")
 def get_post_comments(post_id: int, db: Session = Depends(get_db)):
     """Récupérer tous les commentaires d'un post"""
-    comments = db.query(FarmPostComment).filter(
-        FarmPostComment.farm_post_id == post_id
-    ).order_by(FarmPostComment.created_at).all()
-    
-    result = []
-    for comment in comments:
-        user = db.query(User).filter(User.id == comment.user_id).first()
-        result.append({
-            "id": comment.id,
-            "farm_post_id": comment.farm_post_id,
-            "user_id": comment.user_id,
-            "user_name": user.name if user else "Utilisateur",
-            "user_profile_image": user.profile_image if user else None,
-            "comment": comment.comment,
-            "parent_id": comment.parent_id,
-            "created_at": comment.created_at.isoformat(),
-        })
-    
-    return result
+    try:
+        print(f"[DEBUG] Loading comments for post_id={post_id}")
+        comments = db.query(FarmPostComment).filter(
+            FarmPostComment.farm_post_id == post_id
+        ).order_by(FarmPostComment.created_at).all()
+        
+        print(f"[DEBUG] Found {len(comments)} comments")
+        
+        result = []
+        for comment in comments:
+            print(f"[DEBUG] Processing comment id={comment.id}, parent_id={comment.parent_id}")
+            user = db.query(User).filter(User.id == comment.user_id).first()
+            comment_dict = {
+                "id": comment.id,
+                "farm_post_id": comment.farm_post_id,
+                "user_id": comment.user_id,
+                "user_name": user.name if user else "Utilisateur",
+                "user_profile_image": user.profile_image if user else None,
+                "comment": comment.comment,
+                "parent_id": comment.parent_id,  # Direct access, should work now
+                "created_at": comment.created_at.isoformat(),
+            }
+            result.append(comment_dict)
+            print(f"[DEBUG] Added comment: {comment_dict}")
+        
+        print(f"[DEBUG] Returning {len(result)} comments")
+        return result
+    except Exception as e:
+        print(f"[ERROR] Exception getting comments for post {post_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Error getting comments for post {post_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 
 @router.post("/{post_id}/comments")
-def add_comment(post_id: int, comment_text: str, user_id: int, parent_id: int = None, db: Session = Depends(get_db)):
+def add_comment(
+    post_id: int,
+    data: AddCommentRequest,
+    db: Session = Depends(get_db)
+):
     """Ajouter un commentaire à un post (optionnellement en réponse à un autre commentaire)"""
-    # Vérifier que le post existe
-    post = db.query(FarmImagePost).filter(FarmImagePost.id == post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post non trouvé")
-    
-    # Si parent_id est fourni, vérifier que le commentaire parent existe
-    if parent_id:
-        parent_comment = db.query(FarmPostComment).filter(FarmPostComment.id == parent_id).first()
-        if not parent_comment:
-            raise HTTPException(status_code=404, detail="Commentaire parent non trouvé")
-    
-    # Créer le commentaire
     try:
+        print(f"[DEBUG] Adding comment to post_id={post_id}, user_id={data.user_id}, parent_id={data.parent_id}")
+        
+        # Vérifier que le post existe
+        post = db.query(FarmImagePost).filter(FarmImagePost.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post non trouvé")
+        
+        # Si parent_id est fourni, vérifier que le commentaire parent existe
+        if data.parent_id:
+            parent_comment = db.query(FarmPostComment).filter(FarmPostComment.id == data.parent_id).first()
+            if not parent_comment:
+                raise HTTPException(status_code=404, detail="Commentaire parent non trouvé")
+        
+        # Créer le commentaire
         new_comment = FarmPostComment(
             farm_post_id=post_id,
-            user_id=user_id,
-            parent_id=parent_id,
-            comment=comment_text.strip()
+            user_id=data.user_id,
+            parent_id=data.parent_id,
+            comment=data.comment_text.strip()
         )
+        print(f"[DEBUG] Created comment object: id will be auto-assigned")
         db.add(new_comment)
         
         # Incrémenter le compteur
@@ -440,6 +471,30 @@ def add_comment(post_id: int, comment_text: str, user_id: int, parent_id: int = 
         
         db.commit()
         db.refresh(new_comment)
+        
+        print(f"[DEBUG] Committed comment with id={new_comment.id}")
+        
+        user = db.query(User).filter(User.id == data.user_id).first()
+        return {
+            "id": new_comment.id,
+            "farm_post_id": new_comment.farm_post_id,
+            "user_id": new_comment.user_id,
+            "user_name": user.name if user else "Utilisateur",
+            "user_profile_image": user.profile_image if user else None,
+            "comment": new_comment.comment,
+            "parent_id": new_comment.parent_id,
+            "created_at": new_comment.created_at.isoformat(),
+        }
+    except HTTPException as he:
+        db.rollback()
+        raise he
+    except Exception as e:
+        db.rollback()
+        print(f"[ERROR] Exception adding comment to post {post_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Error adding comment: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
         
         user = db.query(User).filter(User.id == user_id).first()
         return {

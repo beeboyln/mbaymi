@@ -5,7 +5,7 @@ import 'package:mbaymi/services/token_storage.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/api_service.dart';
-import 'package:mbaymi/screens/farm_screen.dart';
+import 'package:mbaymi/screens/farm_tab/farm_tab.dart';
 import 'package:mbaymi/screens/create_farm_screen.dart';
 import 'package:mbaymi/screens/livestock_screen.dart';
 import 'package:mbaymi/screens/livestock_management_screen.dart';
@@ -474,7 +474,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       _screens[1] = FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId);
                       _screens[0] = DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId);
                     });
-                    ScaffoldMessenger.of(rootContext).showSnackBar(const SnackBar(content: Text('Ferme créée')));
+                    ScaffoldMessenger.of(rootContext).showSnackBar(
+                      AppColors.createSnackBar(
+                        message: 'Ferme créée',
+                        isError: false,
+                        durationMs: 800,
+                      ),
+                    );
                   }
                 },
               ),

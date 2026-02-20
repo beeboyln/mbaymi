@@ -298,12 +298,12 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: const TextStyle(fontSize: 12, letterSpacing: 0.5)),
-      backgroundColor: _Z.ink,
-      behavior: SnackBarBehavior.floating,
-      shape: const RoundedRectangleBorder(),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      AppColors.createSnackBar(
+        message: msg,
+        isError: true,
+      ),
+    );
   }
 
   // ─── BUILD ───────────────────────────────────────────────────────────────

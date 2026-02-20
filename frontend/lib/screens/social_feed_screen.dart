@@ -168,10 +168,12 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
 
   Future<void> _onAddPostPressed(bool isDarkMode) async {
     if (_userId <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Connectez-vous pour créer une publication'),
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        AppColors.createSnackBar(
+          message: 'Connectez-vous pour créer une publication',
+          isError: true,
+        ),
+      );
       return;
     }
 
@@ -183,10 +185,12 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
       if (!mounted) return;
       
       if (farms.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Vous n\'avez aucune ferme. Créez-en une d\'abord.'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          AppColors.createSnackBar(
+            message: 'Vous n\'avez aucune ferme. Créez-en une d\'abord.',
+            isError: true,
+          ),
+        );
         return;
       }
 
@@ -358,10 +362,12 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erreur: $e'),
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        AppColors.createSnackBar(
+          message: 'Erreur: $e',
+          isError: true,
+        ),
+      );
     }
   }
   
@@ -959,16 +965,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
                   onTap: () async {
                     if (_userId <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text(
-                            'Connexion requise',
-                            style: TextStyle(letterSpacing: 0.5),
-                          ),
-                          backgroundColor: AppColors.error,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+                        AppColors.createSnackBar(
+                          message: 'Connexion requise',
+                          isError: true,
                         ),
                       );
                       return;

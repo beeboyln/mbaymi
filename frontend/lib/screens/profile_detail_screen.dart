@@ -199,15 +199,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
 
   void _toast(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-      backgroundColor: _ink,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      duration: const Duration(seconds: 2),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      AppColors.createSnackBar(
+        message: msg,
+        isError: false,
+        durationMs: 2000,
+      ),
+    );
   }
 
   String _fmt(num n) {

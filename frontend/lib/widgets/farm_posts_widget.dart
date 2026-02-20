@@ -76,13 +76,12 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget>
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content:
-          Text(msg, style: const TextStyle(fontSize: 12, letterSpacing: 0.5)),
-      backgroundColor: _Z.ink,
-      behavior: SnackBarBehavior.floating,
-      shape: const RoundedRectangleBorder(),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      AppColors.createSnackBar(
+        message: msg,
+        isError: true,
+      ),
+    );
   }
 
   // ─── BUILD ───────────────────────────────────────────────────────────────
@@ -296,13 +295,13 @@ class _FarmPostsWidgetState extends State<FarmPostsWidget>
   Future<void> _sharePost(int postId) async {
     try {
       await ApiService.shareFarmPost(postId);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Partagé',
-            style: TextStyle(fontSize: 12, letterSpacing: 0.5)),
-        backgroundColor: _Z.ink,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        AppColors.createSnackBar(
+          message: 'Partagé',
+          isError: false,
+          durationMs: 800,
+        ),
+      );
     } catch (e) {
       _showError(e.toString());
     }

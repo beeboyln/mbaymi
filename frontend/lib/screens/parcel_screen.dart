@@ -630,20 +630,9 @@ class _ParcelScreenState extends State<ParcelScreen> {
 
   void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w300,
-            letterSpacing: 1.5,
-          ),
-        ),
-        backgroundColor: isError ? Colors.red.shade400 : Colors.black87,
-        behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
-        ),
+      AppColors.createSnackBar(
+        message: message,
+        isError: isError,
       ),
     );
   }

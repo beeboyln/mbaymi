@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/map_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/utils/app_colors.dart';
@@ -106,7 +107,9 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
       return;
     }
     
-    if (widget.userId == null) {
+    // Use widget.userId if available, otherwise fall back to AuthService session
+    final userId = widget.userId ?? AuthService.currentSession?.userId;
+    if (userId == null || userId <= 0) {
       _showErrorSnackBar('Utilisateur non connecté');
       return;
     }
@@ -135,7 +138,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
       }
       
       final res = await ApiService.createFarm(
-        userId: widget.userId!,
+        userId: userId,
         name: _nameCtrl.text.trim(),
         location: _location ?? '${_regionCtrl.text} / ${_communeCtrl.text}',
         sizeHectares: _sizeCtrl.text.isNotEmpty 
@@ -151,7 +154,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
       if (!_isPublic && res['id'] != null) {
         try {
           await ApiService.toggleFarmVisibility(
-            userId: widget.userId!,
+            userId: userId,
             farmId: res['id'] as int,
             isPublic: _isPublic,
           );
@@ -176,32 +179,19 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.w300),
-        ),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_borderRadius),
-        ),
+      AppColors.createSnackBar(
+        message: message,
+        isError: false,
+        durationMs: 800,
       ),
     );
   }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.w300),
-        ),
-        backgroundColor: Colors.red.shade400,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_borderRadius),
-        ),
+      AppColors.createSnackBar(
+        message: message,
+        isError: true,
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/utils/app_colors.dart';
 
 /// RandomTipWidget
 /// Fetches short tips from backend via `ApiService.getTips()` and
@@ -64,7 +65,13 @@ class _RandomTipWidgetState extends State<RandomTipWidget> {
   void _copy() {
     if (_current.isEmpty) return;
     Clipboard.setData(ClipboardData(text: _current));
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Astuce copiée')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      AppColors.createSnackBar(
+        message: 'Astuce copiée',
+        isError: false,
+        durationMs: 800,
+      ),
+    );
   }
 
   @override

@@ -21,6 +21,10 @@ class CropProblemCreate(BaseModel):
     photo_url: Optional[str] = None
     severity: str = "medium"  # low, medium, high
 
+class UpdateProblemStatus(BaseModel):
+    status: str  # identified, treated, resolved
+    treatment_notes: Optional[str] = None
+
 # ═══════════════════════════════════════════════════════════════════════════
 # CROP PROBLEMS ENDPOINTS (Maladies & Ravageurs)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -138,8 +142,7 @@ def get_farm_problems(farm_id: int, db: Session = Depends(get_db)):
 @router.put("/{problem_id}/status")
 def update_problem_status(
     problem_id: int,
-    status: str,  # identified, treated, resolved
-    treatment_notes: str = None,
+    data: UpdateProblemStatus,
     db: Session = Depends(get_db)
 ):
     """
@@ -150,9 +153,9 @@ def update_problem_status(
         if not problem:
             raise HTTPException(status_code=404, detail="Problème non trouvé")
         
-        problem.status = status
-        if treatment_notes:
-            problem.treatment_notes = treatment_notes
+        problem.status = data.status
+        if data.treatment_notes:
+            problem.treatment_notes = data.treatment_notes
         problem.updated_at = datetime.utcnow()
         
         db.commit()
