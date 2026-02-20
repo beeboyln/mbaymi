@@ -61,6 +61,7 @@ class FarmPostComment(Base):
     id = Column(Integer, primary_key=True)
     farm_post_id = Column(Integer, ForeignKey("farm_image_posts.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("farm_post_comments.id", ondelete="CASCADE"), nullable=True)
     comment = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -73,6 +74,7 @@ class FarmPostComment(Base):
             "farm_post_id": self.farm_post_id,
             "user_id": self.user_id,
             "comment": self.comment,
+            "parent_id": self.parent_id,
             "created_at": self.created_at.isoformat(),
         }
 

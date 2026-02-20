@@ -40,6 +40,8 @@ def init_db():
             conn.execute(text("ALTER TABLE farms ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;"))
             conn.execute(text("ALTER TABLE farms ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;"))
             conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_id INTEGER;"))
+            conn.execute(text("ALTER TABLE crops ADD COLUMN IF NOT EXISTS area DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE farm_post_comments ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES farm_post_comments(id) ON DELETE CASCADE;"))
             # You can add more ALTER statements here for future model changes
     except Exception as e:
         print(f"Warning: could not run ALTER TABLE statements: {e}")

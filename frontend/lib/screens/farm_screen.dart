@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/services/api_service.dart';
@@ -14,7 +16,6 @@ import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/public_farms_screen.dart';
 import 'package:mbaymi/widgets/fading_images_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
-import 'package:mbaymi/widgets/farm_aerial_view.dart';
 
 // ─── Cache global persistant ──────────────────────────────────────────────────
 final _dataCache  = <String, Future<List<dynamic>>>{};
@@ -420,6 +421,8 @@ class _FarmTabState extends State<FarmTab> {
       onDelete: () => _deleteFarm(farmId, name, dark),
       onParcelles: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => ParcelScreen(farmId: farmId, userId: widget.userId ?? 0))),
+      onParcelTap: (parcelId) => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ParcelScreen(farmId: farmId, userId: widget.userId ?? 0, selectedParcelId: parcelId))),
       onPhotoTap: _showPhotoOverlay,
     );
   }
@@ -684,12 +687,13 @@ class _DynamicLinePainter extends CustomPainter {
   final Offset from; // position du dot
   final Offset to;   // centre du tooltip
   final bool dragging;
-  _DynamicLinePainter({required this.from, required this.to, required this.dragging});
+  final Color color;
+  _DynamicLinePainter({required this.from, required this.to, required this.dragging, this.color = Colors.white});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(dragging ? 0.7 : 0.45)
+      ..color = color.withOpacity(dragging ? 0.7 : 0.45)
       ..strokeWidth = dragging ? 1.2 : 0.7
       ..style = PaintingStyle.stroke;
 
@@ -703,12 +707,12 @@ class _DynamicLinePainter extends CustomPainter {
     canvas.drawPath(path, paint);
 
     // Petit cercle au bout
-    canvas.drawCircle(to, 2, Paint()..color = Colors.white.withOpacity(dragging ? 0.7 : 0.3));
+    canvas.drawCircle(to, 2, Paint()..color = color.withOpacity(dragging ? 0.7 : 0.3));
   }
 
   @override
   bool shouldRepaint(_DynamicLinePainter old) =>
-      old.from != from || old.to != to || old.dragging != dragging;
+      old.from != from || old.to != to || old.dragging != dragging || old.color != color;
 }
 
 // ─── Ancien painter statique (garde pour compat) ──────────────────────────────
@@ -738,15 +742,16 @@ class _PhotoPin extends StatelessWidget {
   final String name;
   final String photo;
   final Color accent;
-  const _PhotoPin({required this.name, required this.photo, required this.accent});
+  final bool isDragging;
+  const _PhotoPin({required this.name, required this.photo, required this.accent, this.isDragging = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 90,
       decoration: BoxDecoration(
-        border: Border.all(color: accent.withOpacity(0.6), width: 1),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 8)],
+        border: Border.all(color: accent.withOpacity(isDragging ? 0.8 : 0.6), width: isDragging ? 1.5 : 1),
+        boxShadow: [BoxShadow(color: accent.withOpacity(0.3), blurRadius: isDragging ? 12 : 8)],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -755,15 +760,29 @@ class _PhotoPin extends StatelessWidget {
           // Vignette photo
           SizedBox(
             height: 56,
-            child: Image.network(
-              photo,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              errorBuilder: (_, __, ___) => Container(
-                color: Colors.black54,
-                child: const Icon(Icons.grass_outlined, size: 18, color: Colors.white24),
+            child: Stack(fit: StackFit.expand, children: [
+              Image.network(
+                photo,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.black54,
+                  child: const Icon(Icons.grass_outlined, size: 18, color: Colors.white24),
+                ),
               ),
-            ),
+              // Indicateur statut en haut à droite
+              Positioned(
+                top: 3, right: 3,
+                child: Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: accent,
+                    boxShadow: [BoxShadow(color: accent, blurRadius: 4)],
+                  ),
+                ),
+              ),
+            ]),
           ),
           // Nom en dessous
           Container(
@@ -855,39 +874,238 @@ class _InteractiveFarmCard extends StatefulWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onParcelles;
+  final void Function(int parcelId) onParcelTap;
   final void Function(BuildContext, String, String) onPhotoTap;
 
   const _InteractiveFarmCard({
     required this.farm, required this.farmId, required this.name,
     required this.location, required this.image, required this.isOwner,
     required this.dark, required this.cropsFuture, required this.onEdit,
-    required this.onDelete, required this.onParcelles, required this.onPhotoTap,
+    required this.onDelete, required this.onParcelles, required this.onParcelTap,
+    required this.onPhotoTap,
   });
 
   @override
   State<_InteractiveFarmCard> createState() => _InteractiveFarmCardState();
 }
 
-class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
-    {
+class _InteractiveFarmCardState extends State<_InteractiveFarmCard> {
   // Suivi drag pins
-  bool _hasInteracted = false;
-
   // Positions draggables des tooltips — clé = index parcelle
   // Stockées en offsets absolus pixels dans le repère de la carte
   final Map<int, Offset> _pinOffsets = {};
   // Indique quel pin est en cours de drag (pour z-order)
   int? _draggingPin;
+  // Nombre de parcelles à afficher en même temps
+  int _maxVisibleParcelles = 6;
 
   @override
   void initState() {
     super.initState();
-
+    _loadPinOffsets();
   }
 
   @override
   void dispose() {
+    _savePinOffsets();
     super.dispose();
+  }
+
+  Future<void> _loadPinOffsets() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'farm_pin_offsets_${widget.farmId}';
+      final json = prefs.getString(key);
+      if (json != null) {
+        final data = jsonDecode(json) as Map<String, dynamic>;
+        setState(() {
+          data.forEach((k, v) {
+            final idx = int.parse(k);
+            _pinOffsets[idx] = Offset(v['dx'] as double, v['dy'] as double);
+          });
+        });
+      }
+    } catch (e) {
+      print('Erreur charge positions pins: $e');
+    }
+  }
+
+  Future<void> _savePinOffsets() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'farm_pin_offsets_${widget.farmId}';
+      final data = <String, dynamic>{};
+      _pinOffsets.forEach((idx, offset) {
+        data[idx.toString()] = {'dx': offset.dx, 'dy': offset.dy};
+      });
+      await prefs.setString(key, jsonEncode(data));
+    } catch (e) {
+      print('Erreur sauvegarde positions pins: $e');
+    }
+  }
+
+  /// Navigue vers le détail de la parcelle
+  void _goToParcelDetail(Map<String, dynamic> crop) {
+    final parcelId = crop['id'] as int?;
+    final parcelName = (crop['crop_name'] ?? 'Parcelle') as String;
+    if (parcelId == null) return;
+    
+    // Créer une page simple pour voir la parcelle en détail
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.85),
+      builder: (_) => GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Titre
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 24),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white.withOpacity(0.2), width: 0.5),
+                        ),
+                        child: Text(parcelName.toUpperCase(),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w300, letterSpacing: 2.5, color: Colors.white)),
+                      ),
+                      
+                      // Photo grande
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        constraints: const BoxConstraints(maxHeight: 360, maxWidth: 600),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
+                        ),
+                        child: _buildParcelPhotoWidget(crop),
+                      ),
+                      
+                      // Infos
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.5),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: _buildParcelInfo(crop),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // Bouton voir parcelle complète
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                          widget.onParcelTap(parcelId); // Navigue vers la parcelle spécifique
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            border: Border.all(color: AppColors.accent.withOpacity(0.5), width: 1),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                            Text('VOIR PARCELLE COMPLÈTE',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w300, letterSpacing: 2, color: Colors.white)),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_ios, size: 9, color: Colors.white),
+                          ]),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      const Text('APPUYER POUR FERMER',
+                          style: TextStyle(fontSize: 8, fontWeight: FontWeight.w300, letterSpacing: 1.5, color: Colors.white24)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Construit le widget pour afficher la photo de la parcelle
+  Widget _buildParcelPhotoWidget(Map<String, dynamic> crop) {
+    final photo = (crop['image_url'] ?? crop['photo_url'] ?? crop['photo'] ?? '') as String;
+    if (photo.isEmpty) {
+      return Container(
+        color: Colors.black54,
+        child: const Center(
+          child: Icon(Icons.grass_outlined, size: 48, color: Colors.white24),
+        ),
+      );
+    }
+    return Image.network(
+      photo,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      loadingBuilder: (_, child, prog) => prog == null
+          ? child
+          : const Center(child: CircularProgressIndicator(strokeWidth: 1, color: Colors.white24)),
+      errorBuilder: (_, __, ___) => const Center(
+        child: Icon(Icons.broken_image_outlined, color: Colors.white24, size: 32),
+      ),
+    );
+  }
+
+  /// Construit les infos de la parcelle
+  List<Widget> _buildParcelInfo(Map<String, dynamic> crop) {
+    final widgets = <Widget>[];
+    
+    if (crop['crop_name'] != null) {
+      widgets.add(Text('Parcelle: ${crop['crop_name']}',
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w300, letterSpacing: 0.5, color: Colors.white70)));
+      widgets.add(const SizedBox(height: 8));
+    }
+    
+    if (crop['crop_type'] != null) {
+      widgets.add(Text('Type: ${crop['crop_type']}',
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w300, letterSpacing: 0.5, color: Colors.white60)));
+      widgets.add(const SizedBox(height: 8));
+    }
+    
+    if (crop['surface'] != null) {
+      widgets.add(Text('Surface: ${crop['surface']} m²',
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w300, letterSpacing: 0.5, color: Colors.white60)));
+      widgets.add(const SizedBox(height: 8));
+    }
+    
+    if (crop['description'] != null && (crop['description'] as String).isNotEmpty) {
+      widgets.add(Text('Description: ${crop['description']}',
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w300, letterSpacing: 0.5, color: Colors.white60)));
+      widgets.add(const SizedBox(height: 8));
+    }
+    
+    if (crop['health_status'] != null) {
+      final status = crop['health_status'] as String;
+      final statusColor = _getStatusColor(crop);
+      widgets.add(Row(children: [
+        Text('État: ', style: const TextStyle(fontSize: 9, color: Colors.white60)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: statusColor.withOpacity(0.3),
+            border: Border.all(color: statusColor.withOpacity(0.6), width: 0.5),
+          ),
+          child: Text(status, style: TextStyle(fontSize: 8, color: statusColor, fontWeight: FontWeight.w500)),
+        ),
+      ]));
+    }
+    
+    return widgets.isEmpty ? [Text('Aucune information', style: const TextStyle(fontSize: 9, color: Colors.white54))] : widgets;
   }
 
   static const _dotZones = [
@@ -953,18 +1171,49 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
               future: widget.cropsFuture,
               builder: (ctx, snap) {
                 if ((snap.data ?? []).isEmpty) return const SizedBox.shrink();
-                final crops = snap.data!.take(6).toList();
+                final allCrops = snap.data!;
+                final crops = allCrops.take(_maxVisibleParcelles).toList();
+                final hasMore = allCrops.length > _maxVisibleParcelles;
+                
                 return LayoutBuilder(builder: (_, box) {
                   final w = box.maxWidth;
                   final h = box.maxHeight;
                   return Stack(children: [
                     for (var i = 0; i < crops.length && i < _dotZones.length; i++)
                       if (i != _draggingPin)
-                        _buildPin(crops[i] as Map<String, dynamic>, _dotZones[i].dx,
-                            _dotZones[i].dy, w, h, accent, ctx, i),
+                        KeyedSubtree(
+                          key: ValueKey('pin_$i'),
+                          child: _buildPin(crops[i] as Map<String, dynamic>, _dotZones[i].dx,
+                              _dotZones[i].dy, w, h, accent, ctx, i),
+                        ),
                     if (_draggingPin != null && _draggingPin! < crops.length)
-                      _buildPin(crops[_draggingPin!] as Map<String, dynamic>, _dotZones[_draggingPin!].dx,
-                          _dotZones[_draggingPin!].dy, w, h, accent, ctx, _draggingPin!),
+                      KeyedSubtree(
+                        key: ValueKey('pin_${_draggingPin!}'),
+                        child: _buildPin(crops[_draggingPin!] as Map<String, dynamic>, _dotZones[_draggingPin!].dx,
+                            _dotZones[_draggingPin!].dy, w, h, accent, ctx, _draggingPin!),
+                      ),
+                    // Bouton "Voir plus" si trop de parcelles
+                    if (hasMore)
+                      Positioned(
+                        bottom: 8, right: 8,
+                        child: GestureDetector(
+                          onTap: () => setState(() => _maxVisibleParcelles += 6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.65),
+                              border: Border.all(color: accent.withOpacity(0.5), width: 0.8),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Text('VOIR +${allCrops.length - _maxVisibleParcelles}',
+                                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w300, letterSpacing: 1.2, color: Colors.white70)),
+                              const SizedBox(width: 5),
+                              Icon(Icons.expand_more, size: 10, color: accent.withOpacity(0.6)),
+                            ]),
+                          ),
+                        ),
+                      ),
                   ]);
                 });
               },
@@ -973,14 +1222,16 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
 
           // ── Overlays fixes ─────────────────────────────────────────
 
-          // Gradient bas pour le nom (toujours visible)
+          // Gradient bas pour le nom (ne doit pas bloquer les gestes)
           Positioned(
             left: 0, right: 0, bottom: 0, height: 80,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.90)],
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.90)],
+                  ),
                 ),
               ),
             ),
@@ -989,14 +1240,14 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
           // Nom + lieu + bouton parcelles
           Positioned(
             left: 0, right: 0, bottom: 0,
-            child: GestureDetector(
-              onTap: widget.onParcelles,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Partie gauche (nom + lieu) - ignore les gestes
+                  Expanded(
+                    child: IgnorePointer(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                         Text(widget.name.toUpperCase(),
                             maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -1007,29 +1258,30 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
                             const Icon(Icons.place_outlined, size: 10, color: Colors.white54),
                             const SizedBox(width: 3),
                             Expanded(child: Text(widget.location,
-                                maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w300, letterSpacing: 0.4, color: Colors.white54))),
-                          ]),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w300, letterSpacing: 0.4, color: Colors.white54))),
+                        ]),
                         ],
                       ]),
                     ),
-                    GestureDetector(
-                      onTap: widget.onParcelles,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.50),
-                          border: Border.all(color: Colors.white.withOpacity(0.25), width: 0.5),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: const [
-                          Text('PARCELLES', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w300, letterSpacing: 1.4, color: Colors.white70)),
-                          SizedBox(width: 5),
-                          Icon(Icons.arrow_forward_ios, size: 8, color: Colors.white54),
-                        ]),
+                  ),
+                  // Bouton PARCELLES - actif
+                  GestureDetector(
+                    onTap: widget.onParcelles,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.50),
+                        border: Border.all(color: Colors.white.withOpacity(0.25), width: 0.5),
                       ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                        Text('PARCELLES', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w300, letterSpacing: 1.4, color: Colors.white70)),
+                        SizedBox(width: 5),
+                        Icon(Icons.arrow_forward_ios, size: 8, color: Colors.white54),
+                      ]),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1066,6 +1318,82 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
         color: (widget.dark ? Colors.white : Colors.black).withOpacity(0.08))),
   );
 
+  /// Détermine la couleur du statut basée sur les données de la parcelle
+  Color _getStatusColor(Map<String, dynamic> crop) {
+    try {
+      // Vérifier les problèmes signalés associés à cette parcelle
+      final problems = crop['problems'] as List<dynamic>? ?? [];
+      
+      if (problems.isNotEmpty) {
+        // Vérifier s'il y a des problèmes de haute sévérité
+        for (final problem in problems) {
+          final severity = problem['severity']?.toString().toLowerCase() ?? 'medium';
+          final problemType = problem['problem_type']?.toString().toLowerCase() ?? '';
+          final description = problem['description']?.toString().toLowerCase() ?? '';
+          
+          // Problèmes CRITIQUES
+          if (severity == 'high' || 
+              problemType.contains('disease') || 
+              problemType.contains('pest') ||
+              description.contains('urgent')) {
+            return Colors.red; // 🔴 Critique
+          }
+          
+          // Problèmes ALERTES
+          if (severity == 'medium' || 
+              problemType.contains('yellowing') ||
+              problemType.contains('poor_yield')) {
+            return Colors.amber; // 🟡 Alerte
+          }
+        }
+      }
+
+      // Chercher aussi dans les champs texte
+      final allText = [
+        crop['health_status']?.toString() ?? '',
+        crop['status']?.toString() ?? '',
+        crop['notes']?.toString() ?? '',
+        crop['description']?.toString() ?? '',
+        crop['disease']?.toString() ?? '',
+        crop['diseases']?.toString() ?? '',
+        crop['health_issues']?.toString() ?? '',
+        crop['issues']?.toString() ?? '',
+        crop['remarks']?.toString() ?? '',
+        crop['observations']?.toString() ?? '',
+      ].join(' ').toLowerCase();
+
+      // Mots-clés CRITIQUE (rouge urgente)
+      final criticalKeywords = ['maladie', 'disease', 'ravageur', 'pest', 'urgent', 'problem', 
+                                'critique', 'critical', 'severe', 'danger', 'infection', 'infested',
+                                'parasite', 'blight', 'mouche', 'virus', 'champignon'];
+      
+      // Mots-clés ALERTE (jaune)
+      final alertKeywords = ['attention', 'beware', 'surveiller', 'watch', 'possible', 'suspect',
+                             'risque', 'risk', 'caution', 'warning', 'careful', 'observe',
+                             'anormal', 'abnormal', 'faible', 'faiblesse', 'faible rendement'];
+
+      // Vérifier les keywords critiques
+      for (final keyword in criticalKeywords) {
+        if (allText.contains(keyword)) {
+          return Colors.red; // 🔴 Critique
+        }
+      }
+
+      // Vérifier les keywords alerte
+      for (final keyword in alertKeywords) {
+        if (allText.contains(keyword)) {
+          return Colors.amber; // 🟡 Alerte
+        }
+      }
+
+      // Par défaut : sain
+      return Colors.green; // 🟢 Sain
+    } catch (e) {
+      print('Erreur détermine couleur: $e');
+      return AppColors.accent; // Fallback couleur app
+    }
+  }
+
   /// Calcule la position initiale du tooltip (première fois)
   Offset _defaultTooltipOffset(int idx, double dx, double dy,
       double w, double h, bool hasPhoto) {
@@ -1073,9 +1401,9 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
     final py = dy * h;
     final alignRight = dx > 0.5;
     final alignTop   = dy < 0.5;
-    const tw = 92.0; const th = 80.0;
-    const ttW = 100.0; const ttH = 26.0;
-    const gap = 14.0; const lineLen = 28.0;
+    final tw = 92.0; final th = 80.0;
+    final ttW = 100.0; final ttH = 26.0;
+    final gap = 14.0; final lineLen = 28.0;
     if (hasPhoto) {
       final l = alignRight ? (px - gap - tw).clamp(2.0, w - tw - 2) : (px + gap).clamp(2.0, w - tw - 2);
       final t = alignTop   ? (py - lineLen - th).clamp(2.0, h - th - 36) : (py + lineLen).clamp(2.0, h - th - 36);
@@ -1092,6 +1420,7 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
     final name     = (crop['crop_name'] ?? '').toString();
     final photo    = (crop['image_url'] ?? crop['photo_url'] ?? crop['photo'] ?? '') as String;
     final hasPhoto = photo.isNotEmpty;
+    final statusColor = _getStatusColor(crop); // Couleur dynamique
     final px = dx * w;
     final py = dy * h;
     const tw = 92.0; const th = 80.0;
@@ -1109,15 +1438,17 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
     return Stack(clipBehavior: Clip.none, children: [
       // ── Connecteur dynamique dot → tooltip ─────────────────────
       Positioned.fill(
-        child: CustomPaint(
-          painter: _DynamicLinePainter(from: dotPos, to: tipCenter, dragging: isDragging),
+        child: IgnorePointer(
+          child: CustomPaint(
+            painter: _DynamicLinePainter(from: dotPos, to: tipCenter, dragging: isDragging, color: statusColor),
+          ),
         ),
       ),
 
       // ── Dot pulsant (fixe, ancré à la position relative) ───────
       Positioned(
         left: px - 5, top: py - 5,
-        child: _PulsingDot(color: isDragging ? accent : Colors.white),
+        child: _PulsingDot(color: isDragging ? statusColor : statusColor.withOpacity(0.8)),
       ),
 
       // ── Tooltip DRAGGABLE ───────────────────────────────────────
@@ -1125,21 +1456,25 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
         left: offset.dx, top: offset.dy,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: hasPhoto && !isDragging ? () => widget.onPhotoTap(ctx, name, photo) : null,
+          onTap: hasPhoto && !isDragging ? () => _goToParcelDetail(crop) : null,
           onPanStart: (_) => setState(() => _draggingPin = idx),
           onPanUpdate: (details) {
             setState(() {
               final newOffset = _pinOffsets[idx]! + details.delta;
-              // Clamper dans la carte
+              // Clamper dans la carte avec petit débordement en bas
+              const extraSpace = 15.0; // Marge pour drag en bas
               final maxLeft = w - (hasPhoto ? tw : ttW) - 2;
-              final maxTop  = h - (hasPhoto ? th : ttH) - 2;
+              final maxTop  = h - (hasPhoto ? th : ttH) - 2 + extraSpace;
               _pinOffsets[idx] = Offset(
                 newOffset.dx.clamp(2.0, maxLeft),
                 newOffset.dy.clamp(2.0, maxTop),
               );
             });
           },
-          onPanEnd: (_) => setState(() => _draggingPin = null),
+          onPanEnd: (_) {
+            setState(() => _draggingPin = null);
+            _savePinOffsets();
+          },
           child: AnimatedScale(
             scale: isDragging ? 1.08 : 1.0,
             duration: const Duration(milliseconds: 150),
@@ -1147,18 +1482,18 @@ class _InteractiveFarmCardState extends State<_InteractiveFarmCard>
               duration: const Duration(milliseconds: 150),
               decoration: BoxDecoration(
                 boxShadow: isDragging
-                    ? [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 16, spreadRadius: 1)]
+                    ? [BoxShadow(color: statusColor.withOpacity(0.6), blurRadius: 16, spreadRadius: 2)]
                     : [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 6)],
               ),
               child: hasPhoto
-                  ? _PhotoPin(name: name, photo: photo, accent: isDragging ? accent : accent.withOpacity(0.6))
+                  ? _PhotoPin(name: name, photo: photo, accent: statusColor, isDragging: isDragging)
                   : Container(
                       width: ttW,
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(isDragging ? 0.88 : 0.70),
                         border: Border.all(
-                          color: isDragging ? accent.withOpacity(0.6) : Colors.white.withOpacity(0.18),
+                          color: isDragging ? statusColor.withOpacity(0.8) : Colors.white.withOpacity(0.18),
                           width: isDragging ? 1 : 0.5,
                         ),
                       ),

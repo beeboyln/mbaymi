@@ -34,6 +34,7 @@ class Crop(Base):
     status = Column(String(50), default="growing")  # growing, harvested, failed
     notes = Column(String(500))
     image_url = Column(String(500))  # Photo de profil de la parcelle
+    area = Column(Float, nullable=True)  # Surface en m² ou hectares
     
     # Géométrie : polygone de la parcelle
     # Format JSON : [[lat1, lon1], [lat2, lon2], [lat3, lon3], ...]

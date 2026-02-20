@@ -492,6 +492,7 @@ class ApiService {
     double? expectedYield,
     String status = 'growing',
     String? notes,
+    double? area,
   }) async {
     try {
       final response = await http.post(
@@ -505,6 +506,7 @@ class ApiService {
           'expected_yield': expectedYield,
           'status': status,
           'notes': notes,
+          'area': area,
         }),
       );
 
@@ -643,7 +645,10 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> updateCrop(int cropId, Map<String, dynamic> updates) async {
+  static Future<Map<String, dynamic>> updateCrop({
+    required int cropId,
+    required Map<String, dynamic> updates,
+  }) async {
     try {
       final headers = await _getAuthHeaders();
       var response = await http.patch(Uri.parse('$baseUrl/crops/$cropId'), headers: headers, body: jsonEncode(updates));
@@ -2873,13 +2878,23 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> addComment(int postId, String commentText, int userId) async {
+  static Future<Map<String, dynamic>> addComment(
+    int postId,
+    String commentText,
+    int userId, {
+    int? parentId,
+  }) async {
     try {
       final headers = await _getAuthHeaders();
       if (headers['Authorization'] == null) throw Exception('Token manquant');
 
+      String url = '$baseUrl/farm-posts/$postId/comments?comment_text=$commentText&user_id=$userId';
+      if (parentId != null) {
+        url += '&parent_id=$parentId';
+      }
+
       final response = await http.post(
-        Uri.parse('$baseUrl/farm-posts/$postId/comments?comment_text=$commentText&user_id=$userId'),
+        Uri.parse(url),
         headers: headers,
       );
 
@@ -2888,11 +2903,11 @@ class ApiService {
       } else if (response.statusCode == 401) {
         await _handleUnauthorized((newHeaders) async {
           return await http.post(
-            Uri.parse('$baseUrl/farm-posts/$postId/comments?comment_text=$commentText&user_id=$userId'),
+            Uri.parse(url),
             headers: newHeaders,
           );
         });
-        return await addComment(postId, commentText, userId);
+        return await addComment(postId, commentText, userId, parentId: parentId);
       } else {
         throw Exception('Erreur: ${response.statusCode}');
       }

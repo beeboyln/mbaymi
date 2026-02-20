@@ -54,6 +54,7 @@ class CropCreate(BaseModel):
     objective: str = "consumption"
     status: str = "growing"
     notes: Optional[str] = None
+    area: Optional[float] = None  # Surface en m² ou hectares
     coordinates: Optional[List[List[float]]] = None  # [[lat, lon], [lat, lon], ...]
 
 class CropResponse(CropCreate):

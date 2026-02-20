@@ -6,6 +6,7 @@ from app.models.photo import FarmPhoto
 from app.models.user import User
 from app.models.livestock import Livestock
 from app.models.farm_network import FarmProfile
+from app.models.crop_problem import CropProblem
 from app.schemas.schemas import FarmCreate, FarmResponse, CropCreate, CropResponse
 from app.routes.auth import get_current_user_obj
 
@@ -348,7 +349,8 @@ def add_crop(farm_id: int, crop: CropCreate, db: Session = Depends(get_db)):
         quantity_planted=crop.quantity_planted,
         expected_yield=crop.expected_yield,
         status=crop.status,
-        notes=crop.notes
+        notes=crop.notes,
+        area=crop.area,
     )
     
     db.add(new_crop)
@@ -359,5 +361,47 @@ def add_crop(farm_id: int, crop: CropCreate, db: Session = Depends(get_db)):
 
 @router.get("/{farm_id}/crops")
 def get_farm_crops(farm_id: int, db: Session = Depends(get_db)):
+    """Get all crops for a farm with their associated problems (unresolved only)"""
     crops = db.query(Crop).filter(Crop.farm_id == farm_id).all()
-    return crops
+    
+    result = []
+    for crop in crops:
+        # Get unresolved problems for this crop
+        problems = db.query(CropProblem).filter(
+            CropProblem.crop_id == crop.id,
+            CropProblem.status != 'resolved'
+        ).all()
+        
+        # Convert crop to dict
+        crop_dict = {
+            'id': crop.id,
+            'farm_id': crop.farm_id,
+            'crop_name': crop.crop_name,
+            'planted_date': crop.planted_date,
+            'expected_harvest_date': crop.expected_harvest_date,
+            'quantity_planted': crop.quantity_planted,
+            'expected_yield': crop.expected_yield,
+            'status': crop.status,
+            'notes': crop.notes,
+            'image_url': crop.image_url,
+            'variety': crop.variety,
+            'objective': crop.objective,
+            'area': crop.area,
+            'created_at': crop.created_at,
+            'updated_at': crop.updated_at,
+            'problems': [
+                {
+                    'id': p.id,
+                    'problem_type': p.problem_type,
+                    'description': p.description,
+                    'photo_url': p.photo_url,
+                    'severity': p.severity,
+                    'status': p.status,
+                    'created_at': p.created_at.isoformat() if p.created_at else None,
+                }
+                for p in problems
+            ]
+        }
+        result.append(crop_dict)
+    
+    return result

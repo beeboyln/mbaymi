@@ -10,6 +10,7 @@ import 'package:mbaymi/screens/parcel_reminders_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/widgets/skeleton_loader.dart';
+import 'package:intl/intl.dart';
 
 class ParcelScreen extends StatefulWidget {
   final int farmId;
@@ -17,6 +18,7 @@ class ParcelScreen extends StatefulWidget {
   final int? farmOwnerId;  // ID of the farm owner for read-only mode
   final bool readOnly;
   final bool openAddCultureModal;
+  final int? selectedParcelId;  // ID d'une parcelle à afficher en priorité
 
   const ParcelScreen({
     super.key,
@@ -25,6 +27,7 @@ class ParcelScreen extends StatefulWidget {
     this.farmOwnerId,
     this.readOnly = false,
     this.openAddCultureModal = false,
+    this.selectedParcelId,
   });
 
   @override
@@ -35,8 +38,18 @@ class _ParcelScreenState extends State<ParcelScreen> {
   late Future<List<dynamic>> _parcelsFuture;
   late int _userId;
   int _selectedSection = 0; // 0: Parcelles, 1: Posts
+  late ScrollController _scrollController;
+  bool _hasScrolledToParcel = false;
 
   static const Color _primaryColor = AppColors.accent;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _userId = AuthService.currentSession?.userId ?? 0;
+    _loadData();
+  }
 
   @override
   void didChangeDependencies() {
@@ -49,10 +62,9 @@ class _ParcelScreenState extends State<ParcelScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _userId = AuthService.currentSession?.userId ?? 0;
-    _loadData();
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _loadData() {
@@ -62,11 +74,99 @@ class _ParcelScreenState extends State<ParcelScreen> {
   Future<void> _refresh() async {
     setState(() {
       _loadData();
+      _hasScrolledToParcel = false; // Reset pour permettre re-scroll
     });
+  }
+
+  String _formatDate(dynamic dateValue) {
+    if (dateValue == null || dateValue == '' || dateValue == '—') {
+      return '—';
+    }
+    
+    try {
+      DateTime date;
+      if (dateValue is String) {
+        date = DateTime.parse(dateValue);
+      } else {
+        return '—';
+      }
+      // Format: "20 Feb 2026"
+      return DateFormat('dd MMM yyyy').format(date);
+    } catch (e) {
+      return '—';
+    }
+  }
+
+  String _formatArea(dynamic areaValue) {
+    if (areaValue == null || areaValue == '' || areaValue == '—') {
+      return '—';
+    }
+    
+    try {
+      final area = areaValue is double ? areaValue : double.tryParse(areaValue.toString());
+      if (area == null) return '—';
+      
+      // Si la valeur est >= 1, c'est probablement en m², sinon en hectares
+      if (area >= 100) {
+        return '${area.toStringAsFixed(0)} m²';
+      } else {
+        return '${area.toStringAsFixed(2)} ha';
+      }
+    } catch (e) {
+      return '—';
+    }
+  }
+
+  Future<String> _getSowingDate(int cropId) async {
+    try {
+      final activities = await ApiService.getActivitiesForCrop(cropId) as List<dynamic>;
+      
+      // Find the most recent 'sowing' activity
+      for (var activity in activities) {
+        if (activity['activity_type'] == 'sowing') {
+          return _formatDate(activity['activity_date']);
+        }
+      }
+      return '—';
+    } catch (e) {
+      debugPrint('Error getting sowing date: $e');
+      return '—';
+    }
+  }
+
+  Future<String> _getHarvestDate(int cropId) async {
+    try {
+      final activities = await ApiService.getActivitiesForCrop(cropId) as List<dynamic>;
+      
+      // Find the most recent 'harvest' activity
+      for (var activity in activities) {
+        if (activity['activity_type'] == 'harvest') {
+          return _formatDate(activity['activity_date']);
+        }
+      }
+      return '—';
+    } catch (e) {
+      debugPrint('Error getting harvest date: $e');
+      return '—';
+    }
+  }
+
+  void _scrollToParcel(int index) {
+    if (_hasScrolledToParcel) return;
+    _hasScrolledToParcel = true;
+    
+    // Chaque item fait ~200px (card ~170px + gap 24px)
+    final double offset = (index * 194.0) - 50; // 194 = card + gap, -50 pour centrer un peu
+    _scrollController.animateTo(
+      offset.clamp(0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOut,
+    );
   }
 
   void _showAddParcel() {
     final nameCtrl = TextEditingController();
+    final areaCtrl = TextEditingController();
     String status = 'En préparation';
 
     showModalBottomSheet(
@@ -152,6 +252,49 @@ class _ParcelScreenState extends State<ParcelScreen> {
                 ),
                 const SizedBox(height: 32),
 
+                // Surface
+                TextField(
+                  controller: areaCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: false,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w300,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'SURFACE',
+                    labelStyle: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 1.5,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                    hintText: 'Ex: 500 m² ou 0.5 hectares',
+                    hintStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w300,
+                      color: isDark ? Colors.white38 : Colors.black26,
+                    ),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white : Colors.black87,
+                        width: 1,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
                 // Statut
                 Text(
                   'STATUT',
@@ -183,10 +326,15 @@ class _ParcelScreenState extends State<ParcelScreen> {
                       final name = nameCtrl.text.trim();
                       if (name.isEmpty) return;
                       
+                      final area = areaCtrl.text.trim().isEmpty
+                          ? null
+                          : double.tryParse(areaCtrl.text.trim());
+                      
                       await ApiService.addCrop(
                         farmId: widget.farmId,
                         cropName: name,
                         status: status,
+                        area: area,
                       );
                       Navigator.pop(context);
                       _refresh();
@@ -266,6 +414,208 @@ class _ParcelScreenState extends State<ParcelScreen> {
     } catch (e) {
       _showSnackBar('Erreur: $e', isError: true);
     }
+  }
+
+  Future<void> _editParcel(int cropId, String currentName, double? currentArea) async {
+    final nameCtrl = TextEditingController(text: currentName);
+    final areaCtrl = TextEditingController(text: currentArea?.toString() ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final bgColor = AppColors.getBgColor(isDark);
+
+          return Container(
+            decoration: BoxDecoration(
+              color: bgColor,
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+            ),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+              left: 24,
+              right: 24,
+              top: 32,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Titre
+                Text(
+                  'MODIFIER PARCELLE',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 2.5,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Nom
+                TextField(
+                  controller: nameCtrl,
+                  autofocus: false,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w300,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'NOM',
+                    labelStyle: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 1.5,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white : Colors.black87,
+                        width: 1,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Surface
+                TextField(
+                  controller: areaCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: false,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w300,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'SURFACE',
+                    labelStyle: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 1.5,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                    hintText: 'Ex: 500 m² ou 0.5 hectares',
+                    hintStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w300,
+                      color: isDark ? Colors.white38 : Colors.black26,
+                    ),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white : Colors.black87,
+                        width: 1,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                // Boutons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.zero,
+                          ),
+                        ),
+                        child: const Text(
+                          'ANNULER',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () async {
+                          final name = nameCtrl.text.trim();
+                          if (name.isEmpty) return;
+                          
+                          final area = areaCtrl.text.trim().isEmpty
+                              ? null
+                              : double.tryParse(areaCtrl.text.trim());
+                          
+                          try {
+                            await ApiService.updateCrop(
+                              cropId: cropId,
+                              updates: {
+                                'crop_name': name,
+                                'area': area,
+                              },
+                            );
+                            Navigator.pop(context);
+                            _refresh();
+                            _showSnackBar('Parcelle mise à jour', isError: false);
+                          } catch (e) {
+                            _showSnackBar('Erreur: $e', isError: true);
+                          }
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.black87,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.zero,
+                          ),
+                        ),
+                        child: const Text(
+                          'ENREGISTRER',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _addPost() async {
@@ -525,12 +875,19 @@ class _ParcelScreenState extends State<ParcelScreen> {
           color: _primaryColor,
           backgroundColor: AppColors.getBgColor(isDark),
           child: ListView.separated(
+            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),
             itemCount: parcels.length,
             separatorBuilder: (_, __) => const SizedBox(height: 24),
             itemBuilder: (context, index) {
               final parcel = parcels[index] as Map<String, dynamic>;
+              // Après le build, scroll vers la parcelle si c'est celle sélectionnée
+              if (!_hasScrolledToParcel && widget.selectedParcelId != null && parcel['id'] == widget.selectedParcelId) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToParcel(index);
+                });
+              }
               return _buildParcelCard(parcel, isDark, index);
             },
           ),
@@ -638,9 +995,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
     final status = parcel['status'] ?? 'En préparation';
     final statusColor = statusConfig[status] ?? statusConfig['En préparation']!;
     final cropName = parcel['crop_name'] ?? 'Parcelle';
-    final plantedDate = parcel['planted_date'] ?? '—';
-    final expectedHarvest = parcel['expected_harvest_date'] ?? '—';
-    final area = parcel['area'] ?? '—';
+    final area = _formatArea(parcel['area']);
     final imageUrl = parcel['image_url'] as String?;
     final cropId = _toInt(parcel['id']) ?? 0;
 
@@ -649,8 +1004,8 @@ class _ParcelScreenState extends State<ParcelScreen> {
       cropName: cropName,
       status: status,
       statusColor: statusColor,
-      plantedDate: plantedDate,
-      expectedHarvest: expectedHarvest,
+      plantedDateFuture: _getSowingDate(cropId),
+      expectedHarvestFuture: _getHarvestDate(cropId),
       area: area,
       imageUrl: imageUrl,
       index: index,
@@ -659,6 +1014,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
       farmOwnerId: widget.farmOwnerId,
       onPhotoAdd: () => _addParcelPhoto(cropId),
       onDelete: () => _deleteParcel(cropId, cropName),
+      onEdit: (id, name) => _editParcel(id, name, parcel['area'] as double?),
       onNavigate: (screen) {
         Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
             .then((_) => _refresh());
@@ -700,8 +1056,8 @@ class _ParcelCardWidget extends StatefulWidget {
   final String cropName;
   final String status;
   final Color statusColor;
-  final String plantedDate;
-  final String expectedHarvest;
+  final Future<String> plantedDateFuture;
+  final Future<String> expectedHarvestFuture;
   final String area;
   final String? imageUrl;
   final int index;
@@ -713,14 +1069,15 @@ class _ParcelCardWidget extends StatefulWidget {
   final Function(Widget) onNavigate;
   final int farmId;
   final int userId;
+  final Function(int cropId, String cropName) onEdit;
 
   const _ParcelCardWidget({
     required this.cropId,
     required this.cropName,
     required this.status,
     required this.statusColor,
-    required this.plantedDate,
-    required this.expectedHarvest,
+    required this.plantedDateFuture,
+    required this.expectedHarvestFuture,
     required this.area,
     required this.imageUrl,
     required this.index,
@@ -732,6 +1089,7 @@ class _ParcelCardWidget extends StatefulWidget {
     required this.onNavigate,
     required this.farmId,
     required this.userId,
+    required this.onEdit,
   });
 
   @override
@@ -1112,9 +1470,9 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildInfoRow('SEMIS', widget.plantedDate),
+                  _buildInfoRowAsync('SEMIS', widget.plantedDateFuture),
                   const SizedBox(height: 12),
-                  _buildInfoRow('RÉCOLTE', widget.expectedHarvest),
+                  _buildInfoRowAsync('RÉCOLTE', widget.expectedHarvestFuture),
                   const SizedBox(height: 12),
                   _buildInfoRow('SURFACE', widget.area),
                 ],
@@ -1201,6 +1559,11 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                 ),
                 child: Column(
                   children: [
+                    _buildActionButton(
+                      label: 'MODIFIER',
+                      icon: Icons.edit_outlined,
+                      onTap: () => widget.onEdit(widget.cropId, widget.cropName),
+                    ),
                     _buildActionButton(
                       label: 'ACTIVITÉS',
                       icon: Icons.timeline_outlined,
@@ -1294,6 +1657,39 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildInfoRowAsync(String label, Future<String> valueFuture) {
+    return FutureBuilder<String>(
+      future: valueFuture,
+      builder: (context, snapshot) {
+        final value = snapshot.hasData ? snapshot.data! : '—';
+        
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 1.5,
+                color: widget.isDark ? Colors.white38 : Colors.black38,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 0.5,
+                color: widget.isDark ? Colors.white60 : Colors.black87,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

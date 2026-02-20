@@ -404,6 +404,7 @@ def get_post_comments(post_id: int, db: Session = Depends(get_db)):
             "user_name": user.name if user else "Utilisateur",
             "user_profile_image": user.profile_image if user else None,
             "comment": comment.comment,
+            "parent_id": comment.parent_id,
             "created_at": comment.created_at.isoformat(),
         })
     
@@ -411,18 +412,25 @@ def get_post_comments(post_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{post_id}/comments")
-def add_comment(post_id: int, comment_text: str, user_id: int, db: Session = Depends(get_db)):
-    """Ajouter un commentaire à un post"""
+def add_comment(post_id: int, comment_text: str, user_id: int, parent_id: int = None, db: Session = Depends(get_db)):
+    """Ajouter un commentaire à un post (optionnellement en réponse à un autre commentaire)"""
     # Vérifier que le post existe
     post = db.query(FarmImagePost).filter(FarmImagePost.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post non trouvé")
+    
+    # Si parent_id est fourni, vérifier que le commentaire parent existe
+    if parent_id:
+        parent_comment = db.query(FarmPostComment).filter(FarmPostComment.id == parent_id).first()
+        if not parent_comment:
+            raise HTTPException(status_code=404, detail="Commentaire parent non trouvé")
     
     # Créer le commentaire
     try:
         new_comment = FarmPostComment(
             farm_post_id=post_id,
             user_id=user_id,
+            parent_id=parent_id,
             comment=comment_text.strip()
         )
         db.add(new_comment)
@@ -441,6 +449,7 @@ def add_comment(post_id: int, comment_text: str, user_id: int, db: Session = Dep
             "user_name": user.name if user else "Utilisateur",
             "user_profile_image": user.profile_image if user else None,
             "comment": new_comment.comment,
+            "parent_id": new_comment.parent_id,
             "created_at": new_comment.created_at.isoformat(),
         }
     except Exception as e:

@@ -427,44 +427,34 @@ class _DashboardTabState extends State<DashboardTab> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
             sliver: SliverToBoxAdapter(
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FarmTab(userId: widget.userId, initialSection: 0),
-                    ),
-                  );
-                },
-                child: Container(
-                  height: 140,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: const NetworkImage('https://res.cloudinary.com/dcs9vkwe0/image/upload/v1770190752/gestion_de_boutique/duoglvpzhtwlbym4hbns.jpg'),
-                      fit: BoxFit.cover,
-                      colorFilter: ColorFilter.mode(
-                        Colors.black.withAlpha((0.2 * 255).toInt()),
-                        BlendMode.lighten,
-                      ),
-                    ),
-                    border: Border.all(
-                      color: isDarkMode
-                          ? Colors.white.withAlpha((0.08 * 255).toInt())
-                          : Colors.black.withAlpha((0.03 * 255).toInt()),
-                      width: 1,
+              child: Container(
+                height: 140,
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: const NetworkImage('https://res.cloudinary.com/dcs9vkwe0/image/upload/v1770190752/gestion_de_boutique/duoglvpzhtwlbym4hbns.jpg'),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withAlpha((0.2 * 255).toInt()),
+                      BlendMode.lighten,
                     ),
                   ),
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        'Fermes',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withAlpha((0.95 * 255).toInt()),
-                        ),
+                  border: Border.all(
+                    color: isDarkMode
+                        ? Colors.white.withAlpha((0.08 * 255).toInt())
+                        : Colors.black.withAlpha((0.03 * 255).toInt()),
+                    width: 1,
+                  ),
+                ),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      'Fermes',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withAlpha((0.95 * 255).toInt()),
                       ),
                     ),
                   ),

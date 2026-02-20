@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
-import 'package:mbaymi/widgets/aerial_parcels_view.dart';
+import 'package:mbaymi/widgets/farm_aerial_view.dart';
 
 class ParcelsAerialScreen extends StatefulWidget {
   final int farmId;
