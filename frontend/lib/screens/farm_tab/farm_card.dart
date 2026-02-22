@@ -157,6 +157,8 @@ class _FarmCardState extends State<FarmCard> {
                     dark: widget.dark,
                     farmImage: widget.image,
                     onParcelTap: widget.onParcelTap,
+                    onEdit: widget.onEdit,
+                    onDelete: widget.onDelete,
                   );
                 },
               ),
@@ -247,9 +249,6 @@ class _FarmCardState extends State<FarmCard> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.grid_3x3_outlined,
-                              size: 12, color: Colors.white70),
-                          SizedBox(width: 6),
                           Text('PARCELLES',
                               style: TextStyle(
                                   fontSize: 9,
@@ -265,22 +264,7 @@ class _FarmCardState extends State<FarmCard> {
             ),
           ),
 
-          // Boutons owner
-          if (widget.isOwner)
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Row(children: [
-                OwnerButton(
-                    icon: Icons.edit_outlined,
-                    onTap: widget.onEdit),
-                const SizedBox(width: 6),
-                OwnerButton(
-                    icon: Icons.delete_outlined,
-                    onTap: widget.onDelete,
-                    danger: true),
-              ]),
-            ),
+
         ]),
       ),
     );

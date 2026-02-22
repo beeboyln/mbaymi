@@ -25,10 +25,10 @@ class ParcelState {
   });
 
   ParcelState.fromJson(Map<String, dynamic> j)
-      : nx = (j['nx'] as num).toDouble(),
-        ny = (j['ny'] as num).toDouble(),
-        nw = (j['nw'] as num).toDouble(),
-        nh = (j['nh'] as num).toDouble();
+      : nx = ((j['nx'] as num?) ?? 0.1).toDouble(),
+        ny = ((j['ny'] as num?) ?? 0.1).toDouble(),
+        nw = ((j['nw'] as num?) ?? 0.28).toDouble(),
+        nh = ((j['nh'] as num?) ?? 0.28).toDouble();
 
   Map<String, dynamic> toJson() => {'nx': nx, 'ny': ny, 'nw': nw, 'nh': nh};
 }
@@ -95,6 +95,8 @@ class ParcelOverlay extends StatefulWidget {
   final bool dark;
   final String? farmImage;
   final void Function(int parcelId)? onParcelTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const ParcelOverlay({
     super.key,
@@ -103,6 +105,8 @@ class ParcelOverlay extends StatefulWidget {
     this.dark = true,
     this.farmImage,
     this.onParcelTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -123,6 +127,11 @@ class _ParcelOverlayState extends State<ParcelOverlay>
   late AnimationController _modeToggleCtrl;
   late Animation<double> _modeToggleAnim;
 
+  // ── Menu hamburger dépliant ──────────────────────────────────────────────
+  bool _menuExpanded = false;
+  late AnimationController _menuCtrl;
+  late Animation<double> _menuAnim;
+
   // ── Légende de densité — repliée/dépliée ─────────────────────────────────
   bool _legendExpanded = false;
   late AnimationController _legendCtrl;
@@ -139,6 +148,14 @@ class _ParcelOverlayState extends State<ParcelOverlay>
       parent: _modeToggleCtrl,
       curve: Curves.easeInOutCubic,
     );
+    _menuCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+    _menuAnim = CurvedAnimation(
+      parent: _menuCtrl,
+      curve: Curves.easeOutCubic,
+    );
     _legendCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -153,6 +170,7 @@ class _ParcelOverlayState extends State<ParcelOverlay>
   @override
   void dispose() {
     _modeToggleCtrl.dispose();
+    _menuCtrl.dispose();
     _legendCtrl.dispose();
     for (final c in _entryCtrl.values) c.dispose();
     for (final c in _pulseCtrl.values) c.dispose();
@@ -184,6 +202,16 @@ class _ParcelOverlayState extends State<ParcelOverlay>
       // Forcer la fin d'une interaction en cours si on passe en lecture
       _activeId = -1;
       _resizing = false;
+    }
+  }
+
+  void _toggleMenu() {
+    HapticFeedback.lightImpact();
+    setState(() => _menuExpanded = !_menuExpanded);
+    if (_menuExpanded) {
+      _menuCtrl.forward();
+    } else {
+      _menuCtrl.reverse();
     }
   }
 
@@ -273,14 +301,115 @@ class _ParcelOverlayState extends State<ParcelOverlay>
           for (var i = 0; i < widget.parcels.length; i++)
             _buildParcel(widget.parcels[i], i, W, H),
 
-          // ── Toggle mode édition / lecture — haut gauche ────────────────────
+          // ── Menu hamburger (trois points) — haut gauche ──────────────────
           Positioned(
             left: 12,
             top: 10,
-            child: _ModeToggle(
-              editMode: _editMode,
-              anim: _modeToggleAnim,
-              onToggle: _toggleMode,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Bouton hamburger
+                GestureDetector(
+                  onTap: _toggleMenu,
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.62),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.15),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.menu_outlined,
+                      size: 13,
+                      color: Colors.white60,
+                    ),
+                  ),
+                ),
+                // Menu déroulant
+                SizeTransition(
+                  sizeFactor: _menuAnim,
+                  axisAlignment: -1,
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.72),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.15),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Toggle édition/lecture
+                        GestureDetector(
+                          onTap: () {
+                            _toggleMode();
+                            _toggleMenu();
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            alignment: Alignment.center,
+                            child: Icon(
+                              _editMode ? Icons.edit_outlined : Icons.visibility_outlined,
+                              size: 16,
+                              color: _editMode 
+                                ? const Color(0xFFFF9800)
+                                : Colors.white60,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          height: 0.5,
+                          color: Colors.white.withOpacity(0.1),
+                        ),
+                        // Bouton éditer — modif de la ferme
+                        GestureDetector(
+                          onTap: () {
+                            _toggleMenu();
+                            widget.onEdit?.call();
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.edit_note_outlined,
+                              size: 16,
+                              color: Colors.white60,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          height: 0.5,
+                          color: Colors.white.withOpacity(0.1),
+                        ),
+                        // Bouton supprimer — suppression de la ferme
+                        GestureDetector(
+                          onTap: () {
+                            _toggleMenu();
+                            widget.onDelete?.call();
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                              color: Color(0xFFFF5252),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -497,145 +626,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
           ),
         ),
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TOGGLE MODE LECTURE / ÉDITION
-// ─────────────────────────────────────────────────────────────────────────────
-class _ModeToggle extends StatelessWidget {
-  final bool editMode;
-  final Animation<double> anim;
-  final VoidCallback onToggle;
-
-  const _ModeToggle({
-    required this.editMode,
-    required this.anim,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: anim,
-      builder: (_, __) {
-        // Couleur interpolée : lecture = gris froid / édition = vert émeraude
-        final bgColor = Color.lerp(
-          const Color(0xFF1A1A1A),
-          const Color(0xFF0E2318),
-          anim.value,
-        )!;
-        final accentColor = Color.lerp(
-          const Color(0xFF505055),
-          const Color(0xFF95C8A1),
-          anim.value,
-        )!;
-
-        return GestureDetector(
-          onTap: onToggle,
-          child: Container(
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: bgColor.withOpacity(0.88),
-              border: Border.all(
-                color: accentColor.withOpacity(0.35),
-                width: 0.6,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
-                ),
-                // Lueur verte en mode édition
-                if (editMode)
-                  BoxShadow(
-                    color: const Color(0xFF95C8A1).withOpacity(0.15 * anim.value),
-                    blurRadius: 16,
-                    spreadRadius: 1,
-                  ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icône animée
-                SizedBox(
-                  width: 13,
-                  height: 13,
-                  child: Stack(
-                    children: [
-                      // Icône cadenas (lecture)
-                      Opacity(
-                        opacity: (1 - anim.value).clamp(0, 1),
-                        child: Icon(
-                          Icons.lock_outline_rounded,
-                          size: 12,
-                          color: accentColor,
-                        ),
-                      ),
-                      // Icône crayon (édition)
-                      Opacity(
-                        opacity: anim.value.clamp(0, 1),
-                        child: Icon(
-                          Icons.edit_outlined,
-                          size: 12,
-                          color: accentColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // Texte
-                Text(
-                  editMode ? 'ÉDITION' : 'LECTURE',
-                  style: TextStyle(
-                    fontSize: 7.5,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.3,
-                    color: accentColor,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Pill indicator
-                Container(
-                  width: 22,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.15),
-                    border: Border.all(
-                      color: accentColor.withOpacity(0.4),
-                      width: 0.5,
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Stack(
-                    children: [
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOutCubic,
-                        left: editMode ? 11 : 1,
-                        top: 1,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: accentColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }
@@ -1319,9 +1309,11 @@ class _DraggableOriginDotState extends State<_DraggableOriginDot>
             behavior: HitTestBehavior.opaque,
             onPanUpdate: (d) {
               setState(() {
+                final maxX = (box.maxWidth - 28).clamp(4, double.infinity) as double;
+                final maxY = (box.maxHeight - 28).clamp(20, double.infinity) as double;
                 _local = Offset(
-                  (_local.dx + d.delta.dx).clamp(4, box.maxWidth - 28),
-                  (_local.dy + d.delta.dy).clamp(20, box.maxHeight - 28),
+                  ((_local.dx + d.delta.dx).clamp(4, maxX)) as double,
+                  ((_local.dy + d.delta.dy).clamp(20, maxY)) as double,
                 );
               });
             },
