@@ -301,6 +301,17 @@ class _ParcelOverlayState extends State<ParcelOverlay>
           for (var i = 0; i < widget.parcels.length; i++)
             _buildParcel(widget.parcels[i], i, W, H),
 
+          // ── Toggle Mode Lecture/Édition — haut droite ────────────────────
+          Positioned(
+            right: 12,
+            top: 10,
+            child: _ModeToggle(
+              editMode: _editMode,
+              modeAnim: _modeToggleAnim,
+              onToggle: _toggleMode,
+            ),
+          ),
+
           // ── Menu hamburger (trois points) — haut gauche ──────────────────
           Positioned(
             left: 12,
@@ -344,29 +355,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Toggle édition/lecture
-                        GestureDetector(
-                          onTap: () {
-                            _toggleMode();
-                            _toggleMenu();
-                          },
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            alignment: Alignment.center,
-                            child: Icon(
-                              _editMode ? Icons.edit_outlined : Icons.visibility_outlined,
-                              size: 16,
-                              color: _editMode 
-                                ? const Color(0xFFFF9800)
-                                : Colors.white60,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          height: 0.5,
-                          color: Colors.white.withOpacity(0.1),
-                        ),
                         // Bouton éditer — modif de la ferme
                         GestureDetector(
                           onTap: () {
@@ -1498,4 +1486,178 @@ class _CrosshairPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CrosshairPainter old) => old.color != color;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOGGLE MODE LECTURE/ÉDITION
+// ─────────────────────────────────────────────────────────────────────────────
+class _ModeToggle extends StatelessWidget {
+  final bool editMode;
+  final Animation<double> modeAnim;
+  final VoidCallback onToggle;
+
+  const _ModeToggle({
+    required this.editMode,
+    required this.modeAnim,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onToggle();
+      },
+      child: AnimatedBuilder(
+        animation: modeAnim,
+        builder: (_, __) {
+          final t = modeAnim.value;
+
+          final trackColor = Color.lerp(
+            Colors.white.withOpacity(0.10),
+            const Color(0xFF34D399).withOpacity(0.18),
+            t,
+          )!;
+
+          final borderColor = Color.lerp(
+            Colors.white.withOpacity(0.14),
+            const Color(0xFF34D399).withOpacity(0.45),
+            t,
+          )!;
+
+          final thumbColor = Color.lerp(
+            Colors.white,
+            const Color(0xFF34D399),
+            t,
+          )!;
+
+          final thumbGlow = Color.lerp(
+            Colors.transparent,
+            const Color(0xFF34D399).withOpacity(0.50),
+            t,
+          )!;
+
+          // Icône : trait horizontal (lecture) → crayon (édition)
+          // On cross-fade entre les deux via opacité
+          final iconOpacityRead = (1 - t).clamp(0.0, 1.0);
+          final iconOpacityEdit = t.clamp(0.0, 1.0);
+
+          return Container(
+            width: 44,
+            height: 26,
+            decoration: BoxDecoration(
+              color: trackColor,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: borderColor, width: 1),
+            ),
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Positioned(
+                  left: 3 + t * 18,
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: thumbColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.12),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                        BoxShadow(
+                          color: thumbGlow,
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Lecture : deux lignes horizontales (eye-rest)
+                          Opacity(
+                            opacity: iconOpacityRead,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 1.2,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.35),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                                const SizedBox(height: 2.5),
+                                Container(
+                                  width: 5,
+                                  height: 1.2,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.25),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Édition : pointe de crayon minimaliste
+                          Opacity(
+                            opacity: iconOpacityEdit,
+                            child: Transform.rotate(
+                              angle: -0.785, // −45°
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 1.5,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.85),
+                                      borderRadius: BorderRadius.circular(1),
+                                    ),
+                                  ),
+                                  ClipPath(
+                                    clipper: _TriangleTipClipper(),
+                                    child: Container(
+                                      width: 1.5,
+                                      height: 3,
+                                      color: Colors.white.withOpacity(0.85),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Petite pointe triangulaire pour le crayon
+class _TriangleTipClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    return Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(_TriangleTipClipper old) => false;
 }
