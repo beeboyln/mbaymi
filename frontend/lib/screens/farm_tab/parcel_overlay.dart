@@ -1242,9 +1242,16 @@ class _ResizeHandle extends StatelessWidget {
       onPanStart: (_) => onPanStart(),
       onPanUpdate: onPanUpdate,
       onPanEnd: (_) => onPanEnd(),
-      child: SizedBox(
+      child: Container(
         width: 28,
         height: 28,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          border: Border.all(
+            color: color.withOpacity(0.35),
+            width: 0.8,
+          ),
+        ),
         child: CustomPaint(painter: _ResizeIconPainter(color: color)),
       ),
     );
@@ -1444,16 +1451,16 @@ class _ResizeIconPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(0.70)
-      ..strokeWidth = 1.0
+      ..color = color.withOpacity(0.90)
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final w = size.width;
     final h = size.height;
 
-    for (var i = 0; i < 3; i++) {
-      final o = 5.0 + i * 5.0;
+    for (var i = 0; i < 4; i++) {
+      final o = 4.5 + i * 4.5;
       canvas.drawLine(Offset(w - o, h), Offset(w, h - o), paint);
     }
   }
