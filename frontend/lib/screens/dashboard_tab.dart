@@ -1,1236 +1,1142 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:async';
 import 'dart:math';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
-import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_colors.dart';
-import 'package:mbaymi/utils/app_spacing.dart';
-import 'package:mbaymi/utils/app_typography.dart';
-import 'package:mbaymi/utils/app_radius.dart';
-import 'package:mbaymi/utils/app_shadows.dart';
 import 'package:mbaymi/services/weather_service.dart';
 import 'package:mbaymi/models/news_model.dart';
-import 'package:mbaymi/screens/profile_detail_screen.dart';
-import 'package:mbaymi/screens/farm_detail_screen.dart';
-import 'package:mbaymi/screens/animal_detail_screen.dart';
 import 'package:mbaymi/screens/news_detail_screen.dart';
-import 'package:mbaymi/screens/farm_tab/farm_tab.dart';
-import 'package:mbaymi/widgets/farm_posts_widget.dart';
-import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
-import 'package:mbaymi/widgets/stat_card.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PAINTERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Grain/noise texture — chaleur organique
+class _GrainPainter extends CustomPainter {
+  final double seed;
+  final Color color;
+  _GrainPainter({required this.seed, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rng = Random((seed * 1000).toInt());
+    final paint = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 320; i++) {
+      final x = rng.nextDouble() * size.width;
+      final y = rng.nextDouble() * size.height;
+      final r = rng.nextDouble() * 1.1 + 0.2;
+      final op = rng.nextDouble() * 0.055 + 0.008;
+      paint.color = color.withOpacity(op);
+      canvas.drawCircle(Offset(x, y), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GrainPainter o) => o.seed != seed;
+}
+
+/// Soft wave — ondulation terrain naturel
+class _WavePainter extends CustomPainter {
+  final double phase;
+  final Color color;
+  final double yOffset;
+  _WavePainter({required this.phase, required this.color, this.yOffset = 0.6});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final path = Path();
+    final baseY = size.height * yOffset;
+    path.moveTo(0, size.height);
+    path.lineTo(0, baseY + 12 * sin(phase));
+    for (double x = 0; x <= size.width; x += 2) {
+      final y = baseY
+          + 14 * sin(x / size.width * 2 * pi + phase)
+          + 7  * sin(x / size.width * 4 * pi - phase * 1.3)
+          + 4  * cos(x / size.width * 6 * pi + phase * 0.7);
+      path.lineTo(x, y);
+    }
+    path.lineTo(size.width, size.height);
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_WavePainter o) => o.phase != phase;
+}
+
+/// Cercles concentriques — anneaux de croissance
+class _RingsPainter extends CustomPainter {
+  final Color color;
+  const _RingsPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.5;
+    for (int i = 1; i <= 7; i++) {
+      paint.color = color.withOpacity(0.03 + i * 0.007);
+      canvas.drawCircle(Offset(cx, cy), i * 36.0, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingsPainter o) => false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANIMATED COUNTER
+// ─────────────────────────────────────────────────────────────────────────────
+class _AnimCounter extends StatefulWidget {
+  final int value;
+  final TextStyle style;
+  const _AnimCounter({required this.value, required this.style});
+  @override
+  State<_AnimCounter> createState() => _AnimCounterState();
+}
+class _AnimCounterState extends State<_AnimCounter>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _a;
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _a = CurvedAnimation(parent: _c, curve: Curves.easeOutExpo);
+    _c.forward();
+  }
+  @override
+  void didUpdateWidget(_AnimCounter old) {
+    super.didUpdateWidget(old);
+    if (old.value != widget.value) _c.forward(from: 0);
+  }
+  @override
+  void dispose() { _c.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _a,
+    builder: (_, __) => Text(
+      '${(_a.value * widget.value).round()}',
+      style: widget.style,
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHIMMER
+// ─────────────────────────────────────────────────────────────────────────────
+class _Shimmer extends StatefulWidget {
+  final double width, height;
+  final double radius;
+  const _Shimmer({required this.width, required this.height, this.radius = 0});
+  @override
+  State<_Shimmer> createState() => _ShimmerState();
+}
+class _ShimmerState extends State<_Shimmer>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+  }
+  @override
+  void dispose() { _c.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) => Container(
+        width: widget.width,
+        height: widget.height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(widget.radius),
+          gradient: LinearGradient(
+            begin: Alignment(-2 + 4 * _c.value, 0),
+            end: Alignment(-2 + 4 * _c.value + 2, 0),
+            colors: isDark
+                ? [const Color(0xFF1C1410), const Color(0xFF2A1F16), const Color(0xFF1C1410)]
+                : [const Color(0xFFEDE8DE), const Color(0xFFF5F1E8), const Color(0xFFEDE8DE)],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PILL TAG
+// ─────────────────────────────────────────────────────────────────────────────
+class _Tag extends StatelessWidget {
+  final String text;
+  final Color bg;
+  final Color fg;
+  final IconData? icon;
+  const _Tag(this.text, {required this.bg, required this.fg, this.icon});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: icon != null ? 8 : 10,
+      vertical: 5,
+    ),
+    decoration: BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 9, color: fg),
+          const SizedBox(width: 4),
+        ],
+        Text(text, style: TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+          color: fg,
+        )),
+      ],
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DASHBOARD TAB
+// ─────────────────────────────────────────────────────────────────────────────
 class DashboardTab extends StatefulWidget {
   final bool isDarkMode;
   final int? userId;
-  
-  const DashboardTab({super.key, this.isDarkMode = false, this.userId});
-
+  final VoidCallback? onNavigateToFarmTab;
+  const DashboardTab({super.key, this.isDarkMode = false, this.userId, this.onNavigateToFarmTab});
   @override
   State<DashboardTab> createState() => _DashboardTabState();
 }
 
-class _DashboardTabState extends State<DashboardTab> {
-  String _selectedNewsFilter = 'Local';
-  late Future<Map<String, dynamic>> _countsFuture;
+class _DashboardTabState extends State<DashboardTab>
+    with TickerProviderStateMixin {
+  // ── data ──────────────────────────────────────────────────────────────────
+  String _selectedFilter = 'Local';
   late Future<Map<String, dynamic>> _weatherFuture;
-  late Future<List<NewsArticle>> _newsFuture;
-  final int _currentNewsPage = 0;
-  final ScrollController _newsScrollController = ScrollController();
-  bool _isWeatherExpanded = false;
-  
-  // STATIC PERSISTENT CACHE - survives widget rebuilds and navigation
-  static final Map<String, Future<Map<String, dynamic>>> _globalCountsCache = {};
-  static final Map<String, Future<Map<String, dynamic>>> _globalWeatherCache = {};
-  static final Map<String, Future<List<NewsArticle>>> _globalNewsCache = {};
-  
-  // Random tip feature
-  final List<String> _tips = [
-    'Arrosez tôt le matin pour réduire l\'évaporation et économiser l\'eau.',
-    'Utilisez du compost pour améliorer la rétention d\'eau du sol.',
-    'Diversifiez les cultures pour réduire les risques de ravageurs.',
-    'Surveillez régulièrement l\'état des feuilles pour détecter les maladies tôt.',
-    'Plantez des haies pour protéger les cultures du vent.',
-    'Récupérez l\'eau de pluie pour l\'irrigation des petits jardins.',
-  ];
-  String _currentTip = '';
+  late Future<List<NewsArticle>>    _newsFuture;
 
+  static final _gcCounts  = <String, Future<Map<String, dynamic>>>{};
+  static final _gcWeather = <String, Future<Map<String, dynamic>>>{};
+  static final _gcNews    = <String, Future<List<NewsArticle>>>{};
+
+  // ── controllers (nullable — safe dispose) ─────────────────────────────────
+  AnimationController? _waveCtrl;
+  AnimationController? _entryCtrl;
+  AnimationController? _pulseCtrl;
+  AnimationController? _grainCtrl;
+
+  // ── state ─────────────────────────────────────────────────────────────────
+  bool _filterOpen   = false;
+  bool _initialized  = false;
+
+  List<Animation<double>>? _fade;
+  List<Animation<Offset>>?  _slide;
+
+  int _tipIdx = 0;
+  final _tips = [
+    'Arrosez tôt le matin pour réduire l\'évaporation et économiser l\'eau.',
+    'Le compost améliore la rétention d\'humidité du sol en profondeur.',
+    'Diversifiez les cultures pour réduire les risques de ravageurs.',
+    'Surveillez les feuilles pour détecter les maladies tôt.',
+    'Plantez des haies coupe-vent pour protéger vos parcelles.',
+    'Récupérez l\'eau de pluie pour une irrigation durable.',
+  ];
+
+  final _rng = Random();
+
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
-    // Load data using cached getters - reuse if already exists
-    _countsFuture = _getOrCreateCounts();
-    _weatherFuture = _getOrCreateWeather();
-    _newsFuture = _getOrCreateNews();
-    // Initialize random tip
-    _currentTip = _tips[Random().nextInt(_tips.length)];
-  }
 
-  @override
-  void didUpdateWidget(DashboardTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Only reload if userId actually changed
-    if (oldWidget.userId != widget.userId) {
-      // Clear caches when user changes
-      _globalCountsCache.clear();
-      _globalWeatherCache.clear();
-      _globalNewsCache.clear();
-      _countsFuture = _getOrCreateCounts();
-      _weatherFuture = _getOrCreateWeather();
-      _newsFuture = _getOrCreateNews();
-      setState(() {});
-    }
+    _waveCtrl  = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat(reverse: true);
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
+    _grainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 120))..repeat();
+
+    final ec = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+    _entryCtrl = ec;
+
+    _fade = List.generate(5, (i) => Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: ec,
+        curve: Interval(i * 0.10, min(i * 0.10 + 0.50, 1.0), curve: Curves.easeOut)),
+    ));
+    _slide = List.generate(5, (i) =>
+      Tween<Offset>(begin: const Offset(0, 0.16), end: Offset.zero).animate(
+        CurvedAnimation(parent: ec,
+          curve: Interval(i * 0.10, min(i * 0.10 + 0.50, 1.0), curve: Curves.easeOutCubic)),
+      ));
+
+    _weatherFuture = _getOrCreateWeather();
+    _newsFuture    = _getOrCreateNews();
+    _tipIdx        = _rng.nextInt(_tips.length);
+    _initialized   = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _entryCtrl?.forward();
+    });
   }
 
   @override
   void dispose() {
-    _newsScrollController.dispose();
+    _waveCtrl?.dispose();
+    _entryCtrl?.dispose();
+    _pulseCtrl?.dispose();
+    _grainCtrl?.dispose();
     super.dispose();
   }
 
-  Future<Map<String, dynamic>> _loadWeather() async {
-    return WeatherService.getWeather();
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _s(int i, Widget child) {
+    final f = _fade; final s = _slide;
+    if (f == null || s == null) return child;
+    return FadeTransition(opacity: f[i],
+      child: SlideTransition(position: s[i], child: child));
   }
 
-  String _getWeatherAdvice(int weatherCode, double maxTemp) {
-    return WeatherService.getWeatherAdvice(weatherCode, maxTemp);
+  Future<Map<String, dynamic>> _loadWeather() => WeatherService.getWeather();
+
+  Future<Map<String, dynamic>> _getOrCreateWeather() => _gcWeather['w'] ??= _loadWeather();
+  Future<List<NewsArticle>>    _getOrCreateNews()    =>
+      _gcNews['n_$_selectedFilter'] ??= ApiService.getAgriculturalNews();
+
+  Future<void> _refresh() async {
+    _gcCounts.clear(); _gcWeather.clear(); _gcNews.clear();
+    _entryCtrl?.forward(from: 0);
+    setState(() {
+      _weatherFuture = _getOrCreateWeather();
+      _newsFuture    = _getOrCreateNews();
+      _filterOpen    = false;
+    });
+    await Future.delayed(const Duration(milliseconds: 600));
   }
 
-  String _getWateringAdvice(int weatherCode, double maxTemp) {
-    return WeatherService.getWateringAdvice(weatherCode, maxTemp);
-  }
-
-  Future<Map<String, dynamic>> _loadCounts() async {
-    final Map<String, dynamic> result = {
-      'farms': 0,
-      'livestock': 0,
-      'parcels': 0,
-      'harvests': 0,
-      'revenue': 0.0,
-    };
-
-    if (widget.userId == null) return result;
-
-    try {
-      final farms = await ApiService.getUserFarms();
-      final livestock = await ApiService.getUserLivestock(widget.userId!);
-      result['farms'] = farms.length;
-      result['livestock'] = livestock.length;
-
-      final parcelFutures = farms.map((f) => ApiService.getFarmCrops(f['id'] as int)).toList();
-      final parcelsLists = await Future.wait(parcelFutures);
-      result['parcels'] = parcelsLists.fold<int>(0, (sum, l) => sum + (l.length));
-
-      final harvestFutures = farms.map((f) => ApiService.getHarvestsForFarm(f['id'] as int)).toList();
-      final harvestsLists = await Future.wait(harvestFutures);
-      result['harvests'] = harvestsLists.fold<int>(0, (sum, l) => sum + (l.length));
-
-      final sales = await ApiService.getSalesByUser(widget.userId!);
-      double revenue = 0.0;
-      for (final s in sales) {
-        final qty = (s['quantity'] ?? 0) is int ? (s['quantity'] as int).toDouble() : (s['quantity'] ?? 0.0);
-        final price = (s['price_per_unit'] ?? 0) is int ? (s['price_per_unit'] as int).toDouble() : (s['price_per_unit'] ?? 0.0);
-        revenue += (qty as double) * (price as double);
-      }
-      result['revenue'] = revenue;
-    } catch (e) {
-      return result;
+  List<NewsArticle> _filter(List<NewsArticle> a) => a.where((art) {
+    final cat = (art.category ?? '').toLowerCase();
+    final src = (art.source   ?? '').toLowerCase();
+    switch (_selectedFilter) {
+      case 'Local':         return cat.contains('local') || cat.contains('senegal') || src.contains('local') || src.contains('senegal');
+      case 'International': return cat.contains('international') || cat.contains('world') || cat.contains('global');
+      default:              return true;
     }
+  }).toList();
 
-    return result;
+  String _date() {
+    final n = DateTime.now();
+    const days   = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+    const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+    return '${days[n.weekday - 1]} ${n.day} ${months[n.month - 1]} ${n.year}';
   }
 
-  /// Get counts with persistent caching
-  Future<Map<String, dynamic>> _getOrCreateCounts() {
-    const cacheKey = 'dashboard_counts';
-    if (!_globalCountsCache.containsKey(cacheKey)) {
-      _globalCountsCache[cacheKey] = _loadCounts();
+  /// Navigate to Farms Tab using callback from HomeScreen
+  void _navigateToFarmsTab() {
+    HapticFeedback.mediumImpact();
+    if (widget.onNavigateToFarmTab != null) {
+      widget.onNavigateToFarmTab!();
     }
-    return _globalCountsCache[cacheKey]!;
   }
 
-  /// Get weather with persistent caching
-  Future<Map<String, dynamic>> _getOrCreateWeather() {
-    const cacheKey = 'dashboard_weather';
-    if (!_globalWeatherCache.containsKey(cacheKey)) {
-      _globalWeatherCache[cacheKey] = _loadWeather();
-    }
-    return _globalWeatherCache[cacheKey]!;
-  }
-
-  /// Get news with persistent caching
-  Future<List<NewsArticle>> _getOrCreateNews() {
-    final cacheKey = 'dashboard_news_${_selectedNewsFilter}';
-    if (!_globalNewsCache.containsKey(cacheKey)) {
-      _globalNewsCache[cacheKey] = ApiService.getAgriculturalNews();
-    }
-    return _globalNewsCache[cacheKey]!;
-  }
-
-  /// Refresh dashboard by clearing caches
-  Future<void> _refreshDashboard() async {
-    _globalCountsCache.clear();
-    _globalWeatherCache.clear();
-    _globalNewsCache.clear();
-    
-    _countsFuture = _getOrCreateCounts();
-    _weatherFuture = _getOrCreateWeather();
-    _newsFuture = _getOrCreateNews();
-    
-    setState(() {});
-    await Future.delayed(const Duration(milliseconds: 500));
-  }
-
-
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDarkMode = themeProvider.isDarkMode;
-    
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: const AssetImage('assets/images/ba.jpg'),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            isDarkMode 
-              ? Colors.black.withAlpha((0.75 * 255).toInt())
-              : Colors.white.withAlpha((0.2 * 255).toInt()),
-            BlendMode.lighten,
-          ),
+    if (!_initialized) return const SizedBox.shrink();
+    final tp     = Provider.of<ThemeProvider>(context);
+    final isDark = tp.isDarkMode;
+
+    final bg      = isDark ? AppColors.darkBg      : AppColors.lightBg;
+    final surface = isDark ? AppColors.darkCardBg   : AppColors.lightBgAlt;
+    final cardBg  = isDark ? AppColors.darkBgAlt    : const Color(0xFFFAF7F2);
+    final border  = isDark ? AppColors.borderDark   : AppColors.borderLight;
+    final primary = AppColors.primary;
+    final accent  = AppColors.accent;
+    final textPri = isDark ? AppColors.textDark     : AppColors.textLight;
+    final textSec = isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+
+    return Scaffold(
+      backgroundColor: bg,
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        color: primary,
+        backgroundColor: surface,
+        displacement: 36,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          slivers: [
+            SliverToBoxAdapter(child: _s(0, _hero(isDark, bg, primary, accent, textPri, textSec))),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: _s(1, _weatherCard(isDark, surface, border, primary, accent, textPri, textSec))),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: _s(2, _farmBanner(isDark, primary, accent))),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: _s(3, _tipCard(isDark, surface, border, primary, accent, textPri, textSec))),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 28, 16, 14),
+              sliver: SliverToBoxAdapter(
+                child: _s(4, _newsSection(isDark, surface, cardBg, border, primary, accent, textPri, textSec))),
+            ),
+            const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+          ],
         ),
       ),
-      child: RefreshIndicator(
-        onRefresh: _refreshDashboard,
-        child: CustomScrollView(
-          physics: const ClampingScrollPhysics(),
-          cacheExtent: 200.0,
-          slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 4),
-                  Text(
-                    _getFormattedDate(),
-                    style: AppTypography.bodySmall.copyWith(
-                      color: isDarkMode 
-                        ? Colors.white.withAlpha((0.5 * 255).toInt())
-                        : Colors.black.withAlpha((0.4 * 255).toInt()),
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+    );
+  }
 
-          // Conseil météorologique minimaliste
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-            sliver: SliverToBoxAdapter(
-              child: FutureBuilder<Map<String, dynamic>>(
-                future: _weatherFuture,
-                builder: (context, snapshot) {
-                  final weather = snapshot.data ?? {'current_temp': 22, 'max_temp': 26};
-                  final maxTemp = (weather['max_temp'] as num).toDouble();
-                  final weatherCode = (weather['daily_weather_code'] as int?) ?? 0;
-                  final advice = _getWeatherAdvice(weatherCode, maxTemp);
-                  final wateringAdvice = _getWateringAdvice(weatherCode, maxTemp);
-
-                  final isLoading = snapshot.connectionState == ConnectionState.waiting;
-
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isWeatherExpanded = !_isWeatherExpanded;
-                      });
-                      HapticFeedback.lightImpact();
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        color: isDarkMode 
-                            ? const Color(0xFF1A1A1A).withAlpha((0.7 * 255).toInt())
-                            : Colors.white.withAlpha((0.75 * 255).toInt()),
-                        border: Border.all(
-                          color: isDarkMode
-                              ? Colors.white.withAlpha((0.08 * 255).toInt())
-                              : Colors.black.withAlpha((0.03 * 255).toInt()),
-                          width: 1,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Météo',
-                                    style: AppTypography.labelSmall.copyWith(
-                                      color: isDarkMode 
-                                        ? Colors.white.withAlpha((0.5 * 255).toInt())
-                                        : Colors.black.withAlpha((0.4 * 255).toInt()),
-                                      fontWeight: FontWeight.w400,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    advice,
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: isDarkMode 
-                                        ? Colors.white.withAlpha((0.8 * 255).toInt())
-                                        : Colors.black.withAlpha((0.65 * 255).toInt()),
-                                      fontWeight: FontWeight.w300,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (!isLoading)
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
-                                  ),
-                                  child: Text(
-                                    '${maxTemp.toStringAsFixed(0)}°C',
-                                    style: AppTypography.h3.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          if (_isWeatherExpanded) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isDarkMode 
-                                    ? Colors.white.withAlpha((0.05 * 255).toInt())
-                                    : Colors.black.withAlpha((0.02 * 255).toInt()),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.water_drop_outlined,
-                                    color: AppColors.primary.withAlpha((0.6 * 255).toInt()),
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      wateringAdvice,
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: isDarkMode 
-                                          ? Colors.white.withAlpha((0.7 * 255).toInt())
-                                          : Colors.black.withAlpha((0.55 * 255).toInt()),
-                                        fontWeight: FontWeight.w300,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-
-          // Astuce aléatoire minimaliste
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            sliver: SliverToBoxAdapter(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode 
-                    ? const Color(0xFF1A1A1A).withAlpha((0.7 * 255).toInt())
-                    : Colors.white.withAlpha((0.75 * 255).toInt()),
-                  border: Border.all(
-                    color: isDarkMode
-                        ? Colors.white.withAlpha((0.08 * 255).toInt())
-                        : Colors.black.withAlpha((0.03 * 255).toInt()),
-                    width: 1,
-                  ),
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HERO
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _hero(bool isDark, Color bg, Color primary, Color accent,
+      Color textPri, Color textSec) {
+    return SizedBox(
+      height: 230,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          // Fond dégradé chaud
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark
+                      ? [const Color(0xFF1A100A), const Color(0xFF0F0A06)]
+                      : [const Color(0xFFFFF3E0), const Color(0xFFEDE0C8)],
                 ),
-                padding: const EdgeInsets.all(16),
-                child: Row(
+              ),
+            ),
+          ),
+
+          // Grain organique
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _grainCtrl ?? const AlwaysStoppedAnimation(0),
+              builder: (_, __) => CustomPaint(
+                painter: _GrainPainter(
+                  seed: _grainCtrl?.value ?? 0,
+                  color: primary,
+                ),
+              ),
+            ),
+          ),
+
+          // Rings décoratifs
+          Positioned(
+            top: -20, right: -50,
+            child: SizedBox(
+              width: 270, height: 270,
+              child: CustomPaint(painter: _RingsPainter(color: primary)),
+            ),
+          ),
+
+          // Glow accent
+          Positioned(
+            top: -70, right: -70,
+            child: Container(
+              width: 240, height: 240,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [
+                  accent.withOpacity(isDark ? 0.20 : 0.14),
+                  Colors.transparent,
+                ]),
+              ),
+            ),
+          ),
+
+          // Vague 1
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: AnimatedBuilder(
+              animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
+              builder: (_, __) => SizedBox(
+                height: 90,
+                child: CustomPaint(
+                  painter: _WavePainter(
+                    phase: (_waveCtrl?.value ?? 0) * 2 * pi,
+                    color: primary.withOpacity(isDark ? 0.26 : 0.15),
+                    yOffset: 0.50,
+                  ),
+                  size: Size(MediaQuery.of(context).size.width, 90),
+                ),
+              ),
+            ),
+          ),
+
+          // Vague 2
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: AnimatedBuilder(
+              animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
+              builder: (_, __) => SizedBox(
+                height: 90,
+                child: CustomPaint(
+                  painter: _WavePainter(
+                    phase: (_waveCtrl?.value ?? 0) * 2 * pi + 1.4,
+                    color: primary.withOpacity(isDark ? 0.14 : 0.09),
+                    yOffset: 0.68,
+                  ),
+                  size: Size(MediaQuery.of(context).size.width, 90),
+                ),
+              ),
+            ),
+          ),
+
+          // Texte
+          Padding(
+            padding: EdgeInsets.fromLTRB(22, MediaQuery.of(context).padding.top + 14, 22, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withAlpha((0.08 * 255).toInt()),
-                      ),
-                      child: Icon(Icons.lightbulb_outline, 
-                        color: AppColors.primary.withAlpha((0.6 * 255).toInt()),
-                        size: 20
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _currentTip.isNotEmpty ? _currentTip : 'Chargement...',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: isDarkMode 
-                            ? Colors.white.withAlpha((0.75 * 255).toInt())
-                            : Colors.black.withAlpha((0.6 * 255).toInt()),
-                          fontWeight: FontWeight.w300,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.refresh,
-                        color: isDarkMode 
-                          ? Colors.white.withAlpha((0.4 * 255).toInt())
-                          : Colors.black.withAlpha((0.3 * 255).toInt()),
-                        size: 18,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _currentTip = _tips[Random().nextInt(_tips.length)];
-                        });
-                        HapticFeedback.selectionClick();
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    Text(_date(), style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: primary.withOpacity(0.70),
+                      letterSpacing: 0.2,
+                    )),
+                    const Spacer(),
+                    _Tag('SAISON SÈCHE',
+                      bg: primary.withOpacity(0.12),
+                      fg: primary.withOpacity(0.85),
+                      icon: Icons.wb_sunny_outlined,
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
-
-          // Stats minimalistes - aperçu des fermes
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-            sliver: SliverToBoxAdapter(
-              child: Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: const NetworkImage('https://res.cloudinary.com/dcs9vkwe0/image/upload/v1770190752/gestion_de_boutique/duoglvpzhtwlbym4hbns.jpg'),
-                    fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(
-                      Colors.black.withAlpha((0.2 * 255).toInt()),
-                      BlendMode.lighten,
-                    ),
-                  ),
-                  border: Border.all(
-                    color: isDarkMode
-                        ? Colors.white.withAlpha((0.08 * 255).toInt())
-                        : Colors.black.withAlpha((0.03 * 255).toInt()),
-                    width: 1,
-                  ),
-                ),
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      'Fermes',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white.withAlpha((0.95 * 255).toInt()),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // News Section Header
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Actualités',
-                    style: AppTypography.h3.copyWith(
-                      color: isDarkMode ? Colors.white : const Color(0xFF0A0A0A),
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
-                      border: Border.all(
-                        color: isDarkMode
-                            ? Colors.white.withAlpha((0.1 * 255).toInt())
-                            : Colors.black.withAlpha((0.05 * 255).toInt()),
-                        width: 1,
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: DropdownButton<String>(
-                      value: _selectedNewsFilter,
-                      underline: const SizedBox(),
-                      icon: Icon(
-                        Icons.expand_more,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
-                      dropdownColor: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
-                      items: ['Local', 'National', 'International', 'Liens utiles']
-                          .map((filter) => DropdownMenuItem<String>(
-                                value: filter,
-                                child: Text(
-                                  filter,
-                                  style: TextStyle(
-                                    color: isDarkMode ? Colors.white : Colors.black87,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedNewsFilter = value;
-                            // Clear old cache and get new cached news for filter
-                            _globalNewsCache.clear();
-                            _newsFuture = _getOrCreateNews();
-                          });
-                        }
-                      },
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black87,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                      ),
-                      isExpanded: true,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // News Carousel
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(0, 0, 0, 30),
-            sliver: FutureBuilder<List<NewsArticle>>(
-              future: _newsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return SliverToBoxAdapter(
-                    child: Container(
-                      height: 300,
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      decoration: BoxDecoration(
-                        color: isDarkMode 
-                          ? const Color(0xFF1a1a1a).withOpacity(0.85)
-                          : Colors.white.withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Color.fromARGB(233, 15, 89, 36),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                if (snapshot.hasError || !snapshot.hasData) {
-                  return SliverToBoxAdapter(
-                    child: Container(
-                      height: 200,
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      decoration: BoxDecoration(
-                        color: isDarkMode 
-                          ? const Color(0xFF1a1a1a).withOpacity(0.85)
-                          : Colors.white.withOpacity(0.85),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Impossible de charger les actualités',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                final articles = snapshot.data ?? [];
-                final filteredArticles = _filterArticles(articles);
-
-                if (filteredArticles.isEmpty) {
-                  return SliverToBoxAdapter(
-                    child: Container(
-                      height: 200,
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      decoration: BoxDecoration(
-                        color: isDarkMode 
-                          ? const Color(0xFF1a1a1a).withOpacity(0.85)
-                          : Colors.white.withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off_outlined,
-                              size: 48,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Aucune actualité disponible',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                return SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      // Carousel
-                      SizedBox(
-                        height: 320,
-                        child: ListView.builder(
-                          controller: _newsScrollController,
-                          scrollDirection: Axis.horizontal,
-                          physics: const ClampingScrollPhysics(),
-                          itemCount: filteredArticles.length,
-                          cacheExtent: 200,
-                          addRepaintBoundaries: true,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemBuilder: (context, index) {
-                            final article = filteredArticles[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 12),
-                              child: SizedBox(
-                                width: MediaQuery.of(context).size.width - 80,
-                                child: _buildNewsCard(article, index == _currentNewsPage, isDarkMode),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Scroll Indicator Arrow
-                      Center(
-                        child: Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 16,
-                          color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                const Spacer(),
+                Text('Bonjour,', style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: accent,
+                  letterSpacing: 0.4,
+                  fontFamily: 'Roboto',
+                )),
+                const SizedBox(height: 2),
+                Text('Mon Espace', style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w100,
+                  color: isDark ? const Color(0xFFF2E8DC) : AppColors.textLight,
+                  height: 1.0,
+                  letterSpacing: -1.4,
+                )),
+               
+              ],
             ),
           ),
         ],
       ),
-        ),
-      );
+    );
   }
 
-  Widget _buildNewsCard(NewsArticle article, bool isActive, bool isDarkMode) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => NewsDetailScreen(article: article),
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WEATHER CARD
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _weatherCard(bool isDark, Color surface, Color border, Color primary,
+      Color accent, Color textPri, Color textSec) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _weatherFuture,
+      builder: (_, snap) {
+        final loading = snap.connectionState == ConnectionState.waiting;
+        final w      = snap.data ?? {};
+        final maxT   = (w['max_temp'] as num?)?.toDouble() ?? 29;
+        final minT   = (w['min_temp'] as num?)?.toDouble() ?? 21;
+        final code   = (w['daily_weather_code'] as int?)   ?? 1;
+        final advice = WeatherService.getWeatherAdvice(code, maxT);
+
+        return Container(
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: border, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: primary.withOpacity(isDark ? 0.08 : 0.05),
+                blurRadius: 20, offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.hardEdge,
+          child: Column(
+            children: [
+              // Bande colorée top
+              Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    accent.withOpacity(0.75),
+                    primary.withOpacity(0.45),
+                    Colors.transparent,
+                  ]),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Température
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('MÉTÉO DU JOUR', style: TextStyle(
+                          fontSize: 7.5, fontWeight: FontWeight.w500,
+                          letterSpacing: 2.8, color: textSec.withOpacity(0.7),
+                        )),
+                        const SizedBox(height: 8),
+                        if (loading)
+                          _Shimmer(width: 80, height: 52, radius: 8)
+                        else
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${maxT.round()}', style: TextStyle(
+                                fontSize: 62, fontWeight: FontWeight.w800,
+                                color: textPri, height: 0.9, letterSpacing: -3,
+                              )),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text('°C', style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w300, color: accent,
+                                )),
+                              ),
+                            ],
+                          ),
+                        const SizedBox(height: 6),
+                        if (!loading)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: primary.withOpacity(0.07),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text('↓${minT.round()}°  ↑${maxT.round()}°',
+                              style: TextStyle(fontSize: 9.5, color: textSec, fontWeight: FontWeight.w500)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 20),
+                    // Séparateur
+                    Container(
+                      width: 1, height: 80,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, border, Colors.transparent],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    // Conseil
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: accent.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.eco_rounded, color: accent, size: 13),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('CONSEIL', style: TextStyle(
+                              fontSize: 7.5, fontWeight: FontWeight.w500,
+                              letterSpacing: 2.5, color: textSec.withOpacity(0.7),
+                              fontFamily: 'Roboto',
+                            )),
+                          ]),
+                          const SizedBox(height: 10),
+                          if (loading)
+                            Column(children: [
+                              _Shimmer(width: double.infinity, height: 11, radius: 4),
+                              const SizedBox(height: 6),
+                              _Shimmer(width: 100, height: 11, radius: 4),
+                            ])
+                          else
+                            Text(advice, style: TextStyle(
+                              fontSize: 11, color: textPri,
+                              fontWeight: FontWeight.w400, height: 1.5,
+                              fontFamily: 'Roboto',
+                            ), maxLines: 3, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FARM BANNER
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _farmBanner(bool isDark, Color primary, Color accent) {
+    return GestureDetector(
+      onTap: _navigateToFarmsTab,
       child: Container(
+        height: 190,
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF0D0D0D).withOpacity(0.9) : AppColors.lightBg,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [const Color(0xFF2A1A0A), const Color(0xFF1A0F06)]
+                : [const Color(0xFF7B3A16), const Color(0xFF4A2008)],
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: primary.withOpacity(0.28),
+              blurRadius: 24, offset: const Offset(0, 10), spreadRadius: -4,
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Journal Header Image
-            Container(
-              height: 160,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/d.jpg'),
-                  fit: BoxFit.contain,
-                  alignment: Alignment.center,
+        clipBehavior: Clip.hardEdge,
+        child: Stack(children: [
+          // Grain
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _grainCtrl ?? const AlwaysStoppedAnimation(0),
+              builder: (_, __) => CustomPaint(
+                painter: _GrainPainter(
+                  seed: (_grainCtrl?.value ?? 0) * 0.3,
+                  color: Colors.white,
                 ),
-                color: Color.fromARGB(255, 255, 255, 255),
               ),
             ),
-            
-            // Content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Title
-                    Flexible(
-                      child: Text(
-                        article.title,
+          ),
+          // Vague
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: AnimatedBuilder(
+              animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
+              builder: (_, __) => SizedBox(
+                height: 90,
+                child: CustomPaint(
+                  painter: _WavePainter(
+                    phase: (_waveCtrl?.value ?? 0) * 2 * pi + 2.5,
+                    color: Colors.white.withOpacity(0.06),
+                    yOffset: 0.40,
+                  ),
+                  size: Size(MediaQuery.of(context).size.width, 90),
+                ),
+              ),
+            ),
+          ),
+          // Rings
+          Positioned(
+            top: -50, right: -50,
+            child: SizedBox(
+              width: 240, height: 240,
+              child: CustomPaint(painter: _RingsPainter(color: Colors.white)),
+            ),
+          ),
+          // Contenu
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Tag('GESTION',
+                  bg: Colors.white.withOpacity(0.14),
+                  fg: Colors.white.withOpacity(0.90)),
+                const Spacer(),
+                const Text('Mes Fermes', style: TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.w200,
+                  color: Colors.white, height: 1.0, letterSpacing: -1.5,
+                )),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.15),
+                            blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('Explorer', style: TextStyle(
+                        fontSize: 12.5, fontWeight: FontWeight.w700, color: primary,
+                      )),
+                      const SizedBox(width: 6),
+                      Icon(Icons.arrow_forward_rounded, size: 14, color: primary),
+                    ]),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+                    ),
+                    child: const Text('Parcelles', style: TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w400, color: Colors.white,
+                      fontFamily: 'Roboto',
+                    )),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TIP CARD
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _tipCard(bool isDark, Color surface, Color border, Color primary,
+      Color accent, Color textPri, Color textSec) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 380),
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0.06, 0), end: Offset.zero)
+              .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+      ),
+      child: Container(
+        key: ValueKey(_tipIdx),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: border, width: 1),
+        ),
+        child: Row(children: [
+          // Bande gauche
+          Container(
+            width: 4, height: 72,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                colors: [accent.withOpacity(0.3), accent, accent.withOpacity(0.3)],
+              ),
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 16, 0, 16),
+            child: Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.tips_and_updates_rounded, color: accent, size: 16),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 16, 8, 16),
+              child: Text(_tips[_tipIdx], style: TextStyle(
+                fontSize: 12.5, color: textPri,
+                fontWeight: FontWeight.w400, height: 1.55,
+                fontFamily: 'Roboto',
+              )),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _tipIdx = (_tipIdx + 1) % _tips.length);
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.refresh_rounded, color: primary, size: 15),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEWS SECTION
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _newsSection(bool isDark, Color surface, Color cardBg, Color border,
+      Color primary, Color accent, Color textPri, Color textSec) {
+    const filters = ['Local', 'National', 'International', 'Liens utiles'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('ACTUALITÉS', style: TextStyle(
+                fontSize: 8, fontWeight: FontWeight.w500,
+                letterSpacing: 2.5, color: textSec.withOpacity(0.6),
+              )),
+              const SizedBox(height: 4),
+            ]),
+            const Spacer(),
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() => _filterOpen = !_filterOpen);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: _filterOpen ? primary.withOpacity(0.10) : Colors.transparent,
+                  border: Border.all(color: primary.withOpacity(0.20), width: 1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(children: [
+                  Text(_selectedFilter, style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w400, color: primary,
+                    fontFamily: 'Roboto', letterSpacing: 1.5,
+                  )),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: _filterOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    child: Icon(Icons.keyboard_arrow_down_rounded,
+                        color: primary.withOpacity(0.7), size: 16),
+                  ),
+                ]),
+              ),
+            ),
+          ],
+        ),
+
+        // Filter chips
+        AnimatedSize(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+          child: _filterOpen
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: filters.map((f) {
+                        final sel = f == _selectedFilter;
+                        return GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _selectedFilter = f;
+                              _filterOpen     = false;
+                              _gcNews.clear();
+                              _newsFuture = _getOrCreateNews();
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: sel ? primary : Colors.transparent,
+                              border: Border.all(
+                                color: sel ? primary : primary.withOpacity(0.20), width: 1),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: sel ? [
+                                BoxShadow(color: primary.withOpacity(0.20),
+                                    blurRadius: 10, offset: const Offset(0, 3)),
+                              ] : null,
+                            ),
+                            child: Text(f, style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: sel ? FontWeight.w500 : FontWeight.w400,
+                              color: sel ? Colors.white : primary.withOpacity(0.65),
+                              fontFamily: 'Roboto', letterSpacing: 1.2,
+                            )),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+
+        const SizedBox(height: 16),
+
+        // News List
+        FutureBuilder<List<NewsArticle>>(
+          future: _newsFuture,
+          builder: (_, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return Column(
+                children: List.generate(3, (_) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _Shimmer(width: double.infinity, height: 96, radius: 8),
+                )),
+              );
+            }
+            final articles = _filter(snap.data ?? []);
+            if (articles.isEmpty) {
+              return Container(
+                height: 100,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: border),
+                ),
+                child: Text('Aucune actualité disponible',
+                    style: TextStyle(color: textSec, fontSize: 13)),
+              );
+            }
+            return Column(
+              children: articles.map((article) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _newsCard(article, isDark, surface, border,
+                    primary, accent, textPri, textSec),
+              )).toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEWS CARD
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _newsCard(NewsArticle article, bool isDark, Color surface, Color border,
+      Color primary, Color accent, Color textPri, Color textSec) {
+    return Material(
+      color: surface,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (_) => NewsDetailScreen(article: article)));
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: border, width: 0.8),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(isDark ? 0.12 : 0.04),
+                  blurRadius: 8, offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Accent bar
+              Expanded(
+                flex: 0,
+                child: Container(
+                  width: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [accent, primary.withOpacity(0.3)],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      bottomLeft: Radius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              // Content
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(article.title,
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w300,
-                          color: isDarkMode ? Colors.white : const Color(0xFF1A1A1A),
-                          height: 1.2,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: textPri,
+                          height: 1.4,
+                          letterSpacing: 0.1,
+                          fontFamily: 'Roboto',
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    
-                    // Summary
-                    if (article.description.isNotEmpty)
-                      Flexible(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            article.description,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF666666),
-                              height: 1.2,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    
-                    // Source and Time
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      const SizedBox(height: 6),
+                      Row(
                         children: [
-                          // Source
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'SOURCE',
-                                  style: TextStyle(
-                                    fontSize: 7,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDarkMode ? Colors.grey.shade600 : const Color(0xFF888888),
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                                const SizedBox(height: 1),
-                                Text(
-                                  article.source ?? 'Unknown',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w500,
-                                    color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF444444),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                            child: Text(article.source ?? 'Source',
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w400,
+                                color: primary.withOpacity(0.7),
+                                letterSpacing: 0.3,
+                                fontFamily: 'Roboto',
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          
-                          // Time
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'PUBLIÉ',
-                                style: TextStyle(
-                                  fontSize: 7,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDarkMode ? Colors.grey.shade600 : const Color(0xFF888888),
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                article.timeAgo,
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w500,
-                                  color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF444444),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<NewsArticle> _filterArticles(List<NewsArticle> articles) {
-    return articles.where((article) {
-      final category = (article.category ?? '').toLowerCase();
-      final source = (article.source ?? '').toLowerCase();
-
-      switch (_selectedNewsFilter) {
-        case 'Local':
-          return category.contains('local') ||
-              category.contains('sénégal') ||
-              category.contains('senegal') ||
-              source.contains('local') ||
-              source.contains('senegal');
-        case 'Cultures':
-          return category.contains('culture') ||
-              category.contains('agriculture') ||
-              category.contains('crop') ||
-              category.contains('récolte');
-        case 'Élevage':
-          return category.contains('élevage') ||
-              category.contains('santé animale') ||
-              category.contains('livestock') ||
-              category.contains('bétail') ||
-              category.contains('animal');
-        case 'International':
-          return category.contains('international') ||
-              category.contains('world') ||
-              category.contains('global');
-        default:
-          return true;
-      }
-    }).toList();
-  }
-
-  void _showFilterMenu(BuildContext context, bool isDarkMode) {
-    HapticFeedback.lightImpact();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: isDarkMode 
-            ? const Color(0xFF1a1a1a).withOpacity(0.95)
-            : Colors.white.withOpacity(0.95),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 20),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                'Sélectionnez une catégorie',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.white : const Color.fromARGB(233, 15, 89, 36),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ...['Local', 'Cultures', 'Élevage', 'International'].map((filter) {
-                      return _buildFilterOption(filter, isDarkMode);
-                    }),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: const Color.fromARGB(233, 15, 89, 36),
-                    shape: RoundedRectangleBorder(
-                    ),
-                  ),
-                  child: const Text(
-                    'APPLIQUER',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterOption(String filter, bool isDarkMode) {
-    final isSelected = _selectedNewsFilter == filter;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedNewsFilter = filter;
-        });
-        HapticFeedback.lightImpact();
-        Future.delayed(const Duration(milliseconds: 300), () {
-          Navigator.pop(context);
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color.fromARGB(233, 15, 89, 36).withOpacity(isDarkMode ? 0.3 : 0.1)
-              : Colors.transparent,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              _getFilterIcon(filter),
-              size: 20,
-              color: isSelected ? const Color.fromARGB(233, 15, 89, 36) : Colors.grey,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                filter,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: isSelected
-                      ? const Color.fromARGB(233, 15, 89, 36)
-                      : isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
-                ),
-              ),
-            ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle,
-                size: 20,
-                color: Color.fromARGB(233, 15, 89, 36),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  IconData _getFilterIcon(String filter) {
-    switch (filter) {
-      case 'Local':
-        return Icons.location_on;
-      case 'Cultures':
-        return Icons.grass;
-      case 'Élevage':
-        return Icons.pets;
-      case 'International':
-        return Icons.public;
-      default:
-        return Icons.newspaper;
-    }
-  }
-
-  Widget _buildSkeletonStatCard(bool isDarkMode) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDarkMode 
-            ? const Color(0xFF0D0D0D).withOpacity(0.9)
-            : Colors.grey.shade100,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300.withOpacity(0.5),
-              ),
-              child: const SizedBox(width: 20, height: 20),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              height: 16,
-              width: 40,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              height: 12,
-              width: 60,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _getFormattedDate() {
-    final now = DateTime.now();
-    final weekdays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-    final months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
-                    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-    
-    final dayName = weekdays[now.weekday - 1];
-    final monthName = months[now.month - 1];
-    
-    return '$dayName ${now.day} $monthName ${now.year}';
-  }
-
-  void _showStatsModal(BuildContext context, Map<String, dynamic> data, bool isDarkMode) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isDarkMode 
-                ? const Color(0xFF1A1A1A).withAlpha((0.95 * 255).toInt())
-                : Colors.white.withAlpha((0.95 * 255).toInt()),
-            border: Border.all(
-              color: isDarkMode
-                  ? Colors.white.withAlpha((0.1 * 255).toInt())
-                  : Colors.black.withAlpha((0.05 * 255).toInt()),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Text(
-                'Aperçu rapide',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: isDarkMode 
-                      ? Colors.white.withAlpha((0.9 * 255).toInt())
-                      : Colors.black.withAlpha((0.8 * 255).toInt()),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Stats Grid
-              Row(
-                children: [
-                  // Fermes
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FarmTab(userId: widget.userId, initialSection: 0),
-                          ),
-                        );
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color.fromARGB(233, 15, 89, 36).withAlpha((0.1 * 255).toInt()),
-                            ),
-                            child: Icon(
-                              Icons.agriculture,
-                              color: const Color.fromARGB(233, 15, 89, 36).withAlpha((0.7 * 255).toInt()),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '${data['farms'] ?? 0}',
+                          Text(article.timeAgo,
                             style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w300,
-                              color: isDarkMode 
-                                  ? Colors.white.withAlpha((0.95 * 255).toInt())
-                                  : Colors.black.withAlpha((0.85 * 255).toInt()),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Ferme${(data['farms'] ?? 0) > 1 ? 's' : ''}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                              color: isDarkMode 
-                                  ? Colors.white.withAlpha((0.5 * 255).toInt())
-                                  : Colors.black.withAlpha((0.4 * 255).toInt()),
-                              letterSpacing: 0.3,
+                              fontSize: 8.5,
+                              color: textSec.withOpacity(0.6),
+                              fontFamily: 'Roboto',
                             ),
                           ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  // Animaux
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FarmTab(userId: widget.userId, initialSection: 1),
-                          ),
-                        ).then((_) {
-                          setState(() {
-                            // Clear cache and reload counts after returning from FarmTab
-                            _globalCountsCache.clear();
-                            _countsFuture = _getOrCreateCounts();
-                          });
-                        });
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD2691E).withAlpha((0.1 * 255).toInt()),
-                            ),
-                            child: Icon(
-                              Icons.pets,
-                              color: const Color(0xFFD2691E).withAlpha((0.7 * 255).toInt()),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '${data['livestock'] ?? 0}',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w300,
-                              color: isDarkMode 
-                                  ? Colors.white.withAlpha((0.95 * 255).toInt())
-                                  : Colors.black.withAlpha((0.85 * 255).toInt()),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Animal${(data['livestock'] ?? 0) > 1 ? 'aux' : ''}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                              color: isDarkMode 
-                                  ? Colors.white.withAlpha((0.5 * 255).toInt())
-                                  : Colors.black.withAlpha((0.4 * 255).toInt()),
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+              ),
+              // Chevron
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Icon(Icons.chevron_right_rounded,
+                  color: primary.withOpacity(0.5), size: 18),
               ),
             ],
           ),

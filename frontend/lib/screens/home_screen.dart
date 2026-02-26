@@ -19,7 +19,6 @@ import 'package:mbaymi/screens/parcel_finance_screen.dart';
 import 'package:mbaymi/screens/select_crop_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
 import 'package:mbaymi/screens/search_users_screen.dart';
-import 'package:mbaymi/screens/search_tab.dart';
 import 'package:mbaymi/widgets/notification_icon_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/utils/app_spacing.dart';
@@ -87,6 +86,9 @@ class _HomeScreenState extends State<HomeScreen> {
         key: ValueKey('dashboard_${userId ?? 0}'),
         isDarkMode: _isDarkMode,
         userId: userId,
+        onNavigateToFarmTab: () {
+          setState(() => _selectedIndex = 1);
+        },
       );
     }
     
@@ -130,6 +132,9 @@ class _HomeScreenState extends State<HomeScreen> {
             key: ValueKey('dashboard_${userId ?? 0}'),
             isDarkMode: _isDarkMode,
             userId: userId,
+            onNavigateToFarmTab: () {
+              setState(() => _selectedIndex = 1);
+            },
           );
           break;
         case 1:
@@ -472,7 +477,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (!mounted) return;
                     setState(() {
                       _screens[1] = FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId);
-                      _screens[0] = DashboardTab(key: ValueKey('dashboard_${userId ?? 0}'), isDarkMode: _isDarkMode, userId: userId);
+                      _screens[0] = DashboardTab(
+                        key: ValueKey('dashboard_${userId ?? 0}'), 
+                        isDarkMode: _isDarkMode, 
+                        userId: userId,
+                        onNavigateToFarmTab: () {
+                          setState(() => _selectedIndex = 1);
+                        },
+                      );
                     });
                     ScaffoldMessenger.of(rootContext).showSnackBar(
                       AppColors.createSnackBar(
