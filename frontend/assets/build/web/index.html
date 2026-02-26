@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- Prevent mobile browsers from zooming when focusing inputs -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <style>
+    /* Ensure Flutter's root elements can resize properly when the virtual keyboard opens */
+    html, body, #flutter-root, flt-glass-pane, flt-platform-view {
+      height: 100%;
+      min-height: 100%;
+      width: 100%;
+      min-width: 100%;
+    }
+    /* Force Flutter elements and canvas to fill available space and avoid scaling bugs on very large device resolutions */
+    #flutter-root, flt-glass-pane, flt-platform-view, canvas {
+      display: block;
+      box-sizing: border-box;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: 100% !important;
+      max-height: 100% !important;
+    }
+    body {
+      -webkit-overflow-scrolling: touch;
+      margin: 0;
+      overflow: auto;
+    }
+  </style>
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="mbaymi">
+  <link rel="apple-touch-icon" href="assets/assets/images/a.jpg">
+
+  <!-- Favicon (using project asset a.jpg) -->
+  <link rel="icon" type="image/jpeg" href="assets/assets/images/a.jpg"/>
+
+  <title>mbaymi</title>
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Shim: when visualViewport shrinks (keyboard opens), try to bring the active element into view
+    (function() {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      vv.addEventListener('resize', () => {
+        const active = document.activeElement;
+        // Post a message so Flutter web can react (visual viewport changed)
+        try {
+          window.postMessage({ type: 'visualViewport', height: vv.height, offsetTop: vv.offsetTop }, '*');
+        } catch (e) {}
+        if (!active) return;
+        // small delay so layout has settled
+        setTimeout(() => {
+          try {
+            active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } catch (e) {}
+          // fallback: compute rect and adjust page scroll if needed
+          try {
+            const r = active.getBoundingClientRect();
+            const viewHeight = vv.height || window.innerHeight;
+            if (r.top < 0 || r.bottom > viewHeight) {
+              const delta = r.top - (viewHeight / 2) + (r.height / 2);
+              window.scrollTo({ top: window.pageYOffset + delta, behavior: 'smooth' });
+            }
+          } catch (e) {}
+        }, 60);
+      });
+    })();
+      // Robust canvas/root sizing for high-DPR / large resolutions (fix white canvas area)
+      (function() {
+        function fixFlutterSizing() {
+          try {
+            const dpr = window.devicePixelRatio || 1;
+            const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+            const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+
+            const selectors = ['#flutter-root', 'flt-glass-pane', 'flt-platform-view'];
+            selectors.forEach(sel => {
+              const el = document.querySelector(sel);
+              if (el) {
+                el.style.width = vw + 'px';
+                el.style.height = vh + 'px';
+                el.style.maxWidth = '100%';
+                el.style.maxHeight = '100%';
+                el.style.display = 'block';
+                el.style.boxSizing = 'border-box';
+              }
+            });
+
+            // Adjust canvases backing store to match DPR/viewport (important for CanvasKit)
+            const canvases = Array.from(document.querySelectorAll('canvas'));
+            canvases.forEach(canvas => {
+              const cssW = Math.round(vw);
+              const cssH = Math.round(vh);
+              // Cap DPR used for backing store to avoid extremely large canvases on QHD+ devices
+              const dprUsed = Math.min(dpr, 2);
+              const backingW = Math.max(1, Math.round(cssW * dprUsed));
+              const backingH = Math.max(1, Math.round(cssH * dprUsed));
+              // center canvas and clear transforms that may shift rendering
+              canvas.style.width = cssW + 'px';
+              canvas.style.height = cssH + 'px';
+              canvas.style.display = 'block';
+              canvas.style.margin = '0 auto';
+              canvas.style.transformOrigin = 'top left';
+              canvas.style.transform = 'none';
+              // Only update backing store if different
+              if (canvas.width !== backingW || canvas.height !== backingH) {
+                canvas.width = backingW;
+                canvas.height = backingH;
+                console.log('fixFlutterSizing: adjusted canvas', { cssW, cssH, backingW, backingH, dpr, dprUsed });
+              }
+            });
+          } catch (e) {
+            console.warn('fixFlutterSizing error', e);
+          }
+        }
+
+        // Run several times after load and on viewport/resizes
+        function scheduleFixes() {
+          fixFlutterSizing();
+          setTimeout(fixFlutterSizing, 100);
+          setTimeout(fixFlutterSizing, 500);
+          setTimeout(fixFlutterSizing, 1500);
+        }
+
+        window.addEventListener('resize', fixFlutterSizing);
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', fixFlutterSizing);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleFixes(); });
+        document.addEventListener('DOMContentLoaded', scheduleFixes);
+        // also run once now in case script loads after content
+        scheduleFixes();
+      })();
+  </script>
+</body>
+</html>
