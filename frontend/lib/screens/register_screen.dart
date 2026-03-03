@@ -42,6 +42,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isPhoneMode = false;  // Toggle entre email et téléphone
   String _selectedRole = 'farmer';
 
   bool get isWeb => kIsWeb;
@@ -111,10 +112,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Préparer les valeurs selon le mode
+      final email = _isPhoneMode ? '' : _emailController.text.trim();
+      final phone = _isPhoneMode ? _phoneController.text.trim() : '';
+      
+      // Email ou phone doit être valider en fonction du mode
+      if (_isPhoneMode && phone.isEmpty) {
+        throw Exception('Telephone required');
+      }
+      if (!_isPhoneMode && email.isEmpty) {
+        throw Exception('Email required');
+      }
+      
       final res = await ApiService.register(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
+        email: email.isNotEmpty ? email : null,  // null si phone mode utilisé
+        phone: phone.isNotEmpty ? phone : null,
         password: _passwordController.text,
         role: _selectedRole,
         region: _regionController.text.trim(),
@@ -126,7 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           accessToken: res['access_token'],
           refreshToken: res['refresh_token'] ?? '',
           userId: res['id'],
-          userEmail: _emailController.text.trim(),
+          userEmail: email.isNotEmpty ? email : null,  // null for phone-only
           userRole: _selectedRole,
         );
       }
@@ -136,7 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Inscription réussie', style: TextStyle(letterSpacing: 0.5)),
-          backgroundColor: Colors.black87,
+          backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
@@ -231,7 +244,94 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       
+                      const SizedBox(height: 24),
+                      
+                      // Slogan
+                      Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              'REJOIGNEZ MBAYMI',
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.5,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Connectez-vous avec le marché agricole',
+                              style: TextStyle(
+                                color: subtleColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: 0.3,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                      
                       const SizedBox(height: 48),
+
+                      // Email/Phone toggle
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () => setState(() => _isPhoneMode = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: !_isPhoneMode ? Colors.green : Colors.transparent,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                'EMAIL',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: !_isPhoneMode ? FontWeight.w600 : FontWeight.w400,
+                                  letterSpacing: 1.5,
+                                  color: !_isPhoneMode ? Colors.green : subtleColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 32),
+                          GestureDetector(
+                            onTap: () => setState(() => _isPhoneMode = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: _isPhoneMode ? Colors.green : Colors.transparent,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                'TÉLÉPHONE',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: _isPhoneMode ? FontWeight.w600 : FontWeight.w400,
+                                  letterSpacing: 1.5,
+                                  color: _isPhoneMode ? Colors.green : subtleColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 32),
 
                       // Nom complet
                       _buildTextField(
@@ -246,31 +346,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Email
-                      _buildTextField(
-                        controller: _emailController,
-                        focusNode: _emailFocus,
-                        label: 'ADRESSE EMAIL',
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtleColor: subtleColor,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: email_validator.Validators.email,
-                      ),
+                      // Email ou Téléphone (basé sur le toggle)
+                      if (!_isPhoneMode)
+                        _buildTextField(
+                          controller: _emailController,
+                          focusNode: _emailFocus,
+                          label: 'ADRESSE EMAIL',
+                          isDark: isDark,
+                          textColor: textColor,
+                          subtleColor: subtleColor,
+                          keyboardType: TextInputType.emailAddress,
+                          hint: 'Ex: vous@exemple.com',
+                          validator: email_validator.Validators.email,
+                        )
+                      else
+                        _buildTextField(
+                          controller: _phoneController,
+                          focusNode: _phoneFocus,
+                          label: 'NUMÉRO DE TÉLÉPHONE',
+                          isDark: isDark,
+                          textColor: textColor,
+                          subtleColor: subtleColor,
+                          keyboardType: TextInputType.phone,
+                          hint: 'Ex: +223 XX XX XX XX',
+                          validator: validators.Validators.phone,
+                        ),
 
                       const SizedBox(height: 24),
 
-                      // Téléphone
-                      _buildTextField(
-                        controller: _phoneController,
-                        focusNode: _phoneFocus,
-                        label: 'TÉLÉPHONE',
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtleColor: subtleColor,
-                        keyboardType: TextInputType.phone,
-                        validator: validators.Validators.phone,
-                      ),
+                      // Toujours afficher les deux champs en arrière-plan (masqués)
+                      // L'autre champ pour faciliter la soumission
+                      if (_isPhoneMode)
+                        Visibility(
+                          visible: false,
+                          child: _buildTextField(
+                            controller: _emailController,
+                            focusNode: _emailFocus,
+                            label: 'ADRESSE EMAIL',
+                            isDark: isDark,
+                            textColor: textColor,
+                            subtleColor: subtleColor,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (v) => null, // Optional when phone is used
+                          ),
+                        )
+                      else
+                        Visibility(
+                          visible: false,
+                          child: _buildTextField(
+                            controller: _phoneController,
+                            focusNode: _phoneFocus,
+                            label: 'TÉLÉPHONE',
+                            isDark: isDark,
+                            textColor: textColor,
+                            subtleColor: subtleColor,
+                            keyboardType: TextInputType.phone,
+                            validator: (v) => null, // Optional when email is used
+                          ),
+                        ),
 
                       const SizedBox(height: 24),
 
@@ -334,6 +467,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         subtleColor: subtleColor,
                       ),
 
+                      const SizedBox(height: 32),
+                      
+                      // Message de sécurité
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.08),
+                          border: Border.all(
+                            color: Colors.green.withOpacity(0.3),
+                            width: 1,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.lock_outline,
+                              size: 18,
+                              color: Colors.green,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Vos données sont sécurisées et protégées.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.3,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
                       const SizedBox(height: 48),
 
                       // Register button
@@ -390,6 +559,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required Color textColor,
     required Color subtleColor,
     TextInputType? keyboardType,
+    String? hint,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -419,6 +589,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             letterSpacing: 0.3,
           ),
           decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: subtleColor.withOpacity(0.5),
+              fontSize: 13,
+            ),
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
             enabledBorder: UnderlineInputBorder(
               borderSide: BorderSide(
@@ -543,7 +718,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: _selectedRole,
+          initialValue: _selectedRole,
           style: TextStyle(
             color: textColor,
             fontSize: 15,

@@ -718,7 +718,7 @@ class _ZField extends StatelessWidget {
             fillColor: _Z.cardBg,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: const OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.zero),
-            enabledBorder: OutlineInputBorder(
+            enabledBorder: const OutlineInputBorder(
               borderRadius: BorderRadius.zero,
               borderSide: BorderSide(color: _Z.faint),
             ),

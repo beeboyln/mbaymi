@@ -5,12 +5,6 @@ import '../src/visual_viewport_listener_stub.dart'
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/utils/validators.dart' as validators;
-import 'package:mbaymi/utils/app_colors.dart';
-import 'package:mbaymi/utils/app_spacing.dart';
-import 'package:mbaymi/utils/app_typography.dart';
-import 'package:mbaymi/utils/app_radius.dart';
-import 'package:mbaymi/widgets/app_button.dart';
-import 'package:mbaymi/widgets/app_input.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,22 +14,23 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController(); // Email ou téléphone
   final _passwordController = TextEditingController();
 
-  final _emailFocus = FocusNode();
+  final _identifierFocus = FocusNode();
   final _passwordFocus = FocusNode();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _isPhoneMode = false; // Toggle entre email et téléphone
 
   bool get isWeb => kIsWeb;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
-    _emailFocus.dispose();
+    _identifierFocus.dispose();
     _passwordFocus.dispose();
     super.dispose();
   }
@@ -44,8 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
 
-    _emailFocus.addListener(() {
-      if (_emailFocus.hasFocus && isWeb) {
+    _identifierFocus.addListener(() {
+      if (_identifierFocus.hasFocus && isWeb) {
         Scrollable.ensureVisible(
           context,
           duration: const Duration(milliseconds: 250),
@@ -73,22 +68,35 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    final email = _emailController.text.trim();
+    final identifier = _identifierController.text.trim();
     final password = _passwordController.text;
 
-    final emailError = validators.Validators.email(email);
-    final passwordError = validators.Validators.password(password);
-
-    if (emailError != null || passwordError != null) {
+    // Validation
+    if (identifier.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
-            emailError ?? passwordError ?? 'Champs invalides',
-            style: const TextStyle(letterSpacing: 0.5),
+            'Veuillez entrer votre email ou numéro de téléphone',
+            style: TextStyle(letterSpacing: 0.5),
           ),
-          backgroundColor: const Color(0xFFD32F2F),
+          backgroundColor: Color(0xFFD32F2F),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
+      );
+      return;
+    }
+
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Veuillez entrer votre mot de passe',
+            style: TextStyle(letterSpacing: 0.5),
+          ),
+          backgroundColor: Color(0xFFD32F2F),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         ),
       );
       return;
@@ -97,11 +105,20 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.login(email: email, password: password);
+      // Déterminer si c'est un email ou un téléphone
+      final isEmail = identifier.contains('@');
+      
+      late Map<String, dynamic> result;
+      if (isEmail) {
+        result = await ApiService.login(email: identifier, password: password);
+      } else {
+        // Connexion par téléphone
+        result = await ApiService.login(phone: identifier, password: password);
+      }
 
       await AuthService.login(
         userId: int.parse(result['id'].toString()),
-        email: result['email'],
+        email: result['email'] ?? identifier,  // Use phone if email is null
         name: result['name'] ?? 'User',
         role: result['role'] ?? 'farmer',
         accessToken: result['access_token'],
@@ -190,18 +207,107 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     
-                    const SizedBox(height: 56),
+                    const SizedBox(height: 24),
+                    
+                    // Slogan
+                    Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            'CONNECTEZ-VOUS À MBAYMI',
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.5,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Votre plateforme agricole intelligente\nConnectant agriculteurs et marchés',
+                            style: TextStyle(
+                              color: subtleColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: 0.3,
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 48),
 
-                    // Email field
+                    // Email/Phone toggle
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          onTap: () => setState(() => _isPhoneMode = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: !_isPhoneMode ? Colors.green : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'EMAIL',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: !_isPhoneMode ? FontWeight.w600 : FontWeight.w400,
+                                letterSpacing: 1.5,
+                                color: !_isPhoneMode ? Colors.green : subtleColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 32),
+                        GestureDetector(
+                          onTap: () => setState(() => _isPhoneMode = true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: _isPhoneMode ? Colors.green : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'TÉLÉPHONE',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: _isPhoneMode ? FontWeight.w600 : FontWeight.w400,
+                                letterSpacing: 1.5,
+                                color: _isPhoneMode ? Colors.green : subtleColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 32),
+
+                    // Identifier field (Email or Phone)
                     _buildTextField(
-                      controller: _emailController,
-                      focusNode: _emailFocus,
-                      label: 'ADRESSE EMAIL',
+                      controller: _identifierController,
+                      focusNode: _identifierFocus,
+                      label: _isPhoneMode ? 'NUMÉRO DE TÉLÉPHONE' : 'ADRESSE EMAIL',
                       isDark: isDark,
                       textColor: textColor,
                       subtleColor: subtleColor,
-                      keyboardType: TextInputType.emailAddress,
+                      keyboardType: _isPhoneMode ? TextInputType.phone : TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
+                      hint: _isPhoneMode ? 'Ex: +223 XX XX XX XX' : 'Ex: vous@exemple.com',
                       onSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
                     ),
 
@@ -222,6 +328,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // Login button
                     _buildLoginButton(isDark, textColor),
+
+                    const SizedBox(height: 32),
+                    
+                    // Message de sécurité
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.08),
+                        border: Border.all(
+                          color: Colors.green.withOpacity(0.3),
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.lock_outline,
+                            size: 18,
+                            color: Colors.green,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Vos données sont sécurisées et protégées.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.3,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                     const SizedBox(height: 32),
 
@@ -302,6 +444,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required Color subtleColor,
     TextInputType? keyboardType,
     TextInputAction? textInputAction,
+    String? hint,
     void Function(String)? onSubmitted,
   }) {
     return Column(
@@ -332,6 +475,11 @@ class _LoginScreenState extends State<LoginScreen> {
             letterSpacing: 0.3,
           ),
           decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: subtleColor.withOpacity(0.5),
+              fontSize: 13,
+            ),
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
             enabledBorder: UnderlineInputBorder(
               borderSide: BorderSide(

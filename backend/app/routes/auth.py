@@ -57,12 +57,27 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 @router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    # Check if user exists
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    # Valider qu'au moins email ou phone est fourni
+    if not user.email and not user.phone:
+        raise HTTPException(status_code=400, detail="Email ou téléphone requis")
     
-    # Create new user
+    # Si email est fourni, valider le format
+    if user.email:
+        if '@' not in user.email:
+            raise HTTPException(status_code=400, detail="Email invalide")
+    
+    # Vérifier si l'utilisateur existe déjà
+    if user.email:
+        existing_user_email = db.query(User).filter(User.email == user.email).first()
+        if existing_user_email:
+            raise HTTPException(status_code=400, detail="Email déjà enregistré")
+    
+    if user.phone:
+        existing_user_phone = db.query(User).filter(User.phone == user.phone).first()
+        if existing_user_phone:
+            raise HTTPException(status_code=400, detail="Téléphone déjà enregistré")
+    
+    # Créer le nouvel utilisateur
     new_user = User(
         name=user.name,
         email=user.email,
@@ -77,9 +92,9 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
-    print(f"✅ USER REGISTERED: {user.email} (role: {user.role})")
+    print(f"✅ USER REGISTERED: email={new_user.email}, phone={new_user.phone}, id={new_user.id}")
     
-    # Generate JWT tokens (same as login)
+    # Generate JWT tokens
     access_token = create_access_token(data={"user_id": new_user.id, "email": new_user.email})
     refresh_token = create_refresh_token(data={"user_id": new_user.id, "email": new_user.email})
     
@@ -95,17 +110,22 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=UserLoginResponse)
 def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
+    # Chercher par email ou téléphone
+    identifier = user.email
+    if '@' in identifier:
+        db_user = db.query(User).filter(User.email == identifier).first()
+    else:
+        db_user = db.query(User).filter(User.phone == identifier).first()
     
     if not db_user:
-        print(f"❌ USER NOT FOUND: {user.email}")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        print(f"❌ USER NOT FOUND: {identifier}")
+        raise HTTPException(status_code=401, detail="Identifiants invalides")
     
     if not verify_password(user.password, db_user.password_hash):
-        print(f"❌ PASSWORD MISMATCH for {user.email}")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        print(f"❌ PASSWORD MISMATCH for {identifier}")
+        raise HTTPException(status_code=401, detail="Identifiants invalides")
     
-    print(f"✅ LOGIN SUCCESS: {user.email} (role: {db_user.role})")
+    print(f"✅ LOGIN SUCCESS: {identifier} (email: {db_user.email}, role: {db_user.role})")
     
     # Generate JWT tokens
     access_token = create_access_token(data={"user_id": db_user.id, "email": db_user.email})

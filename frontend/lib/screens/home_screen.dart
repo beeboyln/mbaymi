@@ -255,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: 40,
                         height: 40,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(
+                        errorBuilder: (_, __, ___) => const Icon(
                           Icons.account_circle_outlined,
                           color: appBarIconColor,
                           size: 24,
@@ -268,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 return CircleAvatar(
                   radius: 20,
                   backgroundColor: appBarBg,
-                  child: Icon(
+                  child: const Icon(
                     Icons.account_circle_outlined,
                     color: appBarIconColor,
                     size: 24,
@@ -280,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.search, color: appBarIconColor),
+            icon: const Icon(Icons.search, color: appBarIconColor),
             onPressed: () {
               Navigator.push(
                 context,
@@ -290,20 +290,12 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          NotificationIconWidget(iconColor: appBarIconColor),
+          const NotificationIconWidget(iconColor: appBarIconColor),
           IconButton(
-            icon: Icon(
-              isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-              color: appBarIconColor,
-              size: 20,
-            ),
+            icon: const Icon(Icons.menu, color: appBarIconColor, size: 24),
             onPressed: () {
               HapticFeedback.lightImpact();
-              // Toggle theme via ThemeProvider (s'applique globalement)
-              Provider.of<ThemeProvider>(context, listen: false).toggleDarkMode();
-              setState(() {
-                _isDarkMode = !_isDarkMode;
-              });
+              Navigator.pushNamed(context, '/settings');
             },
           ),
           // Profile moved to AppBar title (avatar)
@@ -348,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       );
     } else {
-      // Farmer nav: Accueil → Fermes → Réseau → Animaux → Marché
+      // Farmer nav: Accueil → Fermes → Réseau → Marché
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -364,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavItem(IconData icon, IconData activeIcon, String label, int index, bool isDarkMode) {
     final isSelected = _selectedIndex == index;
-    final activeColor = AppColors.primary;
+    const activeColor = AppColors.primary;
     final inactiveColor = isDarkMode ? const Color(0xFF666666) : const Color(0xFFC0C0C0);
     final inactiveTextColor = isDarkMode ? const Color(0xFF888888) : const Color(0xFFA8A8A8);
     

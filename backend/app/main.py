@@ -73,7 +73,7 @@ def include_routes():
     # Agricultural features
     from app.routes import crop_problems, farm_network, user_profile, social, farm_posts, market_prices, notifications, veterinarian, authorization, service_request, media, search
     # New agriculture API routes
-    from app.routes import api_crops, api_inputs, api_finance, api_reminders
+    from app.routes import api_crops, api_inputs, api_finance, api_reminders, animals
     app.include_router(crop_problems.router)
     app.include_router(farm_network.router)
     # Also expose farm_network routes under legacy `/api` prefix to support older frontends
@@ -98,6 +98,7 @@ def include_routes():
     app.include_router(api_inputs.router)
     app.include_router(api_finance.router)
     app.include_router(api_reminders.router)
+    app.include_router(animals.router)  # Individual animal management system
     
     print("[DEBUG] farm_posts.router routes:")
     for route in app.routes:

@@ -7,18 +7,18 @@ import json
 # User Schemas
 class UserCreate(BaseModel):
     name: str
-    email: EmailStr
-    phone: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
     password: str
-    role: str  # farmer, livestock_breeder, buyer, seller
+    role: str
     region: str
     village: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: int
     name: str
-    email: EmailStr
-    phone: str
+    email: Optional[str]  # Can be null if phone-only user
+    phone: Optional[str]  # Can be null if email-only user
     role: str
     region: str
     village: Optional[str]
@@ -30,12 +30,18 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: Optional[str] = None  # Email ou téléphone
     password: str
+    
+    @field_validator('email')
+    def validate_identifier(cls, v):
+        if not v or (not v.isdigit() and '@' not in v):
+            raise ValueError('Fournissez un email valide ou un numéro de téléphone')
+        return v
 
 class UserLoginResponse(BaseModel):
     id: int
-    email: str
+    email: Optional[str]  # Can be null if phone-only login
     name: str
     role: str
     access_token: str

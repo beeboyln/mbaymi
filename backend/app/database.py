@@ -42,7 +42,29 @@ def init_db():
             conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_id INTEGER;"))
             conn.execute(text("ALTER TABLE crops ADD COLUMN IF NOT EXISTS area DOUBLE PRECISION;"))
             conn.execute(text("ALTER TABLE farm_post_comments ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES farm_post_comments(id) ON DELETE CASCADE;"))
-            # You can add more ALTER statements here for future model changes
+            
+            # Update users table: make email and phone nullable for phone-only or email-only registration
+            try:
+                conn.execute(text("ALTER TABLE users DROP CONSTRAINT users_email_key;"))
+            except:
+                pass  # Constraint might not exist
+            
+            try:
+                conn.execute(text("ALTER TABLE users DROP CONSTRAINT users_phone_key;"))
+            except:
+                pass  # Constraint might not exist
+            
+            try:
+                conn.execute(text("ALTER TABLE users ALTER COLUMN email DROP NOT NULL;"))
+            except:
+                pass  # Column might already be nullable
+            
+            try:
+                conn.execute(text("ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;"))
+            except:
+                pass  # Column might already be nullable
+            
+            print("[✓] Database migration completed: email and phone columns are now nullable")
     except Exception as e:
         print(f"Warning: could not run ALTER TABLE statements: {e}")
 

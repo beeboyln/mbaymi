@@ -15,9 +15,9 @@ class SearchUsersScreen extends StatefulWidget {
   final bool isDarkMode;
 
   const SearchUsersScreen({
-    Key? key,
+    super.key,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   State<SearchUsersScreen> createState() => _SearchUsersScreenState();
@@ -31,6 +31,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
   bool isLoading = false;
   String selectedFilter = 'all';
   String selectedRegion = '';
+  String errorMessage = '';
 
   @override
   void dispose() {
@@ -43,12 +44,14 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
     if (query.isEmpty) {
       setState(() {
         searchResults = [];
+        errorMessage = '';
       });
       return;
     }
 
     setState(() {
       isLoading = true;
+      errorMessage = '';
     });
 
     try {
@@ -62,31 +65,49 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
 
       final uri = Uri.parse('${ApiService.baseUrl}/search/users').replace(queryParameters: params);
       
-      final response = await http.get(uri);
+      final response = await http.get(uri).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Délai d\'attente dépassé. Vérifie ta connexion.');
+        },
+      );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        try {
+          final data = json.decode(response.body);
+          if (data is Map && data.containsKey('results')) {
+            setState(() {
+              searchResults = data['results'] ?? [];
+              errorMessage = '';
+            });
+          } else {
+            throw Exception('Format de réponse invalide');
+          }
+        } catch (e) {
+          throw Exception('Erreur lors du traitement des résultats: $e');
+        }
+      } else if (response.statusCode == 400) {
         setState(() {
-          searchResults = data['results'] ?? [];
+          errorMessage = 'Requête invalide. Vérifie tes paramètres.';
+        });
+      } else if (response.statusCode == 500) {
+        setState(() {
+          errorMessage = 'Erreur serveur. Réessaye plus tard.';
         });
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Erreur lors de la recherche', style: TextStyle(letterSpacing: 0.5)),
-              backgroundColor: const Color(0xFFD32F2F),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-          );
-        }
+        throw Exception('Erreur HTTP ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Search error: $e');
+      setState(() {
+        searchResults = [];
+        errorMessage = 'Erreur: ${e.toString()}';
+      });
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur: $e', style: const TextStyle(letterSpacing: 0.5)),
+            content: Text('Erreur: ${e.toString()}', style: const TextStyle(letterSpacing: 0.5)),
             backgroundColor: const Color(0xFFD32F2F),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -202,7 +223,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
             letterSpacing: 0.3,
           ),
           decoration: InputDecoration(
-            hintText: 'Nom, spécialité, région...',
+            hintText: 'Nom, ferme, région...',
             hintStyle: TextStyle(
               color: subtleColor.withOpacity(0.5),
               letterSpacing: 0.3,
@@ -252,6 +273,8 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
               _buildFilterButton('TOUS', 'all', isDark, textColor),
               const SizedBox(width: 12),
               _buildFilterButton('AGRICULTEURS', 'farmer', isDark, textColor),
+              const SizedBox(width: 12),
+              _buildFilterButton('ÉLEVEURS', 'livestock_breeder', isDark, textColor),
               const SizedBox(width: 12),
               _buildFilterButton('VÉTÉRINAIRES', 'veterinarian', isDark, textColor),
               const SizedBox(width: 12),
@@ -379,6 +402,44 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
       );
     }
 
+    if (errorMessage.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: const Color(0xFFD32F2F),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'ERREUR',
+              style: TextStyle(
+                color: subtleColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                errorMessage,
+                style: TextStyle(
+                  color: subtleColor.withOpacity(0.7),
+                  fontSize: 13,
+                  letterSpacing: 0.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (searchResults.isEmpty && _searchController.text.isNotEmpty) {
       return Center(
         child: Column(
@@ -401,7 +462,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Essayez d\'autres mots-clés',
+              'Essayez d\'autres mots-clés ou un filtre différent',
               style: TextStyle(
                 color: subtleColor.withOpacity(0.7),
                 fontSize: 13,
@@ -435,7 +496,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Recherchez des agriculteurs, vétérinaires ou fermes',
+              'Recherchez des agriculteurs, éleveurs, vétérinaires ou fermes',
               style: TextStyle(
                 color: subtleColor.withOpacity(0.7),
                 fontSize: 13,
@@ -462,16 +523,59 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
   }
 
   Widget _buildResultCard(dynamic result, bool isDark, Color textColor, Color subtleColor) {
-    final type = result['type'] as String;
+    try {
+      final type = result['type'] as String;
 
-    if (type == 'veterinarian') {
-      return _buildVeterinarianCard(result, isDark, textColor, subtleColor);
-    } else if (type == 'farmer') {
-      return _buildFarmerCard(result, isDark, textColor, subtleColor);
-    } else if (type == 'farm') {
-      return _buildFarmCard(result, isDark, textColor, subtleColor);
+      if (type == 'veterinarian') {
+        return _buildVeterinarianCard(result, isDark, textColor, subtleColor);
+      } else if (type == 'farmer') {
+        return _buildFarmerCard(result, true, isDark, textColor, subtleColor);
+      } else if (type == 'livestock_breeder') {
+        return _buildFarmerCard(result, false, isDark, textColor, subtleColor);
+      } else if (type == 'farm') {
+        return _buildFarmCard(result, isDark, textColor, subtleColor);
+      }
+      return const SizedBox.shrink();
+    } catch (e) {
+      debugPrint('Error building result card: $e');
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          'Erreur lors de l\'affichage du résultat',
+          style: TextStyle(
+            color: subtleColor,
+            fontSize: 12,
+            letterSpacing: 0.3,
+          ),
+        ),
+      );
     }
-    return const SizedBox.shrink();
+  }
+
+  Widget _buildProfileImage(String? imageUrl, IconData fallbackIcon, bool isDark, Color subtleColor) {
+    // Check if URL is valid and not empty
+    final isValidUrl = imageUrl != null && 
+                       imageUrl.toString().isNotEmpty && 
+                       imageUrl.toString().startsWith('http');
+
+    if (isValidUrl) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('Error loading image: $error');
+          return Icon(fallbackIcon, color: subtleColor, size: 24);
+        },
+      );
+    }
+
+    return Icon(fallbackIcon, color: subtleColor, size: 24);
   }
 
   Widget _buildVeterinarianCard(dynamic result, bool isDark, Color textColor, Color subtleColor) {
@@ -506,9 +610,12 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
                   width: 1,
                 ),
               ),
-              child: result['profile_image'] != null
-                  ? Image.network(result['profile_image'], fit: BoxFit.cover)
-                  : Icon(Icons.medical_services_outlined, color: subtleColor, size: 24),
+              child: _buildProfileImage(
+                result['profile_image'],
+                Icons.medical_services_outlined,
+                isDark,
+                subtleColor,
+              ),
             ),
             const SizedBox(width: 16),
             
@@ -572,7 +679,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
     );
   }
 
-  Widget _buildFarmerCard(dynamic result, bool isDark, Color textColor, Color subtleColor) {
+  Widget _buildFarmerCard(dynamic result, bool isFarmer, bool isDark, Color textColor, Color subtleColor) {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -605,9 +712,12 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
                   width: 1,
                 ),
               ),
-              child: result['profile_image'] != null
-                  ? Image.network(result['profile_image'], fit: BoxFit.cover)
-                  : Icon(Icons.person_outline, color: subtleColor, size: 24),
+              child: _buildProfileImage(
+                result['profile_image'],
+                Icons.person_outline,
+                isDark,
+                subtleColor,
+              ),
             ),
             const SizedBox(width: 16),
             
@@ -617,7 +727,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    (result['name'] ?? 'AGRICULTEUR').toUpperCase(),
+                    (result['name'] ?? (isFarmer ? 'AGRICULTEUR' : 'ÉLEVEUR')).toUpperCase(),
                     style: TextStyle(
                       color: textColor,
                       fontSize: 13,
@@ -627,7 +737,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    result['role'] ?? 'Agriculteur',
+                    result['role'] ?? (isFarmer ? 'Agriculteur' : 'Éleveur'),
                     style: TextStyle(
                       color: subtleColor,
                       fontSize: 12,
@@ -663,19 +773,127 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
   }
 
   Widget _buildFarmCard(dynamic result, bool isDark, Color textColor, Color subtleColor) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FarmDetailScreen(
-              farmId: result['id'] is int ? result['id'] : int.parse(result['id'].toString()),
-              farmData: result,
+    try {
+      // Validate farm data
+      final farmId = result['id'];
+      if (farmId == null) {
+        throw Exception('Farm ID is missing');
+      }
+
+      final farmIdInt = farmId is int ? farmId : int.tryParse(farmId.toString());
+      if (farmIdInt == null) {
+        throw Exception('Invalid farm ID format');
+      }
+
+      return InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FarmDetailScreen(
+                farmId: farmIdInt,
+                farmData: result,
+              ),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+              width: 1,
             ),
           ),
-        );
-      },
-      child: Container(
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(Icons.agriculture_outlined, color: subtleColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      (result['name'] ?? 'FERME').toUpperCase(),
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    if (result['owner_name'] != null && result['owner_name'].toString().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Propriétaire: ${result['owner_name']}',
+                        style: TextStyle(
+                          color: subtleColor,
+                          fontSize: 12,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                    if (result['location'] != null && result['location'].toString().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 12, color: subtleColor),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              result['location'],
+                              style: TextStyle(
+                                color: subtleColor,
+                                fontSize: 11,
+                                letterSpacing: 0.3,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else if (result['region'] != null && result['region'].toString().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 12, color: subtleColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            result['region'],
+                            style: TextStyle(
+                              color: subtleColor,
+                              fontSize: 11,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              
+              Icon(Icons.arrow_forward_ios, size: 14, color: subtleColor),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error building farm card: $e');
+      return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           border: Border.all(
@@ -683,72 +901,15 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
             width: 1,
           ),
         ),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: isDark ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
-                  width: 1,
-                ),
-              ),
-              child: Icon(Icons.agriculture_outlined, color: subtleColor, size: 24),
-            ),
-            const SizedBox(width: 16),
-            
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    (result['name'] ?? 'FERME').toUpperCase(),
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  if (result['owner_name'] != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Propriétaire: ${result['owner_name']}',
-                      style: TextStyle(
-                        color: subtleColor,
-                        fontSize: 12,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                  if (result['region'] != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_outlined, size: 12, color: subtleColor),
-                        const SizedBox(width: 4),
-                        Text(
-                          result['region'],
-                          style: TextStyle(
-                            color: subtleColor,
-                            fontSize: 11,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            
-            Icon(Icons.arrow_forward_ios, size: 14, color: subtleColor),
-          ],
+        child: Text(
+          'Erreur lors de l\'affichage de la ferme',
+          style: TextStyle(
+            color: subtleColor,
+            fontSize: 12,
+            letterSpacing: 0.3,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/services/cart_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mbaymi/utils/app_colors.dart';
@@ -21,6 +24,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
   Future<Map<String, dynamic>>? _saleFuture;
   Future<Map<String, dynamic>>? _ownerFuture;
   int _userId = 0;
+  int _cartQuantity = 1;
 
   @override
   void initState() {
@@ -204,7 +208,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                         ),
                         const SizedBox(height: 16),
                         
-                        // Prix et quantité
+                        // Prix et unité
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -212,50 +216,110 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.green.withOpacity(0.3)),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          child: Column(
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Prix unitaire',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                                    ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Prix ${_getPriceUnitLabel(sale['unit'] ?? 'kg')}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${sale['price_per_unit'] ?? ''} ${sale['currency'] ?? 'FCFA'}',
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${sale['price_per_unit'] ?? ''} ${sale['currency'] ?? 'FCFA'}',
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.bold,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.grey[800] : AppColors.lightBg,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.inventory_2, size: 18, color: Colors.green[700]),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '${sale['quantity']?.toString() ?? '0'} ${sale['unit'] ?? 'kg'}',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? Colors.white : Colors.black87,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.grey[800] : AppColors.lightBg,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.inventory_2, size: 18, color: Colors.green[700]),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '${sale['quantity']?.toString() ?? '0'} ${sale['unit'] ?? 'kg'}',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark ? Colors.white : Colors.black87,
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.grey[800] : Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.local_shipping_outlined, size: 16, color: AppColors.primary),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Stock: ${sale['quantity']?.toString() ?? '0'} ${sale['unit'] ?? 'kg'}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: isDark ? Colors.grey[300] : Colors.grey[700],
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.grey[800] : Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.update, size: 16, color: AppColors.primary),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              'Maj: ${_formatDate(sale['updated_at'] ?? sale['created_at'])}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -476,6 +540,9 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                           },
                         ),
                         const SizedBox(height: 24),
+                        
+                        // Bouton Ajouter au panier
+                        _buildAddToCartSection(sale, isDark),
                       ],
                     ),
                   ),
@@ -486,6 +553,171 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
         },
       ),
     );
+  }
+
+  /// Construire la section "Ajouter au panier"
+  Widget _buildAddToCartSection(Map<String, dynamic> sale, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Quantité à commander',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[800] : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    InkWell(
+                      onTap: _cartQuantity > 1
+                          ? () => setState(() => _cartQuantity--)
+                          : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Icon(
+                          Icons.remove,
+                          size: 18,
+                          color: _cartQuantity > 1
+                              ? AppColors.primary
+                              : Colors.grey,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      color: AppColors.primary.withOpacity(0.1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        _cartQuantity.toString(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: _cartQuantity < (sale['quantity'] as int? ?? 0)
+                          ? () => setState(() => _cartQuantity++)
+                          : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Icon(
+                          Icons.add,
+                          size: 18,
+                          color: _cartQuantity < (sale['quantity'] as int? ?? 0)
+                              ? AppColors.primary
+                              : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Consumer<CartProvider>(
+            builder: (context, cartProvider, _) {
+              return ElevatedButton(
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  cartProvider.addItem(
+                    id: sale['id'],
+                    name: sale['product_name'] ?? 'Produit',
+                    price: sale['price_per_unit'] as double? ?? 0.0,
+                    quantity: _cartQuantity,
+                    image: sale['image_url'],
+                    unit: sale['unit'] ?? 'kg',
+                    sellerId: sale['user_id'] as int? ?? 0,
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '$_cartQuantity ${sale['unit'] ?? "kg"} ajoutée au panier',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                  setState(() => _cartQuantity = 1);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.shopping_cart, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'AJOUTER AU PANIER',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Obtenir le label de l'unité de prix
+  String _getPriceUnitLabel(String unit) {
+    final unitLower = unit.toLowerCase();
+    if (unitLower == 'kg' || unitLower == 'kilogramme') {
+      return 'au kilogramme';
+    } else if (unitLower == 'unit' || unitLower == 'unité' || unitLower == '') {
+      return 'à l\'unité';
+    } else if (unitLower == 'litre' || unitLower == 'l') {
+      return 'au litre';
+    } else if (unitLower == 'botte' || unitLower == 'bunch' || unitLower == 'bouquet') {
+      return 'à la botte';
+    }
+    return 'par ${unit.toLowerCase()}';
   }
 
   Widget _buildSectionTitle(String title, IconData icon, bool isDark) {

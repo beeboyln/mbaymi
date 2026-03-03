@@ -17,7 +17,7 @@ class TokenStorage {
     required String accessToken,
     required String refreshToken,
     required int userId,
-    required String userEmail,
+    String? userEmail,  // Can be null for phone-only users
     String? userRole,
   }) async {
     try {
@@ -25,7 +25,12 @@ class TokenStorage {
       await prefs.setString(_keyAccessToken, accessToken);
       await prefs.setString(_keyRefreshToken, refreshToken);
       await prefs.setInt(_keyUserId, userId);
-      await prefs.setString(_keyUserEmail, userEmail);
+      if (userEmail != null) {
+        await prefs.setString(_keyUserEmail, userEmail);
+      } else {
+        // Clear email if null (for phone-only users)
+        await prefs.remove(_keyUserEmail);
+      }
       if (userRole != null) {
         await prefs.setString(_keyUserRole, userRole);
       }

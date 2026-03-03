@@ -633,8 +633,8 @@ class _ActivityScreenState extends State<ActivityScreen>
             future: _future,
             builder: (_, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
-                return Padding(
-                  padding: const EdgeInsets.all(_Z.s48),
+                return const Padding(
+                  padding: EdgeInsets.all(_Z.s48),
                   child: Center(
                     child: SizedBox(
                       width: 20,

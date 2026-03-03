@@ -5,7 +5,7 @@ import 'package:mbaymi/services/api_service.dart';
 /// Session model for the current authenticated user.
 class Session {
   final int userId;
-  final String email;
+  final String? email;  // Can be null for phone-only users
   final String name;
   final String role;
   final String accessToken;
@@ -13,7 +13,7 @@ class Session {
 
   Session({
     required this.userId,
-    required this.email,
+    this.email,
     required this.name,
     required this.role,
     required this.accessToken,
@@ -39,7 +39,7 @@ class AuthService {
   /// - Cache invalidation is explicit and targeted
   static Future<void> login({
     required int userId,
-    required String email,
+    String? email,  // Can be null for phone-only users
     required String name,
     required String role,
     required String accessToken,

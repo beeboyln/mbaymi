@@ -11,6 +11,7 @@ import 'package:mbaymi/screens/splash_screen.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/app_bootstrap.dart';
 import 'package:mbaymi/services/theme_provider.dart';
+import 'package:mbaymi/services/cart_provider.dart';
 import 'package:mbaymi/screens/login_screen.dart';
 import 'package:mbaymi/screens/register_screen.dart';
 import 'package:mbaymi/screens/veterinarian_setup_screen.dart';
@@ -21,7 +22,9 @@ import 'package:mbaymi/screens/crop_problems_screen.dart';
 import 'package:mbaymi/screens/farm_profile_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/user_profile_screen.dart';
-import 'package:mbaymi/screens/animal_detail_screen.dart';
+import 'package:mbaymi/screens/settings_screen.dart';
+import 'package:mbaymi/screens/livestock/animal_detail_screen.dart';
+import 'package:mbaymi/models/animal.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
 Future<void> main() async {
@@ -152,8 +155,15 @@ class _MbaymiAppState extends State<MbaymiApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<ThemeProvider>(
-      create: (_) => ThemeProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ThemeProvider>(
+          create: (_) => ThemeProvider(),
+        ),
+        ChangeNotifierProvider<CartProvider>(
+          create: (_) => CartProvider(),
+        ),
+      ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           // Read auth state from AuthService (stateless read)
@@ -197,6 +207,7 @@ class _MbaymiAppState extends State<MbaymiApp> {
               '/veterinarian-setup': (context) => const VeterinarianSetupScreen(),
               '/edit-veterinarian-profile': (context) => const EditVeterinarianProfileScreen(),
               '/veterinarian-profile': (context) => const VeterinarianProfileScreen(),
+              '/settings': (context) => const SettingsScreen(),
             },
             onGenerateRoute: (settings) {
               // Veterinarian Profile Detail
@@ -225,12 +236,22 @@ class _MbaymiAppState extends State<MbaymiApp> {
               // Livestock Detail
               if (settings.name == '/livestock-detail') {
                 final livestockId = settings.arguments as int?;
-                if (livestockId != null) {
+                final currentUserId = AuthService.currentSession?.userId;
+                if (livestockId != null && currentUserId != null) {
                   return MaterialPageRoute(
                     builder: (context) => AnimalDetailScreen(
-                      livestockId: livestockId,
-                      animal: {},
-                      isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                      animal: Animal(
+                        id: livestockId,
+                        userId: currentUserId,
+                        name: 'Animal',
+                        species: 'unknown',
+                        gender: 'unknown',
+                        dateOfBirth: DateTime.now(),
+                        healthStatus: 'unknown',
+                        reproductiveStatus: 'unknown',
+                        createdAt: DateTime.now(),
+                        updatedAt: DateTime.now(),
+                      ),
                     ),
                   );
                 }

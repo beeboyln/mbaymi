@@ -5,11 +5,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
-import 'package:mbaymi/utils/app_theme.dart';
+import 'package:mbaymi/services/cart_provider.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/models/market_model.dart';
 import 'package:mbaymi/screens/create_sale_screen.dart';
 import 'package:mbaymi/screens/sale_detail_screen.dart';
+import 'package:mbaymi/screens/cart_screen.dart';
 import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 class MarketTab extends StatefulWidget {
@@ -26,6 +27,28 @@ class _MarketTabState extends State<MarketTab> {
   final int _userId = AuthService.currentSession?.userId ?? 0;
   bool _showMyAds = true;
   bool _showPrices = false;
+  
+  // Filtres avancés
+  double _minPrice = 0;
+  double _maxPrice = 1000000;
+  String _selectedLocation = 'Tous';
+  bool _showAdvancedFilters = false;
+  
+  final List<String> _locations = [
+    'Tous',
+    'Dakar',
+    'Thiès',
+    'Kaolack',
+    'Kolda',
+    'Tambacounda',
+    'Saint-Louis',
+    'Louga',
+    'Matam',
+    'Kédougou',
+    'Sédhiou',
+    'Ziguinchor',
+    'Fatick'
+  ];
   
   // ✅ STATIC PERSISTENT CACHE - survives widget rebuilds and navigation
   static final Map<String, Future<List<dynamic>>> _globalSalesCache = {};
@@ -133,6 +156,52 @@ class _MarketTabState extends State<MarketTab> {
         ),
         centerTitle: true,
         actions: [
+          Consumer<CartProvider>(
+            builder: (context, cartProvider, _) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.shopping_basket_outlined, 
+                      color: textColor, size: 24),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CartScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (cartProvider.itemCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          '${cartProvider.itemCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: Icon(Icons.add, color: textColor, size: 24),
             onPressed: () {
@@ -313,6 +382,53 @@ class _MarketTabState extends State<MarketTab> {
               ],
               
               const SizedBox(height: 24),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Divider(
+                  color: borderColor,
+                  thickness: 0.5,
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Section FILTRES AVANCÉS
+              InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _showAdvancedFilters = !_showAdvancedFilters);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'FILTRES AVANCÉS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 2,
+                          color: secondaryTextColor,
+                        ),
+                      ),
+                      Icon(
+                        _showAdvancedFilters ? Icons.expand_less : Icons.expand_more,
+                        color: textColor,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              if (_showAdvancedFilters) ...[
+                const SizedBox(height: 12),
+                _buildAdvancedFiltersSection(isDark, textColor, secondaryTextColor),
+              ],
+              
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -334,7 +450,7 @@ class _MarketTabState extends State<MarketTab> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           border: isSelected
-              ? Border(
+              ? const Border(
                   left: BorderSide(
                     color: AppColors.primary,
                     width: 3,
@@ -365,8 +481,8 @@ class _MarketTabState extends State<MarketTab> {
         future: _getMarketPricesCached(),
         builder: (_, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
+            return const Padding(
+              padding: EdgeInsets.all(24),
               child: Center(
                 child: SizedBox(
                   width: 20,
@@ -421,7 +537,7 @@ class _MarketTabState extends State<MarketTab> {
       ),
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.eco_outlined,
             color: AppColors.primary,
             size: 16,
@@ -454,8 +570,8 @@ class _MarketTabState extends State<MarketTab> {
             ),
           ),
           Text(
-            '${price.pricePerKg.toStringAsFixed(0)}',
-            style: TextStyle(
+            price.pricePerKg.toStringAsFixed(0),
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppColors.primary,
@@ -614,7 +730,7 @@ class _MarketTabState extends State<MarketTab> {
                   HapticFeedback.lightImpact();
                   setState(() => _selectedCategory = 'Tous');
                 },
-                child: Text(
+                child: const Text(
                   'Réinitialiser',
                   style: TextStyle(
                     fontSize: 11,
@@ -653,8 +769,13 @@ class _MarketTabState extends State<MarketTab> {
           final filtered = sales.where((s) {
             final name = (s['product_name'] as String? ?? '').toLowerCase();
             final cat = s['category'] as String? ?? '';
+            final price = (s['price_per_unit'] as num? ?? 0).toDouble();
+            final location = s['delivery_location'] as String? ?? '';
+            
             return (_searchQuery.isEmpty || name.contains(_searchQuery)) &&
-                   (_selectedCategory == 'Tous' || cat == _selectedCategory);
+                   (_selectedCategory == 'Tous' || cat == _selectedCategory) &&
+                   (price >= _minPrice && price <= _maxPrice) &&
+                   (_selectedLocation == 'Tous' || location.toLowerCase().contains(_selectedLocation.toLowerCase()));
           }).toList();
 
           if (filtered.isEmpty) {
@@ -964,6 +1085,168 @@ class _MarketTabState extends State<MarketTab> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildAdvancedFiltersSection(bool isDark, Color textColor, Color secondaryTextColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Filtre de prix
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Gamme de prix (FCFA)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 1,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(color: textColor, fontSize: 12),
+                        decoration: InputDecoration(
+                          hintText: 'Min',
+                          hintStyle: TextStyle(color: secondaryTextColor, fontSize: 12),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: AppColors.getBorderColor(isDark), width: 1),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                          ),
+                        ),
+                        onChanged: (v) {
+                          setState(() {
+                            _minPrice = double.tryParse(v) ?? 0;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(color: textColor, fontSize: 12),
+                        decoration: InputDecoration(
+                          hintText: 'Max',
+                          hintStyle: TextStyle(color: secondaryTextColor, fontSize: 12),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: AppColors.getBorderColor(isDark), width: 1),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                          ),
+                        ),
+                        onChanged: (v) {
+                          setState(() {
+                            _maxPrice = double.tryParse(v) ?? 1000000;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Filtre de localisation
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Localisation',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 1,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.getBorderColor(isDark), width: 1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: DropdownButton<String>(
+                    value: _selectedLocation,
+                    isExpanded: true,
+                    underline: const SizedBox.shrink(),
+                    style: TextStyle(color: textColor, fontSize: 12),
+                    dropdownColor: AppColors.getCardBgColor(isDark),
+                    items: _locations.map((location) {
+                      return DropdownMenuItem<String>(
+                        value: location,
+                        child: Text(location),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        HapticFeedback.lightImpact();
+                        setState(() => _selectedLocation = value);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Bouton réinitialiser les filtres
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _minPrice = 0;
+                  _maxPrice = 1000000;
+                  _selectedLocation = 'Tous';
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary.withOpacity(0.2),
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              child: const Text(
+                'Réinitialiser filtres',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 8),
         ],
       ),
     );

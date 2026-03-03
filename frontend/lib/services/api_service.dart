@@ -199,28 +199,30 @@ class ApiService {
 
   static Future<Map<String, dynamic>> register({
     required String name,
-    required String email,
-    required String phone,
+    String? email,
+    String? phone,
     required String password,
     required String role,
     required String region,
     String? village,
   }) async {
     try {
+      // Envoyer null au lieu de strings vides
+      final payload = {
+        'name': name,
+        'email': email?.isNotEmpty == true ? email : null,
+        'phone': phone?.isNotEmpty == true ? phone : null,
+        'password': password,
+        'role': role,
+        'region': region,
+        'village': village?.isNotEmpty == true ? village : null,
+      };
+      
       final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'phone': phone,
-          'password': password,
-          'role': role,
-          'region': region,
-          'village': village,
-        }),
+        body: jsonEncode(payload),
       );
-
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 400) {
@@ -240,16 +242,23 @@ class ApiService {
     }
   }
 
+  /// Login with email or phone
   static Future<Map<String, dynamic>> login({
-    required String email,
+    String? email,
+    String? phone,
     required String password,
   }) async {
     try {
+      final identifier = email ?? phone;
+      if (identifier == null) {
+        throw Exception('INVALID_REQUEST');
+      }
+      
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': email,
+          'email': identifier,  // Backend accepte email ou phone
           'password': password,
         }),
       );
