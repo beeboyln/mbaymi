@@ -686,7 +686,7 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
               onChanged: (value) {
                 setState(() => _isPublic = value);
               },
-              activeColor: AppColors.accent,
+              activeThumbColor: AppColors.accent,
               inactiveTrackColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
             ),
           ],

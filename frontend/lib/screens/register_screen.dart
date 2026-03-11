@@ -368,7 +368,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           textColor: textColor,
                           subtleColor: subtleColor,
                           keyboardType: TextInputType.phone,
-                          hint: 'Ex: +223 XX XX XX XX',
+                          hint: 'Ex: +221 XX XX XX XX',
                           validator: validators.Validators.phone,
                         ),
 

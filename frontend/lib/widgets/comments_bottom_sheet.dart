@@ -28,7 +28,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   // Map of parentCommentId -> list of replies
   Map<int, List<dynamic>> _replies = {};
   // Set of comment IDs whose replies are expanded
-  Set<int> _expandedReplies = {};
+  final Set<int> _expandedReplies = {};
 
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -92,7 +92,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
     // If replying, ensure @username mention is at the start
     if (_replyingToCommentId != null && _replyingToUserName != null) {
-      final mention = '@${_replyingToUserName} ';
+      final mention = '@$_replyingToUserName ';
       if (!text.startsWith(mention)) {
         text = mention + text;
       }
@@ -326,7 +326,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           // ── List ─────────────────────────────────────────────────────────────
           Expanded(
             child: _isLoading
-                ? Center(
+                ? const Center(
                     child: SizedBox(
                       width: 24,
                       height: 24,
@@ -413,7 +413,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.reply, size: 16, color: AppColors.primary),
+                        const Icon(Icons.reply, size: 16, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -463,7 +463,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                           enabledBorder: UnderlineInputBorder(
                             borderSide: BorderSide(color: borderColor, width: 1),
                           ),
-                          focusedBorder: UnderlineInputBorder(
+                          focusedBorder: const UnderlineInputBorder(
                             borderSide: BorderSide(color: AppColors.primary, width: 1.5),
                           ),
                         ),
@@ -619,7 +619,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         });
                         _commentFocus.requestFocus();
                       },
-                      child: Text(
+                      child: const Text(
                         'RÉPONDRE',
                         style: TextStyle(
                           color: AppColors.primary,
@@ -633,7 +633,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                       const SizedBox(width: 16),
                       InkWell(
                         onTap: () => _showDeleteDialog(comment['id']),
-                        child: Text(
+                        child: const Text(
                           'SUPPRIMER',
                           style: TextStyle(
                             color: AppColors.error,

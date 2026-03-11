@@ -1,4 +1,5 @@
 /// Animal Reproduction Tab - Track breeding cycles, gestation, births
+library;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/models/animal.dart';
@@ -9,10 +10,10 @@ class AnimalReproductionTab extends StatefulWidget {
   final String animalGender;
 
   const AnimalReproductionTab({
-    Key? key,
+    super.key,
     required this.animalId,
     required this.animalGender,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimalReproductionTab> createState() => _AnimalReproductionTabState();
@@ -467,7 +468,7 @@ class _AddReproductionDialogState extends State<_AddReproductionDialog> {
               ),
               const SizedBox(height: 24),
               DropdownButtonFormField<String>(
-                value: _selectedEventType,
+                initialValue: _selectedEventType,
                 decoration: InputDecoration(
                   labelText: 'Type d\'événement',
                   border: OutlineInputBorder(

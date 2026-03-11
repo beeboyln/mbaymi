@@ -119,7 +119,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
 
   Future<String> _getSowingDate(int cropId) async {
     try {
-      final activities = await ApiService.getActivitiesForCrop(cropId) as List<dynamic>;
+      final activities = await ApiService.getActivitiesForCrop(cropId);
       
       // Find the most recent 'sowing' activity
       for (var activity in activities) {
@@ -136,7 +136,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
 
   Future<String> _getHarvestDate(int cropId) async {
     try {
-      final activities = await ApiService.getActivitiesForCrop(cropId) as List<dynamic>;
+      final activities = await ApiService.getActivitiesForCrop(cropId);
       
       // Find the most recent 'harvest' activity
       for (var activity in activities) {

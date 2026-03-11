@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 /// Widgets de visualisation pour la ferme - Style Zara minimaliste
 class FarmWidgets {

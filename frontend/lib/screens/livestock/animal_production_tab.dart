@@ -1,4 +1,5 @@
 /// Animal Production Tab - Track milk, eggs, wool, meat
+library;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/models/animal.dart';
@@ -9,10 +10,10 @@ class AnimalProductionTab extends StatefulWidget {
   final String animalSpecies;
 
   const AnimalProductionTab({
-    Key? key,
+    super.key,
     required this.animalId,
     required this.animalSpecies,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimalProductionTab> createState() => _AnimalProductionTabState();
@@ -507,7 +508,7 @@ class _AddProductionDialogState extends State<_AddProductionDialog> {
               ),
               const SizedBox(height: 24),
               DropdownButtonFormField<String>(
-                value: _selectedMetric,
+                initialValue: _selectedMetric,
                 decoration: InputDecoration(
                   labelText: 'Type de production',
                   border: OutlineInputBorder(

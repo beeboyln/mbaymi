@@ -677,7 +677,7 @@ class _CreateFarmScreenState extends State<CreateFarmScreen> {
               HapticFeedback.lightImpact();
               setState(() => _isPublic = value);
             },
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
             inactiveTrackColor: borderColor,
           ),
         ],

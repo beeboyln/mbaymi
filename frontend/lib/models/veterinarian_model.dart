@@ -11,6 +11,8 @@ class VeterinarianProfile {
   final bool isVerified;
   final double? rating;
   final int? consultationCount;
+  final String? certificateUrl;
+  final String? certificateFilename;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -29,6 +31,8 @@ class VeterinarianProfile {
     required this.isVerified,
     this.rating,
     this.consultationCount,
+    this.certificateUrl,
+    this.certificateFilename,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -47,6 +51,8 @@ class VeterinarianProfile {
       isVerified: json['is_verified'] ?? false,
       rating: (json['average_rating'] as num?)?.toDouble(),
       consultationCount: json['total_consultations'],
+      certificateUrl: json['certificate_url'],
+      certificateFilename: json['certificate_filename'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
@@ -74,6 +80,8 @@ class VeterinarianProfile {
       'is_verified': isVerified,
       'average_rating': rating,
       'total_consultations': consultationCount,
+      'certificate_url': certificateUrl,
+      'certificate_filename': certificateFilename,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };

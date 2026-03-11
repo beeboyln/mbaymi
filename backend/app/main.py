@@ -71,7 +71,7 @@ def include_routes():
     app.include_router(animal_photos.router)
     
     # Agricultural features
-    from app.routes import crop_problems, farm_network, user_profile, social, farm_posts, market_prices, notifications, veterinarian, authorization, service_request, media, search
+    from app.routes import crop_problems, farm_network, user_profile, social, farm_posts, market_prices, notifications, veterinarian, authorization, service_request, media, search, admin
     # New agriculture API routes
     from app.routes import api_crops, api_inputs, api_finance, api_reminders, animals
     app.include_router(crop_problems.router)
@@ -93,6 +93,7 @@ def include_routes():
     app.include_router(veterinarian.router)  # Veterinarian profiles and management
     app.include_router(authorization.router)  # Farm data access authorization
     app.include_router(service_request.router)  # Service requests and consultations
+    app.include_router(admin.router)  # Admin panel (verification, authorizations)
     # Agricultural management APIs (auth required)
     app.include_router(api_crops.router)
     app.include_router(api_inputs.router)

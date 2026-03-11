@@ -540,7 +540,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           border: isSelected
-              ? Border(
+              ? const Border(
                   left: BorderSide(
                     color: AppColors.primary,
                     width: 3,
@@ -575,7 +575,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
   }
 
   Widget _buildFeedTab(bool isDarkMode) {
-    final primaryColor = AppColors.primary;
+    const primaryColor = AppColors.primary;
     
     return RefreshIndicator(
       onRefresh: () async {
@@ -764,7 +764,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
                             fit: BoxFit.cover,
                             errorBuilder: (c, e, s) => Container(
                               color: AppColors.primary.withOpacity(0.2),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.person_outline,
                                 color: AppColors.primary,
                                 size: 20,
@@ -774,7 +774,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
                         }
                         return Container(
                           color: AppColors.primary.withOpacity(0.2),
-                          child: Icon(
+                          child: const Icon(
                             Icons.person_outline,
                             color: AppColors.primary,
                             size: 20,
@@ -840,7 +840,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
                                         padding: const EdgeInsets.only(top: 2),
                                         child: Text(
                                           post['livestock_type']?.toString().toUpperCase() ?? 'BÉTAIL',
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontSize: 9,
                                             letterSpacing: 0.8,
                                             color: AppColors.primary,
@@ -849,8 +849,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
                                         ),
                                       )
                                     else
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 2),
+                                      const Padding(
+                                        padding: EdgeInsets.only(top: 2),
                                         child: Text(
                                           'FERME',
                                           style: TextStyle(
@@ -867,7 +867,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
                             ),
                             if (isVerified) ...[
                               const SizedBox(width: 6),
-                              Icon(
+                              const Icon(
                                 Icons.verified,
                                 size: 16,
                                 color: AppColors.primary,
@@ -1217,7 +1217,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
   }
 
   Widget _buildLoadingWidget(bool isDarkMode) {
-    return Center(
+    return const Center(
       child: SizedBox(
         height: 24,
         width: 24,
@@ -1239,7 +1239,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.error_outline,
               size: 48,
               color: AppColors.error,

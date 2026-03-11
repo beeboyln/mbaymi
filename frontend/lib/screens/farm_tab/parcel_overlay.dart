@@ -5,6 +5,7 @@
 /// Nouveautés :
 ///   • Mode lecture / édition — toggle flottant verrouille drag + resize
 ///   • Légende de densité — résumé visuel des statuts en mode lecture
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -172,8 +173,12 @@ class _ParcelOverlayState extends State<ParcelOverlay>
     _modeToggleCtrl.dispose();
     _menuCtrl.dispose();
     _legendCtrl.dispose();
-    for (final c in _entryCtrl.values) c.dispose();
-    for (final c in _pulseCtrl.values) c.dispose();
+    for (final c in _entryCtrl.values) {
+      c.dispose();
+    }
+    for (final c in _pulseCtrl.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -332,7 +337,7 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                         width: 0.5,
                       ),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.menu_outlined,
                       size: 13,
                       color: Colors.white60,
@@ -1393,8 +1398,8 @@ class _CornerBorderPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    canvas.drawLine(Offset(0, len), Offset(0, 0), paint);
-    canvas.drawLine(Offset(0, 0), Offset(len, 0), paint);
+    canvas.drawLine(const Offset(0, len), const Offset(0, 0), paint);
+    canvas.drawLine(const Offset(0, 0), const Offset(len, 0), paint);
     canvas.drawLine(Offset(w - len, 0), Offset(w, 0), paint);
     canvas.drawLine(Offset(w, 0), Offset(w, len), paint);
     canvas.drawLine(Offset(0, h - len), Offset(0, h), paint);

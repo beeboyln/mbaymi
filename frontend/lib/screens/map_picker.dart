@@ -582,7 +582,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
               child: FloatingActionButton.small(
                 onPressed: _isLoading ? null : _recenterOnUserLocation,
                 backgroundColor: surfaceColor,
-                child: Icon(
+                child: const Icon(
                   Icons.my_location,
                   color: AppColors.primary,
                 ),
@@ -629,7 +629,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
             decoration: InputDecoration(
               hintText: 'Rechercher un lieu...',
               hintStyle: TextStyle(color: textColor.withAlpha((0.5 * 255).toInt())),
-              prefixIcon: Icon(Icons.search, color: AppColors.primary, size: 20),
+              prefixIcon: const Icon(Icons.search, color: AppColors.primary, size: 20),
               suffixIcon: _isSearching
                   ? const Padding(
                       padding: EdgeInsets.all(12),
@@ -867,7 +867,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
                             ),
                             child: Text(
                               '${_selectedLocation!.latitude.toStringAsFixed(6)}, ${_selectedLocation!.longitude.toStringAsFixed(6)}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 11,
                                 fontFamily: 'monospace',
                                 color: AppColors.primary,
@@ -879,7 +879,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.copy, size: 18, color: AppColors.primary),
+                      icon: const Icon(Icons.copy, size: 18, color: AppColors.primary),
                       onPressed: () async {
                         await Clipboard.setData(
                           ClipboardData(text: '${_selectedLocation!.latitude},${_selectedLocation!.longitude}'),
@@ -898,7 +898,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
                     decoration: InputDecoration(
                       hintText: 'Adresse personnalisée (optionnel)',
                       hintStyle: TextStyle(fontSize: 13, color: textColor.withAlpha((0.4 * 255).toInt())),
-                      prefixIcon: Icon(Icons.edit_location_alt, color: AppColors.primary, size: 18),
+                      prefixIcon: const Icon(Icons.edit_location_alt, color: AppColors.primary, size: 18),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide(color: textColor.withAlpha((0.15 * 255).toInt())),
@@ -928,7 +928,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> with SingleTickerProv
                       elevation: 0,
                       shadowColor: Colors.transparent,
                     ),
-                    child: Text(
+                    child: const Text(
                       'Confirmer',
                       style: TextStyle(
                         fontSize: 14,

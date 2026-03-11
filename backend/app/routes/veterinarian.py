@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
+import os
+import shutil
+from pathlib import Path
 
 from app.database import get_db
 from app.models.user import User
@@ -12,6 +16,10 @@ from app.schemas.veterinarian import (
     VeterinarianProfileResponse,
 )
 from app.routes.auth import get_current_user_obj
+
+# Create certificates directory if it doesn't exist
+CERTIFICATES_DIR = Path(__file__).parent.parent.parent / "uploads" / "certificates"
+CERTIFICATES_DIR.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter(prefix="/api/veterinarians", tags=["veterinarians"])
 
@@ -43,6 +51,8 @@ def create_veterinarian_profile(
         bio=profile_data.bio,
         experience_years=profile_data.experience_years,
         contact_preference=profile_data.contact_preference,
+        certificate_url=profile_data.certificate_url,
+        certificate_filename=profile_data.certificate_filename,
         verification_status=VerificationStatus.PENDING,
         availability_status=AvailabilityStatus.AVAILABLE,
     )
@@ -159,15 +169,35 @@ def upload_certificate(
             detail="Veterinarian profile not found"
         )
     
-    # TODO: Upload to Cloudinary and store URL
-    # For now, store filename
-    profile.certificate_url = certificate.filename
-    profile.verification_status = VerificationStatus.PENDING
-    
-    db.commit()
-    db.refresh(profile)
-    
-    return {"message": "Certificate uploaded successfully", "profile": profile}
+    try:
+        # Create a unique filename using user_id and timestamp
+        file_extension = os.path.splitext(certificate.filename)[1]
+        unique_filename = f"cert_{current_user.id}_{int(datetime.now(timezone.utc).timestamp())}{file_extension}"
+        
+        # Save the file to disk
+        file_path = CERTIFICATES_DIR / unique_filename
+        with open(file_path, "wb") as f:
+            f.write(certificate.file.read())
+        
+        # Save the filename in database
+        profile.certificate_filename = certificate.filename
+        profile.certificate_url = unique_filename
+        profile.verification_status = VerificationStatus.PENDING
+        
+        db.commit()
+        db.refresh(profile)
+        
+        return {
+            "message": "Certificate uploaded successfully",
+            "filename": certificate.filename,
+            "stored_as": unique_filename,
+            "profile": profile
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading certificate: {str(e)}"
+        )
 
 @router.patch("/availability/{status}")
 def update_availability_status(
@@ -230,3 +260,120 @@ def get_veterinarians_by_specialty(
     ).all()
     
     return profiles
+
+@router.get("/certificate/{vet_id}")
+def get_veterinarian_certificate(
+    vet_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get veterinarian certificate info by veterinarian user ID"""
+    
+    profile = db.query(VeterinarianProfile).filter(
+        VeterinarianProfile.user_id == vet_id
+    ).first()
+    
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Veterinarian profile not found"
+        )
+    
+    if not profile.certificate_url:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No certificate found for this veterinarian"
+        )
+    
+    # Return certificate info for display
+    return {
+        "filename": profile.certificate_filename or profile.certificate_url,
+        "url": profile.certificate_url,
+        "uploaded_at": profile.created_at,
+        "verified": profile.verification_status == VerificationStatus.VERIFIED,
+    }
+
+@router.get("/download-certificate/{vet_id}")
+def download_veterinarian_certificate(
+    vet_id: int,
+    db: Session = Depends(get_db),
+):
+    """Download veterinarian certificate file"""
+    
+    profile = db.query(VeterinarianProfile).filter(
+        VeterinarianProfile.user_id == vet_id
+    ).first()
+    
+    if not profile or not profile.certificate_url:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Certificate not found"
+        )
+    
+    # Build the path to the certificate file using the constant CERTIFICATES_DIR
+    cert_path = CERTIFICATES_DIR / profile.certificate_url
+    
+    if not cert_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Certificate file not found on server"
+        )
+    
+    # Determine media type based on file extension
+    file_ext = os.path.splitext(profile.certificate_url)[1].lower()
+    media_type_map = {
+        '.pdf': 'application/pdf',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    }
+    media_type = media_type_map.get(file_ext, 'application/octet-stream')
+    
+    return FileResponse(
+        cert_path,
+        filename=profile.certificate_filename or profile.certificate_url,
+        media_type=media_type
+    )
+
+@router.get("/view-certificate/{vet_id}")
+def view_veterinarian_certificate(
+    vet_id: int,
+    db: Session = Depends(get_db),
+):
+    """View/display veterinarian certificate file in browser"""
+    
+    profile = db.query(VeterinarianProfile).filter(
+        VeterinarianProfile.user_id == vet_id
+    ).first()
+    
+    if not profile or not profile.certificate_url:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Certificate not found"
+        )
+    
+    cert_path = CERTIFICATES_DIR / profile.certificate_url
+    
+    if not cert_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Certificate file not found on server"
+        )
+    
+    # Determine media type for proper display
+    file_ext = os.path.splitext(profile.certificate_url)[1].lower()
+    media_type_map = {
+        '.pdf': 'application/pdf',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+    }
+    media_type = media_type_map.get(file_ext, 'application/octet-stream')
+    
+    return FileResponse(
+        cert_path,
+        media_type=media_type
+    )

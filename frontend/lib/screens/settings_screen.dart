@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/theme_provider.dart';
+import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_of_use_screen.dart' hide AppColors;
@@ -177,6 +178,22 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
           ),
           
           const SizedBox(height: 32),
+
+          // Admin Section (only for admins)
+          if (AuthService.currentSession?.role == 'admin') ...[
+            _buildSection(
+              title: '👨‍💼 ADMINISTRATION',
+              children: [
+                _buildOptimizedTile(
+                  icon: Icons.admin_panel_settings_outlined,
+                  title: 'Tableau de Bord Admin',
+                  subtitle: 'Gérer vétérinaires et autorisations',
+                  onTap: () => Navigator.pushNamed(context, '/admin-dashboard'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+          ],
 
           // À Propos Section
           _buildSection(

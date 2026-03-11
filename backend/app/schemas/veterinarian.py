@@ -21,6 +21,8 @@ class VeterinarianProfileCreate(BaseModel):
     experience_years: Optional[int] = None
     contact_preference: str = "both"
     whatsapp_number: Optional[str] = None
+    certificate_url: Optional[str] = None
+    certificate_filename: Optional[str] = None
 
 class VeterinarianProfileUpdate(BaseModel):
     specialty: Optional[str] = None

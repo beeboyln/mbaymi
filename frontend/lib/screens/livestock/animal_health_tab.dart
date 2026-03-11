@@ -1,4 +1,5 @@
 /// Animal Health Tab - Vaccination and medical records
+library;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/models/animal.dart';
@@ -8,9 +9,9 @@ class AnimalHealthTab extends StatefulWidget {
   final int animalId;
 
   const AnimalHealthTab({
-    Key? key,
+    super.key,
     required this.animalId,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimalHealthTab> createState() => _AnimalHealthTabState();
@@ -457,7 +458,7 @@ class _AddHealthRecordDialogState extends State<_AddHealthRecordDialog> {
               ),
               const SizedBox(height: 24),
               DropdownButtonFormField<String>(
-                value: _typeController.text,
+                initialValue: _typeController.text,
                 decoration: InputDecoration(
                   labelText: 'Type',
                   border: OutlineInputBorder(

@@ -32,7 +32,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
   bool _isLoadingFollows = false;
   
   // Track followers count per farm ID for real-time updates
-  Map<int, int> _farmFollowersCount = {};
+  final Map<int, int> _farmFollowersCount = {};
 
   late AnimationController _pageController;
   late AnimationController _followController;
@@ -281,10 +281,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
             if (_followersCount == null || _followersCount == 0) {
               _followersCount = totalFollowers;
             }
-            if (_isFollowing == null) {
-              _isFollowing = (_profileData['followed_by_user'] ??
+            _isFollowing ??= (_profileData['followed_by_user'] ??
                   _profileData['is_following'] ?? false) as bool;
-            }
 
             return FadeTransition(
               opacity: _pageFade,
@@ -631,7 +629,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen>
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              (followers as num) == 1 ? 'abonné' : 'abonnés',
+                              followers == 1 ? 'abonné' : 'abonnés',
                               style: TextStyle(
                                   fontSize: 9,
                                   color: inkMuted,

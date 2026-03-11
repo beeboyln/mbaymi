@@ -5,9 +5,9 @@ class SearchTab extends StatelessWidget {
   final bool isDarkMode;
 
   const SearchTab({
-    Key? key,
+    super.key,
     this.isDarkMode = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

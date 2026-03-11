@@ -1,4 +1,5 @@
 /// Animal List Screen - Display all animals with filters and actions
+library;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/models/animal.dart';
@@ -11,9 +12,9 @@ class AnimalListScreen extends StatefulWidget {
   final int? farmId;
 
   const AnimalListScreen({
-    Key? key,
+    super.key,
     this.farmId,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimalListScreen> createState() => _AnimalListScreenState();

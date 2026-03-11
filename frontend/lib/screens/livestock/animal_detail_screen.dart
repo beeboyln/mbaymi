@@ -1,4 +1,5 @@
 /// Animal Detail Screen - Complete profile with tabs
+library;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/models/animal.dart';
@@ -12,9 +13,9 @@ class AnimalDetailScreen extends StatefulWidget {
   final Animal animal;
 
   const AnimalDetailScreen({
-    Key? key,
+    super.key,
     required this.animal,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimalDetailScreen> createState() => _AnimalDetailScreenState();
@@ -24,7 +25,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late Animal _currentAnimal;
-  bool _isEditing = false;
+  final bool _isEditing = false;
 
   @override
   void initState() {

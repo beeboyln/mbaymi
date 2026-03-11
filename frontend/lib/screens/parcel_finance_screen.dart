@@ -555,9 +555,9 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                                     ),
                                   ),
                                   const SizedBox(height: 2),
-                                  Text(
+                                  const Text(
                                     'FCFA',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 9,
                                       letterSpacing: 1.5,
                                       color: _Z.muted,
@@ -688,7 +688,7 @@ class _ZField extends StatelessWidget {
             fillColor: _Z.cardBg,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: const OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.zero),
-            enabledBorder: OutlineInputBorder(
+            enabledBorder: const OutlineInputBorder(
               borderRadius: BorderRadius.zero,
               borderSide: BorderSide(color: _Z.faint),
             ),

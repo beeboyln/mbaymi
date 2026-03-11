@@ -132,7 +132,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
-          style: TextStyle(
+          style: const TextStyle(
               letterSpacing: 0.5,
               fontSize: 12,
               color: Colors.white)),

@@ -1,11 +1,23 @@
 /// Animal Management Service for API calls
+library;
 import 'package:mbaymi/models/animal.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/token_storage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class AnimalService {
   static const String _baseUrl = 'https://cuddly-lil-bigboyllmnd-9965fc8f.koyeb.app/api/animals';
+  
+  /// Get authorization headers with JWT token
+  static Future<Map<String, String>> _getAuthHeaders() async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    final accessToken = await TokenStorage.getAccessToken();
+    if (accessToken != null && accessToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $accessToken';
+    }
+    return headers;
+  }
   
   /// Get all animals for the user
   static Future<List<Animal>> getAnimals({
@@ -20,7 +32,8 @@ class AnimalService {
       if (isActive != null) queryParams['is_active'] = isActive.toString();
       
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-      final response = await http.get(uri);
+      final headers = await _getAuthHeaders();
+      final response = await http.get(uri, headers: headers);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -39,7 +52,8 @@ class AnimalService {
   /// Get a single animal by ID
   static Future<Animal> getAnimal(int animalId) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/$animalId'));
+      final headers = await _getAuthHeaders();
+      final response = await http.get(Uri.parse('$_baseUrl/$animalId'), headers: headers);
       
       if (response.statusCode == 200) {
         return Animal.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
@@ -89,9 +103,10 @@ class AnimalService {
         if (acquisitionCost != null) 'acquisition_cost': acquisitionCost,
       };
       
+      final headers = await _getAuthHeaders();
       final response = await http.post(
         Uri.parse(_baseUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode(body),
       );
       
@@ -124,9 +139,10 @@ class AnimalService {
       if (location != null) body['location'] = location;
       if (photoUrl != null) body['photo_url'] = photoUrl;
       
+      final headers = await _getAuthHeaders();
       final response = await http.put(
         Uri.parse('$_baseUrl/$animalId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode(body),
       );
       
@@ -143,7 +159,8 @@ class AnimalService {
   /// Delete an animal (soft delete)
   static Future<void> deleteAnimal(int animalId) async {
     try {
-      final response = await http.delete(Uri.parse('$_baseUrl/$animalId'));
+      final headers = await _getAuthHeaders();
+      final response = await http.delete(Uri.parse('$_baseUrl/$animalId'), headers: headers);
       
       if (response.statusCode != 204) {
         throw Exception('Failed to delete animal: ${response.statusCode}');
@@ -167,7 +184,8 @@ class AnimalService {
       if (recordType != null) queryParams['record_type'] = recordType;
       
       final uri = Uri.parse('$_baseUrl/$animalId/health-records').replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-      final response = await http.get(uri);
+      final headers = await _getAuthHeaders();
+      final response = await http.get(uri, headers: headers);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -210,9 +228,10 @@ class AnimalService {
         if (notes != null) 'notes': notes,
       };
       
+      final headers = await _getAuthHeaders();
       final response = await http.post(
         Uri.parse('$_baseUrl/$animalId/health-records'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode(body),
       );
       
@@ -229,7 +248,8 @@ class AnimalService {
   /// Get health summary for an animal
   static Future<AnimalHealthSummary> getHealthSummary(int animalId) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/$animalId/health-summary'));
+      final headers = await _getAuthHeaders();
+      final response = await http.get(Uri.parse('$_baseUrl/$animalId/health-summary'), headers: headers);
       
       if (response.statusCode == 200) {
         return AnimalHealthSummary.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
@@ -259,7 +279,8 @@ class AnimalService {
       if (dateTo != null) queryParams['date_to'] = dateTo.toIso8601String();
       
       final uri = Uri.parse('$_baseUrl/$animalId/production').replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-      final response = await http.get(uri);
+      final headers = await _getAuthHeaders();
+      final response = await http.get(uri, headers: headers);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -295,9 +316,10 @@ class AnimalService {
         if (notes != null) 'notes': notes,
       };
       
+      final headers = await _getAuthHeaders();
       final response = await http.post(
         Uri.parse('$_baseUrl/$animalId/production'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode(body),
       );
       
@@ -318,7 +340,8 @@ class AnimalService {
   }) async {
     try {
       final uri = Uri.parse('$_baseUrl/$animalId/production/stats').replace(queryParameters: {'period': period.toString()});
-      final response = await http.get(uri);
+      final headers = await _getAuthHeaders();
+      final response = await http.get(uri, headers: headers);
       
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -340,7 +363,8 @@ class AnimalService {
   ) async {
     try {
       final uri = Uri.parse('$_baseUrl/$animalId/reproduction');
-      final response = await http.get(uri);
+      final headers = await _getAuthHeaders();
+      final response = await http.get(uri, headers: headers);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -386,9 +410,10 @@ class AnimalService {
         if (notes != null) 'notes': notes,
       };
       
+      final headers = await _getAuthHeaders();
       final response = await http.post(
         Uri.parse('$_baseUrl/$animalId/reproduction'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode(body),
       );
       
@@ -420,7 +445,8 @@ class AnimalService {
       if (priority != null) queryParams['priority'] = priority;
       
       final uri = Uri.parse('$_baseUrl/$animalId/reminders').replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-      final response = await http.get(uri);
+      final headers = await _getAuthHeaders();
+      final response = await http.get(uri, headers: headers);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -442,7 +468,8 @@ class AnimalService {
   }) async {
     try {
       final uri = Uri.parse('$_baseUrl/reminders/upcoming').replace(queryParameters: {'limit': limit.toString()});
-      final response = await http.get(uri);
+      final headers = await _getAuthHeaders();
+      final response = await http.get(uri, headers: headers);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -482,9 +509,10 @@ class AnimalService {
         if (notes != null) 'notes': notes,
       };
       
+      final headers = await _getAuthHeaders();
       final response = await http.post(
         Uri.parse('$_baseUrl/$animalId/reminders'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode(body),
       );
       
@@ -501,9 +529,10 @@ class AnimalService {
   /// Mark a reminder as complete
   static Future<AnimalCareReminder> completeReminder(int reminderId) async {
     try {
+      final headers = await _getAuthHeaders();
       final response = await http.put(
         Uri.parse('$_baseUrl/reminders/$reminderId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({'is_completed': true}),
       );
       
@@ -520,7 +549,8 @@ class AnimalService {
   /// Delete a reminder
   static Future<void> deleteReminder(int reminderId) async {
     try {
-      final response = await http.delete(Uri.parse('$_baseUrl/reminders/$reminderId'));
+      final headers = await _getAuthHeaders();
+      final response = await http.delete(Uri.parse('$_baseUrl/reminders/$reminderId'), headers: headers);
       
       if (response.statusCode != 204) {
         throw Exception('Failed to delete reminder: ${response.statusCode}');

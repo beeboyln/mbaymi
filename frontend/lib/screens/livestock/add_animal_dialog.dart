@@ -1,4 +1,5 @@
 /// Add Animal Dialog - Create new animal
+library;
 import 'package:flutter/material.dart';
 import 'package:mbaymi/models/animal.dart';
 import 'package:mbaymi/services/animal_service.dart';
@@ -9,10 +10,10 @@ class AddAnimalDialog extends StatefulWidget {
   final Function(Animal) onAnimalAdded;
 
   const AddAnimalDialog({
-    Key? key,
+    super.key,
     this.farmId,
     required this.onAnimalAdded,
-  }) : super(key: key);
+  });
 
   @override
   State<AddAnimalDialog> createState() => _AddAnimalDialogState();
@@ -196,7 +197,7 @@ class _AddAnimalDialogState extends State<AddAnimalDialog> {
 
               // Species
               DropdownButtonFormField<String>(
-                value: _selectedSpecies,
+                initialValue: _selectedSpecies,
                 decoration: InputDecoration(
                   labelText: 'Espèce',
                   border: OutlineInputBorder(
@@ -219,7 +220,7 @@ class _AddAnimalDialogState extends State<AddAnimalDialog> {
 
               // Gender
               DropdownButtonFormField<String>(
-                value: _selectedGender,
+                initialValue: _selectedGender,
                 decoration: InputDecoration(
                   labelText: 'Sexe',
                   border: OutlineInputBorder(

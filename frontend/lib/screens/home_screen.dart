@@ -14,6 +14,7 @@ import 'package:mbaymi/screens/advice_screen.dart';
 import 'package:mbaymi/screens/dashboard_tab.dart';
 import 'package:mbaymi/screens/farm_network_screen.dart';
 import 'package:mbaymi/screens/veterinarian_dashboard_screen.dart';
+import 'package:mbaymi/screens/admin_dashboard_screen.dart';
 import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/parcel_finance_screen.dart';
 import 'package:mbaymi/screens/select_crop_screen.dart';
@@ -34,11 +35,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  bool _isDarkMode = false;
   late Map<int, Widget> _screens; // Changed to Map for lazy loading
   late List<int> _screenIndices; // Track screen order
 
   int? _userId;
+  bool _isDarkMode = false; // Track current dark mode for dependent widgets
 
   bool get isLoggedIn => _userId != null;
   int? get userId => _userId;
@@ -49,11 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _userId = widget.userId;
     _screens = {}; // Initialize as empty map
     _screenIndices = [];
-    
-    // NO setState for theme - get from Provider in build() instead
-    // Get initial theme value WITHOUT setState
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    _isDarkMode = themeProvider.isDarkMode;
 
     // Create only dashboard initially (to show something fast)
     _createDashboard();
@@ -75,16 +71,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Create dashboard screen (shown by default)
   void _createDashboard() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
+    final userRole = AuthService.currentSession?.role;
+    
+    // Check if user is an admin
+    if (userRole == 'admin') {
+      _screens[0] = const AdminDashboardScreen();
+    }
     // Check if user is a veterinarian
-    final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' ||
-        AuthService.currentSession?.role == 'expert';
-
-    if (isVeterinarian) {
+    else if (userRole == 'veterinarian' || userRole == 'expert') {
       _screens[0] = const VeterinarianDashboardScreen();
     } else {
       _screens[0] = DashboardTab(
         key: ValueKey('dashboard_${userId ?? 0}'),
-        isDarkMode: _isDarkMode,
+        isDarkMode: isDarkMode,
         userId: userId,
         onNavigateToFarmTab: () {
           setState(() => _selectedIndex = 1);
@@ -102,25 +103,32 @@ class _HomeScreenState extends State<HomeScreen> {
       return _screens[index]!;
     }
 
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
+    final userRole = AuthService.currentSession?.role;
+
     // Create the screen based on role
-    final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' ||
-        AuthService.currentSession?.role == 'expert';
+    final isAdmin = userRole == 'admin';
+    final isVeterinarian = userRole == 'veterinarian' || userRole == 'expert';
 
     Widget screen;
 
-    if (isVeterinarian) {
+    if (isAdmin) {
+      // Admins only have access to the admin dashboard
+      screen = const AdminDashboardScreen();
+    } else if (isVeterinarian) {
       switch (index) {
         case 0:
           screen = const VeterinarianDashboardScreen();
           break;
         case 1:
-          screen = FarmNetworkScreen(isDarkMode: _isDarkMode);
+          screen = FarmNetworkScreen(isDarkMode: isDarkMode);
           break;
         case 2:
-          screen = LivestockTab(isDarkMode: _isDarkMode);
+          screen = LivestockTab(isDarkMode: isDarkMode);
           break;
         case 3:
-          screen = AdviceTab(isDarkMode: _isDarkMode);
+          screen = AdviceTab(isDarkMode: isDarkMode);
           break;
         default:
           screen = const Placeholder();
@@ -130,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
         case 0:
           screen = DashboardTab(
             key: ValueKey('dashboard_${userId ?? 0}'),
-            isDarkMode: _isDarkMode,
+            isDarkMode: isDarkMode,
             userId: userId,
             onNavigateToFarmTab: () {
               setState(() => _selectedIndex = 1);
@@ -144,16 +152,16 @@ class _HomeScreenState extends State<HomeScreen> {
           );
           break;
         case 2:
-          screen = FarmNetworkScreen(isDarkMode: _isDarkMode);
+          screen = FarmNetworkScreen(isDarkMode: isDarkMode);
           break;
         case 3:
-          screen = LivestockTab(isDarkMode: _isDarkMode);
+          screen = LivestockTab(isDarkMode: isDarkMode);
           break;
         case 4:
-          screen = MarketTab(isDarkMode: _isDarkMode);
+          screen = MarketTab(isDarkMode: isDarkMode);
           break;
         case 5:
-          screen = AdviceTab(isDarkMode: _isDarkMode);
+          screen = AdviceTab(isDarkMode: isDarkMode);
           break;
         default:
           screen = const Placeholder();
@@ -198,125 +206,145 @@ class _HomeScreenState extends State<HomeScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
     
-    final appBarBg = AppColors.getBgColor(isDarkMode);
+    // Update instance variable for other methods to use
+    _isDarkMode = isDarkMode;
+    
+    // Check if user is veterinarian to use teal color scheme
+    final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' ||
+                          AuthService.currentSession?.role == 'expert';
+    
+    final appBarBg = isVeterinarian
+      ? (isDarkMode ? const Color(0xFF060E0D) : const Color(0xFFF4FAF9))
+      : AppColors.getBgColor(isDarkMode);
     const appBarIconColor = AppColors.accent;
     
-    return Scaffold(
-      backgroundColor: AppColors.getBgColor(isDarkMode),
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: appBarBg,
-        elevation: 0,
-        titleSpacing: AppSpacing.md,
-        title: GestureDetector(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            if (isLoggedIn && _userId != null) {
-              final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' ||
-                  AuthService.currentSession?.role == 'expert';
-              if (isVeterinarian) {
-                Navigator.pushNamed(context, '/veterinarian-profile');
-              } else {
-                Navigator.pushNamed(
-                  context,
-                  '/user-profile/$_userId',
-                  arguments: {
-                    'userId': _userId,
-                    'isDarkMode': _isDarkMode,
-                  },
-                );
-              }
-            } else {
-              _showAuthSheet(context);
-            }
-          },
-          child: SizedBox(
-            width: 44,
-            height: 44,
-            child: FutureBuilder<Map<String, dynamic>>(
-              future: _userId != null ? ApiService.getUserProfile(_userId!, viewerId: _userId) : Future.value(<String, dynamic>{}),
-              builder: (context, snap) {
-                final img = snap.data?['profile_image'] as String?;
-                if (img != null && img.isNotEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [_isDarkMode ? const Color(0xFF8FBF6B) : const Color(0xFFf0932b), _isDarkMode ? const Color(0xFF2D5016) : const Color(0xFFc13584)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: Image.network(
-                        img,
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.account_circle_outlined,
-                          color: appBarIconColor,
-                          size: 24,
-                        ),
-                      ),
-                    ),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        // When returning to HomeScreen, ensure it rebuilds with current state
+        if (!didPop) {
+          setState(() {
+            // Trigger a rebuild to refresh theme and screens
+          });
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.getBgColor(isDarkMode),
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          backgroundColor: appBarBg,
+          elevation: 0,
+          titleSpacing: AppSpacing.md,
+          title: GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              if (isLoggedIn && _userId != null) {
+                final isVeterinarian = AuthService.currentSession?.role == 'veterinarian' ||
+                    AuthService.currentSession?.role == 'expert';
+                if (isVeterinarian) {
+                  Navigator.pushNamed(context, '/veterinarian-profile');
+                } else {
+                  Navigator.pushNamed(
+                    context,
+                    '/user-profile/$_userId',
+                    arguments: {
+                      'userId': _userId,
+                      'isDarkMode': isDarkMode,
+                    },
                   );
                 }
+              } else {
+                _showAuthSheet(context);
+              }
+            },
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: FutureBuilder<Map<String, dynamic>>(
+                future: _userId != null ? ApiService.getUserProfile(_userId!, viewerId: _userId) : Future.value(<String, dynamic>{}),
+                builder: (context, snap) {
+                  final img = snap.data?['profile_image'] as String?;
+                  if (img != null && img.isNotEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [isDarkMode ? const Color(0xFF8FBF6B) : const Color(0xFFf0932b), isDarkMode ? const Color(0xFF2D5016) : const Color(0xFFc13584)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(22),
+                        child: Image.network(
+                          img,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.account_circle_outlined,
+                            color: appBarIconColor,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
 
-                return CircleAvatar(
-                  radius: 20,
-                  backgroundColor: appBarBg,
-                  child: const Icon(
-                    Icons.account_circle_outlined,
-                    color: appBarIconColor,
-                    size: 24,
+                  return CircleAvatar(
+                    radius: 20,
+                    backgroundColor: appBarBg,
+                    child: const Icon(
+                      Icons.account_circle_outlined,
+                      color: appBarIconColor,
+                      size: 24,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search, color: appBarIconColor),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SearchUsersScreen(isDarkMode: isDarkMode),
                   ),
                 );
               },
             ),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: appBarIconColor),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SearchUsersScreen(isDarkMode: _isDarkMode),
-                ),
-              );
-            },
-          ),
-          const NotificationIconWidget(iconColor: appBarIconColor),
-          IconButton(
-            icon: const Icon(Icons.menu, color: appBarIconColor, size: 24),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Navigator.pushNamed(context, '/settings');
-            },
-          ),
-          // Profile moved to AppBar title (avatar)
-        ],
-      ),
-      body: _getScreen(_selectedIndex),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: appBarBg,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+            const NotificationIconWidget(iconColor: appBarIconColor),
+            IconButton(
+              icon: const Icon(Icons.menu, color: appBarIconColor, size: 24),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.pushNamed(context, '/settings');
+              },
             ),
+            // Profile moved to AppBar title (avatar)
           ],
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: _buildNavBar(isDarkMode),
+        body: _getScreen(_selectedIndex),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: appBarBg,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: _buildNavBar(isDarkMode),
+            ),
           ),
         ),
       ),

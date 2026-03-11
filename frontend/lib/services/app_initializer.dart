@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/weather_service.dart';
 
 /// 🎬 Lazy initialization of services that depend on auth state

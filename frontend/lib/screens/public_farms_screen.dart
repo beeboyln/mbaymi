@@ -24,7 +24,7 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
   bool _isLoadingFollows = false;
   
   // Track followers count per farm ID for real-time updates
-  Map<int, int> _farmFollowersCount = {};
+  final Map<int, int> _farmFollowersCount = {};
 
   // Animated follow states
   final Map<int, AnimationController> _followAnimControllers = {};
@@ -561,7 +561,7 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
                           ),
                           child: Text(
                             '${_followedFarmIds.length} SUIVI${_followedFarmIds.length > 1 ? 'ES' : 'E'}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w400,
                               letterSpacing: 1.0,

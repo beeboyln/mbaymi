@@ -418,7 +418,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     bool isDark,
     Color subtleColor,
   ) {
-    final size = 52.0;
+    const size = 52.0;
     
     if (notification.actorImage != null) {
       return Container(

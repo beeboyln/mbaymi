@@ -1,4 +1,5 @@
 /// Animal Reminders Tab - Care calendar and task management
+library;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/models/animal.dart';
@@ -8,9 +9,9 @@ class AnimalRemindersTab extends StatefulWidget {
   final int animalId;
 
   const AnimalRemindersTab({
-    Key? key,
+    super.key,
     required this.animalId,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimalRemindersTab> createState() => _AnimalRemindersTabState();
@@ -659,7 +660,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _selectedTag,
+                initialValue: _selectedTag,
                 decoration: InputDecoration(
                   labelText: 'Catégorie',
                   border: OutlineInputBorder(
@@ -677,7 +678,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _selectedPriority,
+                initialValue: _selectedPriority,
                 decoration: InputDecoration(
                   labelText: 'Priorité',
                   border: OutlineInputBorder(
@@ -710,7 +711,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: DropdownButtonFormField<String>(
-                    value: _recurrenceInterval,
+                    initialValue: _recurrenceInterval,
                     decoration: InputDecoration(
                       labelText: 'Intervalle de récurrence',
                       border: OutlineInputBorder(

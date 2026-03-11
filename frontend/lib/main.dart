@@ -18,6 +18,7 @@ import 'package:mbaymi/screens/veterinarian_setup_screen.dart';
 import 'package:mbaymi/screens/edit_veterinarian_profile_screen.dart';
 import 'package:mbaymi/screens/veterinarian_profile_detail_screen.dart';
 import 'package:mbaymi/screens/veterinarian_profile_screen.dart';
+import 'package:mbaymi/screens/admin_dashboard_screen.dart';
 import 'package:mbaymi/screens/crop_problems_screen.dart';
 import 'package:mbaymi/screens/farm_profile_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
@@ -207,6 +208,7 @@ class _MbaymiAppState extends State<MbaymiApp> {
               '/veterinarian-setup': (context) => const VeterinarianSetupScreen(),
               '/edit-veterinarian-profile': (context) => const EditVeterinarianProfileScreen(),
               '/veterinarian-profile': (context) => const VeterinarianProfileScreen(),
+              '/admin-dashboard': (context) => const AdminDashboardScreen(),
               '/settings': (context) => const SettingsScreen(),
             },
             onGenerateRoute: (settings) {

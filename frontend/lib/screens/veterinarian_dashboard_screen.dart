@@ -1,10 +1,651 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:math';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/edit_veterinarian_profile_screen.dart';
+import 'package:mbaymi/screens/veterinarian_dashboard_widgets.dart';
 import 'package:mbaymi/models/veterinarian_model.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/widgets/skeleton_loader.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PAINTERS — grain + rings (same visual language as DashboardTab)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _VetGrainPainter extends CustomPainter {
+  final double seed;
+  final Color color;
+  const _VetGrainPainter({required this.seed, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rng = Random((seed * 1000).toInt());
+    final paint = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 260; i++) {
+      final x  = rng.nextDouble() * size.width;
+      final y  = rng.nextDouble() * size.height;
+      final r  = rng.nextDouble() * 0.85 + 0.2;
+      final op = rng.nextDouble() * 0.038 + 0.005;
+      paint.color = color.withOpacity(op);
+      canvas.drawCircle(Offset(x, y), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_VetGrainPainter o) => o.seed != seed;
+}
+
+class _VetRingsPainter extends CustomPainter {
+  final Color color;
+  const _VetRingsPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.5;
+    for (int i = 1; i <= 7; i++) {
+      paint.color = color.withOpacity(0.022 + i * 0.004);
+      canvas.drawCircle(Offset(cx, cy), i * 38.0, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_VetRingsPainter o) => false;
+}
+
+class _WavePainter extends CustomPainter {
+  final double phase;
+  final Color color;
+  final double yOffset;
+  const _WavePainter({required this.phase, required this.color, this.yOffset = 0.6});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final path = Path();
+    final baseY = size.height * yOffset;
+    path.moveTo(0, size.height);
+    path.lineTo(0, baseY + 10 * sin(phase));
+    for (double x = 0; x <= size.width; x += 2) {
+      final y = baseY
+          + 12 * sin(x / size.width * 2 * pi + phase)
+          + 6  * sin(x / size.width * 4 * pi - phase * 1.3)
+          + 3  * cos(x / size.width * 6 * pi + phase * 0.7);
+      path.lineTo(x, y);
+    }
+    path.lineTo(size.width, size.height);
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_WavePainter o) => o.phase != phase;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VET ILLUSTRATION PAINTER — stethoscope + paw silhouette
+// ─────────────────────────────────────────────────────────────────────────────
+class _VetIllustrationPainter extends CustomPainter {
+  final Color primary;
+  final Color accent;
+  final bool isDark;
+  final double phase;
+
+  const _VetIllustrationPainter({
+    required this.primary,
+    required this.accent,
+    required this.isDark,
+    required this.phase,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final baseOp   = isDark ? 0.18 : 0.13;
+    final accentOp = isDark ? 0.32 : 0.24;
+
+    final fillPrimary = Paint()
+      ..color = primary.withOpacity(baseOp)
+      ..style = PaintingStyle.fill;
+    final fillAccent = Paint()
+      ..color = accent.withOpacity(accentOp)
+      ..style = PaintingStyle.fill;
+    final strokePrimary = Paint()
+      ..color = primary.withOpacity(baseOp * 0.75)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+
+    // Stethoscope tube
+    final sway = 1.4 * sin(phase * 2 * pi);
+    final tubePath = Path();
+    tubePath.moveTo(w * 0.35, h * 0.20);
+    tubePath.cubicTo(
+      w * 0.18, h * 0.20,
+      w * 0.12 + sway, h * 0.55,
+      w * 0.30 + sway, h * 0.72,
+    );
+    tubePath.cubicTo(
+      w * 0.45 + sway, h * 0.85,
+      w * 0.62 + sway, h * 0.82,
+      w * 0.72 + sway, h * 0.68,
+    );
+    canvas.drawPath(tubePath, strokePrimary..strokeWidth = 2.0);
+
+    // Chest piece — circle
+    canvas.drawCircle(
+      Offset(w * 0.72 + sway, h * 0.64),
+      w * 0.088,
+      fillAccent,
+    );
+    canvas.drawCircle(
+      Offset(w * 0.72 + sway, h * 0.64),
+      w * 0.065,
+      Paint()
+        ..color = accent.withOpacity(accentOp * 0.45)
+        ..style = PaintingStyle.fill,
+    );
+
+    // Earpiece left
+    final ep1 = Path();
+    ep1.moveTo(w * 0.35, h * 0.20);
+    ep1.cubicTo(w * 0.34, h * 0.12, w * 0.28, h * 0.10, w * 0.26, h * 0.15);
+    canvas.drawPath(ep1, strokePrimary..strokeWidth = 1.5);
+    canvas.drawCircle(Offset(w * 0.26, h * 0.15), w * 0.030, fillPrimary);
+
+    // Earpiece right
+    final ep2 = Path();
+    ep2.moveTo(w * 0.35, h * 0.20);
+    ep2.cubicTo(w * 0.46, h * 0.14, w * 0.50, h * 0.10, w * 0.52, h * 0.16);
+    canvas.drawPath(ep2, strokePrimary..strokeWidth = 1.5);
+    canvas.drawCircle(Offset(w * 0.52, h * 0.16), w * 0.030, fillPrimary);
+
+    // Paw print — 3 toe pads + main pad
+    final pawX = w * 0.58;
+    final pawY = h * 0.38 + sway * 0.4;
+    final toes = [
+      Offset(pawX - w * 0.10, pawY - h * 0.06),
+      Offset(pawX,            pawY - h * 0.09),
+      Offset(pawX + w * 0.10, pawY - h * 0.06),
+    ];
+    for (final t in toes) {
+      canvas.drawOval(
+        Rect.fromCenter(center: t, width: w * 0.07, height: h * 0.048),
+        fillAccent..color = accent.withOpacity(accentOp * 0.80),
+      );
+    }
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(pawX, pawY + h * 0.01), width: w * 0.17, height: h * 0.12),
+      fillAccent..color = accent.withOpacity(accentOp * 0.55),
+    );
+
+    // Cross / plus medical symbol
+    final cx = w * 0.20;
+    final cy = h * 0.78 + sway * 0.2;
+    final cr = w * 0.055;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: cr * 2.2, height: cr * 0.7), const Radius.circular(2)),
+      fillPrimary..color = primary.withOpacity(baseOp * 0.70),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: cr * 0.7, height: cr * 2.2), const Radius.circular(2)),
+      fillPrimary..color = primary.withOpacity(baseOp * 0.70),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_VetIllustrationPainter o) => o.phase != phase || o.isDark != isDark;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Tag extends StatelessWidget {
+  final String text;
+  final Color bg;
+  final Color fg;
+  final IconData? icon;
+  const _Tag(this.text, {required this.bg, required this.fg, this.icon});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: EdgeInsets.symmetric(horizontal: icon != null ? 7 : 9, vertical: 4),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      if (icon != null) ...[Icon(icon, size: 7.5, color: fg), const SizedBox(width: 4)],
+      Text(text, style: TextStyle(
+        fontSize: 7, fontWeight: FontWeight.w600,
+        letterSpacing: 1.8, color: fg,
+      )),
+    ]),
+  );
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  final Color primary;
+  final Color textSec;
+  const _SectionLabel(this.text, {required this.primary, required this.textSec});
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+    Container(width: 20, height: 1, color: primary),
+    const SizedBox(width: 8),
+    Text(text, style: TextStyle(
+      fontSize: 7, fontWeight: FontWeight.w500,
+      letterSpacing: 2.8, color: textSec.withOpacity(0.50),
+    )),
+    const SizedBox(width: 8),
+    Expanded(child: Container(height: 1, color: textSec.withOpacity(0.08))),
+  ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STAT CHIP
+// ─────────────────────────────────────────────────────────────────────────────
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color primary;
+  final Color accent;
+  final Color surface;
+  final Color textPri;
+  final Color textSec;
+  final bool isDark;
+
+  const _StatChip({
+    required this.label, required this.value, required this.icon,
+    required this.primary, required this.accent, required this.surface,
+    required this.textPri, required this.textSec, required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    decoration: BoxDecoration(
+      color: surface,
+      boxShadow: [BoxShadow(
+        color: isDark ? Colors.black.withOpacity(0.22) : primary.withOpacity(0.06),
+        blurRadius: 16, offset: const Offset(0, 5), spreadRadius: -2,
+      )],
+    ),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(
+          color: accent.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Icon(icon, color: accent, size: 13),
+      ),
+      const SizedBox(height: 10),
+      Text(value, style: TextStyle(
+        fontSize: 26, fontWeight: FontWeight.w700,
+        color: textPri, letterSpacing: -1.5, height: 1.0,
+      )),
+      const SizedBox(height: 4),
+      Text(label, style: TextStyle(
+        fontSize: 8.5, fontWeight: FontWeight.w300,
+        color: textSec.withOpacity(0.60), letterSpacing: 0.3,
+      )),
+    ]),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REQUEST ROW ITEM — minimaliste editorial
+// ─────────────────────────────────────────────────────────────────────────────
+class _RequestRow extends StatelessWidget {
+  final dynamic request;
+  final VoidCallback onTap;
+  final Color primary;
+  final Color accent;
+  final Color surface;
+  final Color textPri;
+  final Color textSec;
+  final bool isDark;
+
+  const _RequestRow({
+    required this.request, required this.onTap,
+    required this.primary, required this.accent, required this.surface,
+    required this.textPri, required this.textSec, required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final farmer = request['farmer'] as Map<String, dynamic>?;
+    final farm   = request['farm']   as Map<String, dynamic>?;
+    final reason = request['authorization_reason'] as String? ?? '';
+    final farmerName = farmer?['name'] as String? ?? 'Agriculteur';
+    final farmName   = farm?['name']   as String? ?? 'Bétail / Ferme';
+
+    return GestureDetector(
+      onTap: () { HapticFeedback.lightImpact(); onTap(); },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: surface,
+          boxShadow: [BoxShadow(
+            color: isDark ? Colors.black.withOpacity(0.18) : Colors.black.withOpacity(0.04),
+            blurRadius: 12, offset: const Offset(0, 3), spreadRadius: -2,
+          )],
+        ),
+        child: IntrinsicHeight(
+          child: Row(children: [
+            // Accent bar
+            Container(
+              width: 2.5,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [accent.withOpacity(0.9), primary.withOpacity(0.25)],
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12), bottomLeft: Radius.circular(12),
+                ),
+              ),
+            ),
+            // Avatar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.person_outline_rounded, color: accent, size: 20),
+              ),
+            ),
+            // Text
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(farmerName, style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w500,
+                    color: textPri, letterSpacing: -0.2,
+                  )),
+                  const SizedBox(height: 3),
+                  Text(farmName, style: TextStyle(
+                    fontSize: 10.5, fontWeight: FontWeight.w300,
+                    color: primary.withOpacity(0.65),
+                  )),
+                  if (reason.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(reason, style: TextStyle(
+                      fontSize: 10, color: textSec.withOpacity(0.55),
+                      fontWeight: FontWeight.w300,
+                    ), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ],
+                ]),
+              ),
+            ),
+            // Badge + chevron
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 14, 14, 14),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF9800).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text('EN ATTENTE', style: TextStyle(
+                      fontSize: 6.5, fontWeight: FontWeight.w700,
+                      letterSpacing: 1.4, color: const Color(0xFFFF9800),
+                    )),
+                  ),
+                  const SizedBox(height: 6),
+                  Icon(Icons.chevron_right_rounded,
+                      color: primary.withOpacity(0.30), size: 16),
+                ],
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTHORIZATION CARD — visuelle et élégante
+// ─────────────────────────────────────────────────────────────────────────────
+class _AuthCard extends StatefulWidget {
+  final dynamic authorization;
+  final Color primary;
+  final Color accent;
+  final Color surface;
+  final Color textPri;
+  final Color textSec;
+  final bool isDark;
+
+  const _AuthCard({
+    required this.authorization, required this.primary, required this.accent,
+    required this.surface, required this.textPri, required this.textSec,
+    required this.isDark,
+  });
+
+  @override
+  State<_AuthCard> createState() => _AuthCardState();
+}
+
+class _AuthCardState extends State<_AuthCard> {
+  List<dynamic> _livestocks = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final farmId   = widget.authorization['farm_id'] as int?;
+    final farmer   = widget.authorization['farmer'] as Map<String, dynamic>?;
+    final farmerId = farmer?['id'] as int?;
+    if ((farmId == null || farmId == 0) && farmerId != null) {
+      try {
+        final ls = await ApiService.getUserLivestock(farmerId);
+        if (mounted) setState(() { _livestocks = ls; _isLoading = false; });
+      } catch (_) { if (mounted) setState(() => _isLoading = false); }
+    } else {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final farm  = widget.authorization['farm'] as Map<String, dynamic>?;
+    final farmId = widget.authorization['farm_id'] as int?;
+    final isFarm = farmId != null && farmId > 0;
+
+    final photos = isFarm ? ((farm?['photos'] as List?) ?? []) : [];
+    final String? photoUrl = isFarm && photos.isNotEmpty
+        ? photos[0]['image_url'] as String?
+        : (!isFarm && _livestocks.isNotEmpty ? _livestocks[0]['image_url'] as String? : null);
+
+    final String title = isFarm
+        ? (farm?['name'] ?? 'Ferme sans nom')
+        : (!isFarm && _livestocks.isNotEmpty
+            ? '${_livestocks[0]['animal_type']} — ${_livestocks[0]['breed'] ?? 'Race'}'
+            : 'Autorisation');
+    final dynamic detailId = isFarm ? farmId : (!isFarm && _livestocks.isNotEmpty ? _livestocks[0]['id'] : null);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: widget.surface,
+        boxShadow: [BoxShadow(
+          color: widget.isDark ? Colors.black.withOpacity(0.22) : Colors.black.withOpacity(0.04),
+          blurRadius: 18, offset: const Offset(0, 5), spreadRadius: -3,
+        )],
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Top accent line
+        Container(
+          height: 2,
+          decoration: BoxDecoration(gradient: LinearGradient(colors: [
+            Colors.green.withOpacity(0.7),
+            widget.accent.withOpacity(0.30),
+            Colors.transparent,
+          ])),
+        ),
+        // Image
+        SizedBox(
+          height: 160,
+          width: double.infinity,
+          child: _isLoading
+              ? Container(
+                  color: widget.primary.withOpacity(0.04),
+                  child: Center(child: SizedBox(
+                    width: 24, height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 1.5,
+                        valueColor: AlwaysStoppedAnimation(widget.accent)),
+                  )),
+                )
+              : photoUrl != null
+                  ? Image.network(photoUrl, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _placeholder(isFarm))
+                  : _placeholder(isFarm),
+        ),
+        // Info row
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w600,
+                color: widget.textPri, letterSpacing: -0.3,
+              ), maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 3),
+              Text(isFarm ? 'Ferme' : 'Bétail', style: TextStyle(
+                fontSize: 9, fontWeight: FontWeight.w300,
+                color: widget.textSec.withOpacity(0.50), letterSpacing: 0.5,
+              )),
+            ])),
+            // Accepted badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.green.withOpacity(0.20)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 10),
+                const SizedBox(width: 4),
+                Text('ACCEPTÉE', style: TextStyle(
+                  fontSize: 6.5, fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4, color: Colors.green.withOpacity(0.85),
+                )),
+              ]),
+            ),
+          ]),
+        ),
+        // View button
+        if (detailId != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                if (isFarm) {
+                  Navigator.pushNamed(context, '/farm-detail', arguments: detailId);
+                } else {
+                  Navigator.pushNamed(context, '/livestock-detail', arguments: detailId);
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                decoration: BoxDecoration(
+                  color: widget.primary.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Text('Voir le détail', style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w400,
+                    color: widget.primary, letterSpacing: 0.8,
+                  )),
+                  const SizedBox(width: 6),
+                  Icon(Icons.arrow_forward_rounded, size: 13, color: widget.primary.withOpacity(0.60)),
+                ]),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  Widget _placeholder(bool isFarm) => Container(
+    color: widget.primary.withOpacity(0.05),
+    child: Icon(
+      isFarm ? Icons.agriculture_rounded : Icons.pets_rounded,
+      color: widget.primary.withOpacity(0.22),
+      size: 48,
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMPTY STATE
+// ─────────────────────────────────────────────────────────────────────────────
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color primary;
+  final Color accent;
+  final Color textPri;
+  final Color textSec;
+
+  const _EmptyState({
+    required this.icon, required this.title, required this.subtitle,
+    required this.primary, required this.accent, required this.textPri, required this.textSec,
+  });
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: accent.withOpacity(0.07),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: accent.withOpacity(0.45), size: 28),
+      ),
+      const SizedBox(height: 14),
+      Text(title, style: TextStyle(
+        fontSize: 14, fontWeight: FontWeight.w500,
+        color: textPri.withOpacity(0.70), letterSpacing: -0.3,
+      )),
+      const SizedBox(height: 5),
+      Text(subtitle, style: TextStyle(
+        fontSize: 11, fontWeight: FontWeight.w300,
+        color: textSec.withOpacity(0.45),
+      ), textAlign: TextAlign.center),
+    ]),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
 class VeterinarianDashboardScreen extends StatefulWidget {
   const VeterinarianDashboardScreen({super.key});
 
@@ -14,86 +655,95 @@ class VeterinarianDashboardScreen extends StatefulWidget {
 }
 
 class _VeterinarianDashboardScreenState
-    extends State<VeterinarianDashboardScreen> {
+    extends State<VeterinarianDashboardScreen> with TickerProviderStateMixin {
+
   bool _isLoading = true;
   VeterinarianProfile? _profile;
-  List<dynamic> _availableRequests = [];
+  List<dynamic> _availableRequests     = [];
   List<dynamic> _acceptedAuthorizations = [];
+
+  // Vet color palette — teal/emerald — distinct from agri orange
+  static const Color _vetPrimary = Color(0xFF00695C);
+  static const Color _vetAccent  = Color(0xFF80CBC4);
+  static const Color _vetDark    = Color(0xFF004D40);
+
+  late AnimationController _waveCtrl;
+  late AnimationController _grainCtrl;
+  late AnimationController _entryCtrl;
+  List<Animation<double>>? _fade;
+  List<Animation<Offset>>?  _slide;
+
+  int _selectedTab = 0;
 
   @override
   void initState() {
     super.initState();
+    _waveCtrl  = AnimationController(vsync: this, duration: const Duration(seconds: 9))..repeat(reverse: true);
+    _grainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 120))..repeat();
+    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
+
+    _fade  = List.generate(6, (i) => Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _entryCtrl, curve: Interval(i * 0.08, min(i * 0.08 + 0.45, 1.0), curve: Curves.easeOut)),
+    ));
+    _slide = List.generate(6, (i) => Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(
+      CurvedAnimation(parent: _entryCtrl, curve: Interval(i * 0.08, min(i * 0.08 + 0.45, 1.0), curve: Curves.easeOutCubic)),
+    ));
+
     _loadDashboard();
+  }
+
+  @override
+  void dispose() {
+    _waveCtrl.dispose();
+    _grainCtrl.dispose();
+    _entryCtrl.dispose();
+    super.dispose();
+  }
+
+  Widget _s(int i, Widget child) {
+    final f = _fade; final s = _slide;
+    if (f == null || s == null) return child;
+    return FadeTransition(opacity: f[i], child: SlideTransition(position: s[i], child: child));
   }
 
   Future<void> _loadDashboard() async {
     setState(() => _isLoading = true);
-
     try {
-      // Charger le profil vétérinaire
-      debugPrint('Chargement du profil vétérinaire...');
       final profile = await ApiService.getVeterinarianProfile();
-      
-      // Si pas de profil (404), rediriger vers setup
       if (profile == null) {
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/veterinarian-setup');
-        }
+        if (mounted) Navigator.of(context).pushReplacementNamed('/veterinarian-setup');
         return;
       }
-      
       setState(() => _profile = profile);
-
-      // Charger les demandes d'autorisation en attente
-      debugPrint('Chargement des demandes d\'autorisation...');
       try {
-        final requests = await ApiService.getPendingAuthorizations();
-        debugPrint('Demandes reçues: ${requests.length} items');
-        debugPrint('Type requests: ${requests.runtimeType}');
-        if (requests.isNotEmpty) {
-          debugPrint('Premier item type: ${requests[0].runtimeType}');
-          debugPrint('Premier item: ${requests[0]}');
-        }
-        setState(() => _availableRequests = requests);
-      } catch (e) {
-        debugPrint('Erreur lors du chargement des demandes: $e');
-        setState(() => _availableRequests = []);
-      }
+        final req = await ApiService.getPendingAuthorizations();
+        if (mounted) setState(() => _availableRequests = req);
+      } catch (_) { if (mounted) setState(() => _availableRequests = []); }
 
-      // Charger les autorisations acceptées
-      debugPrint('Chargement des autorisations acceptées...');
       try {
-        final accepted = await ApiService.getAcceptedAuthorizations();
-        debugPrint('Autorisations acceptées reçues: ${accepted.length} items');
-        setState(() => _acceptedAuthorizations = accepted);
-      } catch (e) {
-        debugPrint('Erreur lors du chargement des autorisations acceptées: $e');
-        setState(() => _acceptedAuthorizations = []);
-      }
+        final acc = await ApiService.getAcceptedAuthorizations();
+        if (mounted) setState(() => _acceptedAuthorizations = acc);
+      } catch (_) { if (mounted) setState(() => _acceptedAuthorizations = []); }
+
     } catch (e) {
-      // Si 404, rediriger vers setup
-      if (e.toString().contains('404') || e.toString().contains('Erreur: 404')) {
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/veterinarian-setup');
-        }
+      if (e.toString().contains('404')) {
+        if (mounted) Navigator.of(context).pushReplacementNamed('/veterinarian-setup');
         return;
       }
-      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _entryCtrl.forward(from: 0);
+      }
     }
   }
 
@@ -104,1102 +754,465 @@ class _VeterinarianDashboardScreenState
       backgroundColor: Colors.transparent,
       builder: (context) => _RequestDetailsSheet(
         request: request,
-        farmerId: (request['farmer'] as Map<String, dynamic>?)?['id'] as int?,
         onAuthorizationUpdated: _loadDashboard,
+        primary: _vetPrimary,
+        accent: _vetAccent,
       ),
     );
   }
 
-  void _navigateToSetup() {
-    Navigator.of(context).pushNamed('/veterinarian-setup');
-  }
-
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final theme  = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
+    final bg      = isDark ? const Color(0xFF060E0D) : const Color(0xFFF4FAF9);
+    final surface = isDark ? const Color(0xFF0D1A18) : Colors.white;
+    final textPri = isDark ? const Color(0xFFE0F2F1) : const Color(0xFF0D2420);
+    final textSec = isDark ? const Color(0xFF80CBC4) : const Color(0xFF4A7A73);
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: bg,
+        body: SkeletonPageLoader(isDarkMode: isDark, includeAppBar: true, cardCount: 4),
+      );
+    }
+
+    if (_profile == null) {
+      return _SetupProfileView(
+        onCreateProfile: () => Navigator.of(context).pushNamed('/veterinarian-setup'),
+        primary: _vetPrimary, accent: _vetAccent, isDark: isDark,
+        textPri: textPri, textSec: textSec,
+      );
+    }
+
     return Scaffold(
-      backgroundColor: AppColors.getBgColor(isDark),
-      body: _isLoading
-          ? SkeletonPageLoader(
-              isDarkMode: isDark,
-              includeAppBar: true,
-              cardCount: 4,
-            )
-          : _profile == null
-              ? _SetupProfileView(onCreateProfile: _navigateToSetup)
-              : _DashboardView(
-                  profile: _profile!,
-                  availableRequests: _availableRequests,
-                  acceptedAuthorizations: _acceptedAuthorizations,
-                  onRefresh: _loadDashboard,
-                  onEditProfile: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const EditVeterinarianProfileScreen(),
-                      ),
-                    ).then((_) => _loadDashboard());
-                  },
-                  onRequestTap: _openRequestDetails,
-                ),
-    );
-  }
-}
-
-// ============================
-// VUE PRINCIPALE DU TABLEAU DE BORD
-// ============================
-
-class _DashboardView extends StatefulWidget {
-  final VeterinarianProfile profile;
-  final List<dynamic> availableRequests;
-  final List<dynamic> acceptedAuthorizations;
-  final VoidCallback onRefresh;
-  final VoidCallback onEditProfile;
-  final Function(dynamic) onRequestTap;
-
-  const _DashboardView({
-    required this.profile,
-    required this.availableRequests,
-    required this.acceptedAuthorizations,
-    required this.onRefresh,
-    required this.onEditProfile,
-    required this.onRequestTap,
-  });
-
-  @override
-  State<_DashboardView> createState() => _DashboardViewState();
-}
-
-class _DashboardViewState extends State<_DashboardView>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    
-    return CustomScrollView(
-      slivers: [
-        // App Bar
-        SliverAppBar(
-          expandedHeight: 0,
-          floating: true,
-          pinned: true,
-          elevation: 0,
-          backgroundColor: AppColors.getBgColor(isDark),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: widget.onRefresh,
+      backgroundColor: bg,
+      body: RefreshIndicator(
+        onRefresh: _loadDashboard,
+        color: _vetPrimary,
+        backgroundColor: surface,
+        displacement: 36,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          slivers: [
+            // Hero Header
+            SliverToBoxAdapter(
+              child: _s(0, _hero(isDark, bg, textPri, textSec)),
             ),
+
+            // Stats row
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: _s(1, _statsRow(isDark, surface, textPri, textSec)),
+              ),
+            ),
+
+            // Tab selector
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: _s(2, _tabSelector(isDark, surface, textSec)),
+              ),
+            ),
+
+            // Tab content
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: _s(3, _tabContent(isDark, surface, textPri, textSec)),
+              ),
+            ),
+
+            const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
           ],
         ),
+      ),
+    );
+  }
 
-        // Contenu avec background cohérent
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Container(
-            color: AppColors.getBgColor(isDark),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                // Header du profil
-                _ProfileHeader(
-                  profile: widget.profile,
-                  onEditProfile: widget.onEditProfile,
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // Stats
-                _StatsRow(profile: widget.profile),
-                
-                const SizedBox(height: 32),
-                
-                // Tabs
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: theme.dividerColor,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    labelColor: theme.colorScheme.primary,
-                    unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.5),
-                    indicatorColor: theme.colorScheme.primary,
-                    tabs: const [
-                      Tab(text: 'Demandes'),
-                      Tab(text: 'Autorisations'),
-                      Tab(text: 'Consultations'),
-                    ],
-                  ),
-                ),
-                
-                // Contenu des tabs
-                SizedBox(
-                  height: 400, // Hauteur fixe pour éviter les overflow
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _RequestsTab(
-                        requests: widget.availableRequests,
-                        onTap: widget.onRequestTap,
-                      ),
-                      _AuthorizationsTab(
-                        authorizations: widget.acceptedAuthorizations,
-                      ),
-                      const _ConsultationsTab(),
-                    ],
-                  ),
-                ),
-              ],
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HERO
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _hero(bool isDark, Color bg, Color textPri, Color textSec) {
+    return SizedBox(
+      height: 230,
+      child: Stack(clipBehavior: Clip.hardEdge, children: [
+        // Background gradient
+        Positioned.fill(
+          child: Container(decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [const Color(0xFF0A1A18), const Color(0xFF051210)]
+                  : [const Color(0xFFE8F5F3), const Color(0xFFD0EDEA)],
             ),
+          )),
+        ),
+        // Grain
+        Positioned.fill(child: AnimatedBuilder(
+          animation: _grainCtrl,
+          builder: (_, __) => CustomPaint(
+            painter: _VetGrainPainter(seed: _grainCtrl.value, color: _vetPrimary),
           ),
         )),
-      ],
-    );
-  }
-}
-
-// ============================
-// HEADER DU PROFIL
-// ============================
-
-class _ProfileHeader extends StatelessWidget {
-  final VeterinarianProfile profile;
-  final VoidCallback onEditProfile;
-
-  const _ProfileHeader({
-    required this.profile,
-    required this.onEditProfile,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.specialty,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
+        // Rings
+        const Positioned(top: -40, right: -50, child: SizedBox(
+          width: 280, height: 280,
+          child: CustomPaint(painter: _VetRingsPainter(color: _vetPrimary)),
+        )),
+        // Glow
+        Positioned(top: -70, right: -70, child: Container(
+          width: 230, height: 230,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(colors: [
+              _vetAccent.withOpacity(isDark ? 0.16 : 0.11),
+              Colors.transparent,
+            ]),
+          ),
+        )),
+        // Illustration
+        Positioned(right: 10, bottom: 10, top: 10, child: SizedBox(
+          width: 130,
+          child: AnimatedBuilder(
+            animation: _waveCtrl,
+            builder: (_, __) => CustomPaint(painter: _VetIllustrationPainter(
+              primary: _vetPrimary, accent: _vetAccent,
+              isDark: isDark, phase: _waveCtrl.value,
+            )),
+          ),
+        )),
+        // Waves
+        Positioned(bottom: 0, left: 0, right: 0, child: AnimatedBuilder(
+          animation: _waveCtrl,
+          builder: (_, __) => SizedBox(height: 80, child: CustomPaint(
+            painter: _WavePainter(
+              phase: _waveCtrl.value * 2 * pi,
+              color: _vetPrimary.withOpacity(isDark ? 0.20 : 0.11),
+              yOffset: 0.48,
+            ),
+            size: Size(MediaQuery.of(context).size.width, 80),
+          )),
+        )),
+        Positioned(bottom: 0, left: 0, right: 0, child: AnimatedBuilder(
+          animation: _waveCtrl,
+          builder: (_, __) => SizedBox(height: 80, child: CustomPaint(
+            painter: _WavePainter(
+              phase: _waveCtrl.value * 2 * pi + 1.6,
+              color: _vetPrimary.withOpacity(isDark ? 0.10 : 0.06),
+              yOffset: 0.66,
+            ),
+            size: Size(MediaQuery.of(context).size.width, 80),
+          )),
+        )),
+        // Content
+        Padding(
+          padding: EdgeInsets.fromLTRB(22, MediaQuery.of(context).padding.top + 14, 22, 36),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _Tag('VÉTÉRINAIRE',
+                bg: _vetPrimary.withOpacity(0.12),
+                fg: _vetPrimary.withOpacity(0.85),
+                icon: Icons.medical_services_outlined,
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const EditVeterinarianProfileScreen(),
+                  )).then((_) => _loadDashboard());
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _vetPrimary.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 16,
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      profile.zone,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            // Badge de statut
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _getStatusColor(profile.verificationStatus),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _getStatusLabel(profile.verificationStatus),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: OutlinedButton(
-            onPressed: onEditProfile,
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              side: BorderSide(
-                color: theme.colorScheme.onSurface.withOpacity(0.2),
-              ),
-            ),
-            child: const Text('Éditer le profil'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Color _getStatusColor(String? status) {
-    switch (status) {
-      case 'verified':
-        return Colors.green;
-      case 'pending':
-        return Colors.orange;
-      case 'rejected':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  String _getStatusLabel(String? status) {
-    switch (status) {
-      case 'verified':
-        return '✓ Vérifié';
-      case 'pending':
-        return '⏳ En attente';
-      case 'rejected':
-        return '✗ Rejeté';
-      default:
-        return 'Inconnu';
-    }
-  }
-}
-
-// ============================
-// STATS EN LIGNE
-// ============================
-
-class _StatsRow extends StatelessWidget {
-  final VeterinarianProfile profile;
-
-  const _StatsRow({required this.profile});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dividerColor = theme.colorScheme.onSurface.withOpacity(0.1);
-    
-    return IntrinsicHeight(
-      child: Row(
-        children: [
-          _StatItem(
-            value: '${profile.consultationCount ?? 0}',
-            label: 'Consultations',
-          ),
-          VerticalDivider(color: dividerColor, thickness: 1, width: 32),
-          _StatItem(
-            value: profile.rating?.toStringAsFixed(1) ?? 'N/A',
-            label: 'Note',
-          ),
-          VerticalDivider(color: dividerColor, thickness: 1, width: 32),
-          _StatItem(
-            value: '${profile.experienceYears} ans',
-            label: 'Expérience',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final String value;
-  final String label;
-
-  const _StatItem({
-    required this.value,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================
-// TAB DES DEMANDES
-// ============================
-
-class _RequestsTab extends StatelessWidget {
-  final List<dynamic> requests;
-  final Function(dynamic) onTap;
-
-  const _RequestsTab({
-    required this.requests,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (requests.isEmpty) {
-      return const _EmptyTabContent(
-        icon: Icons.inbox_outlined,
-        title: 'Aucune demande',
-        subtitle: 'Les nouvelles demandes apparaîtront ici',
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 16),
-      itemCount: requests.length,
-      itemBuilder: (context, index) {
-        final request = requests[index];
-        return _RequestItem(
-          request: request,
-          onTap: () => onTap(request),
-        );
-      },
-    );
-  }
-}
-
-class _RequestItem extends StatelessWidget {
-  final dynamic request;
-  final VoidCallback onTap;
-
-  const _RequestItem({
-    required this.request,
-    required this.onTap,
-  });
-
-  String _extractDiagnosisSummary(String reason) {
-    // Cherche le pattern "À diagnostiquer: ..."
-    final regex = RegExp(r'À diagnostiquer:\s*(.+?)(?:\n|$)', caseSensitive: false);
-    final match = regex.firstMatch(reason);
-    return match?.group(1)?.trim() ?? '';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final farm = request['farm'] as Map<String, dynamic>?;
-    final farmer = request['farmer'] as Map<String, dynamic>?;
-    final livestocks = (farm?['livestocks'] as List?) ?? [];
-    final isFarmAuthorization = farm != null && farm['id'] != null;
-    final isLivestockAuthorization = !isFarmAuthorization && livestocks.isNotEmpty;
-    
-    // Déterminer le titre à afficher
-    String displayTitle;
-    if (isFarmAuthorization) {
-      displayTitle = farm['name'] ?? 'Ferme sans nom';
-    } else if (isLivestockAuthorization && livestocks.isNotEmpty) {
-      final livestock = livestocks[0];
-      displayTitle = '${livestock['animal_type']} - ${livestock['breed'] ?? 'Race'}';
-    } else {
-      displayTitle = 'Autorisation';
-    }
-    
-    final farmerName = farmer?['name'] ?? 'Agriculteur';
-    
-    debugPrint('=== REQUEST ITEM DEBUG ===');
-    debugPrint('Request keys: ${request.keys.toList()}');
-    debugPrint('Farm: $farm');
-    debugPrint('Is farm authorization: $isFarmAuthorization');
-    debugPrint('Is livestock authorization: $isLivestockAuthorization');
-    debugPrint('Display title: $displayTitle');
-    debugPrint('========================');
-    final reason = request['authorization_reason'] ?? 'Pas de raison spécifiée';
-    final createdAt = request['created_at'] ?? '';
-    final diagnosisSummary = _extractDiagnosisSummary(reason);
-    
-    // Get first photo from farm or livestock
-    final photos = (farm?['photos'] as List?) ?? [];
-    dynamic firstPhotoSource;
-    if (photos.isNotEmpty) {
-      firstPhotoSource = photos[0];
-    } else if (isLivestockAuthorization && livestocks.isNotEmpty) {
-      firstPhotoSource = livestocks[0];
-    }
-    final firstPhotoUrl = firstPhotoSource?['image_url'] as String?;
-    
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: theme.dividerColor,
-              width: 1,
-            ),
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Photo thumbnail
-            if (firstPhotoUrl != null)
-              Container(
-                width: 80,
-                height: 80,
-                margin: const EdgeInsets.only(right: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey[200],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    firstPhotoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.image_not_supported, size: 30),
-                    ),
-                  ),
+                  child: Icon(Icons.edit_outlined, color: _vetPrimary, size: 16),
                 ),
               ),
-            // Info column
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          displayTitle,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.orange,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'En attente',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    farmerName,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  // Afficher le résumé diagnostic si disponible
-                  if (diagnosisSummary.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: theme.colorScheme.primary.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.health_and_safety,
-                            size: 14,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              diagnosisSummary,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.primary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time,
-                        size: 12,
-                        color: theme.colorScheme.onSurface.withOpacity(0.4),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatDate(createdAt),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: theme.colorScheme.onSurface.withOpacity(0.4),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        'Détails →',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(String dateStr) {
-    try {
-      final date = DateTime.parse(dateStr);
-      final now = DateTime.now();
-      final diff = now.difference(date);
-      
-      if (diff.inHours < 1) {
-        return 'Il y a ${diff.inMinutes}m';
-      } else if (diff.inHours < 24) {
-        return 'Il y a ${diff.inHours}h';
-      } else if (diff.inDays < 7) {
-        return 'Il y a ${diff.inDays}j';
-      }
-      return dateStr;
-    } catch (e) {
-      return 'Récemment';
-    }
-  }
-
-}
-
-// ============================
-// TAB DES AUTORISATIONS
-// ============================
-
-class _AuthorizationsTab extends StatelessWidget {
-  final List<dynamic> authorizations;
-
-  const _AuthorizationsTab({required this.authorizations});
-
-  @override
-  Widget build(BuildContext context) {
-    if (authorizations.isEmpty) {
-      return const _EmptyTabContent(
-        icon: Icons.lock_outline,
-        title: 'Aucune autorisation',
-        subtitle: 'Les demandes d\'accès apparaîtront ici',
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 16),
-      itemCount: authorizations.length,
-      itemBuilder: (context, index) {
-        final auth = authorizations[index];
-        return _AuthorizationItem(authorization: auth);
-      },
-    );
-  }
-}
-
-// ============================
-// WIDGET D'AUTORISATION ACCEPTÉE
-// ============================
-
-class _AuthorizationItem extends StatefulWidget {
-  final dynamic authorization;
-
-  const _AuthorizationItem({required this.authorization});
-
-  @override
-  State<_AuthorizationItem> createState() => _AuthorizationItemState();
-}
-
-class _AuthorizationItemState extends State<_AuthorizationItem> {
-  List<dynamic> _livestocks = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadLivestocksIfNeeded();
-  }
-
-  Future<void> _loadLivestocksIfNeeded() async {
-    final farmId = widget.authorization['farm_id'] as int?;
-    final farmer = widget.authorization['farmer'] as Map<String, dynamic>?;
-    final farmerId = farmer?['id'] as int?;
-    
-    try {
-      // Si c'est une livestock authorization (farm_id null ou 0) et on a un farmerId
-      if ((farmId == null || farmId == 0) && farmerId != null) {
-        final livestocks = await ApiService.getUserLivestock(farmerId);
-        if (mounted) {
-          setState(() {
-            _livestocks = livestocks;
-            _isLoading = false;
-          });
-          debugPrint('Livestocks chargés pour l\'utilisateur $farmerId: ${livestocks.length}');
-        }
-      } else {
-        // Pour les farm authorizations, pas besoin de charger
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
-    } catch (e) {
-      debugPrint('Erreur lors du chargement des livestocks: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final farm = widget.authorization['farm'] as Map<String, dynamic>?;
-    final farmId = widget.authorization['farm_id'] as int?;
-    
-    // Déterminer le type d'autorisation
-    final isFarmAuthorization = farmId != null && farmId > 0;
-    final isLivestockAuthorization = farmId == null || farmId == 0;
-    
-    // Récupérer les photos et livestocks appropriés selon le type
-    final photos = isFarmAuthorization ? ((farm?['photos'] as List?) ?? []) : [];
-    final livestocks = isLivestockAuthorization ? _livestocks : [];
-    
-    // Déterminer la photo à afficher
-    String? firstPhotoUrl;
-    if (isFarmAuthorization && photos.isNotEmpty) {
-      // Pour une ferme: prendre la photo de la ferme
-      firstPhotoUrl = photos[0]['image_url'] as String?;
-    } else if (isLivestockAuthorization && livestocks.isNotEmpty) {
-      // Pour un animal: prendre la photo de l'animal
-      firstPhotoUrl = livestocks[0]['image_url'] as String?;
-    }
-    
-    // Déterminer le titre et l'ID pour le détail
-    String displayTitle;
-    dynamic detailId;
-    
-    if (isFarmAuthorization) {
-      displayTitle = farm?['name'] ?? 'Ferme sans nom';
-      detailId = farmId;
-    } else if (isLivestockAuthorization && livestocks.isNotEmpty) {
-      final livestock = livestocks[0];
-      displayTitle = '${livestock['animal_type']} - ${livestock['breed'] ?? 'Race'}';
-      detailId = livestock['id'];
-    } else {
-      displayTitle = 'Autorisation';
-      detailId = null;
-    }
-    
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: theme.colorScheme.primary.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primary.withOpacity(0.04),
-              theme.colorScheme.primary.withOpacity(0.02),
-            ],
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image avec loading state
-            Container(
-              padding: const EdgeInsets.all(12),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 200,
-                  child: _isLoading
-                      ? Container(
-                          color: theme.colorScheme.primary.withOpacity(0.05),
-                          child: Center(
-                            child: SizedBox(
-                              width: 40,
-                              height: 40,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  theme.colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                      : firstPhotoUrl != null
-                          ? Image.network(
-                              firstPhotoUrl,
-                              fit: BoxFit.cover,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Container(
-                                  color: theme.colorScheme.primary.withOpacity(0.05),
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      value: loadingProgress.expectedTotalBytes != null
-                                          ? loadingProgress.cumulativeBytesLoaded /
-                                              loadingProgress.expectedTotalBytes!
-                                          : null,
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (_, __, ___) => Container(
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.image_not_supported, size: 40),
-                              ),
-                            )
-                          : Container(
-                              color: theme.colorScheme.primary.withOpacity(0.1),
-                          child: Icon(
-                            isFarmAuthorization ? Icons.agriculture : Icons.pets,
-                            color: theme.colorScheme.primary,
-                            size: 60,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-            
-            // Info
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          displayTitle,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Colors.green.withOpacity(0.3),
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.check_circle, color: Colors.green, size: 12),
-                            SizedBox(width: 4),
-                            Text(
-                              'Acceptée',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.green,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // Bouton voir détail
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: detailId != null
-                          ? () {
-                              if (isFarmAuthorization) {
-                                Navigator.pushNamed(context, '/farm-detail', arguments: detailId);
-                              } else {
-                                Navigator.pushNamed(context, '/livestock-detail', arguments: detailId);
-                              }
-                            }
-                          : null,
-                      icon: const Icon(Icons.arrow_forward, size: 16),
-                      label: const Text('Voir détail'),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================
-// TAB DES CONSULTATIONS
-// ============================
-
-class _ConsultationsTab extends StatelessWidget {
-  const _ConsultationsTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _EmptyTabContent(
-      icon: Icons.video_call_outlined,
-      title: 'Aucune consultation',
-      subtitle: 'Vos consultations actives apparaîtront ici',
-    );
-  }
-}
-
-// ============================
-// CONTENU VIDE DES TABS
-// ============================
-
-class _EmptyTabContent extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _EmptyTabContent({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 64,
-              color: theme.colorScheme.onSurface.withOpacity(0.3),
-            ),
-            const SizedBox(height: 24),
+            ]),
+            const Spacer(),
+            Text('Tableau de bord', style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w300,
+              color: _vetAccent.withOpacity(0.80), letterSpacing: 1.5,
+            )),
+            const SizedBox(height: 4),
             Text(
-              title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
+              _profile?.name ?? 'Dr. Vétérinaire',
               style: TextStyle(
-                fontSize: 15,
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
-                height: 1.4,
+                fontSize: 24, fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFE0F2F1) : const Color(0xFF0D2420),
+                letterSpacing: -1.2, height: 1.1,
               ),
             ),
-          ],
+            if (_profile?.specialty != null && _profile!.specialty!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(_profile!.specialty!, style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w300,
+                color: _vetPrimary.withOpacity(0.70),
+              )),
+            ],
+          ]),
         ),
+      ]),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STATS ROW
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _statsRow(bool isDark, Color surface, Color textPri, Color textSec) {
+    return Row(children: [
+      Expanded(child: _StatChip(
+        label: 'Demandes',
+        value: '${_availableRequests.length}',
+        icon: Icons.inbox_outlined,
+        primary: _vetPrimary, accent: _vetAccent,
+        surface: surface, textPri: textPri, textSec: textSec, isDark: isDark,
+      )),
+      const SizedBox(width: 12),
+      Expanded(child: _StatChip(
+        label: 'Autorisations',
+        value: '${_acceptedAuthorizations.length}',
+        icon: Icons.verified_outlined,
+        primary: _vetPrimary, accent: Colors.green,
+        surface: surface, textPri: textPri, textSec: textSec, isDark: isDark,
+      )),
+      const SizedBox(width: 12),
+      Expanded(child: _StatChip(
+        label: 'Consultations',
+        value: '0',
+        icon: Icons.video_call_outlined,
+        primary: _vetPrimary, accent: const Color(0xFF42A5F5),
+        surface: surface, textPri: textPri, textSec: textSec, isDark: isDark,
+      )),
+    ]);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TAB SELECTOR — custom pill style
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _tabSelector(bool isDark, Color surface, Color textSec) {
+    final tabs = [
+      (label: 'Demandes',    icon: Icons.inbox_outlined),
+      (label: 'Autorisations', icon: Icons.verified_outlined),
+      (label: 'Consultations', icon: Icons.video_call_outlined),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: _vetPrimary.withOpacity(isDark ? 0.08 : 0.06),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: tabs.asMap().entries.map((e) {
+          final sel = e.key == _selectedTab;
+          return Expanded(child: GestureDetector(
+            onTap: () { HapticFeedback.selectionClick(); setState(() => _selectedTab = e.key); },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: sel ? _vetPrimary : Colors.transparent,
+                borderRadius: BorderRadius.circular(9),
+                boxShadow: sel ? [BoxShadow(
+                  color: _vetPrimary.withOpacity(0.22),
+                  blurRadius: 12, offset: const Offset(0, 3),
+                )] : null,
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(e.value.icon, size: 14,
+                    color: sel ? Colors.white : _vetPrimary.withOpacity(0.45)),
+                const SizedBox(height: 3),
+                Text(e.value.label, style: TextStyle(
+                  fontSize: 9, fontWeight: sel ? FontWeight.w600 : FontWeight.w300,
+                  color: sel ? Colors.white : _vetPrimary.withOpacity(0.55),
+                  letterSpacing: 0.3,
+                )),
+              ]),
+            ),
+          ));
+        }).toList(),
       ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TAB CONTENT
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _tabContent(bool isDark, Color surface, Color textPri, Color textSec) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
+              .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+      ),
+      child: KeyedSubtree(
+        key: ValueKey(_selectedTab),
+        child: _selectedTab == 0
+            ? _requestsContent(isDark, surface, textPri, textSec)
+            : _selectedTab == 1
+                ? _authorizationsContent(isDark, surface, textPri, textSec)
+                : _consultationsContent(textPri, textSec),
+      ),
+    );
+  }
+
+  Widget _requestsContent(bool isDark, Color surface, Color textPri, Color textSec) {
+    if (_availableRequests.isEmpty) {
+      return SizedBox(height: 200, child: _EmptyState(
+        icon: Icons.inbox_outlined, title: 'Aucune demande',
+        subtitle: 'Les nouvelles demandes apparaîtront ici',
+        primary: _vetPrimary, accent: _vetAccent, textPri: textPri, textSec: textSec,
+      ));
+    }
+    return Column(children: [
+      _SectionLabel('DEMANDES EN ATTENTE', primary: _vetPrimary, textSec: textSec),
+      const SizedBox(height: 14),
+      ..._availableRequests.map((r) => _RequestRow(
+        request: r, onTap: () => _openRequestDetails(r),
+        primary: _vetPrimary, accent: _vetAccent, surface: surface,
+        textPri: textPri, textSec: textSec, isDark: isDark,
+      )),
+    ]);
+  }
+
+  Widget _authorizationsContent(bool isDark, Color surface, Color textPri, Color textSec) {
+    if (_acceptedAuthorizations.isEmpty) {
+      return SizedBox(height: 200, child: _EmptyState(
+        icon: Icons.verified_outlined, title: 'Aucune autorisation',
+        subtitle: 'Les accès accordés apparaîtront ici',
+        primary: _vetPrimary, accent: _vetAccent, textPri: textPri, textSec: textSec,
+      ));
+    }
+    return Column(children: [
+      _SectionLabel('ACCÈS ACCORDÉS', primary: _vetPrimary, textSec: textSec),
+      const SizedBox(height: 14),
+      ..._acceptedAuthorizations.map((a) => _AuthCard(
+        authorization: a, primary: _vetPrimary, accent: _vetAccent,
+        surface: surface, textPri: textPri, textSec: textSec, isDark: isDark,
+      )),
+    ]);
+  }
+
+  Widget _consultationsContent(Color textPri, Color textSec) {
+    return SizedBox(height: 200, child: _EmptyState(
+      icon: Icons.video_call_outlined, title: 'Aucune consultation',
+      subtitle: 'Vos consultations actives apparaîtront ici',
+      primary: _vetPrimary, accent: _vetAccent, textPri: textPri, textSec: textSec,
+    ));
+  }
 }
 
-// ============================
-// VUE DE CRÉATION DE PROFIL
-// ============================
-
+// ─────────────────────────────────────────────────────────────────────────────
+// SETUP PROFILE VIEW — style Zara
+// ─────────────────────────────────────────────────────────────────────────────
 class _SetupProfileView extends StatelessWidget {
   final VoidCallback onCreateProfile;
+  final Color primary;
+  final Color accent;
+  final bool isDark;
+  final Color textPri;
+  final Color textSec;
 
-  const _SetupProfileView({required this.onCreateProfile});
+  const _SetupProfileView({
+    required this.onCreateProfile, required this.primary, required this.accent,
+    required this.isDark, required this.textPri, required this.textSec,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.person_add_alt_1,
-              size: 64,
-              color: theme.colorScheme.onSurface.withOpacity(0.3),
+    final bg = isDark ? const Color(0xFF060E0D) : const Color(0xFFF4FAF9);
+    return Scaffold(
+      backgroundColor: bg,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(36),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: primary.withOpacity(0.07),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.medical_services_outlined, size: 44, color: primary.withOpacity(0.45)),
             ),
             const SizedBox(height: 32),
-            const Text(
-              'Créez votre profil',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
+            Text('PROFIL VÉTÉRINAIRE', style: TextStyle(
+              fontSize: 8, fontWeight: FontWeight.w600,
+              letterSpacing: 3.0, color: primary.withOpacity(0.50),
+            )),
+            const SizedBox(height: 12),
+            Text('Créez votre profil', style: TextStyle(
+              fontSize: 26, fontWeight: FontWeight.w300,
+              color: textPri, letterSpacing: -1.5, height: 1.1,
+            ), textAlign: TextAlign.center),
+            const SizedBox(height: 14),
             Text(
-              'Configurez votre profil pour commencer à recevoir des demandes',
+              'Configurez votre profil pour commencer à recevoir des demandes de consultation.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
-                height: 1.4,
+                fontSize: 13, color: textSec.withOpacity(0.70),
+                fontWeight: FontWeight.w300, height: 1.6,
               ),
             ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: onCreateProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+            const SizedBox(height: 36),
+            GestureDetector(
+              onTap: onCreateProfile,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: primary,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [BoxShadow(
+                    color: primary.withOpacity(0.28),
+                    blurRadius: 20, offset: const Offset(0, 8),
+                  )],
                 ),
-                child: const Text(
-                  'Créer mon profil',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Text('Créer mon profil', style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w500,
+                    color: Colors.white, letterSpacing: 0.3,
+                  )),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                ]),
               ),
             ),
-          ],
+          ]),
         ),
       ),
     );
   }
 }
 
-// ============================
-// FEUILLE DE DÉTAILS DE LA DEMANDE
-// ============================
-
+// ─────────────────────────────────────────────────────────────────────────────
+// REQUEST DETAILS BOTTOM SHEET — élégant
+// ─────────────────────────────────────────────────────────────────────────────
 class _RequestDetailsSheet extends StatefulWidget {
   final dynamic request;
-  final int? farmerId;
   final VoidCallback? onAuthorizationUpdated;
+  final Color primary;
+  final Color accent;
 
   const _RequestDetailsSheet({
-    required this.request,
-    this.farmerId,
-    this.onAuthorizationUpdated,
+    required this.request, this.onAuthorizationUpdated,
+    required this.primary, required this.accent,
   });
 
   @override
@@ -1213,550 +1226,276 @@ class _RequestDetailsSheetState extends State<_RequestDetailsSheet> {
   @override
   void initState() {
     super.initState();
-    _loadLivestocksIfNeeded();
+    _loadLivestocks();
   }
 
-  Future<void> _loadLivestocksIfNeeded() async {
-    final farmId = widget.request['farm_id'] as int?;
-    final farmer = widget.request['farmer'] as Map<String, dynamic>?;
+  Future<void> _loadLivestocks() async {
+    final farmId   = widget.request['farm_id'] as int?;
+    final farmer   = widget.request['farmer'] as Map<String, dynamic>?;
     final farmerId = farmer?['id'] as int?;
-    
-    // Si c'est une livestock authorization (farm_id null ou 0) et on a un farmerId
     if ((farmId == null || farmId == 0) && farmerId != null) {
       try {
-        final livestocks = await ApiService.getUserLivestock(farmerId);
-        if (mounted) {
-          setState(() => _livestocks = livestocks);
-          debugPrint('Livestocks chargés pour l\'utilisateur $farmerId: ${livestocks.length}');
-        }
-      } catch (e) {
-        debugPrint('Erreur lors du chargement des livestocks: $e');
-      }
+        final ls = await ApiService.getUserLivestock(farmerId);
+        if (mounted) setState(() => _livestocks = ls);
+      } catch (_) {}
     }
   }
 
-  Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'active':
-      case 'sain':
-        return Colors.green;
-      case 'pending':
-      case 'en attente':
-        return Colors.orange;
-      case 'sick':
-      case 'malade':
-        return Colors.red;
-      case 'completed':
-      case 'terminé':
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Future<void> _acceptAuthorization() async {
+  Future<void> _accept() async {
     setState(() => _isLoading = true);
     try {
-      final authId = widget.request['id'] as int?;
-      if (authId == null) throw Exception('ID d\'autorisation manquant');
-
-      await ApiService.acceptAuthorization(authId);
-      
+      final id = widget.request['id'] as int?;
+      if (id == null) throw Exception('ID manquant');
+      await ApiService.acceptAuthorization(id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Autorisation acceptée')),
-        );
-        // Rafraîchir le dashboard parent
+        HapticFeedback.mediumImpact();
         widget.onAuthorizationUpdated?.call();
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    } finally { if (mounted) setState(() => _isLoading = false); }
   }
 
-  Future<void> _rejectAuthorization() async {
+  Future<void> _reject() async {
     setState(() => _isLoading = true);
     try {
-      final authId = widget.request['id'] as int?;
-      if (authId == null) throw Exception('ID d\'autorisation manquant');
-
-      await ApiService.rejectAuthorization(authId);
-      
+      final id = widget.request['id'] as int?;
+      if (id == null) throw Exception('ID manquant');
+      await ApiService.rejectAuthorization(id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Autorisation rejetée')),
-        );
-        // Rafraîchir le dashboard parent
+        HapticFeedback.lightImpact();
         widget.onAuthorizationUpdated?.call();
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    } finally { if (mounted) setState(() => _isLoading = false); }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final farm = widget.request['farm'] as Map<String, dynamic>?;
-    final farmer = widget.request['farmer'] as Map<String, dynamic>?;
-    final farmerId = widget.farmerId ?? farmer?['id'];
-    final farmId = widget.request['farm_id'] as int?;
-    final crops = (farm?['crops'] as List?) ?? [];
-    final photos = (farm?['photos'] as List?) ?? [];
-    
-    // Déterminer le type d'autorisation
-    final isFarmAuthorization = farmId != null && farmId > 0;
-    final isLivestockAuthorization = farmId == null || farmId == 0;
-    
-    final farmName = farm?['name'] ?? 'Ferme sans nom';
+    final theme  = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF0D1A18) : Colors.white;
+    final textPri = isDark ? const Color(0xFFE0F2F1) : const Color(0xFF0D2420);
+    final textSec = isDark ? const Color(0xFF80CBC4) : const Color(0xFF4A7A73);
+
+    final farm    = widget.request['farm']   as Map<String, dynamic>?;
+    final farmer  = widget.request['farmer'] as Map<String, dynamic>?;
+    final farmId  = widget.request['farm_id'] as int?;
+    final isFarm  = farmId != null && farmId > 0;
+    final photos  = (farm?['photos'] as List?) ?? [];
+    final crops   = (farm?['crops']  as List?) ?? [];
+    final reason  = widget.request['authorization_reason'] ?? 'Non spécifiée';
     final farmerName = farmer?['name'] ?? 'Agriculteur';
-    
-    debugPrint('=== DETAILS SHEET DEBUG ===');
-    debugPrint('Request keys: ${widget.request.keys.toList()}');
-    debugPrint('Farm ID: $farmId');
-    debugPrint('Farm: $farm');
-    debugPrint('Farmer: $farmer');
-    debugPrint('Is farm authorization: $isFarmAuthorization');
-    debugPrint('Is livestock authorization: $isLivestockAuthorization');
-    debugPrint('farmerId: $farmerId');
-    debugPrint('Loaded livestocks: ${_livestocks.length}');
-    debugPrint('========================');
-    
-    final reason = widget.request['authorization_reason'] ?? 'Pas de raison spécifiée';
-    
+    final farmName   = farm?['name']   ?? 'Ferme sans nom';
+
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.background,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        color: surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
         child: Padding(
           padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
+            left: 24, right: 24, top: 20,
             bottom: MediaQuery.of(context).viewInsets.bottom + 24,
           ),
           child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.dividerColor,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // Handle
+              Center(child: Container(
+                width: 36, height: 3,
+                decoration: BoxDecoration(
+                  color: widget.primary.withOpacity(0.20),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(height: 24),
-                
-                // Titre
-                const Text(
-                  'Demande d\'autorisation',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // Header agriculteur et ferme/bétail
+              )),
+              const SizedBox(height: 22),
+
+              // Title
+              Row(children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
-                    ),
+                    color: widget.accent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Agriculteur
-                      Text(
-                        'Agriculteur',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        farmerName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      
-                      // Afficher Ferme seulement si c'est une autorisation ferme
-                      if (isFarmAuthorization) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          'Ferme',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.6),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          farmName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (farm?['location'] != null) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                size: 16,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                farm?['location'] ?? '',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ] else if (isLivestockAuthorization && _livestocks.isNotEmpty) ...[
-                        // Afficher le bétail si c'est une autorisation livestock
-                        const SizedBox(height: 16),
-                        Text(
-                          'Bétail',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.6),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${_livestocks[0]['animal_type']} - ${_livestocks[0]['breed'] ?? 'Race'}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Quantité: ${_livestocks[0]['quantity'] ?? 0}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: theme.colorScheme.onSurface.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                  child: Icon(Icons.assignment_outlined, color: widget.accent, size: 18),
                 ),
-                const SizedBox(height: 24),
-                
-                // Agriculteur (detail)
-                _DetailRow(label: 'Agriculteur', value: farmerName),
-                const SizedBox(height: 16),
-                
-                // Ferme ou Bétail
-                if (isFarmAuthorization)
-                  _DetailRow(label: 'Ferme', value: farmName)
-                else if (isLivestockAuthorization && _livestocks.isNotEmpty)
-                  _DetailRow(label: 'Bétail', value: '${_livestocks[0]['animal_type']} - ${_livestocks[0]['breed'] ?? 'Race'}'),
-                if (isFarmAuthorization || (isLivestockAuthorization && _livestocks.isNotEmpty))
-                  const SizedBox(height: 16),
-                
-                // Raison
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Raison de la demande',
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      reason,
-                      style: TextStyle(
-                        fontSize: 15,
-                        height: 1.6,
-                        color: theme.colorScheme.onSurface.withOpacity(0.8),
-                      ),
+                const SizedBox(width: 12),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('DEMANDE D\'AUTORISATION', style: TextStyle(
+                    fontSize: 7, fontWeight: FontWeight.w600,
+                    letterSpacing: 2.2, color: widget.primary.withOpacity(0.50),
+                  )),
+                  const SizedBox(height: 3),
+                  Text('Accès médical', style: TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w500,
+                    color: textPri, letterSpacing: -0.5,
+                  )),
+                ]),
+              ]),
+              const SizedBox(height: 24),
+
+              // Info card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: widget.primary.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: widget.primary.withOpacity(0.10)),
+                ),
+                child: Column(children: [
+                  _InfoRow(label: 'Agriculteur', value: farmerName,
+                      icon: Icons.person_outline, primary: widget.primary, textSec: textSec, textPri: textPri),
+                  if (isFarm) ...[
+                    Divider(height: 20, color: widget.primary.withOpacity(0.08)),
+                    _InfoRow(label: 'Ferme', value: farmName,
+                        icon: Icons.agriculture_outlined, primary: widget.primary, textSec: textSec, textPri: textPri),
+                  ] else if (_livestocks.isNotEmpty) ...[
+                    Divider(height: 20, color: widget.primary.withOpacity(0.08)),
+                    _InfoRow(
+                      label: 'Bétail',
+                      value: '${_livestocks[0]['animal_type']} — ${_livestocks[0]['breed'] ?? 'Race'}',
+                      icon: Icons.pets_outlined,
+                      primary: widget.primary, textSec: textSec, textPri: textPri,
                     ),
                   ],
+                ]),
+              ),
+              const SizedBox(height: 20),
+
+              // Reason
+              Text('RAISON', style: TextStyle(
+                fontSize: 7, fontWeight: FontWeight.w600,
+                letterSpacing: 2.2, color: textSec.withOpacity(0.50),
+              )),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: widget.accent.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 24),
-                
-                // Cultures (afficher seulement si ferme)
-                if (isFarmAuthorization && crops.isNotEmpty) ...[
-                  Text(
-                    'Cultures (${crops.length})',
-                    style: Theme.of(context).textTheme.labelLarge,
+                child: Text(reason, style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w300,
+                  color: textPri, height: 1.6,
+                )),
+              ),
+
+              // Crops
+              if (crops.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text('CULTURES (${crops.length})', style: TextStyle(
+                  fontSize: 7, fontWeight: FontWeight.w600,
+                  letterSpacing: 2.2, color: textSec.withOpacity(0.50),
+                )),
+                const SizedBox(height: 10),
+                ...crops.map((crop) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: widget.primary.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 8),
-                  ...crops.map((crop) {
-                    final cropImageUrl = crop['image_url'];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Photo de la culture si disponible
-                          if (cropImageUrl != null) ...[
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: Image.network(
-                                cropImageUrl,
-                                width: double.infinity,
-                                height: 120,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: double.infinity,
-                                  height: 120,
-                                  color: Colors.grey[300],
-                                  child: const Icon(Icons.image_not_supported),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          Text(
-                            '${crop['crop_name'] ?? 'Culture'} - ${crop['variety'] ?? 'Variété non spécifiée'}',
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(crop['status']).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'Statut: ${crop['status'] ?? 'Non spécifié'}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: _getStatusColor(crop['status']),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  const SizedBox(height: 24),
-                ],
-                
-                // Photos de la ferme
-                if (isFarmAuthorization && photos.isNotEmpty) ...[
-                  Text(
-                    'Photos de la ferme',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: photos.length,
-                      itemBuilder: (context, index) {
-                        final photo = photos[index];
-                        return Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
+                  child: Row(children: [
+                    Icon(Icons.grass_rounded, color: widget.accent, size: 14),
+                    const SizedBox(width: 10),
+                    Text(
+                      '${crop['crop_name'] ?? 'Culture'} — ${crop['variety'] ?? 'Variété'}',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: textPri),
+                    ),
+                  ]),
+                )),
+              ],
+
+              // Photos
+              if (photos.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text('PHOTOS (${photos.length})', style: TextStyle(
+                  fontSize: 7, fontWeight: FontWeight.w600,
+                  letterSpacing: 2.2, color: textSec.withOpacity(0.50),
+                )),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 110,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: photos.length,
+                    itemBuilder: (context, i) => Container(
+                      width: 110, margin: const EdgeInsets.only(right: 8),
+                      clipBehavior: Clip.hardEdge,
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+                      child: Image.network(photos[i]['image_url'] ?? '',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
                             color: Colors.grey[200],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              photo['image_url'] ?? '',
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.image_not_supported),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                            child: const Icon(Icons.image_not_supported, size: 28),
+                          )),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                ],
-                
-                // Animaux
-                if (_livestocks.isNotEmpty) ...[
-                  Text(
-                    'Animaux (${_livestocks.length})',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  ..._livestocks.map((animal) {
-                    final animalImageUrl = animal['image_url'];
-                    final animalId = animal['id'] as int?;
-                    
-                    return GestureDetector(
-                      onTap: animalId != null
-                          ? () => Navigator.pushNamed(
-                                context,
-                                '/livestock-detail',
-                                arguments: animalId,
-                              )
-                          : null,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[300]!),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Photo de l'animal si disponible
-                            if (animalImageUrl != null) ...[
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: Image.network(
-                                  animalImageUrl,
-                                  width: double.infinity,
-                                  height: 120,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    width: double.infinity,
-                                    height: 120,
-                                    color: Colors.grey[300],
-                                    child: const Icon(Icons.image_not_supported),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                            ],
-                            Text(
-                              '${animal['animal_type'] ?? 'Animal'} - ${animal['breed'] ?? 'Race non spécifiée'}',
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Quantité: ${animal['quantity'] ?? 0}',
-                              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Santé: ${animal['health_status'] ?? 'Non spécifiée'}',
-                              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                            ),
-                            if (animal['age_months'] != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Âge: ${animal['age_months']} mois',
-                                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                  const SizedBox(height: 24),
-                ],
-                
-                // Bouton visiter la ferme (seulement si c'est une ferme)
-                if (isFarmAuthorization) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        final farmId = farm?['id'];
-                        if (farmId != null) {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, '/farm-detail', arguments: farmId);
-                        }
-                      },
-                      icon: const Icon(Icons.location_on),
-                      label: const Text('Visiter la ferme'),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                
-                // Boutons
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _isLoading ? null : _rejectAuthorization,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Refuser'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _acceptAuthorization,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: theme.colorScheme.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('Accepter'),
-                      ),
-                    ),
-                  ],
                 ),
               ],
-            ),
+
+              const SizedBox(height: 28),
+
+              // Action buttons
+              Row(children: [
+                Expanded(child: GestureDetector(
+                  onTap: _isLoading ? null : _reject,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withOpacity(0.15)),
+                    ),
+                    child: _isLoading
+                        ? Center(child: SizedBox(width: 18, height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 1.5,
+                                valueColor: AlwaysStoppedAnimation(Colors.red.withOpacity(0.70)))))
+                        : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(Icons.close_rounded, color: Colors.red.withOpacity(0.75), size: 15),
+                            const SizedBox(width: 7),
+                            Text('Refuser', style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500,
+                              color: Colors.red.withOpacity(0.80),
+                            )),
+                          ]),
+                  ),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: GestureDetector(
+                  onTap: _isLoading ? null : _accept,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    decoration: BoxDecoration(
+                      color: widget.primary,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [BoxShadow(
+                        color: widget.primary.withOpacity(0.28),
+                        blurRadius: 16, offset: const Offset(0, 6),
+                      )],
+                    ),
+                    child: _isLoading
+                        ? const Center(child: SizedBox(width: 18, height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 1.5,
+                                valueColor: AlwaysStoppedAnimation(Colors.white))))
+                        : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(Icons.check_rounded, color: Colors.white, size: 15),
+                            SizedBox(width: 7),
+                            Text('Accepter', style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            )),
+                          ]),
+                  ),
+                )),
+              ]),
+            ]),
           ),
         ),
       ),
@@ -1764,27 +1503,35 @@ class _RequestDetailsSheetState extends State<_RequestDetailsSheet> {
   }
 }
 
-class _DetailRow extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// INFO ROW helper
+// ─────────────────────────────────────────────────────────────────────────────
+class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
+  final IconData icon;
+  final Color primary;
+  final Color textSec;
+  final Color textPri;
 
-  const _DetailRow({required this.label, required this.value});
+  const _InfoRow({
+    required this.label, required this.value, required this.icon,
+    required this.primary, required this.textSec, required this.textPri,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Row(children: [
+    Icon(icon, color: primary.withOpacity(0.55), size: 15),
+    const SizedBox(width: 10),
+    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label.toUpperCase(), style: TextStyle(
+        fontSize: 7, fontWeight: FontWeight.w500,
+        letterSpacing: 1.8, color: textSec.withOpacity(0.50),
+      )),
+      const SizedBox(height: 2),
+      Text(value, style: TextStyle(
+        fontSize: 13, fontWeight: FontWeight.w400, color: textPri,
+      )),
+    ]),
+  ]);
 }

@@ -12,6 +12,7 @@
 /// information about a farm. The card includes details such as the farm name, location, image, owner
 /// status, and crop information. It also allows for interactions like editing, deleting, viewing
 /// parcels, and tapping on crop pins for more details.
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 

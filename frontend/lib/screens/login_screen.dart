@@ -116,17 +116,25 @@ class _LoginScreenState extends State<LoginScreen> {
         result = await ApiService.login(phone: identifier, password: password);
       }
 
+      final userRole = result['role'] ?? 'farmer';
+      
       await AuthService.login(
         userId: int.parse(result['id'].toString()),
         email: result['email'] ?? identifier,  // Use phone if email is null
         name: result['name'] ?? 'User',
-        role: result['role'] ?? 'farmer',
+        role: userRole,
         accessToken: result['access_token'],
         refreshToken: result['refresh_token'],
       );
 
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/');
+      
+      // Rediriger vers l'interface appropriée selon le rôle
+      if (userRole == 'admin') {
+        Navigator.of(context).pushReplacementNamed('/admin-dashboard');
+      } else {
+        Navigator.of(context).pushReplacementNamed('/');
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -307,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       subtleColor: subtleColor,
                       keyboardType: _isPhoneMode ? TextInputType.phone : TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      hint: _isPhoneMode ? 'Ex: +223 XX XX XX XX' : 'Ex: vous@exemple.com',
+                      hint: _isPhoneMode ? 'Ex: +221 XX XX XX XX' : 'Ex: vous@exemple.com',
                       onSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
                     ),
 

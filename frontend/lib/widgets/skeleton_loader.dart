@@ -234,7 +234,7 @@ class SimplePageLoader extends StatelessWidget {
     
     return Container(
       color: bgColor,
-      child: Center(
+      child: const Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(
             AppColors.primary,

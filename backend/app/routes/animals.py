@@ -8,6 +8,7 @@ from sqlalchemy import and_, or_, desc
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 from app.database import get_db
+from app.routes.auth import get_current_user
 from app.models.animal import (
     Animal, AnimalHealthRecord, AnimalReproduction, 
     AnimalProduction, AnimalCareReminder
@@ -190,7 +191,7 @@ def add_health_record(
 @router.get("/{animal_id}/health-records", response_model=List[AnimalHealthRecordResponse])
 def get_health_records(
     animal_id: int,
-    user_id: int,
+    user_id: int = Depends(get_current_user),
     record_type: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
@@ -538,7 +539,7 @@ def delete_care_reminder(
 @router.get("/{animal_id}/health-summary", response_model=AnimalHealthSummary)
 def get_health_summary(
     animal_id: int,
-    user_id: int,
+    user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get a health status summary for an animal."""

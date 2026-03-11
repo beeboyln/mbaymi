@@ -214,9 +214,9 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       color: Colors.red.shade700,
-                      child: Center(
+                      child: const Center(
                           child: Text('SUPPRIMER',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 10,
                                   letterSpacing: 2,
                                   color: Colors.white))),
@@ -292,9 +292,9 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       color: Colors.red.shade700,
-                      child: Center(
+                      child: const Center(
                           child: Text('SUPPRIMER',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 10,
                                   letterSpacing: 2,
                                   color: Colors.white))),
@@ -731,8 +731,8 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
                                   size: 32)))),
                 ),
                 const SizedBox(height: 20),
-                Text('APPUYER POUR FERMER',
-                    style: const TextStyle(
+                const Text('APPUYER POUR FERMER',
+                    style: TextStyle(
                         fontSize: 8,
                         letterSpacing: 2,
                         color: Colors.white24)),
@@ -747,13 +747,13 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   // ── Livestock list ────────────────────────────────────────────────────────
   Widget _livestockList(List<dynamic> animals, bool dark) {
     return Column(children: [
-      Padding(
-        padding: const EdgeInsets.only(bottom: 16, top: 4),
+      const Padding(
+        padding: EdgeInsets.only(bottom: 16, top: 4),
         child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
           StatusDot(color: Colors.green, label: 'SAIN'),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           StatusDot(color: Colors.amber, label: 'ATTENTION'),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           StatusDot(color: Colors.red, label: 'CRITIQUE'),
         ]),
       ),
@@ -767,14 +767,14 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 20),
             color: Colors.red.shade700,
-            child: Column(
+            child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.delete_outline,
+                  Icon(Icons.delete_outline,
                       color: Colors.white, size: 20),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text('SUPPRIMER',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 9, letterSpacing: 1.5, color: Colors.white)),
                 ]),
           ),

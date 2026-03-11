@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:video_player/video_player.dart';
-import 'package:mbaymi/services/api_service.dart';
 
 class VideoPlayerWidget extends StatefulWidget {
   final String videoUrl;

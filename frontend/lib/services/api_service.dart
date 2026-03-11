@@ -467,6 +467,12 @@ class ApiService {
       }
       final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
 
+      debugPrint('☁️ Uploading to Cloudinary...');
+      debugPrint('   Cloud Name: $cloudName');
+      debugPrint('   Upload Preset: $uploadPreset');
+      debugPrint('   Folder: $folder');
+      debugPrint('   File: ${file.name}');
+      
       final request = http.MultipartRequest('POST', uri);
       request.fields['upload_preset'] = uploadPreset;
       // Put images under configured folder in Cloudinary
@@ -474,19 +480,26 @@ class ApiService {
 
       // Read bytes from the XFile (works on Web and mobile)
       final bytes = await file.readAsBytes();
+      debugPrint('   File size: ${bytes.length} bytes');
+      
       final multipartFile = http.MultipartFile.fromBytes('file', bytes, filename: file.name);
       request.files.add(multipartFile);
 
       final streamed = await request.send();
       final resp = await http.Response.fromStream(streamed);
+      debugPrint('   Response status: ${resp.statusCode}');
+      
       if (resp.statusCode == 200 || resp.statusCode == 201) {
         final data = jsonDecode(resp.body);
+        debugPrint('✅ Cloudinary success: ${data['secure_url']}');
         return data['secure_url'] as String?;
       } else {
         final body = resp.body;
+        debugPrint('❌ Cloudinary error (${resp.statusCode}): $body');
         throw Exception('Cloudinary upload failed: ${resp.statusCode} $body');
       }
     } catch (e) {
+      debugPrint('❌ Image upload exception: $e');
       throw Exception('Image upload error: $e');
     }
   }
@@ -2965,22 +2978,33 @@ class ApiService {
     required String bio,
     required int experienceYears,
     required String contactPreference,
+    String? certificateUrl,
+    String? certificateFilename,
   }) async {
     try {
       final headers = await _getAuthHeaders();
       if (headers['Authorization'] == null) throw Exception('Token manquant');
 
+      final body = {
+        'specialty': specialty,
+        'zone': zone,
+        'distance_max': distanceMax,
+        'bio': bio,
+        'experience_years': experienceYears,
+        'contact_preference': contactPreference,
+      };
+      
+      if (certificateUrl != null && certificateUrl.isNotEmpty) {
+        body['certificate_url'] = certificateUrl;
+      }
+      if (certificateFilename != null && certificateFilename.isNotEmpty) {
+        body['certificate_filename'] = certificateFilename;
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl/veterinarians/profile'),
         headers: headers,
-        body: jsonEncode({
-          'specialty': specialty,
-          'zone': zone,
-          'distance_max': distanceMax,
-          'bio': bio,
-          'experience_years': experienceYears,
-          'contact_preference': contactPreference,
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
@@ -3374,6 +3398,375 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Erreur récupération autorisations acceptées: $e');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 👨‍💼 ADMIN ENDPOINTS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Get pending veterinarian profiles
+  static Future<List<dynamic>> getAdminPendingVeterinarians() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/veterinarians/pending'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération vétérinaires en attente: $e');
+    }
+  }
+
+  /// Get verified veterinarians
+  static Future<List<dynamic>> getAdminVerifiedVeterinarians() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/veterinarians/verified'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération vétérinaires vérifiés: $e');
+    }
+  }
+
+  /// Get rejected veterinarians
+  static Future<List<dynamic>> getAdminRejectedVeterinarians() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/veterinarians/rejected'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération vétérinaires rejetés: $e');
+    }
+  }
+
+  /// Verify a veterinarian
+  static Future<Map<String, dynamic>> adminVerifyVeterinarian(int veterinarianId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl/admin/veterinarians/$veterinarianId/verify'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé');
+      } else if (response.statusCode == 404) {
+        throw Exception('Vétérinaire non trouvé');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur vérification vétérinaire: $e');
+    }
+  }
+
+  /// Reject a veterinarian
+  static Future<Map<String, dynamic>> adminRejectVeterinarian(
+    int veterinarianId, {
+    String? reason,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl/admin/veterinarians/$veterinarianId/reject'),
+        headers: headers,
+        body: jsonEncode({'reason': reason}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé');
+      } else if (response.statusCode == 404) {
+        throw Exception('Vétérinaire non trouvé');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur rejet vétérinaire: $e');
+    }
+  }
+
+  /// Get pending authorizations (admin view)
+  static Future<List<dynamic>> getAdminPendingAuthorizations() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/authorizations/pending'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération demandes en attente: $e');
+    }
+  }
+
+  /// Get active authorizations (admin view)
+  static Future<List<dynamic>> getAdminActiveAuthorizations() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/authorizations/active'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération autorisations actives: $e');
+    }
+  }
+
+  /// Revoke authorization (admin)
+  static Future<Map<String, dynamic>> adminRevokeAuthorization(
+    int authorizationId, {
+    String? reason,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl/admin/authorizations/$authorizationId/revoke'),
+        headers: headers,
+        body: jsonEncode({'reason': reason}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé');
+      } else if (response.statusCode == 404) {
+        throw Exception('Autorisation non trouvée');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur révocation autorisation: $e');
+    }
+  }
+
+  /// Get admin statistics
+  static Future<Map<String, dynamic>> getAdminStatistics() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/statistics'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération statistiques: $e');
+    }
+  }
+
+  // 👥 USER MANAGEMENT (ADMIN)
+
+  /// Get all users (admin view)
+  static Future<List<dynamic>> getAdminAllUsers() async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/users'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération utilisateurs: $e');
+    }
+  }
+
+  /// Create new user (admin)
+  static Future<Map<String, dynamic>> adminCreateUser({
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final body = {
+        'name': name,
+        'email': email,
+        'password': password,
+        'role': role,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/admin/users'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else if (response.statusCode == 409) {
+        throw Exception('Email déjà utilisé');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur création utilisateur: $e');
+    }
+  }
+
+  /// Delete user (admin)
+  static Future<Map<String, dynamic>> adminDeleteUser(int userId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/admin/users/$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else if (response.statusCode == 404) {
+        throw Exception('Utilisateur non trouvé');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur suppression utilisateur: $e');
+    }
+  }
+
+  /// Update user role/permissions (admin)
+  static Future<Map<String, dynamic>> adminUpdateUserRole(
+    int userId, {
+    required String role,
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final body = {'role': role};
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl/admin/users/$userId/role'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else if (response.statusCode == 404) {
+        throw Exception('Utilisateur non trouvé');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur mise à jour rôle: $e');
+    }
+  }
+
+  /// Get user by ID (admin)
+  static Future<Map<String, dynamic>> adminGetUser(int userId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      if (headers['Authorization'] == null) throw Exception('Token manquant');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/users/$userId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 403) {
+        throw Exception('Accès refusé - administrateur requis');
+      } else if (response.statusCode == 404) {
+        throw Exception('Utilisateur non trouvé');
+      } else {
+        throw Exception('Erreur: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erreur récupération utilisateur: $e');
     }
   }
 }

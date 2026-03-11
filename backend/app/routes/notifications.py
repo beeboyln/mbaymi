@@ -53,13 +53,9 @@ def get_unread_count(
     db: Session = Depends(get_db),
 ):
     """Compter les notifications non lues"""
-    if current_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot access other user's notifications",
-        )
-    
-    count = NotificationService.get_unread_count(db, user_id)
+    # ✅ Use the authenticated user's ID, not the URL parameter
+    # This prevents 403 errors from authentication mismatches
+    count = NotificationService.get_unread_count(db, current_user_id)
     return {"unread_count": count}
 
 @router.put("/{user_id}/notifications/read-all")
@@ -69,13 +65,8 @@ def mark_all_notifications_as_read(
     db: Session = Depends(get_db),
 ):
     """Marquer toutes les notifications comme lues"""
-    if current_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot access other user's notifications",
-        )
-    
-    count = NotificationService.mark_all_as_read(db, user_id)
+    # ✅ Use the authenticated user's ID, not the URL parameter
+    count = NotificationService.mark_all_as_read(db, current_user_id)
     return {"message": f"Marked {count} notifications as read", "count": count}
 
 @router.put("/{user_id}/notifications/{notification_id}/read")
@@ -86,13 +77,8 @@ def mark_notification_as_read(
     db: Session = Depends(get_db),
 ):
     """Marquer une notification comme lue"""
-    if current_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot access other user's notifications",
-        )
-    
-    success = NotificationService.mark_as_read(db, notification_id, user_id)
+    # ✅ Use the authenticated user's ID, not the URL parameter
+    success = NotificationService.mark_as_read(db, notification_id, current_user_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -109,13 +95,8 @@ def delete_notification(
     db: Session = Depends(get_db),
 ):
     """Supprimer une notification"""
-    if current_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot access other user's notifications",
-        )
-    
-    success = NotificationService.delete_notification(db, notification_id, user_id)
+    # ✅ Use the authenticated user's ID, not the URL parameter
+    success = NotificationService.delete_notification(db, notification_id, current_user_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -135,15 +116,9 @@ def get_notifications(
     db: Session = Depends(get_db),
 ):
     """Récupérer les notifications d'un utilisateur"""
-    # Vérifier que l'utilisateur ne peut récupérer que ses propres notifications
-    if current_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot access other user's notifications",
-        )
-    
+    # ✅ Use the authenticated user's ID, not the URL parameter
     notifications = NotificationService.get_user_notifications(
-        db, user_id, skip, limit
+        db, current_user_id, skip, limit
     )
     
     return {
