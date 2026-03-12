@@ -832,7 +832,7 @@ class _MarketTabState extends State<MarketTab> {
                 fit: StackFit.expand,
                 children: [
                   _buildProductImage(sale['image_url'], isDark),
-                  if (isMyAd) _buildEditButtons(sale['id'], isDark),
+                  if (isMyAd) _buildEditButtons(sale, isDark),
                 ],
               ),
             ),
@@ -931,7 +931,7 @@ class _MarketTabState extends State<MarketTab> {
     );
   }
 
-  Widget _buildEditButtons(int saleId, bool isDark) {
+  Widget _buildEditButtons(dynamic sale, bool isDark) {
     return Positioned(
       top: 8,
       right: 8,
@@ -943,7 +943,7 @@ class _MarketTabState extends State<MarketTab> {
               final r = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CreateSaleScreen(saleId: saleId),
+                  builder: (_) => CreateSaleScreen(saleId: sale['id'], sale: sale),
                 ),
               );
               if (r == true) _refreshData();
@@ -958,7 +958,7 @@ class _MarketTabState extends State<MarketTab> {
           InkWell(
             onTap: () {
               HapticFeedback.lightImpact();
-              _showDeleteDialog(saleId);
+              _showDeleteDialog(sale['id']);
             },
             child: Container(
               padding: const EdgeInsets.all(6),

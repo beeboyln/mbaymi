@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 from typing import Optional
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ from app.models.farm_post import FarmImagePost, FarmPostLike, FarmPostComment, F
 from app.models.farm import Farm
 from app.models.user import User
 from app.models.user_following import UserFollowing
+from app.models.livestock import Livestock
 from app.schemas.schemas import FarmPostCreate
 from app.services.jwt_service import verify_token
 import logging
@@ -128,91 +129,36 @@ def create_farm_post(farm_post: FarmPostCreate, user_id: int, db: Session = Depe
 @router.get("/feed")
 def get_farm_posts_feed(user_id: int = None, db: Session = Depends(get_db)):
     """Récupérer tous les farm posts pour le feed social"""
-    posts = db.query(FarmImagePost).order_by(desc(FarmImagePost.created_at)).all()
-    
-    result = []
-    for post in posts:
-        farm = db.query(Farm).filter(Farm.id == post.farm_id).first()
-        user = db.query(User).filter(User.id == post.user_id).first()
-        
-        # Get farm or livestock name
-        if farm:
-            farm_name = farm.name
-        elif post.livestock_id:
-            from app.models.livestock import Livestock
-            livestock = db.query(Livestock).filter(Livestock.id == post.livestock_id).first()
-            farm_name = f"{livestock.animal_type.title()} - {livestock.breed or 'Sans race'}" if livestock else "Animal inconnu"
-        else:
-            farm_name = "Ferme inconnue"
-        
-        is_liked = False
-        if user_id and user_id > 0:
-            like = db.query(FarmPostLike).filter(
-                FarmPostLike.farm_post_id == post.id,
-                FarmPostLike.user_id == user_id
-            ).first()
-            is_liked = like is not None
-        
-        result.append({
-            "id": post.id,
-            "farm_id": post.farm_id,
-            "livestock_id": post.livestock_id,
-            "farm_name": farm_name,
-            "owner_name": user.name if user else "Utilisateur",
-            "owner_profile_image": user.profile_image if user else None,
-            "user_id": post.user_id,
-            "image_url": post.image_url,
-            "caption": post.caption,
-            "likes_count": post.likes_count,
-            "comments_count": post.comments_count,
-            "shares_count": post.shares_count,
-            "created_at": post.created_at.isoformat(),
-            "is_liked": is_liked,
-            "post_intent": post.post_intent,
-            "price": post.price,
-            "unit": post.unit,
-        })
-    
-    return result
-
-
-@router.get("/subscriptions-feed/{user_id}")
-def get_subscriptions_feed(user_id: int, db: Session = Depends(get_db)):
-    """Récupérer les posts uniquement des utilisateurs suivis par l'utilisateur"""
     try:
-        # Récupérer les utilisateurs que l'utilisateur suit
-        following = db.query(UserFollowing.following_id).filter(
-            UserFollowing.follower_id == user_id
-        ).all()
-        following_ids = [f[0] for f in following]
-        
-        if not following_ids:
-            return []
-        
-        # Récupérer les posts des utilisateurs suivis
-        posts = db.query(FarmImagePost).filter(
-            FarmImagePost.user_id.in_(following_ids)
-        ).order_by(desc(FarmImagePost.created_at)).all()
+        # Get all posts, ordered by newest first
+        posts = db.query(FarmImagePost)\
+            .order_by(desc(FarmImagePost.created_at))\
+            .all()
         
         result = []
+        # Pre-fetch likes for current user (if any) - single query
+        user_likes = {}
+        if user_id and user_id > 0 and posts:
+            post_ids = [p.id for p in posts]
+            likes = db.query(FarmPostLike.farm_post_id).filter(
+                FarmPostLike.user_id == user_id,
+                FarmPostLike.farm_post_id.in_(post_ids)
+            ).all()
+            user_likes = {like[0]: True for like in likes}
+        
         for post in posts:
-            farm = db.query(Farm).filter(Farm.id == post.farm_id).first()
+            # Load relations for each post
+            farm = db.query(Farm).filter(Farm.id == post.farm_id).first() if post.farm_id else None
             user = db.query(User).filter(User.id == post.user_id).first()
+            livestock = db.query(Livestock).filter(Livestock.id == post.livestock_id).first() if post.livestock_id else None
             
             # Get farm or livestock name
             if farm:
                 farm_name = farm.name
-            elif post.livestock_id:
-                from app.models.livestock import Livestock
-                livestock = db.query(Livestock).filter(Livestock.id == post.livestock_id).first()
-                farm_name = f"{livestock.animal_type.title()} - {livestock.breed or 'Sans race'}" if livestock else "Animal inconnu"
+            elif livestock:
+                farm_name = f"{livestock.animal_type.title() if livestock.animal_type else 'Animal'} - {livestock.breed or 'Sans race'}"
             else:
                 farm_name = "Ferme inconnue"
-            
-            is_liked = db.query(FarmPostLike).filter(
-                FarmPostLike.farm_post_id == post.id,
-                FarmPostLike.user_id == user_id
-            ).first() is not None
             
             result.append({
                 "id": post.id,
@@ -228,7 +174,7 @@ def get_subscriptions_feed(user_id: int, db: Session = Depends(get_db)):
                 "comments_count": post.comments_count,
                 "shares_count": post.shares_count,
                 "created_at": post.created_at.isoformat(),
-                "is_liked": is_liked,
+                "is_liked": user_likes.get(post.id, False),
                 "post_intent": post.post_intent,
                 "price": post.price,
                 "unit": post.unit,
@@ -236,8 +182,78 @@ def get_subscriptions_feed(user_id: int, db: Session = Depends(get_db)):
         
         return result
     except Exception as e:
-        logger.error(f"❌ Error getting subscriptions feed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+        logger.exception(f"❌ Error in get_farm_posts_feed")
+        raise HTTPException(status_code=500, detail=f"Erreur lecture posts: {str(e)}")
+
+
+@router.get("/subscriptions-feed/{user_id}")
+def get_subscriptions_feed(user_id: int, db: Session = Depends(get_db)):
+    """Get posts from users that this user follows"""
+    try:
+        # Get the users this user is following
+        following = db.query(UserFollowing.following_id).filter(
+            UserFollowing.follower_id == user_id
+        ).all()
+        following_ids = [f[0] for f in following]
+        
+        if not following_ids:
+            return []
+        
+        # Get posts from following users
+        posts = db.query(FarmImagePost)\
+            .filter(FarmImagePost.user_id.in_(following_ids))\
+            .order_by(desc(FarmImagePost.created_at))\
+            .all()
+        
+        # Pre-fetch likes for current user - single query
+        user_likes = {}
+        if posts:
+            post_ids = [p.id for p in posts]
+            likes = db.query(FarmPostLike.farm_post_id).filter(
+                FarmPostLike.user_id == user_id,
+                FarmPostLike.farm_post_id.in_(post_ids)
+            ).all()
+            user_likes = {like[0]: True for like in likes}
+        
+        result = []
+        for post in posts:
+            # Load relations for each post
+            farm = db.query(Farm).filter(Farm.id == post.farm_id).first() if post.farm_id else None
+            user = db.query(User).filter(User.id == post.user_id).first()
+            livestock = db.query(Livestock).filter(Livestock.id == post.livestock_id).first() if post.livestock_id else None
+            
+            # Get farm or livestock name
+            if farm:
+                farm_name = farm.name
+            elif livestock:
+                farm_name = f"{livestock.animal_type.title() if livestock.animal_type else 'Animal'} - {livestock.breed or 'Sans race'}"
+            else:
+                farm_name = "Farm Unknown"
+            
+            result.append({
+                "id": post.id,
+                "farm_id": post.farm_id,
+                "livestock_id": post.livestock_id,
+                "farm_name": farm_name,
+                "owner_name": user.name if user else "User",
+                "owner_profile_image": user.profile_image if user else None,
+                "user_id": post.user_id,
+                "image_url": post.image_url,
+                "caption": post.caption,
+                "likes_count": post.likes_count,
+                "comments_count": post.comments_count,
+                "shares_count": post.shares_count,
+                "created_at": post.created_at.isoformat(),
+                "is_liked": user_likes.get(post.id, False),
+                "post_intent": post.post_intent,
+                "price": post.price,
+                "unit": post.unit,
+            })
+        
+        return result
+    except Exception as e:
+        logger.exception(f"❌ Error in get_subscriptions_feed")
+        raise HTTPException(status_code=500, detail=f"Error loading feed: {str(e)}")
 
 
 @router.get("/{farm_id}")

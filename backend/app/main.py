@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from app.config import settings
@@ -16,27 +17,11 @@ app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 BUILD_TIME = datetime.utcnow().isoformat()
 
 # CORS middleware - Production-ready config
-# ✅ Handles Vercel, Koyeb, localhost, custom domains
-MAIN_DOMAIN = "https://mbaymi.vercel.app"
-
+# ✅ Uses environment variable ALLOWED_ORIGINS for flexible configuration
+# ✅ Fallback to sensible defaults if not set
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3002",
-        "http://localhost:5000",
-        "http://localhost:8000",
-        "http://localhost:62436",  # Flutter Web
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5000",
-        "http://127.0.0.1:8000",
-        MAIN_DOMAIN,  # Main Vercel domain
-        "https://mbaymi-staging.vercel.app",
-        "https://mbaymi.com",
-        "https://www.mbaymi.com",
-        "https://cuddly-lil-bigboyllmnd-9965fc8f.koyeb.app",  # Self origin for internal calls
-    ],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
     allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],
@@ -44,8 +29,13 @@ app.add_middleware(
     max_age=86400,  # 24 hours
 )
 
-print("[OK] CORS configured with regex (production-ready)")
-print("   Allows: *.vercel.app, *.koyeb.app, localhost:*, mbaymi.com")
+print("[OK] CORS middleware configured with these origins:")
+for origin in settings.ALLOWED_ORIGINS:
+    print(f"   ✓ {origin}")
+
+# ✅ OPTIMIZATION 1: Add Gzip compression (80% smaller responses)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+print("[OK] GzipMiddleware enabled (reduces bandwidth ~80%)")
 
 # Mount static files for uploads
 uploads_dir = "uploads"

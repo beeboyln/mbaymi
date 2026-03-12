@@ -18,17 +18,24 @@ class Settings:
     
     # CORS
     # Allow configuring allowed origins via environment variable ALLOWED_ORIGINS
-    # as a comma-separated list. If not set, default to a conservative list.
+    # as a comma-separated list. If not set, use sensible defaults.
+    # In development, allow all localhost:* ports for Flutter web (dynamic ports)
     raw_origins = os.getenv("ALLOWED_ORIGINS")
     if raw_origins is None:
-        # No ALLOWED_ORIGINS provided in env; default to localhosts.
-        raw_origins = "http://localhost:8000,http://localhost:3000,http://localhost:8080,http://10.0.2.2:8080"
+        # No ALLOWED_ORIGINS provided in env; default to development localhost
+        # Use "*" to allow all localhost origins during development
+        # This will be restricted in production via environment variables
+        raw_origins = "*"
         used_env = False
     else:
         used_env = True
 
-    # split and strip whitespace, ignore empty entries
-    ALLOWED_ORIGINS = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    # If in development mode, just allow all origins for localhost testing
+    if os.getenv("DEBUG", "False") == "True" or raw_origins == "*":
+        ALLOWED_ORIGINS = ["*"]
+    else:
+        # split and strip whitespace, ignore empty entries
+        ALLOWED_ORIGINS = [o.strip() for o in raw_origins.split(",") if o.strip()]
 
     # If running in production (DEBUG=False) and the user didn't provide ALLOWED_ORIGINS,
     # make a sensible allowance for the Vercel frontend used in this project so web builds

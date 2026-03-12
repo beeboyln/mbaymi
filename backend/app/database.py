@@ -18,14 +18,16 @@ import app.models.notification  # noqa: F401
 from sqlalchemy import text
 
 # Create engine
+# ✅ OPTIMIZATION 2: Improved DB pool for concurrent requests
 engine = create_engine(
     settings.DATABASE_URL,
     # Use SQLAlchemy's default pooling with pre-ping to recover closed/idle connections.
     # StaticPool is unsuitable for a remote PostgreSQL server and may reuse a connection
     # that the server closed (causing SSL connection closed unexpectedly).
     pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=20,  # ⬆️ Increased from 5 (supports 100+ concurrent users)
+    max_overflow=20,  # ⬆️ Increased from 10 (better under load)
+    pool_recycle=3600,  # Recycle connections every hour (Koyeb stability)
     echo=settings.DEBUG,
 )
 

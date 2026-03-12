@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models.farm import Farm, Crop
 from app.models.photo import FarmPhoto
@@ -17,9 +17,7 @@ def get_current_user_farms(
     current_user: User = Depends(get_current_user_obj),
     db: Session = Depends(get_db)
 ):
-    """Get all farms for the authenticated user with their livestock"""
-    farms = db.query(Farm).filter(Farm.user_id == current_user.id).all()
-    
+    """✅ OPTIMIZED: Get all farms for the authenticated user with their livestock (N+1 fixed)"""
     # Also get user's livestock
     livestocks = db.query(Livestock).filter(Livestock.user_id == current_user.id).all()
     livestock_list = [
@@ -43,10 +41,17 @@ def get_current_user_farms(
         for l in livestocks
     ]
     
+    # ✅ OPTIMIZATION: Load farms with photos and crops in ONE query instead of N+1
+    farms = db.query(Farm)\
+        .filter(Farm.user_id == current_user.id)\
+        .options(
+            joinedload(Farm.photos),
+            joinedload(Farm.crops)
+        )\
+        .all()
+    
     result = []
     for f in farms:
-        photos = db.query(FarmPhoto).filter(FarmPhoto.farm_id == f.id).all()
-        crops = db.query(Crop).filter(Crop.farm_id == f.id).all()
         d = {
             'id': f.id,
             'user_id': f.user_id,
@@ -59,7 +64,7 @@ def get_current_user_farms(
             'longitude': f.longitude,
             'created_at': f.created_at,
             'updated_at': f.updated_at,
-            'photos': [{'id': p.id, 'image_url': p.image_url} for p in photos],
+            'photos': [{'id': p.id, 'image_url': p.image_url} for p in f.photos],
             'crops': [
                 {
                     'id': c.id,
@@ -68,7 +73,7 @@ def get_current_user_farms(
                     'status': c.status,
                     'image_url': c.image_url,
                 }
-                for c in crops
+                for c in f.crops
             ],
             'livestocks': livestock_list  # Include all user's livestocks
         }

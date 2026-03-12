@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/services/cart_provider.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -11,6 +12,61 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  Future<void> _openWhatsApp(CartProvider cartProvider) async {
+    // Générer le message de la commande
+    String message = _generateOrderMessage(cartProvider);
+    
+    try {
+      // Créer l'URL WhatsApp
+      String whatsappUrl = "https://wa.me/?text=${Uri.encodeComponent(message)}";
+      
+      if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+        await launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('WhatsApp n\'est pas installé'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  String _generateOrderMessage(CartProvider cartProvider) {
+    String message = "🛒 *COMMANDE MBAYMI*\n\n";
+    message += "*Détails de la commande:*\n";
+    message += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+    
+    // Ajouter les produits
+    for (final item in cartProvider.items) {
+      final subtotal = item.price * item.quantity;
+      message += "📦 ${item.name}\n";
+      message += "  Prix: ${item.price.toStringAsFixed(0)} FCFA/${item.unit}\n";
+      message += "  Quantité: ${item.quantity} ${item.unit}\n";
+      message += "  Sous-total: ${subtotal.toStringAsFixed(0)} FCFA\n\n";
+    }
+    
+    message += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    message += "*TOTAL: ${cartProvider.totalPrice.toStringAsFixed(0)} FCFA*\n\n";
+    message += "Merci de confirmer cette commande! 🙏";
+    
+    return message;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -238,15 +294,7 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(height: 12),
           ElevatedButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Commande placée (fonctionnalité à venir)'),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+            onPressed: () => _openWhatsApp(cartProvider),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
