@@ -11,6 +11,7 @@ import 'package:mbaymi/screens/post_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
 import 'package:mbaymi/screens/profile_detail_screen.dart';
 import 'package:mbaymi/screens/animal_detail_screen.dart';
+import 'package:mbaymi/screens/planning_detail_screen.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 import 'package:mbaymi/screens/create_farm_post_dialog.dart';
 
@@ -622,6 +623,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
               final item = filteredItems[index];
               if (item['type'] == 'farm_post') {
                 return _buildFarmPostCard(item['data'], item, isDarkMode);
+              } else if (item['type'] == 'planning') {
+                return _buildPlanningCard(item['data'], isDarkMode);
               }
               return const SizedBox();
             },
@@ -641,10 +644,13 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
           final results = await Future.wait<dynamic>([
             ApiService.getSubscriptionsFeed(userId: _userId),
             ApiService.getFarmPostsFeed(userId: _userId),
+            ApiService.getPublicPlanningsFeed(page: 1, pageSize: 10),
           ], eagerError: false);
 
           final subscriptionPosts = (results[0] as List<dynamic>?) ?? [];
           final farmPosts = (results[1] as List<dynamic>?) ?? [];
+          final planningsResponse = (results[2] as Map<String, dynamic>?) ?? {};
+          final plannings = (planningsResponse['items'] as List<dynamic>?) ?? [];
 
           subscriptionPostIds = subscriptionPosts.map((post) => post['id'] as int).toSet();
 
@@ -658,12 +664,36 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
               'isSubscription': isSubscription,
             };
           }));
+
+          items.addAll(plannings.map((planning) {
+            return {
+              'type': 'planning',
+              'data': planning,
+              'timestamp': DateTime.tryParse(planning['created_at'] ?? '') ?? DateTime.now(),
+              'isSubscription': false,
+            };
+          }));
         } else {
-          final farmPosts = await ApiService.getFarmPostsFeed(userId: _userId);
+          final results = await Future.wait<dynamic>([
+            ApiService.getFarmPostsFeed(userId: _userId),
+            ApiService.getPublicPlanningsFeed(page: 1, pageSize: 10),
+          ], eagerError: false);
+
+          final farmPosts = (results[0] as List<dynamic>?) ?? [];
+          final planningsResponse = (results[1] as Map<String, dynamic>?) ?? {};
+          final plannings = (planningsResponse['items'] as List<dynamic>?) ?? [];
+
           items.addAll(farmPosts.map((post) => {
             'type': 'farm_post',
             'data': post,
             'timestamp': DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now(),
+            'isSubscription': false,
+          }));
+
+          items.addAll(plannings.map((planning) => {
+            'type': 'planning',
+            'data': planning,
+            'timestamp': DateTime.tryParse(planning['created_at'] ?? '') ?? DateTime.now(),
             'isSubscription': false,
           }));
         }
@@ -1309,6 +1339,113 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> with TickerProvider
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPlanningCard(dynamic planning, bool isDarkMode) {
+    final title = planning['title']?.toString() ?? 'Planification';
+    final userName = planning['user_name']?.toString() ?? 'Agriculteur';
+    final planningId = planning['id'] as int? ?? 0;
+    final likesCount = planning['likes_count'] ?? 0;
+    final commentsCount = planning['comments_count'] ?? 0;
+    final progress = planning['total_tasks'] ?? 0 > 0
+        ? (planning['completed_tasks'] ?? 0) / (planning['total_tasks'] ?? 1) * 100
+        : 0;
+    final textColor = AppColors.getTextColor(isDarkMode);
+    final cardBgColor = AppColors.getCardBgColor(isDarkMode);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+      elevation: 0,
+      color: cardBgColor,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PlanningDetailScreen(
+                planningId: planningId,
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with title and icon
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 20,
+                    color: Color(0xFF80CBC4),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Author info
+              Text(
+                'Par $userName',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.getSecondaryTextColor(isDarkMode),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Progress bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress / 100,
+                  minHeight: 6,
+                  backgroundColor: isDarkMode ? Color(0xFF1A2F2E) : Colors.grey[300],
+                  valueColor: AlwaysStoppedAnimation(Color(0xFF80CBC4)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Stats
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${progress.toStringAsFixed(0)}% complété',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.getSecondaryTextColor(isDarkMode),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Icon(Icons.favorite_outline, size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text('$likesCount', style: const TextStyle(fontSize: 12)),
+                      const SizedBox(width: 12),
+                      Icon(Icons.comment_outlined, size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text('$commentsCount', style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

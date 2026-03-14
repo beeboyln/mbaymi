@@ -32,10 +32,16 @@ class ApiService {
   static final async_for_api.StreamController<void> _farmPostController = async_for_api.StreamController<void>.broadcast();
   static Stream<void> get onFarmPostCreated => _farmPostController.stream;
   static void notifyFarmPostCreated() => _farmPostController.add(null);
+  
   // Stream to notify follow/unfollow changes with payload { 'userId': int, 'action': 'follow'|'unfollow' }
   static final async_for_api.StreamController<Map<String, dynamic>> _followController = async_for_api.StreamController<Map<String, dynamic>>.broadcast();
   static Stream<Map<String, dynamic>> get onFollowChanged => _followController.stream;
   static void notifyFollowChanged(int userId, String action) => _followController.add({'userId': userId, 'action': action});
+  
+  // Stream to notify profile updates for cache invalidation
+  static final async_for_api.StreamController<void> _profileUpdateController = async_for_api.StreamController<void>.broadcast();
+  static Stream<void> get onProfileUpdated => _profileUpdateController.stream;
+  static void notifyProfileUpdated() => _profileUpdateController.add(null);
 
   /// 🔄 Retry helper with exponential backoff et timeout global
   /// Handles transient network errors (timeouts, connection issues)
@@ -2142,6 +2148,7 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
+        notifyProfileUpdated(); // Notify listeners of profile update
         return jsonDecode(response.body);
       } else {
         final errorData = jsonDecode(response.body);

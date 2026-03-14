@@ -222,15 +222,17 @@ class SkeletonImageLoader extends StatelessWidget {
 /// Simple centered loading spinner (replaces complex SkeletonPageLoader)
 class SimplePageLoader extends StatelessWidget {
   final bool isDarkMode;
+  final Color? backgroundColor;
 
   const SimplePageLoader({
     super.key,
     required this.isDarkMode,
+    this.backgroundColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = AppColors.getBgColor(isDarkMode);
+    final bgColor = backgroundColor ?? AppColors.getBgColor(isDarkMode);
     
     return Container(
       color: bgColor,
@@ -250,18 +252,20 @@ class SkeletonPageLoader extends StatelessWidget {
   final bool isDarkMode;
   final bool includeAppBar;
   final int cardCount;
+  final Color? backgroundColor;
 
   const SkeletonPageLoader({
     super.key,
     required this.isDarkMode,
     this.includeAppBar = true,
     this.cardCount = 3,
+    this.backgroundColor,
   });
 
   @override
   Widget build(BuildContext context) {
     // Redirects to SimplePageLoader - SkeletonPageLoader is deprecated
-    return SimplePageLoader(isDarkMode: isDarkMode);
+    return SimplePageLoader(isDarkMode: isDarkMode, backgroundColor: backgroundColor);
   }
 }
 

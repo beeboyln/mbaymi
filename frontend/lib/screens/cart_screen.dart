@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/services/cart_provider.dart';
+import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -13,37 +14,65 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   Future<void> _openWhatsApp(CartProvider cartProvider) async {
-    // Générer le message de la commande
-    String message = _generateOrderMessage(cartProvider);
-    
     try {
-      // Créer l'URL WhatsApp
-      String whatsappUrl = "https://wa.me/?text=${Uri.encodeComponent(message)}";
+      if (cartProvider.items.isEmpty) {
+        _snack('Cart is empty');
+        return;
+      }
+
+      // Get the seller ID from the first item
+      final sellerId = cartProvider.items.first.sellerId;
       
-      if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
-        await launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('WhatsApp n\'est pas installé'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
-            ),
-          );
+      // Fetch seller's profile to get phone number
+      try {
+        final sellerProfile = await ApiService.getUserProfile(sellerId);
+        final phone = sellerProfile['phone'];
+        
+        if (phone == null || phone.toString().isEmpty) {
+          _snack('Seller phone number not found');
+          return;
         }
+
+        // Generate the order message
+        String message = _generateOrderMessage(cartProvider);
+        
+        // Format phone number for WhatsApp (remove spaces and non-digits)
+        String cleanPhone = phone.toString().replaceAll(RegExp(r'[^\d+]'), '');
+        
+        // If phone doesn't start with +, assume it's for Senegal (+221)
+        if (!cleanPhone.startsWith('+')) {
+          if (cleanPhone.startsWith('0')) {
+            cleanPhone = '+221${cleanPhone.substring(1)}';
+          } else {
+            cleanPhone = '+221$cleanPhone';
+          }
+        }
+
+        // Create WhatsApp URL with phone number
+        String whatsappUrl = "https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}";
+        
+        if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+          await launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication);
+        } else {
+          _snack('WhatsApp not installed');
+        }
+      } catch (e) {
+        _snack('Error getting seller info: ${e.toString()}');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
+      _snack('Error: ${e.toString()}');
     }
+  }
+
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   String _generateOrderMessage(CartProvider cartProvider) {

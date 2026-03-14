@@ -3,9 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:math';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/edit_veterinarian_profile_screen.dart';
-import 'package:mbaymi/screens/veterinarian_dashboard_widgets.dart';
 import 'package:mbaymi/models/veterinarian_model.dart';
-import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/widgets/skeleton_loader.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -665,7 +663,6 @@ class _VeterinarianDashboardScreenState
   // Vet color palette — teal/emerald — distinct from agri orange
   static const Color _vetPrimary = Color(0xFF00695C);
   static const Color _vetAccent  = Color(0xFF80CBC4);
-  static const Color _vetDark    = Color(0xFF004D40);
 
   late AnimationController _waveCtrl;
   late AnimationController _grainCtrl;
@@ -769,6 +766,7 @@ class _VeterinarianDashboardScreenState
     final theme  = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // Inspire des couleurs de edit_veterinarian_profile_screen
     final bg      = isDark ? const Color(0xFF060E0D) : const Color(0xFFF4FAF9);
     final surface = isDark ? const Color(0xFF0D1A18) : Colors.white;
     final textPri = isDark ? const Color(0xFFE0F2F1) : const Color(0xFF0D2420);
@@ -777,7 +775,7 @@ class _VeterinarianDashboardScreenState
     if (_isLoading) {
       return Scaffold(
         backgroundColor: bg,
-        body: SkeletonPageLoader(isDarkMode: isDark, includeAppBar: true, cardCount: 4),
+        body: SkeletonPageLoader(isDarkMode: isDark, includeAppBar: true, cardCount: 4, backgroundColor: bg),
       );
     }
 
@@ -953,9 +951,9 @@ class _VeterinarianDashboardScreenState
                 letterSpacing: -1.2, height: 1.1,
               ),
             ),
-            if (_profile?.specialty != null && _profile!.specialty!.isNotEmpty) ...[
+            if (_profile!.specialty.isNotEmpty) ...[
               const SizedBox(height: 4),
-              Text(_profile!.specialty!, style: TextStyle(
+              Text(_profile!.specialty, style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w300,
                 color: _vetPrimary.withOpacity(0.70),
               )),

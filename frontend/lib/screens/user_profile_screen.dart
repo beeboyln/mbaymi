@@ -8,6 +8,7 @@ import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/widgets/skeleton_loader.dart';
+import 'dart:async';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS — Zara-inspired luxury minimalism
@@ -26,15 +27,6 @@ class _Z {
 
   // Typography
   static const String font = 'Georgia'; // Serif for Zara editorial feel
-
-  static TextStyle display(Color c) => TextStyle(
-        fontFamily: font,
-        fontSize: 26,
-        fontWeight: FontWeight.w300,
-        letterSpacing: 4,
-        color: c,
-        height: 1.2,
-      );
 
   static TextStyle heading(Color c) => TextStyle(
         fontFamily: font,
@@ -91,11 +83,20 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   @override
   bool get wantKeepAlive => true;
 
-  Future<Map<String, dynamic>>? _profileFuture;
-  Future<List<dynamic>>? _farmsFuture;
-  Future<List<dynamic>>? _livestockFuture;
+  late Future<Map<String, dynamic>> _profileFuture;
+  late Future<List<dynamic>> _farmsFuture;
+  late Future<List<dynamic>> _livestockFuture;
   int _tab = 0;
   final _picker = ImagePicker();
+  
+  // Cache global statique pour chaque userId
+  static final Map<int, Future<Map<String, dynamic>>> _globalProfileCache = {};
+  static final Map<int, Future<List<dynamic>>> _globalFarmsCache = {};
+  static final Map<int, Future<List<dynamic>>> _globalLivestockCache = {};
+  
+  // Listeners pour mettre à jour quand les données changent
+  late StreamSubscription<void> _farmPostSub;
+  late StreamSubscription<void> _profileUpdateSub;
 
   bool get _isOwn =>
       widget.userId == (AuthService.currentSession?.userId ?? 0);
@@ -103,22 +104,89 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   @override
   void initState() {
     super.initState();
-    _load();
+    
+    _profileFuture = _getOrCreateProfile();
+    _farmsFuture = _getOrCreateFarms();
+    _livestockFuture = _getOrCreateLivestock();
+    
+    // S'abonner aux changements pour recharger les données
+    _farmPostSub = ApiService.onFarmPostCreated.listen((_) {
+      if (mounted) _refreshData();
+    });
+    
+    _profileUpdateSub = ApiService.onProfileUpdated.listen((_) {
+      if (mounted) _refreshData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _farmPostSub.cancel();
+    _profileUpdateSub.cancel();
+    super.dispose();
   }
 
   @override
   void didUpdateWidget(UserProfileScreen old) {
     super.didUpdateWidget(old);
-    if (old.userId != widget.userId) _load();
+    // Recharger seulement si l'userId change
+    if (old.userId != widget.userId) {
+      _profileFuture = _getOrCreateProfile();
+      _farmsFuture = _getOrCreateFarms();
+      _livestockFuture = _getOrCreateLivestock();
+      setState(() {});
+    }
   }
-
-  void _load() {
+  
+  // Méthodes de cache global - similaire à social_feed_screen
+  Future<Map<String, dynamic>> _getOrCreateProfile() {
+    if (!_globalProfileCache.containsKey(widget.userId)) {
+      _globalProfileCache[widget.userId] = _loadProfile();
+    }
+    return _globalProfileCache[widget.userId]!;
+  }
+  
+  Future<List<dynamic>> _getOrCreateFarms() {
+    if (!_globalFarmsCache.containsKey(widget.userId)) {
+      _globalFarmsCache[widget.userId] = _loadFarms();
+    }
+    return _globalFarmsCache[widget.userId]!;
+  }
+  
+  Future<List<dynamic>> _getOrCreateLivestock() {
+    if (!_globalLivestockCache.containsKey(widget.userId)) {
+      _globalLivestockCache[widget.userId] = _loadLivestock();
+    }
+    return _globalLivestockCache[widget.userId]!;
+  }
+  
+  void _refreshData() {
+    // Vider le cache et recharger
+    _globalProfileCache.remove(widget.userId);
+    _globalFarmsCache.remove(widget.userId);
+    _globalLivestockCache.remove(widget.userId);
+    
+    if (mounted) {
+      setState(() {
+        _profileFuture = _getOrCreateProfile();
+        _farmsFuture = _getOrCreateFarms();
+        _livestockFuture = _getOrCreateLivestock();
+      });
+    }
+  }
+  
+  Future<Map<String, dynamic>> _loadProfile() async {
     final vid = AuthService.currentSession?.userId ?? 0;
-    _profileFuture = ApiService.getUserProfile(widget.userId,
+    return await ApiService.getUserProfile(widget.userId,
         viewerId: vid > 0 ? vid : null);
-    _farmsFuture = ApiService.getPublicUserFarms(widget.userId);
-    _livestockFuture = ApiService.getUserLivestock(widget.userId);
-    setState(() {});
+  }
+  
+  Future<List<dynamic>> _loadFarms() async {
+    return await ApiService.getPublicUserFarms(widget.userId);
+  }
+  
+  Future<List<dynamic>> _loadLivestock() async {
+    return await ApiService.getUserLivestock(widget.userId);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
@@ -126,7 +194,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   Color _text(bool dark) => AppColors.getTextColor(dark);
   Color _sub(bool dark) => AppColors.getSecondaryTextColor(dark);
   Color _border(bool dark) => AppColors.getBorderColor(dark);
-  Color _card(bool dark) => AppColors.getCardBgColor(dark);
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
@@ -154,7 +221,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       if (url == null) throw Exception('Upload échoué');
       await ApiService.updateUserProfile(
           userId: widget.userId, profileImage: url);
-      _load();
+      _refreshData();
       _snack('Photo mise à jour');
     } catch (e) {
       _snack('Erreur: $e', error: true);
@@ -174,7 +241,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         email: email.isNotEmpty ? email : null,
         phone: phone.isNotEmpty ? phone : null,
       );
-      _load();
+      _refreshData();
       _snack('Profil mis à jour');
     } catch (e) {
       _snack('Erreur: $e', error: true);
@@ -368,78 +435,104 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       ),
       body: RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: () async => _load(),
+        onRefresh: () async => _refreshData(),
         child: FutureBuilder<Map<String, dynamic>>(
-          future: _profileFuture!,
+          future: _profileFuture,
           builder: (ctx, snap) {
-            if (snap.connectionState == ConnectionState.waiting) {
-              return SkeletonPageLoader(isDarkMode: dark, cardCount: 4);
-            }
-            if (snap.hasError) {
-              return Center(
-                  child: Text('Erreur',
-                      style: _Z.body(_sub(dark))));
-            }
-
-            final p = snap.data!;
-            final name = p['name'] ?? 'Utilisateur';
-            final email = p['email'] ?? '';
-            final phone = p['phone'] ?? '';
-            final avatar = p['profile_image'] as String?;
-            final followers = p['total_followers'] ?? 0;
-            final posts = p['total_posts'] ?? 0;
-
-            return SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Hero header ───────────────────────────────────────
-                  _buildHero(dark, name, email, avatar, followers, posts),
-
-                  // ── Quick action ──────────────────────────────────────
-                  if (_isOwn)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: _Z.s24, vertical: _Z.s8),
-                      child: _ZaraActionTile(
-                        label: 'CRÉER UN POST',
-                        icon: Icons.add,
-                        dark: dark,
-                        onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => FarmTab(userId: widget.userId))),
-                      ),
-                    ),
-
-                  const SizedBox(height: _Z.s32),
-
-                  // ── Section title ─────────────────────────────────────
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: _Z.s24),
-                    child: Text('MES RESSOURCES', style: _Z.label(_sub(dark))),
-                  ),
-                  const SizedBox(height: _Z.s16),
-
-                  // ── Tab bar ───────────────────────────────────────────
-                  _buildTabs(dark),
-
-                  // ── Tab content ───────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.all(_Z.s24),
-                    child: _tab == 0
-                        ? _buildFarms(dark)
-                        : _buildLivestock(dark),
-                  ),
-
-                  const SizedBox(height: _Z.s64),
-                ],
-              ),
+            // Transition fluide avec AnimatedSwitcher
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: _buildProfileContent(dark, snap),
             );
           },
         ),
+      ),
+    );
+  }
+
+  /// Construit le contenu du profil avec transition fluide
+  Widget _buildProfileContent(
+    bool dark,
+    AsyncSnapshot<Map<String, dynamic>> snap,
+  ) {
+    // Skeleton pendant le chargement
+    if (snap.connectionState == ConnectionState.waiting) {
+      return SkeletonPageLoader(
+        isDarkMode: dark,
+        cardCount: 4,
+        key: const ValueKey('skeleton'),
+      );
+    }
+
+    // Erreur
+    if (snap.hasError) {
+      return Center(
+        key: const ValueKey('error'),
+        child: Text(
+          'Erreur',
+          style: _Z.body(_sub(dark)),
+        ),
+      );
+    }
+
+    final p = snap.data!;
+    final name = p['name'] ?? 'Utilisateur';
+    final email = p['email'] ?? '';
+    final avatar = p['profile_image'] as String?;
+    final followers = p['total_followers'] ?? 0;
+    final posts = p['total_posts'] ?? 0;
+
+    return SingleChildScrollView(
+      key: const ValueKey('content'),
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Hero header ───────────────────────────────────────
+          _buildHero(dark, name, email, avatar, followers, posts),
+
+          // ── Quick action ──────────────────────────────────────
+          if (_isOwn)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: _Z.s24, vertical: _Z.s8),
+              child: _ZaraActionTile(
+                label: 'CRÉER UN POST',
+                icon: Icons.add,
+                dark: dark,
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => FarmTab(userId: widget.userId))),
+              ),
+            ),
+
+          const SizedBox(height: _Z.s32),
+
+          // ── Section title ─────────────────────────────────────
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: _Z.s24),
+            child: Text('MES RESSOURCES', style: _Z.label(_sub(dark))),
+          ),
+          const SizedBox(height: _Z.s16),
+
+          // ── Tab bar ───────────────────────────────────────────
+          _buildTabs(dark),
+
+          // ── Tab content ───────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(_Z.s24),
+            child: _tab == 0
+                ? _buildFarms(dark)
+                : _buildLivestock(dark),
+          ),
+
+          const SizedBox(height: _Z.s64),
+        ],
       ),
     );
   }
@@ -632,81 +725,113 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   // ── Farms ─────────────────────────────────────────────────────────────────
   Widget _buildFarms(bool dark) {
     return FutureBuilder<List<dynamic>>(
-      future: _farmsFuture!,
+      future: _farmsFuture,
       builder: (_, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return SkeletonListLoader(
-              itemCount: 3, isDarkMode: dark, itemHeight: 80);
-        }
-        final farms = snap.data ?? [];
-        if (farms.isEmpty) return _empty('Aucune ferme', dark);
-
-        return Column(
-          children: farms.map((f) {
-            final farm = f as Map<String, dynamic>;
-            final id = farm['id'] as int?;
-            return _ZaraResourceTile(
-              title: farm['name'] ?? 'Ferme',
-              subtitle: farm['location'] ?? '',
-              image: farm['image_url'] as String?,
-              dark: dark,
-              onTap: id == null
-                  ? null
-                  : () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => ParcelScreen(
-                                farmId: id,
-                                userId: widget.userId,
-                                farmOwnerId: widget.userId,
-                                readOnly: false,
-                              ))),
-            );
-          }).toList(),
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, animation) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          child: _buildFarmContent(dark, snap),
         );
       },
+    );
+  }
+
+  Widget _buildFarmContent(bool dark, AsyncSnapshot<List<dynamic>> snap) {
+    if (snap.connectionState == ConnectionState.waiting) {
+      return SkeletonListLoader(
+        itemCount: 3,
+        isDarkMode: dark,
+        itemHeight: 80,
+        key: const ValueKey('farms_skeleton'),
+      );
+    }
+    
+    final farms = snap.data ?? [];
+    if (farms.isEmpty) return _empty('Aucune ferme', dark);
+
+    return Column(
+      key: const ValueKey('farms_content'),
+      children: farms.map((f) {
+        final farm = f as Map<String, dynamic>;
+        final id = farm['id'] as int?;
+        return _ZaraResourceTile(
+          title: farm['name'] ?? 'Ferme',
+          subtitle: farm['location'] ?? '',
+          image: farm['image_url'] as String?,
+          dark: dark,
+          onTap: id == null
+              ? null
+              : () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => ParcelScreen(
+                        farmId: id,
+                        userId: widget.userId,
+                        farmOwnerId: widget.userId,
+                        readOnly: false,
+                      ))),
+        );
+      }).toList(),
     );
   }
 
   // ── Livestock ─────────────────────────────────────────────────────────────
   Widget _buildLivestock(bool dark) {
     return FutureBuilder<List<dynamic>>(
-      future: _livestockFuture!,
+      future: _livestockFuture,
       builder: (_, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return SkeletonListLoader(
-              itemCount: 3, isDarkMode: dark, itemHeight: 80);
-        }
-        final animals = snap.data ?? [];
-        if (animals.isEmpty) return _empty('Aucun bétail', dark);
-
-        return Column(
-          children: animals.map((a) {
-            final animal = a as Map<String, dynamic>;
-            final id = animal['id'] as int?;
-            final qty = animal['quantity'] as int? ?? 1;
-            final photo = animal['image_url'] ??
-                (animal['photos'] is List &&
-                        (animal['photos'] as List).isNotEmpty
-                    ? (animal['photos'] as List).first
-                    : null);
-            return _ZaraResourceTile(
-              title: animal['animal_type'] ?? 'Animal',
-              subtitle: animal['breed'] ?? '',
-              badge: 'x$qty',
-              image: photo as String?,
-              dark: dark,
-              onTap: id == null
-                  ? null
-                  : () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => EditLivestockScreen(
-                              livestockId: id, livestock: animal))),
-            );
-          }).toList(),
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, animation) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          child: _buildLivestockContent(dark, snap),
         );
       },
+    );
+  }
+
+  Widget _buildLivestockContent(bool dark, AsyncSnapshot<List<dynamic>> snap) {
+    if (snap.connectionState == ConnectionState.waiting) {
+      return SkeletonListLoader(
+        itemCount: 3,
+        isDarkMode: dark,
+        itemHeight: 80,
+        key: const ValueKey('livestock_skeleton'),
+      );
+    }
+    
+    final animals = snap.data ?? [];
+    if (animals.isEmpty) return _empty('Aucun bétail', dark);
+
+    return Column(
+      key: const ValueKey('livestock_content'),
+      children: animals.map((a) {
+        final animal = a as Map<String, dynamic>;
+        final id = animal['id'] as int?;
+        final qty = animal['quantity'] as int? ?? 1;
+        final photo = animal['image_url'] ??
+            (animal['photos'] is List &&
+                    (animal['photos'] as List).isNotEmpty
+                ? (animal['photos'] as List).first
+                : null);
+        return _ZaraResourceTile(
+          title: animal['animal_type'] ?? 'Animal',
+          subtitle: animal['breed'] ?? '',
+          badge: 'x$qty',
+          image: photo as String?,
+          dark: dark,
+          onTap: id == null
+              ? null
+              : () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => EditLivestockScreen(
+                          livestockId: id, livestock: animal))),
+        );
+      }).toList(),
     );
   }
 
