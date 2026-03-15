@@ -10,6 +10,9 @@ from datetime import datetime
 import asyncio
 import threading
 
+# Default domain for fallback in error handlers
+MAIN_DOMAIN = os.getenv("MAIN_DOMAIN", "https://mbaymi.vercel.app")
+
 # Initialize app
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 

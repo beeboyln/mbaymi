@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from app.models.base import Base
 from datetime import datetime
 
@@ -16,6 +17,10 @@ class Farm(Base):
     longitude = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    photos = relationship("FarmPhoto", back_populates="farm", cascade="all, delete-orphan")
+    crops = relationship("Crop", back_populates="farm", cascade="all, delete-orphan")
 
 
 class Crop(Base):
@@ -43,3 +48,6 @@ class Crop(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship
+    farm = relationship("Farm", back_populates="crops")

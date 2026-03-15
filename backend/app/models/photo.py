@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from app.models.base import Base
 from datetime import datetime
 
@@ -10,6 +11,9 @@ class FarmPhoto(Base):
     farm_id = Column(Integer, ForeignKey('farms.id', ondelete='CASCADE'), nullable=False)
     image_url = Column(String(500), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    farm = relationship("Farm", back_populates="photos")
 
 
 class ActivityPhoto(Base):

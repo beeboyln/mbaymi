@@ -3,89 +3,505 @@ import 'package:flutter/services.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'dart:math';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GRAIN PAINTER
+// ─────────────────────────────────────────────────────────────────────────────
+class _GrainPainter extends CustomPainter {
+  final double seed;
+  final Color color;
+  _GrainPainter({required this.seed, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rng = Random((seed * 1000).toInt());
+    final paint = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 200; i++) {
+      final x = rng.nextDouble() * size.width;
+      final y = rng.nextDouble() * size.height;
+      final r = rng.nextDouble() * 0.9 + 0.2;
+      final op = rng.nextDouble() * 0.035 + 0.005;
+      paint.color = color.withOpacity(op);
+      canvas.drawCircle(Offset(x, y), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GrainPainter o) => o.seed != seed;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RINGS PAINTER
+// ─────────────────────────────────────────────────────────────────────────────
+class _RingsPainter extends CustomPainter {
+  final Color color;
+  const _RingsPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.5;
+    for (int i = 1; i <= 5; i++) {
+      paint.color = color.withOpacity(0.025 + i * 0.008);
+      canvas.drawCircle(Offset(cx, cy), i * 36.0, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingsPainter o) => false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIVESTOCK ILLUSTRATION PAINTER
+// Silhouette pastorale : sol ondulé + animaux stylisés
+// ─────────────────────────────────────────────────────────────────────────────
+class _LivestockIllustrationPainter extends CustomPainter {
+  final Color primary;
+  final Color accent;
+  final bool isDark;
+  final double phase;
+
+  const _LivestockIllustrationPainter({
+    required this.primary,
+    required this.accent,
+    required this.isDark,
+    required this.phase,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final baseOp = isDark ? 0.22 : 0.15;
+
+    final fill = Paint()..style = PaintingStyle.fill;
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+
+    // Sol ondulé
+    final ground = Path();
+    ground.moveTo(0, h);
+    ground.lineTo(0, h * 0.68);
+    for (double x = 0; x <= w; x += 2) {
+      final y = h * 0.68
+          + 2.5 * sin(x / w * pi * 2 + phase * 2 * pi * 0.4)
+          + 1.2 * sin(x / w * pi * 5 - phase * 2 * pi * 0.6);
+      ground.lineTo(x, y);
+    }
+    ground.lineTo(w, h);
+    ground.close();
+    fill.color = primary.withOpacity(baseOp);
+    canvas.drawPath(ground, fill);
+
+    // Herbe (touffes)
+    final grassPaint = Paint()
+      ..color = accent.withOpacity(isDark ? 0.32 : 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+    for (int g = 0; g < 5; g++) {
+      final gx = w * (0.08 + g * 0.21);
+      final gy = h * 0.68 + 1.5 * sin(gx / w * pi * 2 + phase * 2 * pi * 0.4);
+      final sway = 0.8 * sin(phase * 2 * pi + g * 1.3);
+      canvas.drawLine(
+        Offset(gx, gy),
+        Offset(gx + sway - 3, gy - h * 0.06),
+        grassPaint,
+      );
+      canvas.drawLine(
+        Offset(gx, gy),
+        Offset(gx + sway, gy - h * 0.07),
+        grassPaint,
+      );
+      canvas.drawLine(
+        Offset(gx, gy),
+        Offset(gx + sway + 3, gy - h * 0.055),
+        grassPaint,
+      );
+    }
+
+    // Animal 1 — bovin stylisé (gauche)
+    _drawAnimal(canvas, w * 0.22, h * 0.54, h * 0.20, primary, accent, baseOp, phase, false);
+
+    // Animal 2 — bovin stylisé (droite, plus petit = profondeur)
+    _drawAnimal(canvas, w * 0.68, h * 0.57, h * 0.155, primary, accent, baseOp * 0.7, phase, true);
+  }
+
+  void _drawAnimal(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double size,
+    Color primary,
+    Color accent,
+    double op,
+    double phase,
+    bool mirrored,
+  ) {
+    final fill = Paint()..style = PaintingStyle.fill;
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..strokeCap = StrokeCap.round;
+
+    final dir = mirrored ? -1.0 : 1.0;
+
+    // Corps
+    fill.color = primary.withOpacity(op + 0.04);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx, cy),
+        width: size * 1.8,
+        height: size * 0.85,
+      ),
+      fill,
+    );
+
+    // Tête
+    fill.color = primary.withOpacity(op + 0.06);
+    final headX = cx + dir * size * 0.95;
+    final headY = cy - size * 0.18;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(headX, headY),
+        width: size * 0.55,
+        height: size * 0.48,
+      ),
+      fill,
+    );
+
+    // Museau
+    fill.color = primary.withOpacity(op + 0.02);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(headX + dir * size * 0.14, headY + size * 0.08),
+        width: size * 0.28,
+        height: size * 0.22,
+      ),
+      fill,
+    );
+
+    // Corne
+    stroke.color = accent.withOpacity(op + 0.10);
+    stroke.strokeWidth = 0.9;
+    final hornBase = Offset(headX - dir * size * 0.05, headY - size * 0.20);
+    canvas.drawLine(
+      hornBase,
+      Offset(hornBase.dx + dir * size * 0.12, hornBase.dy - size * 0.14),
+      stroke,
+    );
+
+    // Jambes (légère oscillation)
+    stroke.color = primary.withOpacity(op + 0.05);
+    stroke.strokeWidth = size * 0.09;
+    final legSwayFront = size * 0.04 * sin(phase * 2 * pi);
+    final legSwayBack = size * 0.04 * sin(phase * 2 * pi + pi);
+    final legY = cy + size * 0.40;
+    final legLen = size * 0.42;
+
+    // Patte avant
+    canvas.drawLine(
+      Offset(cx + dir * size * 0.48, cy + size * 0.36),
+      Offset(cx + dir * size * 0.48 + legSwayFront, legY + legLen),
+      stroke,
+    );
+    // Patte arrière
+    canvas.drawLine(
+      Offset(cx - dir * size * 0.48, cy + size * 0.36),
+      Offset(cx - dir * size * 0.48 + legSwayBack, legY + legLen),
+      stroke,
+    );
+    // Patte milieu avant
+    canvas.drawLine(
+      Offset(cx + dir * size * 0.18, cy + size * 0.40),
+      Offset(cx + dir * size * 0.18 + legSwayFront * 0.5, legY + legLen * 0.95),
+      stroke,
+    );
+    // Patte milieu arrière
+    canvas.drawLine(
+      Offset(cx - dir * size * 0.18, cy + size * 0.40),
+      Offset(cx - dir * size * 0.18 + legSwayBack * 0.5, legY + legLen * 0.95),
+      stroke,
+    );
+
+    // Queue
+    stroke.color = primary.withOpacity(op + 0.04);
+    stroke.strokeWidth = 0.9;
+    final tailBase = Offset(cx - dir * size * 0.88, cy - size * 0.05);
+    final tailEnd = Offset(
+      tailBase.dx - dir * size * 0.18,
+      tailBase.dy - size * 0.22 + size * 0.08 * sin(phase * 2 * pi + 1.0),
+    );
+    canvas.drawLine(tailBase, tailEnd, stroke);
+  }
+
+  @override
+  bool shouldRepaint(_LivestockIllustrationPainter o) =>
+      o.phase != phase || o.isDark != isDark;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION TITLE — identique au CreateFarmScreen
+// ─────────────────────────────────────────────────────────────────────────────
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  const _SectionTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(width: 20, height: 1, color: AppColors.primary),
+        const SizedBox(width: 8),
+        Text(
+          text.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 2.8,
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: AppColors.primary.withOpacity(0.12),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VISIBILITY OPTION BUTTON
+// ─────────────────────────────────────────────────────────────────────────────
+class _VisibilityButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool isDark;
+
+  const _VisibilityButton({
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withOpacity(isDark ? 0.14 : 0.07)
+              : (isDark ? AppColors.darkCardBg : const Color(0xFFFAF8F4)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected
+                ? AppColors.primary.withOpacity(0.50)
+                : (isDark ? AppColors.borderDark : AppColors.borderLight),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.primary.withOpacity(0.15)
+                    : AppColors.primary.withOpacity(0.07),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(
+                icon,
+                size: 16,
+                color: selected
+                    ? AppColors.primary
+                    : (isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: selected ? FontWeight.w400 : FontWeight.w300,
+                      color: isDark ? AppColors.textDark : AppColors.textLight,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w300,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedOpacity(
+              opacity: selected ? 1 : 0,
+              duration: const Duration(milliseconds: 180),
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Colors.white,
+                  size: 11,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
 class CreateLivestockScreen extends StatefulWidget {
   final int? userId;
-
   const CreateLivestockScreen({super.key, this.userId});
 
   @override
   State<CreateLivestockScreen> createState() => _CreateLivestockScreenState();
 }
 
-class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
+class _CreateLivestockScreenState extends State<CreateLivestockScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _animalTypeCtrl = TextEditingController();
-  final TextEditingController _customAnimalTypeCtrl = TextEditingController();
-  final TextEditingController _breedCtrl = TextEditingController();
-  final TextEditingController _quantityCtrl = TextEditingController(text: '1');
-  final TextEditingController _ageCtrl = TextEditingController();
-  final TextEditingController _weightCtrl = TextEditingController();
-  final TextEditingController _healthCtrl = TextEditingController();
-  final TextEditingController _feedingCtrl = TextEditingController();
-  final TextEditingController _notesCtrl = TextEditingController();
 
-  final FocusNode _animalTypeFocus = FocusNode();
-  final FocusNode _breedFocus = FocusNode();
-  final FocusNode _quantityFocus = FocusNode();
-  final FocusNode _ageFocus = FocusNode();
-  final FocusNode _weightFocus = FocusNode();
-  final FocusNode _healthFocus = FocusNode();
-  final FocusNode _feedingFocus = FocusNode();
-  final FocusNode _notesFocus = FocusNode();
+  final _animalTypeCtrl = TextEditingController();
+  final _customAnimalTypeCtrl = TextEditingController();
+  final _breedCtrl = TextEditingController();
+  final _quantityCtrl = TextEditingController(text: '1');
+  final _ageCtrl = TextEditingController();
+  final _weightCtrl = TextEditingController();
+  final _healthCtrl = TextEditingController();
+  final _feedingCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
+
+  final _breedFocus = FocusNode();
+  final _customTypeFocus = FocusNode();
+  final _quantityFocus = FocusNode();
+  final _ageFocus = FocusNode();
+  final _weightFocus = FocusNode();
+  final _notesFocus = FocusNode();
 
   bool _loading = false;
   final List<XFile> _imageFiles = [];
-  final List<Uint8List> _imageBytes = [];
-  String _visibility = 'PRIVATE'; // PRIVATE, PUBLIC, PARTIAL
+  final List<Uint8List> _imageBytesList = [];
+  String _visibility = 'PRIVATE';
 
-  // Palette de couleurs
-  static const Color _primaryColor = Color(0xFF8B6B4D);
-  // ignore: unused_field
-  static const Color _primaryLight = Color(0xFFA58A6D);
-  static const Color _accentColor = Color(0xFFC4A484);
-  static const Color _bgLight = Color(0xFFFAF8F5);
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardLight = AppColors.lightBg;
-  static const Color _cardDark = Color(0xFF1E1E1E);
-  static const Color _borderLight = Color(0xFFE8E2D8);
-  static const Color _borderDark = Color(0xFF2C2C2C);
-  static const Color _textLight = Color(0xFF1A1A1A);
-  static const Color _textDark = Colors.white;
-  static const Color _textSecondaryLight = Color(0xFF6B6B6B);
-  static const Color _textSecondaryDark = Color(0xFF8E8E93);
+  // Animations
+  late AnimationController _waveCtrl;
+  late AnimationController _grainCtrl;
+  late AnimationController _entryCtrl;
+  late List<Animation<double>> _fade;
+  late List<Animation<Offset>> _slide;
 
-  final List<String> _animalTypes = ['Bovins', 'Chèvres', 'Moutons', 'Volailles', 'Autre'];
-  final List<String> _healthStatuses = ['Sain', 'Malade', 'Vacciné', 'À surveiller'];
-  final List<String> _feedingTypes = ['Herbe', 'Grains', 'Mixte', 'Aliment composé'];
+  static const _animalTypes = ['Bovins', 'Chèvres', 'Moutons', 'Volailles', 'Autre'];
+  static const _healthStatuses = ['Sain', 'Malade', 'Vacciné', 'À surveiller'];
+  static const _feedingTypes = ['Herbe', 'Grains', 'Mixte', 'Aliment composé'];
 
-  Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1600,
-      maxHeight: 1600,
-      imageQuality: 85,
+  @override
+  void initState() {
+    super.initState();
+    _waveCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 9),
+    )..repeat(reverse: true);
+
+    _grainCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    )..repeat();
+
+    _entryCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
     );
 
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      setState(() {
-        _imageFiles.add(image);
-        _imageBytes.add(bytes);
-      });
-    }
-  }
+    _fade = List.generate(
+      8,
+      (i) => Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(
+          parent: _entryCtrl,
+          curve: Interval(
+            i * 0.07,
+            (i * 0.07 + 0.50).clamp(0.0, 1.0),
+            curve: Curves.easeOut,
+          ),
+        ),
+      ),
+    );
+    _slide = List.generate(
+      8,
+      (i) => Tween<Offset>(
+        begin: const Offset(0, 0.12),
+        end: Offset.zero,
+      ).animate(
+        CurvedAnimation(
+          parent: _entryCtrl,
+          curve: Interval(
+            i * 0.07,
+            (i * 0.07 + 0.50).clamp(0.0, 1.0),
+            curve: Curves.easeOutCubic,
+          ),
+        ),
+      ),
+    );
 
-  void _removeImage(int index) {
-    setState(() {
-      _imageFiles.removeAt(index);
-      _imageBytes.removeAt(index);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _entryCtrl.forward();
     });
   }
 
   @override
   void dispose() {
+    _waveCtrl.dispose();
+    _grainCtrl.dispose();
+    _entryCtrl.dispose();
     _animalTypeCtrl.dispose();
     _customAnimalTypeCtrl.dispose();
     _breedCtrl.dispose();
@@ -95,52 +511,80 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
     _healthCtrl.dispose();
     _feedingCtrl.dispose();
     _notesCtrl.dispose();
-
-    _animalTypeFocus.dispose();
     _breedFocus.dispose();
+    _customTypeFocus.dispose();
     _quantityFocus.dispose();
     _ageFocus.dispose();
     _weightFocus.dispose();
-    _healthFocus.dispose();
-    _feedingFocus.dispose();
     _notesFocus.dispose();
     super.dispose();
   }
 
+  Widget _s(int i, Widget child) => FadeTransition(
+        opacity: _fade[i],
+        child: SlideTransition(position: _slide[i], child: child),
+      );
+
+  // ─── COLORS ──────────────────────────────────────────────────────────────
+  Color _bg(bool isDark) => isDark ? AppColors.darkBg : AppColors.lightBg;
+  Color _card(bool isDark) => isDark ? AppColors.darkCardBg : const Color(0xFFFAF8F4);
+  Color _border(bool isDark) => isDark ? AppColors.borderDark : AppColors.borderLight;
+  Color _text(bool isDark) => isDark ? AppColors.textDark : AppColors.textLight;
+  Color _textSec(bool isDark) =>
+      isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+
+  // ─── IMAGE PICKER ─────────────────────────────────────────────────────────
+  Future<void> _pickImage() async {
+    HapticFeedback.mediumImpact();
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      imageQuality: 85,
+    );
+    if (picked != null) {
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _imageFiles.add(picked);
+        _imageBytesList.add(bytes);
+      });
+    }
+  }
+
+  void _removeImage(int index) {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _imageFiles.removeAt(index);
+      _imageBytesList.removeAt(index);
+    });
+  }
+
+  // ─── SUBMIT ───────────────────────────────────────────────────────────────
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-
     if (!_formKey.currentState!.validate()) {
       HapticFeedback.heavyImpact();
       return;
     }
-
     if (widget.userId == null) {
-      _showErrorSnackBar('Utilisateur non connecté');
+      _showError('Utilisateur non connecté');
       return;
     }
-
-    // Vérifier que le type d'animal est défini
     String animalType = _animalTypeCtrl.text.trim();
     if (animalType == 'Autre') {
       if (_customAnimalTypeCtrl.text.trim().isEmpty) {
-        _showErrorSnackBar('Veuillez préciser le type d\'animal');
+        _showError('Veuillez préciser le type d\'animal');
         return;
       }
       animalType = _customAnimalTypeCtrl.text.trim();
     }
-
     HapticFeedback.mediumImpact();
     setState(() => _loading = true);
-
     try {
       String? imageUrl;
-      
-      // Upload première image à Cloudinary si sélectionnée
       if (_imageFiles.isNotEmpty) {
         imageUrl = await ApiService.uploadImageToCloudinary(_imageFiles[0]);
       }
-
       final res = await ApiService.createLivestock(
         userId: widget.userId!,
         animalType: animalType,
@@ -154,296 +598,213 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
         imageUrl: imageUrl,
         visibility: _visibility,
       );
-
-      // Upload les photos supplémentaires (toutes sauf la première)
       if (_imageFiles.length > 1) {
         final livestockId = res['id'] as int;
         for (int i = 1; i < _imageFiles.length; i++) {
           try {
-            final additionalImageUrl = await ApiService.uploadImageToCloudinary(_imageFiles[i]);
-            if (additionalImageUrl != null && additionalImageUrl.isNotEmpty) {
+            final url = await ApiService.uploadImageToCloudinary(_imageFiles[i]);
+            if (url != null && url.isNotEmpty) {
               await ApiService.addAnimalPhoto(
                 livestockId: livestockId,
-                imageUrl: additionalImageUrl,
+                imageUrl: url,
               );
             }
           } catch (e) {
-            // Continuer malgré les erreurs d'upload de photos supplémentaires
-            print('Erreur upload photo $i: $e');
+            debugPrint('Erreur upload photo $i: $e');
           }
         }
       }
-
-      _showSuccessSnackBar('Animal ajouté avec succès !');
+      _showSuccess('Animal ajouté avec succès !');
       await Future.delayed(const Duration(milliseconds: 500));
-      Navigator.pop(context, res);
+      if (mounted) Navigator.pop(context, res);
     } catch (e) {
-      _showErrorSnackBar('Erreur: ${e.toString()}');
+      _showError('Erreur : ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _showSuccessSnackBar(String message) {
+  void _showSuccess(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.w300),
-        ),
-        backgroundColor: _primaryColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+      AppColors.createSnackBar(message: msg, isError: false, durationMs: 800),
     );
   }
 
-  void _showErrorSnackBar(String message) {
+  void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.w300),
-        ),
-        backgroundColor: Colors.red.shade400,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+      AppColors.createSnackBar(message: msg, isError: true),
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? _bgDark : _bgLight;
-    final cardColor = isDark ? _cardDark : _cardLight;
-    final textColor = isDark ? _textDark : _textLight;
-    final secondaryTextColor = isDark ? _textSecondaryDark : _textSecondaryLight;
-    final borderColor = isDark ? _borderDark : _borderLight;
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: _bg(isDark),
       resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(cardColor, textColor, secondaryTextColor, borderColor),
+      body: Column(
+        children: [
+          _buildHeroHeader(isDark),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+              ),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Type d'animal
+                      _s(0, _SectionTitle('Type d\'animal')),
+                      const SizedBox(height: 14),
+                      _s(0, _buildAnimalTypeSelector(isDark)),
+                      if (_animalTypeCtrl.text == 'Autre') ...[
+                        const SizedBox(height: 10),
+                        _s(0, _buildField(
+                          controller: _customAnimalTypeCtrl,
+                          focusNode: _customTypeFocus,
+                          label: 'PRÉCISEZ LE TYPE',
+                          hint: 'Ex: Lapins, Chevaux…',
+                          icon: Icons.edit_outlined,
+                          isDark: isDark,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: () =>
+                              FocusScope.of(context).requestFocus(_breedFocus),
+                        )),
+                      ],
+                      const SizedBox(height: 10),
+                      _s(0, _buildField(
+                        controller: _breedCtrl,
+                        focusNode: _breedFocus,
+                        label: 'RACE / VARIÉTÉ',
+                        hint: 'Ex: Race locale, Zébu, Peul…',
+                        icon: Icons.info_outlined,
+                        isDark: isDark,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: () =>
+                            FocusScope.of(context).requestFocus(_quantityFocus),
+                      )),
+                      const SizedBox(height: 28),
 
-            // Formulaire
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.zero,
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                child: AnimatedPadding(
-                  padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + (bottomInset > 8 ? bottomInset : 0)),
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  child: GestureDetector(
-                    onTap: () => FocusScope.of(context).unfocus(),
-                    child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Type d'animal avec option personnalisée
-                        _buildSectionTitle('Type d\'animal'),
-                        const SizedBox(height: 16),
-                        _buildDropdown(
-                          label: 'Type',
-                          value: _animalTypeCtrl.text.isEmpty ? null : _animalTypeCtrl.text,
-                          items: _animalTypes,
-                          onChanged: (value) {
-                            setState(() => _animalTypeCtrl.text = value ?? '');
-                            if (value == 'Autre') {
-                              _customAnimalTypeCtrl.clear();
-                            }
-                          },
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          icon: Icons.pets_outlined,
-                        ),
-                        // Si "Autre" est sélectionné, afficher un champ texte pour type personnalisé
-                        if (_animalTypeCtrl.text == 'Autre') ...[
-                          const SizedBox(height: 12),
-                          _buildTextField(
-                            controller: _customAnimalTypeCtrl,
-                            label: 'Précisez le type',
-                            hint: 'Ex: Lapins, Chevaux, etc.',
-                            icon: Icons.edit_outlined,
-                            cardColor: cardColor,
-                            textColor: textColor,
-                            borderColor: borderColor,
-                            secondaryTextColor: secondaryTextColor,
+                      // Informations
+                      _s(1, _SectionTitle('Informations')),
+                      const SizedBox(height: 14),
+                      _s(1, Row(
+                        children: [
+                          Expanded(
+                            child: _buildField(
+                              controller: _quantityCtrl,
+                              focusNode: _quantityFocus,
+                              label: 'QUANTITÉ',
+                              hint: '1',
+                              icon: Icons.format_list_numbered_outlined,
+                              isDark: isDark,
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: () =>
+                                  FocusScope.of(context).requestFocus(_ageFocus),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildField(
+                              controller: _ageCtrl,
+                              focusNode: _ageFocus,
+                              label: 'ÂGE (MOIS)',
+                              hint: 'Ex: 24',
+                              icon: Icons.calendar_month_outlined,
+                              isDark: isDark,
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: () =>
+                                  FocusScope.of(context).requestFocus(_weightFocus),
+                            ),
                           ),
                         ],
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _breedCtrl,
-                          label: 'Race/Variété',
-                          hint: 'Ex: Race locale',
-                          icon: Icons.info_outlined,
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          secondaryTextColor: secondaryTextColor,
-                        ),
-                        const SizedBox(height: 32),
+                      )),
+                      const SizedBox(height: 10),
+                      _s(1, _buildField(
+                        controller: _weightCtrl,
+                        focusNode: _weightFocus,
+                        label: 'POIDS (KG)',
+                        hint: 'Ex: 250',
+                        icon: Icons.scale_outlined,
+                        isDark: isDark,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: () => FocusScope.of(context).unfocus(),
+                      )),
+                      const SizedBox(height: 28),
 
-                        // Informations de base
-                        _buildSectionTitle('Informations'),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _quantityCtrl,
-                                label: 'Quantité',
-                                hint: '1',
-                                icon: Icons.numbers,
-                                keyboardType: TextInputType.number,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                borderColor: borderColor,
-                                secondaryTextColor: secondaryTextColor,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _ageCtrl,
-                                label: 'Âge (mois)',
-                                hint: 'Mois',
-                                icon: Icons.calendar_month,
-                                keyboardType: TextInputType.number,
-                                cardColor: cardColor,
-                                textColor: textColor,
-                                borderColor: borderColor,
-                                secondaryTextColor: secondaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _weightCtrl,
-                          label: 'Poids (kg)',
-                          hint: 'Kilos',
-                          icon: Icons.scale,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          secondaryTextColor: secondaryTextColor,
-                        ),
-                        const SizedBox(height: 32),
+                      // Santé & Alimentation
+                      _s(2, _SectionTitle('Santé & Alimentation')),
+                      const SizedBox(height: 14),
+                      _s(2, _buildDropdownField(
+                        label: 'ÉTAT DE SANTÉ',
+                        value: _healthCtrl.text.isEmpty ? null : _healthCtrl.text,
+                        items: _healthStatuses,
+                        icon: Icons.health_and_safety_outlined,
+                        isDark: isDark,
+                        onChanged: (v) =>
+                            setState(() => _healthCtrl.text = v ?? ''),
+                      )),
+                      const SizedBox(height: 10),
+                      _s(2, _buildDropdownField(
+                        label: 'TYPE D\'ALIMENTATION',
+                        value: _feedingCtrl.text.isEmpty ? null : _feedingCtrl.text,
+                        items: _feedingTypes,
+                        icon: Icons.grass_outlined,
+                        isDark: isDark,
+                        onChanged: (v) =>
+                            setState(() => _feedingCtrl.text = v ?? ''),
+                      )),
+                      const SizedBox(height: 28),
 
-                        // Santé et alimentation
-                        _buildSectionTitle('Santé & Alimentation'),
-                        const SizedBox(height: 16),
-                        _buildDropdown(
-                          label: 'État de santé',
-                          value: _healthCtrl.text.isEmpty ? null : _healthCtrl.text,
-                          items: _healthStatuses,
-                          onChanged: (value) => setState(() => _healthCtrl.text = value ?? ''),
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          icon: Icons.health_and_safety_outlined,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildDropdown(
-                          label: 'Type d\'alimentation',
-                          value: _feedingCtrl.text.isEmpty ? null : _feedingCtrl.text,
-                          items: _feedingTypes,
-                          onChanged: (value) => setState(() => _feedingCtrl.text = value ?? ''),
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          icon: Icons.restaurant_outlined,
-                        ),
-                        const SizedBox(height: 32),
+                      // Visibilité
+                      _s(3, _SectionTitle('Visibilité')),
+                      const SizedBox(height: 14),
+                      _s(3, _buildVisibilitySelector(isDark)),
+                      const SizedBox(height: 28),
 
-                        // Visibilité
-                        _buildSectionTitle('Visibilité'),
-                        const SizedBox(height: 16),
-                        _buildVisibilitySelector(
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                        ),
-                        const SizedBox(height: 32),
+                      // Photos
+                      _s(4, _SectionTitle('Photos')),
+                      const SizedBox(height: 14),
+                      _s(4, _buildImageSection(isDark)),
+                      const SizedBox(height: 28),
 
-                        // Photo
-                        _buildImageSection(
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                        ),
-                        const SizedBox(height: 32),
+                      // Notes
+                      _s(5, _SectionTitle('Observations')),
+                      const SizedBox(height: 14),
+                      _s(5, _buildField(
+                        controller: _notesCtrl,
+                        focusNode: _notesFocus,
+                        label: 'NOTES',
+                        hint: 'Remarques importantes, comportement, traitements…',
+                        icon: Icons.note_outlined,
+                        isDark: isDark,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: () => FocusScope.of(context).unfocus(),
+                      )),
+                      const SizedBox(height: 36),
 
-                        // Notes
-                        _buildSectionTitle('Notes'),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _notesCtrl,
-                          label: 'Observations',
-                          hint: 'Remarques importantes...',
-                          icon: Icons.note_outlined,
-                          maxLines: 3,
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          borderColor: borderColor,
-                          secondaryTextColor: secondaryTextColor,
-                        ),
-                        const SizedBox(height: 40),
-
-                        // Bouton submit
-                        _buildSubmitButton(),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
+                      _s(6, _buildSubmitButton()),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-              ),
-            )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(Color cardColor, Color textColor, Color secondaryTextColor, Color borderColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        border: Border(bottom: BorderSide(color: borderColor, width: 1)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Navigator.pop(context);
-            },
-            icon: Icon(Icons.close_rounded, color: secondaryTextColor),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Text(
-              'Ajouter un animal',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w300,
-                color: textColor,
-                letterSpacing: -0.8,
               ),
             ),
           ),
@@ -452,212 +813,343 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w400,
-        color: _primaryColor,
-        letterSpacing: -0.3,
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    required Color cardColor,
-    required Color textColor,
-    required Color borderColor,
-    required Color secondaryTextColor,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-    Function(String)? onChanged,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: TextFormField(
-        autocorrect: false,
-        enableSuggestions: false,
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        minLines: maxLines == 1 ? 1 : 3,
-        onChanged: onChanged,
-        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          hintStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w300),
-          labelStyle: TextStyle(color: secondaryTextColor, fontWeight: FontWeight.w400),
-          prefixIcon: Icon(icon, color: _primaryColor, size: 20),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdown({
-    required String label,
-    required String? value,
-    required List<String> items,
-    required Function(String?) onChanged,
-    required Color cardColor,
-    required Color textColor,
-    required Color borderColor,
-    required IconData icon,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: DropdownButtonFormField<String>(
-        initialValue: value,
-        items: items.map((item) {
-          return DropdownMenuItem(
-            value: item,
-            child: Text(item),
-          );
-        }).toList(),
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: _primaryColor, size: 20),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          labelStyle: const TextStyle(color: Color(0xFF6B6B6B), fontWeight: FontWeight.w400),
-        ),
-        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w300, color: textColor),
-        dropdownColor: cardColor,
-        isExpanded: true,
-      ),
-    );
-  }
-
-  Widget _buildImageSection({
-    required Color cardColor,
-    required Color textColor,
-    required Color borderColor,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // ─── HERO HEADER ──────────────────────────────────────────────────────────
+  Widget _buildHeroHeader(bool isDark) {
+    return SafeArea(
+      bottom: false,
+      child: SizedBox(
+        height: 160,
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
           children: [
-            Expanded(child: _buildSectionTitle('Photos')),
-            if (_imageFiles.isNotEmpty)
-              Text(
-                '${_imageFiles.length} photo(s)',
-                style: const TextStyle(
-                  color: _accentColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+            // Gradient — même palette que le dashboard hero
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark
+                        ? [const Color(0xFF18100A), const Color(0xFF0C0804)]
+                        : [const Color(0xFFFFF8EE), const Color(0xFFEEE2CC)],
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        
-        // Grille d'images existantes
-        if (_imageBytes.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
+            ),
+
+            // Grain
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _grainCtrl,
+                builder: (_, __) => CustomPaint(
+                  painter: _GrainPainter(
+                    seed: _grainCtrl.value,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
-              itemCount: _imageBytes.length,
-              itemBuilder: (context, index) {
-                return Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(
-                        _imageBytes[index],
-                        fit: BoxFit.cover,
-                      ),
+            ),
+
+            // Rings
+            Positioned(
+              top: -50,
+              right: -50,
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: CustomPaint(
+                  painter: _RingsPainter(color: AppColors.primary),
+                ),
+              ),
+            ),
+
+            // Glow accent
+            Positioned(
+              top: -60,
+              right: -60,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.accent.withOpacity(isDark ? 0.18 : 0.12),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Livestock illustration
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: SizedBox(
+                height: 100,
+                child: AnimatedBuilder(
+                  animation: _waveCtrl,
+                  builder: (_, __) => CustomPaint(
+                    painter: _LivestockIllustrationPainter(
+                      primary: AppColors.primary,
+                      accent: AppColors.accent,
+                      isDark: isDark,
+                      phase: _waveCtrl.value,
                     ),
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: GestureDetector(
-                        onTap: () => _removeImage(index),
+                  ),
+                ),
+              ),
+            ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          FocusScope.of(context).unfocus();
+                          Navigator.pop(context);
+                        },
                         child: Container(
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.8),
-                            borderRadius: BorderRadius.circular(12),
+                            color: isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : Colors.black.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(9),
                           ),
-                          padding: const EdgeInsets.all(4),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 16,
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: AppColors.accent,
+                            size: 17,
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-
-        // Bouton ajouter photo
-        GestureDetector(
-          onTap: _loading ? null : _pickImage,
-          child: Container(
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: borderColor, width: 1),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.add_photo_alternate_outlined,
-                    size: 48,
-                    color: _primaryColor,
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.pets_outlined,
+                              size: 10,
+                              color: AppColors.accent
+                                  .withOpacity(isDark ? 0.85 : 0.70),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'ÉLEVAGE',
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 1.8,
+                                color: AppColors.accent
+                                    .withOpacity(isDark ? 0.85 : 0.70),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
+                  const Spacer(),
                   Text(
-                    'Ajouter une photo',
+                    'Ajouter',
                     style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w400,
-                      fontSize: 16,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w300,
+                      color: AppColors.accent.withOpacity(0.70),
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Appuyez pour ajouter des images',
+                  const SizedBox(height: 2),
+                  Text(
+                    'un animal',
                     style: TextStyle(
-                      color: _textSecondaryLight,
-                      fontWeight: FontWeight.w300,
-                      fontSize: 13,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w200,
+                      color: isDark
+                          ? AppColors.textDark
+                          : AppColors.textLight,
+                      letterSpacing: -1.5,
+                      height: 1.0,
                     ),
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── ANIMAL TYPE SELECTOR ─────────────────────────────────────────────────
+  Widget _buildAnimalTypeSelector(bool isDark) {
+    const types = [
+      {'value': 'Bovins', 'icon': Icons.set_meal_outlined, 'label': 'Bovins'},
+      {'value': 'Chèvres', 'icon': Icons.pets_outlined, 'label': 'Chèvres'},
+      {'value': 'Moutons', 'icon': Icons.cloud_outlined, 'label': 'Moutons'},
+      {'value': 'Volailles', 'icon': Icons.egg_outlined, 'label': 'Volailles'},
+      {'value': 'Autre', 'icon': Icons.more_horiz_rounded, 'label': 'Autre'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'TYPE D\'ANIMAL',
+          style: TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 1.8,
+            color: _textSec(isDark),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: types.map((t) {
+            final isSelected = _animalTypeCtrl.text == t['value'] as String;
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _animalTypeCtrl.text = t['value'] as String;
+                  if (t['value'] != 'Autre') _customAnimalTypeCtrl.clear();
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? (isDark ? AppColors.darkCardBg : AppColors.primary)
+                      : (isDark
+                          ? AppColors.darkCardBg
+                          : const Color(0xFFFAF8F4)),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : (isDark
+                            ? AppColors.borderDark
+                            : AppColors.borderLight),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      t['icon'] as IconData,
+                      size: 15,
+                      color: isSelected
+                          ? (isDark ? AppColors.accent : Colors.white)
+                          : (isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondaryLight),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      t['label'] as String,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected
+                            ? FontWeight.w400
+                            : FontWeight.w300,
+                        color: isSelected
+                            ? (isDark ? AppColors.textDark : Colors.white)
+                            : (isDark
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondaryLight),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  // ─── FIELD ────────────────────────────────────────────────────────────────
+  Widget _buildField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required bool isDark,
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
+    int maxLines = 1,
+    TextInputAction textInputAction = TextInputAction.next,
+    VoidCallback? onSubmitted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 1.8,
+            color: _textSec(isDark),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: _card(isDark),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _border(isDark), width: 1),
+          ),
+          child: TextFormField(
+            controller: controller,
+            focusNode: focusNode,
+            validator: validator,
+            keyboardType: keyboardType,
+            maxLines: maxLines,
+            minLines: maxLines == 1 ? 1 : 3,
+            textInputAction: textInputAction,
+            onFieldSubmitted: (_) => onSubmitted?.call(),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w300,
+              color: _text(isDark),
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                color: _textSec(isDark),
+                fontWeight: FontWeight.w300,
+                fontSize: 13,
+              ),
+              prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 13),
             ),
           ),
         ),
@@ -665,128 +1157,290 @@ class _CreateLivestockScreenState extends State<CreateLivestockScreen> {
     );
   }
 
-  Widget _buildVisibilitySelector({
-    required Color cardColor,
-    required Color textColor,
-    required Color borderColor,
+  // ─── DROPDOWN ─────────────────────────────────────────────────────────────
+  Widget _buildDropdownField({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required IconData icon,
+    required bool isDark,
+    required void Function(String?) onChanged,
   }) {
-    final visibilityOptions = [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 1.8,
+            color: _textSec(isDark),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: _card(isDark),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _border(isDark), width: 1),
+          ),
+          child: DropdownButtonFormField<String>(
+            value: value,
+            items: items
+                .map((item) => DropdownMenuItem(
+                      value: item,
+                      child: Text(
+                        item,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w300,
+                          color: _text(isDark),
+                        ),
+                      ),
+                    ))
+                .toList(),
+            onChanged: onChanged,
+            decoration: InputDecoration(
+              hintText: 'Sélectionner…',
+              hintStyle: TextStyle(
+                color: _textSec(isDark),
+                fontWeight: FontWeight.w300,
+                fontSize: 13,
+              ),
+              prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 13),
+            ),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w300,
+              color: _text(isDark),
+            ),
+            dropdownColor: _card(isDark),
+            icon: Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: _textSec(isDark),
+              size: 18,
+            ),
+            isExpanded: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── VISIBILITY SELECTOR ──────────────────────────────────────────────────
+  Widget _buildVisibilitySelector(bool isDark) {
+    const options = [
       {
         'value': 'PRIVATE',
         'label': 'Privé',
-        'icon': Icons.lock_outlined,
         'description': 'Visible uniquement par vous',
-        'color': Colors.red.shade400,
+        'icon': Icons.lock_outlined,
       },
       {
         'value': 'PARTIAL',
         'label': 'Partagé',
+        'description': 'Visible via vos publications uniquement',
         'icon': Icons.people_outline,
-        'description': 'Visible via les posts uniquement',
-        'color': Colors.orange.shade400,
       },
       {
         'value': 'PUBLIC',
         'label': 'Public',
+        'description': 'Visible par tous les agriculteurs',
         'icon': Icons.public_outlined,
-        'description': 'Visible par tous',
-        'color': const Color(0xFF6B8E23),
       },
     ];
 
     return Column(
-      children: visibilityOptions.map((option) {
-        final isSelected = _visibility == option['value'];
+      children: options.map((opt) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => setState(() => _visibility = option['value'] as String),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isSelected ? (option['color'] as Color).withOpacity(0.1) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isSelected ? (option['color'] as Color) : borderColor,
-                    width: isSelected ? 2 : 1,
-                  ),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(
-                      option['icon'] as IconData,
-                      color: option['color'] as Color,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            option['label'] as String,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            option['description'] as String,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w300,
-                              color: textColor.withOpacity(0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (isSelected)
-                      Icon(
-                        Icons.check_circle,
-                        color: option['color'] as Color,
-                        size: 24,
-                      ),
-                  ],
-                ),
-              ),
-            ),
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _VisibilityButton(
+            icon: opt['icon'] as IconData,
+            label: opt['label'] as String,
+            description: opt['description'] as String,
+            selected: _visibility == opt['value'] as String,
+            isDark: isDark,
+            onTap: () => setState(() => _visibility = opt['value'] as String),
           ),
         );
       }).toList(),
     );
   }
 
+  // ─── IMAGE SECTION ────────────────────────────────────────────────────────
+  Widget _buildImageSection(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Grid of selected images
+        if (_imageBytesList.isNotEmpty) ...[
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: _imageBytesList.length,
+            itemBuilder: (context, index) {
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.memory(
+                      _imageBytesList[index],
+                      fit: BoxFit.cover,
+                      cacheWidth: 400,
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: GestureDetector(
+                      onTap: () => _removeImage(index),
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                          size: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+        ],
+
+        // Add photo button
+        GestureDetector(
+          onTap: _loading ? null : _pickImage,
+          child: Container(
+            height: _imageBytesList.isEmpty ? 130 : 60,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight.withOpacity(isDark ? 0.08 : 0.05),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.primary.withOpacity(0.22),
+                width: 1.5,
+              ),
+            ),
+            child: _imageBytesList.isEmpty
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.add_photo_alternate_outlined,
+                          size: 20,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ajouter une photo',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Appuyez pour sélectionner',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w300,
+                          color: _textSec(isDark),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_photo_alternate_outlined,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Ajouter une autre photo',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w300,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── SUBMIT BUTTON ────────────────────────────────────────────────────────
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: Material(
-        borderRadius: BorderRadius.circular(10),
-        color: _primaryColor,
+        borderRadius: BorderRadius.circular(12),
+        color: AppColors.primary,
         child: InkWell(
           onTap: _loading ? null : _submit,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
+          splashColor: AppColors.accent.withOpacity(0.12),
           child: Center(
             child: _loading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.8,
+                      color: AppColors.accent,
+                    ),
                   )
-                : const Row(
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.add_circle_outline, color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text(
+                      Icon(
+                        Icons.add_circle_outline,
+                        color: AppColors.accent,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
                         'Ajouter l\'animal',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w300,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ],
                   ),
