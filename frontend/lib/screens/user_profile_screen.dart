@@ -6,6 +6,7 @@ import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/screens/farm_tab/farm_tab.dart';
 import 'package:mbaymi/screens/parcel_screen.dart';
 import 'package:mbaymi/screens/edit_livestock_screen.dart';
+import 'package:mbaymi/screens/project_notebook_list_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/widgets/skeleton_loader.dart';
 import 'dart:async';
@@ -496,18 +497,45 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
           // ── Quick action ──────────────────────────────────────
           if (_isOwn)
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: _Z.s24, vertical: _Z.s8),
-              child: _ZaraActionTile(
-                label: 'CRÉER UN POST',
-                icon: Icons.add,
-                dark: dark,
-                onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => FarmTab(userId: widget.userId))),
-              ),
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: _Z.s24, vertical: _Z.s8),
+                  child: _ZaraActionTile(
+                    label: 'CRÉER UN POST',
+                    icon: Icons.add,
+                    dark: dark,
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => FarmTab(userId: widget.userId))),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: _Z.s24, vertical: _Z.s8),
+                  child: _ZaraActionTile(
+                    label: 'MON CAHIER',
+                    icon: Icons.description_outlined,
+                    dark: dark,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      // Déterminer la première farm pour le cahier
+                      final defaultFarmId = '1'; // À adapter selon votre logique
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProjectNotebookListScreen(
+                            farmId: defaultFarmId,
+                            userId: widget.userId.toString(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
 
           const SizedBox(height: _Z.s32),
