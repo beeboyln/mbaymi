@@ -304,3 +304,71 @@ class ReminderResponse(ReminderCreate):
 
     class Config:
         from_attributes = True
+
+
+# ═════════════════════════════════════════════════════════════════
+# PROJECT NOTEBOOK SCHEMAS
+# ═════════════════════════════════════════════════════════════════
+
+class NoteContentCreate(BaseModel):
+    type: str  # text, heading, list, quote, code, checklist
+    content: str
+    metadata: Optional[dict] = {}
+
+class NotebookSectionCreate(BaseModel):
+    title: str
+    contents: Optional[List[NoteContentCreate]] = []
+    order: int = 0
+
+class NotebookCommentCreate(BaseModel):
+    text: str
+
+class NotebookCommentResponse(NotebookCommentCreate):
+    id: int
+    user_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class ProjectNotebookCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    farm_id: Optional[int] = None
+    category: str = "general"  # general, culture, elevage, finance, maintenance
+    tags: Optional[List[str]] = []
+    sections: Optional[List[NotebookSectionCreate]] = []
+    is_public: bool = False
+
+class ProjectNotebookUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
+    sections: Optional[List[NotebookSectionCreate]] = None
+    is_public: Optional[bool] = None
+
+class ProjectNotebookResponse(ProjectNotebookCreate):
+    id: int
+    farm_id: Optional[int] = None
+    created_by: int
+    created_at: datetime
+    updated_at: datetime
+    comments: Optional[List[NotebookCommentResponse]] = []
+    
+    class Config:
+        from_attributes = True
+
+class NotebookVersionCreate(BaseModel):
+    change_description: str
+
+class NotebookVersionResponse(NotebookVersionCreate):
+    id: int
+    notebook_id: int
+    title: str
+    created_by: int
+    sections_snapshot: Optional[dict] = None
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True

@@ -64,7 +64,7 @@ def include_routes():
     app.include_router(animal_photos.router)
     
     # Agricultural features
-    from app.routes import crop_problems, farm_network, user_profile, social, farm_posts, market_prices, notifications, veterinarian, authorization, service_request, media, search, admin
+    from app.routes import crop_problems, farm_network, user_profile, social, farm_posts, market_prices, notifications, veterinarian, authorization, service_request, media, search, admin, notebooks
     # New agriculture API routes
     from app.routes import api_crops, api_inputs, api_finance, api_reminders, animals
     app.include_router(crop_problems.router)
@@ -93,6 +93,7 @@ def include_routes():
     app.include_router(api_finance.router)
     app.include_router(api_reminders.router)
     app.include_router(animals.router)  # Individual animal management system
+    app.include_router(notebooks.router)  # Project notebook (cahiers agricoles)
     
     print("[DEBUG] farm_posts.router routes:")
     for route in app.routes:

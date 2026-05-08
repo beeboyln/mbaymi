@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:mbaymi/services/token_storage.dart';
 import '../models/project_notebook_model.dart';
 
 class NotebookService {
@@ -9,6 +12,25 @@ class NotebookService {
   final SharedPreferences _prefs;
 
   NotebookService(this._prefs);
+
+  /// Get base API URL from dotenv, with fallback
+  String get _baseUrl {
+    return dotenv.env['API_BASE_URL'] ?? 
+           'https://burning-yetty-bigboyme-428f3176.koyeb.app/api';
+  }
+
+  /// Get auth token from TokenStorage (not SharedPreferences!)
+  Future<String?> _getTokenFromStorage() async {
+    return await TokenStorage.getAccessToken();
+  }
+
+  /// Helper to build headers with token
+  Map<String, String> _getHeadersWithToken(String? token) {
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 
   // ========== CRUD OPERATIONS ==========
 
@@ -34,9 +56,20 @@ class NotebookService {
     return notebook;
   }
 
-  /// Sauvegarder un cahier
+  /// Sauvegarder un cahier (local + API)
   Future<void> saveNotebook(ProjectNotebook notebook) async {
     try {
+      print('[NOTEBOOK] === SAVE START ===');
+      print('[NOTEBOOK] ID: ${notebook.id}');
+      print('[NOTEBOOK] Title: ${notebook.title}');
+      print('[NOTEBOOK] FarmID: ${notebook.farmId}');
+      
+      // Récupérer le token depuis TokenStorage
+      final token = await _getTokenFromStorage();
+      print('[NOTEBOOK] Token: ${token != null ? token.substring(0, 20) + '...' : 'NULL'}');
+      print('[NOTEBOOK] BaseURL: $_baseUrl');
+      
+      // Sauvegarder localement d'abord (plus rapide, offline-first)
       final notebooks = await getAllNotebooks();
       final index = notebooks.indexWhere((n) => n.id == notebook.id);
 
@@ -48,8 +81,122 @@ class NotebookService {
 
       final jsonList = notebooks.map((n) => n.toJson()).toList();
       await _prefs.setString(_notebooksKey, jsonEncode(jsonList));
+      print('[NOTEBOOK] ✅ LOCAL SAVED');
+
+      // Ensuite, synchroniser avec l'API si token disponible
+      if (token != null && token.isNotEmpty) {
+        print('[NOTEBOOK] 🔄 API SYNC starting...');
+        _syncWithApi(notebook, token).then((_) {
+          print('[NOTEBOOK] ✅ API SYNC completed');
+        }).catchError((e) {
+          print('[NOTEBOOK] ❌ API SYNC failed: $e');
+        });
+      } else {
+        print('[NOTEBOOK] ⚠️ NO TOKEN - skipping API sync');
+      }
     } catch (e) {
+      print('[NOTEBOOK] 💥 SAVE ERROR: $e');
       throw Exception('Erreur lors de la sauvegarde: $e');
+    }
+  }
+
+  /// Synchroniser avec l'API (fire-and-forget, async)
+  Future<void> _syncWithApi(ProjectNotebook notebook, String token) async {
+    try {
+      print('[SYNC] ═══════ API SYNC START ═══════');
+      print('[SYNC] Notebook ID: ${notebook.id}');
+      print('[SYNC] Notebook Title: ${notebook.title}');
+      print('[SYNC] Notebook FarmID: ${notebook.farmId}');
+      print('[SYNC] Token valid: ${token.isNotEmpty}');
+      
+      final headers = _getHeadersWithToken(token);
+      print('[SYNC] Headers ready: ${headers.keys.toList()}');
+
+      // Check if notebook exists on server (has integer ID)
+      if (notebook.id.isEmpty || notebook.id.startsWith('local_')) {
+        print('[SYNC] 📝 CREATE mode (new notebook)');
+        final url = '$_baseUrl/notebooks';
+        print('[SYNC] POST to: $url');
+        print('[SYNC] Headers: $headers');
+        
+        // Create new notebook on API
+        final response = await http.post(
+          Uri.parse(url),
+          headers: headers,
+          body: jsonEncode({
+            'title': notebook.title,
+            'description': notebook.description,
+            'category': notebook.category,
+            'tags': notebook.tags,
+            'is_public': notebook.isPublic,
+            'sections': notebook.sections.map((s) => s.toJson()).toList(),
+          }),
+        ).timeout(const Duration(seconds: 10));
+
+        print('[SYNC] Response: ${response.statusCode}');
+        print('[SYNC] Body: ${response.body}');
+        
+        if (response.statusCode == 201 || response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final serverId = data['id'].toString();
+          print('[SYNC] ✅ Created with ID: $serverId');
+          
+          // Update local notebook with server ID
+          final updated = ProjectNotebook(
+            id: serverId,
+            title: notebook.title,
+            description: notebook.description,
+            farmId: notebook.farmId,
+            createdBy: notebook.createdBy,
+            sections: notebook.sections,
+            tags: notebook.tags,
+            category: notebook.category,
+            isPublic: notebook.isPublic,
+            comments: notebook.comments,
+            versions: notebook.versions,
+          );
+          final notebooks = await getAllNotebooks();
+          final idx = notebooks.indexWhere((n) => n.id == notebook.id);
+          if (idx != -1) {
+            notebooks[idx] = updated;
+            await _prefs.setString(_notebooksKey, jsonEncode(notebooks.map((n) => n.toJson()).toList()));
+            print('[SYNC] ✅ Updated local ID to: $serverId');
+          }
+        } else {
+          print('[SYNC] ❌ Error: ${response.statusCode}');
+        }
+      } else {
+        print('[SYNC] 📝 UPDATE mode');
+        final notebookId = int.tryParse(notebook.id);
+        if (notebookId != null) {
+          final url = '$_baseUrl/notebooks/$notebookId';
+          print('[SYNC] PUT to: $url');
+          
+          final response = await http.put(
+            Uri.parse(url),
+            headers: headers,
+            body: jsonEncode({
+              'title': notebook.title,
+              'description': notebook.description,
+              'category': notebook.category,
+              'tags': notebook.tags,
+              'is_public': notebook.isPublic,
+              'sections': notebook.sections.map((s) => s.toJson()).toList(),
+            }),
+          ).timeout(const Duration(seconds: 10));
+          
+          print('[SYNC] Response: ${response.statusCode}');
+          if (response.statusCode == 200) {
+            print('[SYNC] ✅ Update sent');
+          } else {
+            print('[SYNC] ❌ Error: ${response.statusCode}');
+          }
+        }
+      }
+      print('[SYNC] ═══════ API SYNC END ═══════');
+    } catch (e, stack) {
+      print('[SYNC] 💥 Exception: $e');
+      print('[SYNC] Stack: $stack');
     }
   }
 
@@ -63,6 +210,49 @@ class NotebookService {
           .toList();
     } catch (e) {
       throw Exception('Erreur lors de la récupération des cahiers: $e');
+    }
+  }
+
+  /// Charger les cahiers depuis le serveur et les synchroniser localement
+  /// Appelé au login pour restaurer tous les cahiers du user
+  Future<List<ProjectNotebook>> syncNotebooksFromServer() async {
+    try {
+      print('[NOTEBOOK-SYNC] Syncing notebooks from server...');
+      final token = await _getTokenFromStorage();
+      
+      if (token == null || token.isEmpty) {
+        print('[NOTEBOOK-SYNC] ⚠️ No token available');
+        return [];
+      }
+
+      final headers = _getHeadersWithToken(token);
+      final url = '$_baseUrl/notebooks';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final notebooks = data
+            .map((n) => ProjectNotebook.fromJson(n as Map<String, dynamic>))
+            .toList();
+
+        // Sauvegarder localement
+        final jsonList = notebooks.map((n) => n.toJson()).toList();
+        await _prefs.setString(_notebooksKey, jsonEncode(jsonList));
+
+        print('[NOTEBOOK-SYNC] ✅ Synced ${notebooks.length} notebooks from server');
+        return notebooks;
+      } else {
+        print('[NOTEBOOK-SYNC] ❌ Failed: ${response.statusCode}');
+        return [];
+      }
+    } catch (e, stack) {
+      print('[NOTEBOOK-SYNC] 💥 Exception: $e');
+      print('[NOTEBOOK-SYNC] Stack: $stack');
+      return [];
     }
   }
 

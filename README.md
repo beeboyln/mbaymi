@@ -37,6 +37,7 @@ Mbaymi connecte **agriculteurs, éleveurs, acheteurs et institutions** pour :
 - ✅ Gestion parcelle/bétail
 - ✅ Conseils automatiques
 - ✅ Accès prix marché
+- ✅ **Cahiers de Projet** (NEW!) 📖
 
 ### Pour Tous
 - ✅ Auth (login/register)
@@ -48,6 +49,7 @@ Mbaymi connecte **agriculteurs, éleveurs, acheteurs et institutions** pour :
 - ✅ Farms (parcelles et cultures)
 - ✅ Livestock (bétail)
 - ✅ Market Prices (prix produits)
+- ✅ Project Notebooks (cahiers)
 
 ## 📦 Dossiers
 

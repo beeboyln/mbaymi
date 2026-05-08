@@ -23,6 +23,8 @@ import 'package:mbaymi/screens/search_users_screen.dart';
 import 'package:mbaymi/widgets/notification_icon_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/utils/app_spacing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mbaymi/services/notebook_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final int? userId;
@@ -51,6 +53,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _screenIndices = [];
     _createDashboard();
     _updateScreens();
+    
+    // Sync notebooks from server on login - MUST complete before showing screens
+    _initializeNotebooks();
 
     if (_userId == null) {
       TokenStorage.getUserId().then((v) {
@@ -59,8 +64,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             _userId = v;
             _updateScreens();
           });
+          _initializeNotebooks();
         }
       });
+    }
+  }
+
+  /// Initialize notebooks - must complete before displaying content
+  Future<void> _initializeNotebooks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notebookService = NotebookService(prefs);
+      
+      // WAIT for sync to complete before continuing
+      final notebooks = await notebookService.syncNotebooksFromServer();
+      print('[HOME] ✅ ${notebooks.length} notebooks loaded from server');
+      
+      if (mounted) {
+        setState(() {
+          // Force rebuild to show notebooks
+        });
+      }
+    } catch (e) {
+      print('[HOME] ⚠️ Failed to sync notebooks: $e');
+      // Continue anyway - use local cache if sync fails
     }
   }
 
@@ -98,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } else if (isVeterinarian) {
       switch (index) {
         case 0: screen = const VeterinarianDashboardScreen(); break;
-        case 1: screen = FarmNetworkScreen(isDarkMode: isDarkMode); break;
+        case 1: screen = const FarmNetworkScreen(); break;
         case 2: screen = LivestockTab(isDarkMode: isDarkMode); break;
         case 3: screen = AdviceTab(isDarkMode: isDarkMode); break;
         default: screen = const Placeholder();
@@ -114,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           );
           break;
         case 1: screen = FarmTab(key: ValueKey('farm_${userId ?? 0}'), userId: userId); break;
-        case 2: screen = FarmNetworkScreen(isDarkMode: isDarkMode); break;
+        case 2: screen = const FarmNetworkScreen(); break;
         case 3: screen = LivestockTab(isDarkMode: isDarkMode); break;
         case 4: screen = MarketTab(isDarkMode: isDarkMode); break;
         case 5: screen = AdviceTab(isDarkMode: isDarkMode); break;

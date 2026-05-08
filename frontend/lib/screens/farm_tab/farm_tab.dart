@@ -572,7 +572,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
         onDiscover: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => SocialFeedScreen(isDarkMode: dark))),
+                builder: (_) => const SocialFeedScreen())),
       );
     }
     return FutureBuilder<List<dynamic>>(

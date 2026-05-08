@@ -234,8 +234,8 @@ class _ProjectNotebookListScreenState
 
   Future<void> _loadNotebooks() async {
     try {
-      final notebooks =
-          await _notebookService.getNotebooksByFarm(widget.farmId);
+      // Fetch notebooks from server and cache locally
+      final notebooks = await _notebookService.syncNotebooksFromServer();
       if (mounted) {
         setState(() {
           _notebooks = notebooks;

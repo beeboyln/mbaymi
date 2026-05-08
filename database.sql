@@ -194,6 +194,105 @@ VALUES
   ('oignon', 'Tambacounda', 180, 'CFA', 'market_data');
 
 -- ====================================
+-- 6. PROJECT NOTEBOOKS TABLE (Cahiers Agricoles)
+-- ====================================
+CREATE TABLE project_notebooks (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+  created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category VARCHAR(50) DEFAULT 'general',
+  is_public BOOLEAN DEFAULT false,
+  sections JSONB DEFAULT '[]',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for project_notebooks
+CREATE INDEX idx_notebooks_farm_id ON project_notebooks(farm_id);
+CREATE INDEX idx_notebooks_created_by ON project_notebooks(created_by);
+CREATE INDEX idx_notebooks_category ON project_notebooks(category);
+CREATE INDEX idx_notebooks_is_public ON project_notebooks(is_public);
+
+-- ====================================
+-- 7. NOTEBOOK SECTIONS TABLE
+-- ====================================
+CREATE TABLE notebook_sections (
+  id SERIAL PRIMARY KEY,
+  notebook_id INTEGER NOT NULL REFERENCES project_notebooks(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  "order" INTEGER DEFAULT 0,
+  contents JSONB DEFAULT '[]',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for notebook_sections
+CREATE INDEX idx_sections_notebook_id ON notebook_sections(notebook_id);
+
+-- ====================================
+-- 8. NOTEBOOK TAGS TABLE
+-- ====================================
+CREATE TABLE notebook_tags (
+  id SERIAL PRIMARY KEY,
+  notebook_id INTEGER NOT NULL REFERENCES project_notebooks(id) ON DELETE CASCADE,
+  tag VARCHAR(100) NOT NULL
+);
+
+-- Create indexes for notebook_tags
+CREATE INDEX idx_tags_notebook_id ON notebook_tags(notebook_id);
+CREATE INDEX idx_tags_tag ON notebook_tags(tag);
+
+-- ====================================
+-- 9. NOTEBOOK COMMENTS TABLE
+-- ====================================
+CREATE TABLE notebook_comments (
+  id SERIAL PRIMARY KEY,
+  notebook_id INTEGER NOT NULL REFERENCES project_notebooks(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP
+);
+
+-- Create indexes for notebook_comments
+CREATE INDEX idx_comments_notebook_id ON notebook_comments(notebook_id);
+CREATE INDEX idx_comments_user_id ON notebook_comments(user_id);
+
+-- ====================================
+-- 10. NOTEBOOK SHARES TABLE
+-- ====================================
+CREATE TABLE notebook_shares (
+  id SERIAL PRIMARY KEY,
+  notebook_id INTEGER NOT NULL REFERENCES project_notebooks(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for notebook_shares
+CREATE INDEX idx_shares_notebook_id ON notebook_shares(notebook_id);
+CREATE INDEX idx_shares_user_id ON notebook_shares(user_id);
+CREATE UNIQUE INDEX idx_shares_unique ON notebook_shares(notebook_id, user_id);
+
+-- ====================================
+-- 11. NOTEBOOK VERSIONS TABLE
+-- ====================================
+CREATE TABLE notebook_versions (
+  id SERIAL PRIMARY KEY,
+  notebook_id INTEGER NOT NULL REFERENCES project_notebooks(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  change_description TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  sections_snapshot JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for notebook_versions
+CREATE INDEX idx_versions_notebook_id ON notebook_versions(notebook_id);
+CREATE INDEX idx_versions_created_by ON notebook_versions(created_by);
+
+-- ====================================
 -- VERIFICATION QUERIES (Run these to check)
 -- ====================================
 

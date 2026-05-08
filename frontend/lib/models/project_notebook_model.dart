@@ -41,7 +41,7 @@ class ProjectNotebook {
     this.isPublic = false,
     this.comments = const [],
     this.versions = const [],
-  })  : id = id ?? const Uuid().v4(),
+  })  : id = id ?? 'local_${const Uuid().v4()}',
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
