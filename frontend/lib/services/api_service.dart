@@ -1461,9 +1461,14 @@ class ApiService {
       if (response.statusCode == 200) {
         final List<dynamic> allLivestock = jsonDecode(response.body) as List;
         
-        // Charger les photos pour chaque animal
+        // Filtrer les animaux supprimés et charger les photos
         final List<dynamic> livestockWithPhotos = [];
         for (var animal in allLivestock) {
+          // Exclure les bétails supprimés (deleted_at != null)
+          if (animal['deleted_at'] != null) {
+            continue;
+          }
+          
           final livestockId = animal['id'] as int?;
           if (livestockId != null) {
             try {

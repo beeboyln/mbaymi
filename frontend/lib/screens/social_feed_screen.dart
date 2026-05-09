@@ -77,6 +77,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   void _refreshFeed() {
     _globalFeedCache.remove('feed_$_userId');
+    // Invalidate livestock cache to refresh the list and exclude deleted animals
+    _livestockFuture = null;
     if (mounted) setState(() => _feedFuture = _getOrCreateFeed());
   }
 

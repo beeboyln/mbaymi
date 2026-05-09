@@ -40,7 +40,8 @@ def get_public_livestock(db: Session = Depends(get_db), user_id: int = None):
     """Get all livestock for network display with user info"""
     try:
         from app.models.user import User
-        livestock_list = db.query(Livestock).all()
+        # Only get non-deleted livestock
+        livestock_list = db.query(Livestock).filter(Livestock.deleted_at == None).all()
         
         # Enrich with user information
         enriched = []
@@ -71,6 +72,7 @@ def get_public_livestock(db: Session = Depends(get_db), user_id: int = None):
                 'visibility': animal.visibility,
                 'created_at': animal.created_at.isoformat() if animal.created_at else None,
                 'updated_at': animal.updated_at.isoformat() if animal.updated_at else None,
+                'deleted_at': animal.deleted_at.isoformat() if animal.deleted_at else None,
                 'likes_count': animal.likes_count or 0,
                 'comments_count': animal.comments_count or 0,
                 'shares_count': animal.shares_count or 0,
@@ -86,7 +88,11 @@ def get_public_livestock(db: Session = Depends(get_db), user_id: int = None):
 @router.get("/user/{user_id}")
 def get_user_livestock(user_id: int, db: Session = Depends(get_db)):
     try:
-        livestock_list = db.query(Livestock).filter(Livestock.user_id == user_id).all()
+        # Only get non-deleted livestock
+        livestock_list = db.query(Livestock).filter(
+            Livestock.user_id == user_id,
+            Livestock.deleted_at == None
+        ).all()
         return livestock_list
     except Exception as e:
         print(f"Error fetching livestock for user {user_id}: {str(e)}")
@@ -94,7 +100,10 @@ def get_user_livestock(user_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{livestock_id:int}", response_model=LivestockResponse)
 def get_livestock(livestock_id: int, db: Session = Depends(get_db)):
-    livestock = db.query(Livestock).filter(Livestock.id == livestock_id).first()
+    livestock = db.query(Livestock).filter(
+        Livestock.id == livestock_id,
+        Livestock.deleted_at == None
+    ).first()
     if not livestock:
         raise HTTPException(status_code=404, detail="Livestock not found")
     return livestock
@@ -116,3 +125,17 @@ def update_livestock(livestock_id: int, livestock: LivestockCreate, db: Session 
     db.refresh(existing)
     
     return existing
+
+@router.delete("/{livestock_id}")
+def delete_livestock(livestock_id: int, db: Session = Depends(get_db)):
+    """Soft delete livestock by setting deleted_at timestamp"""
+    livestock = db.query(Livestock).filter(Livestock.id == livestock_id).first()
+    if not livestock:
+        raise HTTPException(status_code=404, detail="Livestock not found")
+    
+    # Soft delete: set deleted_at timestamp instead of hard delete
+    from datetime import datetime
+    livestock.deleted_at = datetime.utcnow()
+    db.commit()
+    
+    return {"message": f"Livestock {livestock_id} deleted successfully"}

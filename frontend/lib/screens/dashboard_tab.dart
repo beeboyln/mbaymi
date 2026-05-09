@@ -571,7 +571,7 @@ class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixi
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'LA TERRE NOURRIT. LA TECH GUIDE.',
+                        'LA TERRE NOURRIT. LA TECH GUIDEE.',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
