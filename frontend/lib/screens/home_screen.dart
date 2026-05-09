@@ -928,26 +928,25 @@ class _ActionMenuSheet extends StatelessWidget {
               const SizedBox(height: 8),
 
               _buildAction(
-                context: context,
-                icon: Icons.pets_outlined,
-                label: 'Ajouter un animal',
-                sublabel: 'Gérer votre cheptel',
-                color: AppColors.accent,
-                onTap: () {
-                  if (!_requireAuth(context)) return;
-                  Navigator.pop(context);
-                  HapticFeedback.lightImpact();
-                  Navigator.push(
-                    homeContext,
-                    MaterialPageRoute(
-                      builder: (_) => LivestockManagementScreen(
-                        userId: userId!,
-                        isDarkMode: isDarkModeRef(),
-                      ),
-                    ),
-                  );
-                },
-              ),
+  context: context,
+  icon: Icons.pets_outlined,
+  label: 'Ajouter un animal',
+  sublabel: 'Gérer votre cheptel',
+  color: AppColors.accent,
+  onTap: () {
+    if (!_requireAuth(context)) return;
+    Navigator.pop(context);
+    HapticFeedback.lightImpact();
+    Navigator.push(
+      homeContext,
+      MaterialPageRoute(
+        builder: (_) => LivestockTab(
+          isDarkMode: isDarkModeRef(),
+        ),
+      ),
+    );
+  },
+),
               const SizedBox(height: 8),
 
               _buildAction(

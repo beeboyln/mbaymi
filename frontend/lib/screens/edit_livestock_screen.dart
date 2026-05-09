@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,85 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/screens/animal_photo_carousel_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAINTERS (same visual language as dashboard)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GrainPainter extends CustomPainter {
+  final double seed;
+  final Color color;
+  const _GrainPainter({required this.seed, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rng = Random((seed * 1000).toInt());
+    final paint = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 220; i++) {
+      final x = rng.nextDouble() * size.width;
+      final y = rng.nextDouble() * size.height;
+      final r = rng.nextDouble() * 0.9 + 0.2;
+      final op = rng.nextDouble() * 0.035 + 0.005;
+      paint.color = color.withOpacity(op);
+      canvas.drawCircle(Offset(x, y), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GrainPainter o) => o.seed != seed;
+}
+
+class _WavePainter extends CustomPainter {
+  final double phase;
+  final Color color;
+  final double yOffset;
+  const _WavePainter({required this.phase, required this.color, this.yOffset = 0.6});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    final path = Path();
+    final baseY = size.height * yOffset;
+    path.moveTo(0, size.height);
+    path.lineTo(0, baseY + 10 * sin(phase));
+    for (double x = 0; x <= size.width; x += 2) {
+      final y = baseY
+          + 12 * sin(x / size.width * 2 * pi + phase)
+          + 6  * sin(x / size.width * 4 * pi - phase * 1.3)
+          + 3  * cos(x / size.width * 6 * pi + phase * 0.7);
+      path.lineTo(x, y);
+    }
+    path.lineTo(size.width, size.height);
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_WavePainter o) => o.phase != phase;
+}
+
+class _RingsPainter extends CustomPainter {
+  final Color color;
+  const _RingsPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 0.6;
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.5;
+    for (int i = 1; i <= 5; i++) {
+      paint.color = color.withOpacity(0.022 + i * 0.004);
+      canvas.drawCircle(Offset(cx, cy), i * 38.0, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingsPainter o) => false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
 
 class EditLivestockScreen extends StatefulWidget {
   final int livestockId;
@@ -22,7 +102,8 @@ class EditLivestockScreen extends StatefulWidget {
   State<EditLivestockScreen> createState() => _EditLivestockScreenState();
 }
 
-class _EditLivestockScreenState extends State<EditLivestockScreen> {
+class _EditLivestockScreenState extends State<EditLivestockScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _animalTypeCtrl;
   late TextEditingController _customAnimalTypeCtrl;
@@ -34,39 +115,46 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   late TextEditingController _feedingCtrl;
   late TextEditingController _notesCtrl;
 
-  // Focus nodes
-  final _animalTypeFocus = FocusNode();
-  final _breedFocus = FocusNode();
-  final _quantityFocus = FocusNode();
-  final _ageFocus = FocusNode();
-  final _weightFocus = FocusNode();
-  final _healthFocus = FocusNode();
-  final _feedingFocus = FocusNode();
-  final _notesFocus = FocusNode();
 
-  final _scrollController = ScrollController();
 
   bool _loading = false;
   XFile? _imageFile;
   Uint8List? _imageBytes;
   String? _existingImageUrl;
-  // ignore: unused_field
   late Future<List<dynamic>> _photosFuture;
   late String _visibility;
   late int _userId;
-  final int _selectedTabIndex = 0;
+
+  // Animations
+  AnimationController? _waveCtrl;
+  AnimationController? _grainCtrl;
+  AnimationController? _entryCtrl;
+  List<Animation<double>>? _fade;
+  List<Animation<Offset>>?  _slide;
 
   bool get isWeb => kIsWeb;
 
   static const Color _primaryColor = Color(0xFF6B8E23);
-  static const Color _bgLight = Color(0xFFF8F9FA);
-  static const Color _bgDark = Color(0xFF0A0A0A);
-  static const Color _cardLight = Color(0xFFFFFFFF);
-  static const Color _cardDark = Color(0xFF1A1A1A);
+  static const Color _accentColor  = Color(0xFFA0C878);
 
-  final List<String> _animalTypes = ['Bovins', 'Chèvres', 'Moutons', 'Volailles', 'Autre'];
+  final List<String> _animalTypes    = ['Bovins', 'Chèvres', 'Moutons', 'Volailles', 'Autre'];
   final List<String> _healthStatuses = ['Sain', 'Malade', 'Vacciné', 'À surveiller'];
-  final List<String> _feedingTypes = ['Herbe', 'Grains', 'Mixte', 'Aliment composé'];
+  final List<String> _feedingTypes   = ['Herbe', 'Grains', 'Mixte', 'Aliment composé'];
+
+  static const Map<String, IconData> _typeIcons = {
+    'Bovins':    Icons.set_meal_outlined,
+    'Chèvres':   Icons.spa_outlined,
+    'Moutons':   Icons.cloud_outlined,
+    'Volailles': Icons.egg_outlined,
+    'Autre':     Icons.pets,
+  };
+
+  static const Map<String, Color> _healthColors = {
+    'Sain':         Color(0xFF4CAF50),
+    'Malade':       Color(0xFFE53935),
+    'Vacciné':      Color(0xFF42A5F5),
+    'À surveiller': Color(0xFFFFB300),
+  };
 
   @override
   void initState() {
@@ -75,7 +163,7 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     _existingImageUrl = widget.livestock['image_url'];
     _photosFuture = ApiService.getAnimalPhotos(widget.livestockId);
     _visibility = widget.livestock['visibility'] ?? 'PRIVATE';
-    
+
     final existingType = (widget.livestock['animal_type'] ?? '').toString();
     if (existingType.isNotEmpty && !_animalTypes.contains(existingType)) {
       _animalTypeCtrl = TextEditingController(text: 'Autre');
@@ -84,115 +172,38 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
       _animalTypeCtrl = TextEditingController(text: existingType);
       _customAnimalTypeCtrl = TextEditingController();
     }
-    _breedCtrl = TextEditingController(text: widget.livestock['breed'] ?? '');
-    _quantityCtrl = TextEditingController(text: '${widget.livestock['quantity'] ?? 1}');
-    _ageCtrl = TextEditingController(text: widget.livestock['age_months']?.toString() ?? '');
-    _weightCtrl = TextEditingController(text: widget.livestock['weight_kg']?.toString() ?? '');
-    _healthCtrl = TextEditingController(text: widget.livestock['health_status'] ?? '');
-    _feedingCtrl = TextEditingController(text: widget.livestock['feeding_type'] ?? '');
-    _notesCtrl = TextEditingController(text: widget.livestock['notes'] ?? '');
+    _breedCtrl    = TextEditingController(text: widget.livestock['breed']          ?? '');
+    _quantityCtrl = TextEditingController(text: '${widget.livestock['quantity']    ?? 1}');
+    _ageCtrl      = TextEditingController(text: widget.livestock['age_months']?.toString()  ?? '');
+    _weightCtrl   = TextEditingController(text: widget.livestock['weight_kg']?.toString()   ?? '');
+    _healthCtrl   = TextEditingController(text: widget.livestock['health_status']   ?? '');
+    _feedingCtrl  = TextEditingController(text: widget.livestock['feeding_type']    ?? '');
+    _notesCtrl    = TextEditingController(text: widget.livestock['notes']           ?? '');
 
-    _setupFocusListeners();
-  }
+    // Animations
+    _waveCtrl  = AnimationController(vsync: this, duration: const Duration(seconds: 9))..repeat(reverse: true);
+    _grainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 120))..repeat();
 
-  void _setupFocusListeners() {
-    _animalTypeFocus.addListener(() {
-      if (_animalTypeFocus.hasFocus && isWeb) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _smartScroll(100);
-        });
-      }
+    final ec = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
+    _entryCtrl = ec;
+    _fade  = List.generate(8, (i) => Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: ec, curve: Interval(i * 0.07, min(i * 0.07 + 0.45, 1.0), curve: Curves.easeOut)),
+    ));
+    _slide = List.generate(8, (i) =>
+      Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(
+        CurvedAnimation(parent: ec, curve: Interval(i * 0.07, min(i * 0.07 + 0.45, 1.0), curve: Curves.easeOutCubic)),
+      ));
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _entryCtrl?.forward();
     });
-
-    _breedFocus.addListener(() {
-      if (_breedFocus.hasFocus && isWeb) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _smartScroll(180);
-        });
-      }
-    });
-
-    _quantityFocus.addListener(() {
-      if (_quantityFocus.hasFocus && isWeb) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _smartScroll(260);
-        });
-      }
-    });
-
-    _ageFocus.addListener(() {
-      if (_ageFocus.hasFocus && isWeb) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _smartScroll(340);
-        });
-      }
-    });
-
-    _weightFocus.addListener(() {
-      if (_weightFocus.hasFocus && isWeb) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _smartScroll(420);
-        });
-      }
-    });
-
-    _healthFocus.addListener(() {
-      if (_healthFocus.hasFocus && isWeb) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _smartScroll(500);
-        });
-      }
-    });
-
-    _feedingFocus.addListener(() {
-      if (_feedingFocus.hasFocus && isWeb) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _smartScroll(580);
-        });
-      }
-    });
-
-    _notesFocus.addListener(() {
-      if (_notesFocus.hasFocus && isWeb) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _smartScroll(660);
-        });
-      }
-    });
-  }
-
-  void _smartScroll(double offset) {
-    if (!_scrollController.hasClients) return;
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final targetOffset = offset > maxScroll ? maxScroll : offset;
-
-    _scrollController.animateTo(
-      targetOffset,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1600,
-      maxHeight: 1600,
-      imageQuality: 85,
-    );
-
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      setState(() {
-        _imageFile = image;
-        _imageBytes = bytes;
-      });
-    }
   }
 
   @override
   void dispose() {
+    _waveCtrl?.dispose();
+    _grainCtrl?.dispose();
+    _entryCtrl?.dispose();
     _animalTypeCtrl.dispose();
     _customAnimalTypeCtrl.dispose();
     _breedCtrl.dispose();
@@ -205,24 +216,40 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     super.dispose();
   }
 
+  Widget _s(int i, Widget child) {
+    final f = _fade; final s = _slide;
+    if (f == null || s == null) return child;
+    return FadeTransition(
+      opacity: f[i],
+      child: SlideTransition(position: s[i], child: child),
+    );
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600, maxHeight: 1600, imageQuality: 85,
+    );
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() { _imageFile = image; _imageBytes = bytes; });
+    }
+  }
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-
     if (!_formKey.currentState!.validate()) {
       HapticFeedback.heavyImpact();
       return;
     }
-
     HapticFeedback.mediumImpact();
     setState(() => _loading = true);
-
     try {
       String? imageUrl = _existingImageUrl;
-      
       if (_imageFile != null) {
         imageUrl = await ApiService.uploadImageToCloudinary(_imageFile!);
       }
-
       final res = await ApiService.updateLivestock(
         livestockId: widget.livestockId,
         animalType: _animalTypeCtrl.text.trim() == 'Autre'
@@ -238,36 +265,84 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
         imageUrl: imageUrl,
         visibility: _visibility,
       );
-
       _showSnackBar('Animal modifié avec succès', isError: false);
       await Future.delayed(const Duration(milliseconds: 500));
       Navigator.pop(context, res);
     } catch (e) {
       _showSnackBar('Erreur: ${e.toString()}', isError: true);
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _delete() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Supprimer cet animal?'),
-        content: const Text('Cette action est irréversible.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler'),
+      builder: (ctx) => Dialog(
+        backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 22),
+              ),
+              const SizedBox(height: 16),
+              Text('Supprimer cet animal?',
+                style: TextStyle(
+                  fontSize: 17, fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black87,
+                )),
+              const SizedBox(height: 8),
+              Text('Cette action est irréversible. L\'animal et toutes ses données seront définitivement supprimés.',
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white54 : Colors.black45, height: 1.5)),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, false),
+                    child: Container(
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('Annuler',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400,
+                          color: isDark ? Colors.white70 : Colors.black54)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, true),
+                    child: Container(
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.30), blurRadius: 12, offset: const Offset(0, 4))],
+                      ),
+                      child: const Text('Supprimer', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                    ),
+                  ),
+                ),
+              ]),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+        ),
       ),
     );
 
@@ -286,267 +361,48 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
   }
 
   void _showSnackBar(String message, {required bool isError}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red.shade400 : _primaryColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        Icon(isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+          color: Colors.white, size: 16),
+        const SizedBox(width: 8),
+        Expanded(child: Text(message, style: const TextStyle(fontSize: 13))),
+      ]),
+      backgroundColor: isError ? const Color(0xFFE53935) : _primaryColor,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 6,
+    ));
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = AppColors.getBgColor(isDark);
-    final cardColor = AppColors.getCardBgColor(isDark);
-    final textColor = AppColors.getTextColor(isDark);
-    final secondaryTextColor = textColor.withOpacity(0.7);
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final isDark        = Theme.of(context).brightness == Brightness.dark;
+    final bg            = AppColors.getBgColor(isDark);
+    final cardColor     = AppColors.getCardBgColor(isDark);
+    final textColor     = AppColors.getTextColor(isDark);
+    final secondaryText = textColor.withOpacity(0.55);
 
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Modifier l\'animal',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: _delete,
-            tooltip: 'Supprimer',
-          ),
-        ],
-      ),
+      backgroundColor: bg,
       body: DefaultTabController(
         length: 2,
         child: Column(
           children: [
-            Container(
-              color: cardColor,
-              child: TabBar(
-                indicatorColor: AppColors.primary,
-                indicatorWeight: 3,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: secondaryTextColor,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                tabs: const [
-                  Tab(text: 'Informations'),
-                  Tab(text: 'Publications'),
-                ],
-              ),
-            ),
+            // ── HERO (fixe en haut) ──
+            _buildHero(isDark, bg, textColor),
+            // ── TAB BAR (collé sous le hero, toujours visible) ──
+            _buildTabBar(isDark, cardColor, textColor, secondaryText),
+            // ── CONTENU (scrollable) ──
             Expanded(
               child: TabBarView(
                 children: [
-                  // Onglet Informations
-                  SingleChildScrollView(
-                    padding: EdgeInsets.zero,
-                    child: AnimatedPadding(
-                      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + (bottomInset > 8 ? bottomInset : 0)),
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOut,
-                      child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Photo principale
-                          _buildPhotoSection(cardColor, textColor, secondaryTextColor),
-                          
-                          const SizedBox(height: 32),
-
-                          // Informations de base
-                          _buildSectionTitle('Informations'),
-                          const SizedBox(height: 16),
-                          
-                          _buildDropdown(
-                            label: 'Type d\'animal',
-                            value: _animalTypeCtrl.text.isEmpty ? null : _animalTypeCtrl.text,
-                            items: _animalTypes,
-                            onChanged: (value) => setState(() => _animalTypeCtrl.text = value ?? ''),
-                            icon: Icons.pets,
-                            cardColor: cardColor,
-                            textColor: textColor,
-                          ),
-                          if (_animalTypeCtrl.text == 'Autre') ...[
-                            const SizedBox(height: 12),
-                            _buildTextField(
-                              controller: _customAnimalTypeCtrl,
-                              label: 'Précisez le type',
-                              hint: 'Ex: Lapins, Chevaux, etc.',
-                              icon: Icons.edit_outlined,
-                              cardColor: cardColor,
-                              textColor: textColor,
-                              secondaryTextColor: secondaryTextColor,
-                            ),
-                          ],
-                          
-                          const SizedBox(height: 16),
-                          
-                          _buildTextField(
-                            controller: _breedCtrl,
-                            label: 'Race',
-                            hint: 'Ex: Race locale',
-                            icon: Icons.info_outline,
-                            cardColor: cardColor,
-                            textColor: textColor,
-                            secondaryTextColor: secondaryTextColor,
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildTextField(
-                                  controller: _quantityCtrl,
-                                  label: 'Quantité',
-                                  hint: '1',
-                                  icon: Icons.format_list_numbered,
-                                  keyboardType: TextInputType.number,
-                                  cardColor: cardColor,
-                                  textColor: textColor,
-                                  secondaryTextColor: secondaryTextColor,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildTextField(
-                                  controller: _ageCtrl,
-                                  label: 'Âge (mois)',
-                                  hint: '12',
-                                  icon: Icons.calendar_today,
-                                  keyboardType: TextInputType.number,
-                                  cardColor: cardColor,
-                                  textColor: textColor,
-                                  secondaryTextColor: secondaryTextColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          _buildTextField(
-                            controller: _weightCtrl,
-                            label: 'Poids (kg)',
-                            hint: '250',
-                            icon: Icons.monitor_weight_outlined,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            cardColor: cardColor,
-                            textColor: textColor,
-                            secondaryTextColor: secondaryTextColor,
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          // Santé
-                          _buildSectionTitle('Santé & Alimentation'),
-                          const SizedBox(height: 16),
-                          
-                          _buildDropdown(
-                            label: 'État de santé',
-                            value: _healthCtrl.text.isEmpty ? null : _healthCtrl.text,
-                            items: _healthStatuses,
-                            onChanged: (value) => setState(() => _healthCtrl.text = value ?? ''),
-                            icon: Icons.favorite_outline,
-                            cardColor: cardColor,
-                            textColor: textColor,
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          _buildDropdown(
-                            label: 'Alimentation',
-                            value: _feedingCtrl.text.isEmpty ? null : _feedingCtrl.text,
-                            items: _feedingTypes,
-                            onChanged: (value) => setState(() => _feedingCtrl.text = value ?? ''),
-                            icon: Icons.restaurant_outlined,
-                            cardColor: cardColor,
-                            textColor: textColor,
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          // Notes
-                          _buildSectionTitle('Notes'),
-                          const SizedBox(height: 16),
-                          
-                          _buildTextField(
-                            controller: _notesCtrl,
-                            label: 'Observations',
-                            hint: 'Remarques importantes...',
-                            icon: Icons.note_outlined,
-                            maxLines: 4,
-                            cardColor: cardColor,
-                            textColor: textColor,
-                            secondaryTextColor: secondaryTextColor,
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          // Visibilité
-                          _buildSectionTitle('Visibilité'),
-                          const SizedBox(height: 16),
-                          
-                          _buildVisibilityOptions(cardColor, textColor, secondaryTextColor),
-
-                          const SizedBox(height: 40),
-
-                          // Bouton enregistrer
-                          SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: ElevatedButton(
-                              onPressed: _loading ? null : _submit,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _primaryColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: _loading
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Enregistrer',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
-                    ),
-                  ),
-                  // Onglet Publications
-                  _buildPostsSection(cardColor, textColor),
+                  _buildInfoTab(isDark, bg, cardColor, textColor, secondaryText),
+                  _buildPostsTab(isDark, cardColor),
                 ],
               ),
             ),
@@ -556,320 +412,855 @@ class _EditLivestockScreenState extends State<EditLivestockScreen> {
     );
   }
 
-  Widget _buildPostsSection(Color cardColor, Color textColor) {
+  // ─────────────────────────────────────────────────────────────────────────
+  // HERO
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildHero(bool isDark, Color bg, Color textColor) {
+    final animalType = widget.livestock['animal_type'] ?? 'Animal';
+    final breed      = widget.livestock['breed'] ?? '';
+    final typeIcon   = _typeIcons[animalType] ?? Icons.pets;
+
+    return SizedBox(
+      height: 200,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          // Fond dégradé
+          Positioned.fill(child: Container(
+            decoration: BoxDecoration(gradient: LinearGradient(
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: isDark
+                  ? [const Color(0xFF18100A), const Color(0xFF0C0804)]
+                  : [const Color(0xFFFFF8EE), const Color(0xFFEEE2CC)],
+            )),
+          )),
+
+          // Grain
+          Positioned.fill(child: AnimatedBuilder(
+            animation: _grainCtrl ?? const AlwaysStoppedAnimation(0),
+            builder: (_, __) => CustomPaint(
+              painter: _GrainPainter(seed: _grainCtrl?.value ?? 0, color: _primaryColor),
+            ),
+          )),
+
+          // Rings décoratifs
+          const Positioned(top: -40, right: -50, child: SizedBox(
+            width: 220, height: 220,
+            child: CustomPaint(painter: _RingsPainter(color: _primaryColor)),
+          )),
+
+          // Glow
+          Positioned(top: -60, right: -60, child: Container(
+            width: 200, height: 200,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [
+                _accentColor.withOpacity(isDark ? 0.16 : 0.10),
+                Colors.transparent,
+              ]),
+            ),
+          )),
+
+          // Vagues
+          Positioned(bottom: 0, left: 0, right: 0, child: AnimatedBuilder(
+            animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
+            builder: (_, __) => SizedBox(height: 70, child: CustomPaint(
+              painter: _WavePainter(
+                phase: (_waveCtrl?.value ?? 0) * 2 * pi,
+                color: _primaryColor.withOpacity(isDark ? 0.20 : 0.10),
+                yOffset: 0.45,
+              ),
+              size: Size(MediaQuery.of(context).size.width, 70),
+            )),
+          )),
+          Positioned(bottom: 0, left: 0, right: 0, child: AnimatedBuilder(
+            animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
+            builder: (_, __) => SizedBox(height: 70, child: CustomPaint(
+              painter: _WavePainter(
+                phase: (_waveCtrl?.value ?? 0) * 2 * pi + 1.8,
+                color: _primaryColor.withOpacity(isDark ? 0.10 : 0.06),
+                yOffset: 0.65,
+              ),
+              size: Size(MediaQuery.of(context).size.width, 70),
+            )),
+          )),
+
+          // Grand icône animal flottant
+          Positioned(right: 20, top: 0, bottom: 20, child: AnimatedBuilder(
+            animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
+            builder: (_, __) {
+              final sway = 3.0 * sin((_waveCtrl?.value ?? 0) * 2 * pi);
+              return Transform.translate(
+                offset: Offset(0, sway),
+                child: Icon(typeIcon, size: 100,
+                  color: _primaryColor.withOpacity(isDark ? 0.14 : 0.10)),
+              );
+            },
+          )),
+
+          // Contenu texte
+          Padding(
+            padding: EdgeInsets.fromLTRB(22, MediaQuery.of(context).padding.top + 10, 22, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Back + delete row
+                Row(children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.arrow_back_rounded, size: 18,
+                        color: isDark ? Colors.white70 : Colors.black54),
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _delete,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.red),
+                        const SizedBox(width: 5),
+                        Text('Supprimer', style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w400, color: Colors.red.withOpacity(0.85))),
+                      ]),
+                    ),
+                  ),
+                ]),
+
+                const Spacer(),
+
+                // Label
+                Text('MODIFIER', style: TextStyle(
+                  fontSize: 8, fontWeight: FontWeight.w400, letterSpacing: 3.0,
+                  color: _accentColor.withOpacity(0.70),
+                )),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(animalType, style: TextStyle(
+                      fontSize: 26, fontWeight: FontWeight.w200,
+                      color: isDark ? const Color(0xFFF0E8D8) : Colors.black87,
+                      letterSpacing: -1.5, height: 1.0,
+                    )),
+                    if (breed.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Flexible(child: Text('— $breed', style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w300,
+                        color: _primaryColor.withOpacity(0.65), letterSpacing: 0.2,
+                      ), overflow: TextOverflow.ellipsis)),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TAB BAR
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildTabBar(bool isDark, Color cardColor, Color textColor, Color secondaryText) {
     return Container(
-      color: Theme.of(context).brightness == Brightness.dark ? _bgDark : _bgLight,
-      child: FarmPostsWidget(
-        farmId: widget.livestock['farm_id'] ?? 0,
-        farmName: '${widget.livestock['animal_type'] ?? 'Animal'} - ${widget.livestock['breed'] ?? ''}',
-        isOwner: _userId == widget.livestock['user_id'],
-        livestockId: widget.livestock['id'],
+      color: cardColor,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TabBar(
+            indicatorColor: _primaryColor,
+            indicatorWeight: 2,
+            labelColor: _primaryColor,
+            unselectedLabelColor: secondaryText,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, letterSpacing: 0.5),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w300, fontSize: 13),
+            tabs: const [
+              Tab(text: 'Informations'),
+              Tab(text: 'Publications'),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white
-            : Colors.black87,
+  // ─────────────────────────────────────────────────────────────────────────
+  // INFO TAB
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildInfoTab(bool isDark, Color bg, Color cardColor, Color textColor, Color secondaryText) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(16, 24, 16, 40 + MediaQuery.of(context).padding.bottom),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Photo
+            _s(0, _buildPhotoSection(isDark, cardColor, textColor, secondaryText)),
+            const SizedBox(height: 32),
+
+            // Informations de base
+            _s(1, _buildSectionHeader(isDark, 'IDENTITÉ', textColor, secondaryText)),
+            const SizedBox(height: 14),
+            _s(1, _buildAnimalTypeSelector(isDark, cardColor, textColor, secondaryText)),
+            if (_animalTypeCtrl.text == 'Autre') ...[
+              const SizedBox(height: 10),
+              _s(1, _buildStyledField(
+                controller: _customAnimalTypeCtrl,
+                label: 'Précisez le type',
+                hint: 'Ex: Lapins, Chevaux…',
+                icon: Icons.edit_outlined,
+                isDark: isDark, cardColor: cardColor,
+                textColor: textColor, secondaryText: secondaryText,
+              )),
+            ],
+            const SizedBox(height: 10),
+            _s(1, _buildStyledField(
+              controller: _breedCtrl,
+              label: 'Race',
+              hint: 'Ex: Race locale',
+              icon: Icons.bookmark_border_rounded,
+              isDark: isDark, cardColor: cardColor,
+              textColor: textColor, secondaryText: secondaryText,
+            )),
+            const SizedBox(height: 10),
+            _s(1, Row(children: [
+              Expanded(child: _buildStyledField(
+                controller: _quantityCtrl,
+                label: 'Quantité',
+                hint: '1',
+                icon: Icons.format_list_numbered_rounded,
+                keyboardType: TextInputType.number,
+                isDark: isDark, cardColor: cardColor,
+                textColor: textColor, secondaryText: secondaryText,
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: _buildStyledField(
+                controller: _ageCtrl,
+                label: 'Âge (mois)',
+                hint: '12',
+                icon: Icons.calendar_today_rounded,
+                keyboardType: TextInputType.number,
+                isDark: isDark, cardColor: cardColor,
+                textColor: textColor, secondaryText: secondaryText,
+              )),
+            ])),
+            const SizedBox(height: 10),
+            _s(1, _buildStyledField(
+              controller: _weightCtrl,
+              label: 'Poids (kg)',
+              hint: '250',
+              icon: Icons.monitor_weight_outlined,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              isDark: isDark, cardColor: cardColor,
+              textColor: textColor, secondaryText: secondaryText,
+            )),
+
+            const SizedBox(height: 32),
+
+            // Santé
+            _s(2, _buildSectionHeader(isDark, 'SANTÉ & ALIMENTATION', textColor, secondaryText)),
+            const SizedBox(height: 14),
+            _s(2, _buildHealthSelector(isDark, cardColor, textColor, secondaryText)),
+            const SizedBox(height: 10),
+            _s(2, _buildFeedingSelector(isDark, cardColor, textColor, secondaryText)),
+
+            const SizedBox(height: 32),
+
+            // Notes
+            _s(3, _buildSectionHeader(isDark, 'OBSERVATIONS', textColor, secondaryText)),
+            const SizedBox(height: 14),
+            _s(3, _buildStyledField(
+              controller: _notesCtrl,
+              label: 'Notes',
+              hint: 'Remarques importantes…',
+              icon: Icons.notes_rounded,
+              maxLines: 4,
+              isDark: isDark, cardColor: cardColor,
+              textColor: textColor, secondaryText: secondaryText,
+            )),
+
+            const SizedBox(height: 32),
+
+            // Visibilité
+            _s(4, _buildSectionHeader(isDark, 'VISIBILITÉ', textColor, secondaryText)),
+            const SizedBox(height: 14),
+            _s(4, _buildVisibilityOptions(isDark, cardColor, textColor, secondaryText)),
+
+            const SizedBox(height: 36),
+
+            // Bouton save
+            _s(5, _buildSaveButton()),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildPhotoSection(Color cardColor, Color textColor, Color secondaryTextColor) {
+  // ─────────────────────────────────────────────────────────────────────────
+  // SECTION HEADER — same dashboard style
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildSectionHeader(bool isDark, String title, Color textColor, Color secondaryText) {
+    return Row(children: [
+      Container(width: 20, height: 1, color: _primaryColor),
+      const SizedBox(width: 8),
+      Text(title, style: TextStyle(
+        fontSize: 7.5, fontWeight: FontWeight.w500,
+        letterSpacing: 2.8, color: secondaryText.withOpacity(0.6),
+      )),
+      const SizedBox(width: 8),
+      Expanded(child: Container(height: 1, color: secondaryText.withOpacity(0.08))),
+    ]);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PHOTO SECTION
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildPhotoSection(bool isDark, Color cardColor, Color textColor, Color secondaryText) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                'Photo',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+        Row(children: [
+          Container(width: 20, height: 1, color: _primaryColor),
+          const SizedBox(width: 8),
+          Text('PHOTO', style: TextStyle(
+            fontSize: 7.5, fontWeight: FontWeight.w500, letterSpacing: 2.8,
+            color: secondaryText.withOpacity(0.6),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: Container(height: 1, color: secondaryText.withOpacity(0.08))),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => AnimalPhotoCarouselScreen(
+                livestockId: widget.livestockId,
+                animalType: widget.livestock['animal_type'] ?? 'Animal',
+                userId: widget.livestock['user_id'] ?? 0,
+                isDarkMode: isDark,
               ),
-            ),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AnimalPhotoCarouselScreen(
-                      livestockId: widget.livestockId,
-                      animalType: widget.livestock['animal_type'] ?? 'Animal',
-                      userId: widget.livestock['user_id'] ?? 0,
-                      isDarkMode: Theme.of(context).brightness == Brightness.dark,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.photo_library, size: 18),
-              label: const Text('Galerie'),
-              style: TextButton.styleFrom(
-                foregroundColor: _primaryColor,
+            )),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(7),
               ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.photo_library_outlined, size: 11, color: _primaryColor.withOpacity(0.80)),
+                const SizedBox(width: 5),
+                Text('Galerie', style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w400,
+                  color: _primaryColor.withOpacity(0.80), letterSpacing: 0.5,
+                )),
+              ]),
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
+          ),
+        ]),
+        const SizedBox(height: 14),
         GestureDetector(
           onTap: _pickImage,
           child: Container(
-            width: double.infinity,
-            height: 200,
+            height: 190,
             decoration: BoxDecoration(
               color: cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white12
-                    : Colors.black12,
-              ),
+              boxShadow: [BoxShadow(
+                color: isDark ? Colors.black.withOpacity(0.25) : _primaryColor.withOpacity(0.07),
+                blurRadius: 20, offset: const Offset(0, 6), spreadRadius: -2,
+              )],
             ),
-            child: _imageBytes != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.memory(
-                      _imageBytes!,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                : _existingImageUrl != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.network(
-                          _existingImageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildPlaceholder(textColor, secondaryTextColor),
-                        ),
-                      )
-                    : _buildPlaceholder(textColor, secondaryTextColor),
+            clipBehavior: Clip.hardEdge,
+            child: Stack(children: [
+              // Image ou placeholder
+              if (_imageBytes != null)
+                Positioned.fill(child: Image.memory(_imageBytes!, fit: BoxFit.cover))
+              else if (_existingImageUrl != null)
+                Positioned.fill(child: Image.network(
+                  _existingImageUrl!, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _buildPhotoPlaceholder(isDark, textColor, secondaryText),
+                ))
+              else
+                _buildPhotoPlaceholder(isDark, textColor, secondaryText),
+
+              // Overlay edit badge
+              Positioned(bottom: 12, right: 12, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.50),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                  Icon(Icons.photo_camera_outlined, size: 13, color: Colors.white),
+                  SizedBox(width: 5),
+                  Text('Changer', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w300)),
+                ]),
+              )),
+            ]),
           ),
         ),
         if (_imageBytes != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: TextButton.icon(
-              onPressed: () => setState(() {
-                _imageFile = null;
-                _imageBytes = null;
-              }),
-              icon: const Icon(Icons.close, size: 16),
-              label: const Text('Annuler'),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-              ),
+            child: GestureDetector(
+              onTap: () => setState(() { _imageFile = null; _imageBytes = null; }),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.close_rounded, size: 13, color: Colors.red),
+                const SizedBox(width: 4),
+                Text('Annuler', style: TextStyle(fontSize: 11, color: Colors.red.withOpacity(0.80))),
+              ]),
             ),
           ),
       ],
     );
   }
 
-  Widget _buildPlaceholder(Color textColor, Color secondaryTextColor) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.add_photo_alternate_outlined, size: 48, color: _primaryColor),
-        const SizedBox(height: 12),
-        Text(
-          'Ajouter une photo',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: textColor,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Appuyez pour sélectionner',
-          style: TextStyle(
-            fontSize: 13,
-            color: secondaryTextColor,
-          ),
-        ),
-      ],
+  Widget _buildPhotoPlaceholder(bool isDark, Color textColor, Color secondaryText) {
+    return Container(
+      color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF5F2EE),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.add_photo_alternate_outlined, size: 40, color: _primaryColor.withOpacity(0.45)),
+        const SizedBox(height: 10),
+        Text('Ajouter une photo', style: TextStyle(
+          fontSize: 14, fontWeight: FontWeight.w300, color: textColor.withOpacity(0.60))),
+        const SizedBox(height: 3),
+        Text('Appuyez pour sélectionner', style: TextStyle(
+          fontSize: 11, color: secondaryText.withOpacity(0.50))),
+      ]),
     );
   }
 
-  Widget _buildTextField({
+  // ─────────────────────────────────────────────────────────────────────────
+  // ANIMAL TYPE SELECTOR — horizontal chips
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildAnimalTypeSelector(bool isDark, Color cardColor, Color textColor, Color secondaryText) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        boxShadow: [BoxShadow(
+          color: isDark ? Colors.black.withOpacity(0.22) : _primaryColor.withOpacity(0.05),
+          blurRadius: 18, offset: const Offset(0, 5), spreadRadius: -2,
+        )],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Bande accent top
+          Container(height: 1.5, decoration: BoxDecoration(gradient: LinearGradient(colors: [
+            _accentColor.withOpacity(0.50), _primaryColor.withOpacity(0.20), Colors.transparent,
+          ]))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.pets_rounded, size: 13, color: _primaryColor.withOpacity(0.65)),
+                  const SizedBox(width: 6),
+                  Text("TYPE D'ANIMAL", style: TextStyle(
+                    fontSize: 7, fontWeight: FontWeight.w500, letterSpacing: 2.0,
+                    color: secondaryText.withOpacity(0.50),
+                  )),
+                ]),
+                const SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: _animalTypes.map((type) {
+                      final sel = _animalTypeCtrl.text == type;
+                      final icon = _typeIcons[type] ?? Icons.pets;
+                      return GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _animalTypeCtrl.text = type);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: sel ? _primaryColor : _primaryColor.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: sel ? [BoxShadow(
+                              color: _primaryColor.withOpacity(0.25),
+                              blurRadius: 10, offset: const Offset(0, 3),
+                            )] : null,
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(icon, size: 13,
+                              color: sel ? Colors.white : _primaryColor.withOpacity(0.55)),
+                            const SizedBox(width: 6),
+                            Text(type, style: TextStyle(
+                              fontSize: 12, fontWeight: sel ? FontWeight.w500 : FontWeight.w300,
+                              color: sel ? Colors.white : textColor.withOpacity(0.65),
+                            )),
+                          ]),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // HEALTH SELECTOR — visual chips with colors
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildHealthSelector(bool isDark, Color cardColor, Color textColor, Color secondaryText) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        boxShadow: [BoxShadow(
+          color: isDark ? Colors.black.withOpacity(0.22) : _primaryColor.withOpacity(0.05),
+          blurRadius: 18, offset: const Offset(0, 5), spreadRadius: -2,
+        )],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(height: 1.5, decoration: BoxDecoration(gradient: LinearGradient(colors: [
+            _accentColor.withOpacity(0.50), _primaryColor.withOpacity(0.20), Colors.transparent,
+          ]))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.favorite_outline_rounded, size: 13, color: _primaryColor.withOpacity(0.65)),
+                  const SizedBox(width: 6),
+                  Text("ÉTAT DE SANTÉ", style: TextStyle(
+                    fontSize: 7, fontWeight: FontWeight.w500, letterSpacing: 2.0,
+                    color: secondaryText.withOpacity(0.50),
+                  )),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: _healthStatuses.map((status) {
+                  final sel = _healthCtrl.text == status;
+                  final color = _healthColors[status] ?? _primaryColor;
+                  return Expanded(child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _healthCtrl.text = status);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: EdgeInsets.only(right: status == _healthStatuses.last ? 0 : 8),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: sel ? color : color.withOpacity(0.07),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: sel ? [BoxShadow(
+                          color: color.withOpacity(0.28), blurRadius: 10, offset: const Offset(0, 3),
+                        )] : null,
+                      ),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.circle, size: 6,
+                          color: sel ? Colors.white : color.withOpacity(0.70)),
+                        const SizedBox(height: 5),
+                        Text(status, textAlign: TextAlign.center, style: TextStyle(
+                          fontSize: 9.5, fontWeight: sel ? FontWeight.w600 : FontWeight.w300,
+                          color: sel ? Colors.white : textColor.withOpacity(0.60),
+                          letterSpacing: 0.2,
+                        )),
+                      ]),
+                    ),
+                  ));
+                }).toList()),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FEEDING SELECTOR
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildFeedingSelector(bool isDark, Color cardColor, Color textColor, Color secondaryText) {
+    const feedIcons = {
+      'Herbe':           Icons.grass_rounded,
+      'Grains':          Icons.grain_rounded,
+      'Mixte':           Icons.shuffle_rounded,
+      'Aliment composé': Icons.inventory_2_outlined,
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        boxShadow: [BoxShadow(
+          color: isDark ? Colors.black.withOpacity(0.22) : _primaryColor.withOpacity(0.05),
+          blurRadius: 18, offset: const Offset(0, 5), spreadRadius: -2,
+        )],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(height: 1.5, decoration: BoxDecoration(gradient: LinearGradient(colors: [
+            _accentColor.withOpacity(0.50), _primaryColor.withOpacity(0.20), Colors.transparent,
+          ]))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.restaurant_outlined, size: 13, color: _primaryColor.withOpacity(0.65)),
+                  const SizedBox(width: 6),
+                  Text("ALIMENTATION", style: TextStyle(
+                    fontSize: 7, fontWeight: FontWeight.w500, letterSpacing: 2.0,
+                    color: secondaryText.withOpacity(0.50),
+                  )),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: _feedingTypes.map((type) {
+                  final sel = _feedingCtrl.text == type;
+                  final icon = feedIcons[type] ?? Icons.eco_rounded;
+                  return Expanded(child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _feedingCtrl.text = type);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: EdgeInsets.only(right: type == _feedingTypes.last ? 0 : 8),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: sel ? _primaryColor : _primaryColor.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: sel ? [BoxShadow(
+                          color: _primaryColor.withOpacity(0.25), blurRadius: 10, offset: const Offset(0, 3),
+                        )] : null,
+                      ),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(icon, size: 16,
+                          color: sel ? Colors.white : _primaryColor.withOpacity(0.55)),
+                        const SizedBox(height: 5),
+                        Text(type, textAlign: TextAlign.center, style: TextStyle(
+                          fontSize: 9, fontWeight: sel ? FontWeight.w500 : FontWeight.w300,
+                          color: sel ? Colors.white : textColor.withOpacity(0.60),
+                        )),
+                      ]),
+                    ),
+                  ));
+                }).toList()),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // STYLED FIELD — shadow only, accent top bar
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildStyledField({
     required TextEditingController controller,
     required String label,
     required String hint,
     required IconData icon,
+    required bool isDark,
     required Color cardColor,
     required Color textColor,
-    required Color secondaryTextColor,
+    required Color secondaryText,
     TextInputType? keyboardType,
     int maxLines = 1,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white12
-              : Colors.black12,
-        ),
+        boxShadow: [BoxShadow(
+          color: isDark ? Colors.black.withOpacity(0.22) : _primaryColor.withOpacity(0.05),
+          blurRadius: 18, offset: const Offset(0, 5), spreadRadius: -2,
+        )],
       ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        style: TextStyle(fontSize: 16, color: textColor),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          hintStyle: TextStyle(color: secondaryTextColor),
-          labelStyle: TextStyle(color: secondaryTextColor),
-          prefixIcon: Icon(icon, color: _primaryColor, size: 20),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdown({
-    required String label,
-    required String? value,
-    required List<String> items,
-    required Function(String?) onChanged,
-    required IconData icon,
-    required Color cardColor,
-    required Color textColor,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white12
-              : Colors.black12,
-        ),
-      ),
-      child: DropdownButtonFormField<String>(
-        initialValue: value,
-        items: items.map((item) {
-          return DropdownMenuItem(value: item, child: Text(item));
-        }).toList(),
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: _primaryColor, size: 20),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(16),
-        ),
-        style: TextStyle(fontSize: 15, color: textColor),
-        dropdownColor: cardColor,
-        isExpanded: true,
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(height: 1.5, decoration: BoxDecoration(gradient: LinearGradient(colors: [
+            _accentColor.withOpacity(0.40), _primaryColor.withOpacity(0.15), Colors.transparent,
+          ]))),
+          TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            maxLines: maxLines,
+            style: TextStyle(fontSize: 15, color: textColor, fontWeight: FontWeight.w300),
+            decoration: InputDecoration(
+              labelText: label,
+              hintText: hint,
+              labelStyle: TextStyle(fontSize: 12, color: secondaryText.withOpacity(0.55), letterSpacing: 0.3),
+              hintStyle: TextStyle(color: secondaryText.withOpacity(0.35), fontSize: 13),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Icon(icon, color: _primaryColor.withOpacity(0.55), size: 18),
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.fromLTRB(4, 18, 20, 18),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildVisibilityOptions(Color cardColor, Color textColor, Color secondaryTextColor) {
+  // ─────────────────────────────────────────────────────────────────────────
+  // VISIBILITY OPTIONS
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildVisibilityOptions(bool isDark, Color cardColor, Color textColor, Color secondaryText) {
     final options = [
-      {
-        'value': 'PRIVATE',
-        'label': 'Privé',
-        'icon': Icons.lock_outline,
-        'desc': 'Visible uniquement par vous',
-        'color': Colors.red.shade400,
-      },
-      {
-        'value': 'PARTIAL',
-        'label': 'Partagé',
-        'icon': Icons.people_outline,
-        'desc': 'Visible via les posts',
-        'color': Colors.orange.shade400,
-      },
-      {
-        'value': 'PUBLIC',
-        'label': 'Public',
-        'icon': Icons.public,
-        'desc': 'Visible par tous',
-        'color': _primaryColor,
-      },
+      {'value': 'PRIVATE',  'label': 'Privé',    'desc': 'Visible uniquement par vous',  'icon': Icons.lock_outline_rounded,   'color': const Color(0xFFE53935)},
+      {'value': 'PARTIAL',  'label': 'Partagé',  'desc': 'Visible via vos publications', 'icon': Icons.people_outline_rounded,  'color': const Color(0xFFFFB300)},
+      {'value': 'PUBLIC',   'label': 'Public',   'desc': 'Visible par toute la communauté','icon': Icons.public_rounded,       'color': _primaryColor},
     ];
 
     return Column(
-      children: options.map((option) {
-        final isSelected = _visibility == option['value'];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: GestureDetector(
-            onTap: () => setState(() => _visibility = option['value'] as String),
-            child: Container(
-              decoration: BoxDecoration(
+      children: options.map((opt) {
+        final isSelected = _visibility == opt['value'];
+        final color = opt['color'] as Color;
+        return GestureDetector(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _visibility = opt['value'] as String);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withOpacity(isDark ? 0.12 : 0.08) : cardColor,
+              boxShadow: [BoxShadow(
                 color: isSelected
-                    ? (option['color'] as Color).withOpacity(0.1)
-                    : cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected
-                      ? (option['color'] as Color)
-                      : (Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white12
-                          : Colors.black12),
-                  width: isSelected ? 2 : 1,
+                    ? color.withOpacity(0.18)
+                    : (isDark ? Colors.black.withOpacity(0.18) : _primaryColor.withOpacity(0.04)),
+                blurRadius: isSelected ? 16 : 14,
+                offset: const Offset(0, 4), spreadRadius: -2,
+              )],
+            ),
+            child: IntrinsicHeight(
+              child: Row(children: [
+                // Accent bar
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: isSelected
+                          ? [color.withOpacity(0.3), color, color.withOpacity(0.3)]
+                          : [Colors.transparent, Colors.transparent],
+                    ),
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(0)),
+                  ),
                 ),
-              ),
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(
-                    option['icon'] as IconData,
-                    color: option['color'] as Color,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          option['label'] as String,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                          ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+                    child: Row(children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        padding: const EdgeInsets.all(9),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(isSelected ? 0.15 : 0.08),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          option['desc'] as String,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: secondaryTextColor,
-                          ),
-                        ),
-                      ],
-                    ),
+                        child: Icon(opt['icon'] as IconData, color: color, size: 16),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(opt['label'] as String, style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w400,
+                            color: isSelected ? color : textColor,
+                          )),
+                          const SizedBox(height: 2),
+                          Text(opt['desc'] as String, style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w300,
+                            color: secondaryText.withOpacity(0.55),
+                          )),
+                        ],
+                      )),
+                      if (isSelected)
+                        Icon(Icons.check_circle_rounded, color: color, size: 18),
+                    ]),
                   ),
-                  if (isSelected)
-                    Icon(
-                      Icons.check_circle,
-                      color: option['color'] as Color,
-                      size: 24,
-                    ),
-                ],
-              ),
+                ),
+              ]),
             ),
           ),
         );
       }).toList(),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SAVE BUTTON
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildSaveButton() {
+    return GestureDetector(
+      onTap: _loading ? null : _submit,
+      child: Container(
+        height: 52,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: _loading
+                ? [_primaryColor.withOpacity(0.5), _primaryColor.withOpacity(0.5)]
+                : [const Color(0xFF7BA833), _primaryColor],
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: _loading ? [] : [
+            BoxShadow(color: _primaryColor.withOpacity(0.35), blurRadius: 20, offset: const Offset(0, 6)),
+          ],
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          if (_loading)
+            const SizedBox(width: 18, height: 18,
+              child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(Colors.white), strokeWidth: 2))
+          else ...[
+            const Icon(Icons.check_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            const Text('Enregistrer', style: TextStyle(
+              color: Colors.white, fontSize: 15,
+              fontWeight: FontWeight.w500, letterSpacing: 0.5,
+            )),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // POSTS TAB
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildPostsTab(bool isDark, Color cardColor) {
+    return Container(
+      color: isDark ? const Color(0xFF0A0A0A) : const Color(0xFFF8F9FA),
+      child: FarmPostsWidget(
+        farmId: widget.livestock['farm_id'] ?? 0,
+        farmName: '${widget.livestock['animal_type'] ?? 'Animal'} — ${widget.livestock['breed'] ?? ''}',
+        isOwner: _userId == widget.livestock['user_id'],
+        livestockId: widget.livestock['id'],
+      ),
     );
   }
 }
