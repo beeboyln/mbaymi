@@ -223,3 +223,125 @@ def trending_users(
     except Exception as e:
         print(f"Trending users error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/recommended")
+def get_recommended_users(
+    db: Session = Depends(get_db),
+):
+    """
+    Retourne des utilisateurs recommandés par catégorie (pour affichage par défaut)
+    Retourne les utilisateurs les plus récemment créés pour chaque catégorie
+    """
+    try:
+        results = {
+            "farmers": [],
+            "livestock_breeders": [],
+            "veterinarians": [],
+            "farms": [],
+        }
+        
+        # Agriculteurs recommandés (les plus récemment inscrits)
+        try:
+            farmers = db.query(User).filter(
+                User.role == "farmer"
+            ).order_by(User.created_at.desc()).limit(4).all()
+            
+            for farmer in farmers:
+                if farmer.id is not None and farmer.name is not None:
+                    results["farmers"].append({
+                        "type": "farmer",
+                        "id": farmer.id,
+                        "name": farmer.name or "Agriculteur",
+                        "email": farmer.email,
+                        "phone": farmer.phone or "",
+                        "role": farmer.role,
+                        "region": farmer.region or "",
+                        "village": farmer.village or "",
+                        "profile_image": farmer.profile_image or "",
+                    })
+        except Exception as e:
+            print(f"Error fetching recommended farmers: {str(e)}")
+        
+        # Éleveurs recommandés (les plus récemment inscrits)
+        try:
+            breeders = db.query(User).filter(
+                User.role == "livestock_breeder"
+            ).order_by(User.created_at.desc()).limit(4).all()
+            
+            for breeder in breeders:
+                if breeder.id is not None and breeder.name is not None:
+                    results["livestock_breeders"].append({
+                        "type": "livestock_breeder",
+                        "id": breeder.id,
+                        "name": breeder.name or "Éleveur",
+                        "email": breeder.email,
+                        "phone": breeder.phone or "",
+                        "role": breeder.role,
+                        "region": breeder.region or "",
+                        "village": breeder.village or "",
+                        "profile_image": breeder.profile_image or "",
+                    })
+        except Exception as e:
+            print(f"Error fetching recommended livestock breeders: {str(e)}")
+        
+        # Vétérinaires recommandés (les plus notés/vérifiés d'abord)
+        try:
+            vets_query = db.query(VeterinarianProfile, User).join(
+                User, User.id == VeterinarianProfile.user_id
+            ).order_by(
+                VeterinarianProfile.is_verified.desc(),
+                VeterinarianProfile.average_rating.desc(),
+                User.created_at.desc()
+            ).limit(4).all()
+            
+            for vet_profile, vet_user in vets_query:
+                if vet_profile and vet_profile.id is not None and vet_user.id is not None:
+                    results["veterinarians"].append({
+                        "type": "veterinarian",
+                        "id": vet_user.id,
+                        "name": vet_user.name or "Vétérinaire",
+                        "email": vet_user.email,
+                        "phone": vet_user.phone or "",
+                        "profile_image": vet_user.profile_image or "",
+                        "specialty": vet_profile.specialty or "Généraliste",
+                        "zone": vet_profile.zone or "",
+                        "bio": vet_profile.bio or "",
+                        "experience_years": vet_profile.experience_years or 0,
+                        "rating": float(vet_profile.average_rating) if vet_profile.average_rating else None,
+                        "is_verified": vet_profile.is_verified or False,
+                    })
+        except Exception as e:
+            print(f"Error fetching recommended veterinarians: {str(e)}")
+        
+        # Fermes recommandées (les plus récemment créées)
+        try:
+            farms = db.query(Farm).order_by(Farm.created_at.desc()).limit(4).all()
+            
+            for farm in farms:
+                if farm.id is not None and farm.name is not None:
+                    owner_name = "Inconnu"
+                    try:
+                        owner = db.query(User).filter(User.id == farm.user_id).first()
+                        if owner:
+                            owner_name = owner.name or "Propriétaire inconnu"
+                    except Exception as e:
+                        print(f"Error fetching farm owner: {str(e)}")
+                    
+                    results["farms"].append({
+                        "type": "farm",
+                        "id": farm.id,
+                        "name": farm.name or "Ferme",
+                        "location": farm.location or "",
+                        "region": farm.region or "",
+                        "owner_name": owner_name,
+                        "owner_id": farm.user_id or None,
+                    })
+        except Exception as e:
+            print(f"Error fetching recommended farms: {str(e)}")
+        
+        return results
+        
+    except Exception as e:
+        print(f"Recommended users error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

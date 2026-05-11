@@ -32,6 +32,14 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
   String selectedFilter = 'all';
   String selectedRegion = '';
   String errorMessage = '';
+  bool isSearching = false; // true si on est en mode recherche, false si recommandations
+  Map<String, List<dynamic>> recommendations = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecommendations();
+  }
 
   @override
   void dispose() {
@@ -40,11 +48,60 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
     super.dispose();
   }
 
+  Future<void> _loadRecommendations() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+
+    try {
+      final uri = Uri.parse('${ApiService.baseUrl}/search/recommended');
+      final response = await http.get(uri).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Délai d\'attente dépassé. Vérifie ta connexion.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        try {
+          final data = json.decode(response.body);
+          setState(() {
+            recommendations = {
+              'farmers': (data['farmers'] as List?)?.map((e) => e as dynamic).toList() ?? [],
+              'livestock_breeders': (data['livestock_breeders'] as List?)?.map((e) => e as dynamic).toList() ?? [],
+              'veterinarians': (data['veterinarians'] as List?)?.map((e) => e as dynamic).toList() ?? [],
+              'farms': (data['farms'] as List?)?.map((e) => e as dynamic).toList() ?? [],
+            };
+            errorMessage = '';
+          });
+        } catch (e) {
+          throw Exception('Erreur lors du traitement des recommandations: $e');
+        }
+      } else {
+        throw Exception('Erreur HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Recommendations error: $e');
+      setState(() {
+        recommendations = {};
+        errorMessage = '';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
   Future<void> searchUsers(String query) async {
     if (query.isEmpty) {
       setState(() {
         searchResults = [];
         errorMessage = '';
+        isSearching = false;
       });
       return;
     }
@@ -52,6 +109,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
     setState(() {
       isLoading = true;
       errorMessage = '';
+      isSearching = true;
     });
 
     try {
@@ -440,41 +498,57 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
       );
     }
 
-    if (searchResults.isEmpty && _searchController.text.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 48,
-              color: subtleColor.withOpacity(0.5),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'AUCUN RÉSULTAT',
-              style: TextStyle(
-                color: subtleColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 2,
+    // Mode recherche - afficher les résultats de recherche
+    if (isSearching) {
+      if (searchResults.isEmpty && _searchController.text.isNotEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search_off,
+                size: 48,
+                color: subtleColor.withOpacity(0.5),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Essayez d\'autres mots-clés ou un filtre différent',
-              style: TextStyle(
-                color: subtleColor.withOpacity(0.7),
-                fontSize: 13,
-                letterSpacing: 0.3,
+              const SizedBox(height: 20),
+              Text(
+                'AUCUN RÉSULTAT',
+                style: TextStyle(
+                  color: subtleColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 2,
+                ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(height: 8),
+              Text(
+                'Essayez d\'autres mots-clés ou un filtre différent',
+                style: TextStyle(
+                  color: subtleColor.withOpacity(0.7),
+                  fontSize: 13,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        itemCount: searchResults.length,
+        itemBuilder: (context, index) {
+          final result = searchResults[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _buildResultCard(result, isDark, textColor, subtleColor),
+          );
+        },
       );
     }
 
-    if (searchResults.isEmpty) {
+    // Mode recommandations - afficher par catégorie
+    if (recommendations.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -486,7 +560,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              'COMMENCER LA RECHERCHE',
+              'CHARGEMENT',
               style: TextStyle(
                 color: subtleColor,
                 fontSize: 12,
@@ -494,31 +568,82 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
                 letterSpacing: 2,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Recherchez des agriculteurs, éleveurs, vétérinaires ou fermes',
-              style: TextStyle(
-                color: subtleColor.withOpacity(0.7),
-                fontSize: 13,
-                letterSpacing: 0.3,
-              ),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       );
     }
 
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      itemCount: searchResults.length,
-      itemBuilder: (context, index) {
-        final result = searchResults[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: _buildResultCard(result, isDark, textColor, subtleColor),
-        );
-      },
+      children: [
+        // Vétérinaires
+        if (recommendations['veterinarians']!.isNotEmpty) ...[
+          _buildSectionTitle('VÉTÉRINAIRES', subtleColor),
+          ...(recommendations['veterinarians'] as List).map((result) =>
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildResultCard(result, isDark, textColor, subtleColor),
+            )
+          ).toList(),
+          const SizedBox(height: 24),
+        ],
+        
+        // Agriculteurs
+        if (recommendations['farmers']!.isNotEmpty) ...[
+          _buildSectionTitle('AGRICULTEURS', subtleColor),
+          ...(recommendations['farmers'] as List).map((result) =>
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildResultCard(result, isDark, textColor, subtleColor),
+            )
+          ).toList(),
+          const SizedBox(height: 24),
+        ],
+        
+        // Éleveurs
+        if (recommendations['livestock_breeders']!.isNotEmpty) ...[
+          _buildSectionTitle('ÉLEVEURS', subtleColor),
+          ...(recommendations['livestock_breeders'] as List).map((result) =>
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildResultCard(result, isDark, textColor, subtleColor),
+            )
+          ).toList(),
+          const SizedBox(height: 24),
+        ],
+        
+        // Fermes
+        if (recommendations['farms']!.isNotEmpty) ...[
+          _buildSectionTitle('FERMES', subtleColor),
+          ...(recommendations['farms'] as List).map((result) =>
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildResultCard(result, isDark, textColor, subtleColor),
+            )
+          ).toList(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title, Color subtleColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: subtleColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
     );
   }
 
