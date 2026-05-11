@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:mbaymi/models/user_model.dart';
-import 'package:mbaymi/models/veterinarian_model.dart';
-import 'package:mbaymi/models/farm_model.dart';
-import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/veterinarian_profile_detail_screen.dart';
 import 'package:mbaymi/screens/farm_detail_screen.dart';
@@ -215,42 +210,189 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          // Section de recherche et filtres
-          Container(
-            color: bgColor,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Barre de recherche principale
-                _buildSearchField(isDark, textColor, subtleColor),
-                
-                const SizedBox(height: 20),
-                
-                // Filtres de type
-                _buildTypeFilters(isDark, textColor, subtleColor),
-                
-                const SizedBox(height: 20),
-                
-                // Filtre par région
-                _buildRegionField(isDark, textColor, subtleColor),
-              ],
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Section Hero scrollable
+            Container(
+              color: bgColor,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Découvrez',
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Connectez-vous avec les agriculteurs, éleveurs et vétérinaires',
+                    style: TextStyle(
+                      color: subtleColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          
-          // Divider
-          Container(
-            height: 1,
+            
+            // Catégories rapides - Icônes visuelles
+            Container(
+              color: bgColor,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildQuickCategoryCard(
+                          'AGRICULTEURS',
+                          Icons.grain,
+                          isDark,
+                          textColor,
+                          subtleColor,
+                          () => _selectCategory('farmer'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildQuickCategoryCard(
+                          'ÉLEVEURS',
+                          Icons.pets,
+                          isDark,
+                          textColor,
+                          subtleColor,
+                          () => _selectCategory('livestock_breeder'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildQuickCategoryCard(
+                          'VÉTÉRINAIRES',
+                          Icons.medical_services_outlined,
+                          isDark,
+                          textColor,
+                          subtleColor,
+                          () => _selectCategory('veterinarian'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildQuickCategoryCard(
+                          'FERMES',
+                          Icons.agriculture,
+                          isDark,
+                          textColor,
+                          subtleColor,
+                          () => _selectCategory('farm'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // Divider
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 24),
+              height: 0.5,
+              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+            ),
+            
+            // Section de recherche et filtres
+            Container(
+              color: bgColor,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Barre de recherche principale
+                  _buildSearchField(isDark, textColor, subtleColor),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Filtres de type
+                  _buildTypeFilters(isDark, textColor, subtleColor),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Filtre par région
+                  _buildRegionField(isDark, textColor, subtleColor),
+                ],
+              ),
+            ),
+            
+            // Divider
+            Container(
+              height: 0.5,
+              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+            ),
+            
+            // Résultats
+            _buildResultsSection(isDark, textColor, subtleColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _selectCategory(String categoryValue) {
+    setState(() {
+      selectedFilter = categoryValue;
+    });
+  }
+
+  Widget _buildQuickCategoryCard(
+    String label,
+    IconData icon,
+    bool isDark,
+    Color textColor,
+    Color subtleColor,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(
             color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+            width: 1,
           ),
-          
-          // Résultats
-          Expanded(
-            child: _buildResultsSection(isDark, textColor, subtleColor),
-          ),
-        ],
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: textColor,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -446,14 +588,17 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
 
   Widget _buildResultsSection(bool isDark, Color textColor, Color subtleColor) {
     if (isLoading) {
-      return Center(
-        child: SizedBox(
-          height: 24,
-          width: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              isDark ? Colors.white : Colors.black,
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60),
+        child: Center(
+          child: SizedBox(
+            height: 24,
+            width: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                isDark ? Colors.white : Colors.black,
+              ),
             ),
           ),
         ),
@@ -461,58 +606,20 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
     }
 
     if (errorMessage.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 48,
-              color: const Color(0xFFD32F2F),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'ERREUR',
-              style: TextStyle(
-                color: subtleColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                errorMessage,
-                style: TextStyle(
-                  color: subtleColor.withOpacity(0.7),
-                  fontSize: 13,
-                  letterSpacing: 0.3,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Mode recherche - afficher les résultats de recherche
-    if (isSearching) {
-      if (searchResults.isEmpty && _searchController.text.isNotEmpty) {
-        return Center(
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 32),
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.search_off,
+                Icons.error_outline,
                 size: 48,
-                color: subtleColor.withOpacity(0.5),
+                color: const Color(0xFFD32F2F),
               ),
               const SizedBox(height: 20),
               Text(
-                'AUCUN RÉSULTAT',
+                'ERREUR',
                 style: TextStyle(
                   color: subtleColor,
                   fontSize: 12,
@@ -522,107 +629,206 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Essayez d\'autres mots-clés ou un filtre différent',
+                errorMessage,
                 style: TextStyle(
                   color: subtleColor.withOpacity(0.7),
                   fontSize: 13,
                   letterSpacing: 0.3,
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
+          ),
+        ),
+      );
+    }
+
+    // Mode recherche - afficher les résultats de recherche
+    if (isSearching) {
+      if (searchResults.isEmpty && _searchController.text.isNotEmpty) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 32),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.search_off,
+                  size: 48,
+                  color: subtleColor.withOpacity(0.5),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'AUCUN RÉSULTAT',
+                  style: TextStyle(
+                    color: subtleColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Essayez d\'autres mots-clés ou un filtre différent',
+                  style: TextStyle(
+                    color: subtleColor.withOpacity(0.7),
+                    fontSize: 13,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       }
 
-      return ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        itemCount: searchResults.length,
-        itemBuilder: (context, index) {
-          final result = searchResults[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _buildResultCard(result, isDark, textColor, subtleColor),
-          );
-        },
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              children: searchResults.map((result) =>
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _buildResultCard(result, isDark, textColor, subtleColor),
+                )
+              ).toList(),
+            ),
+          ),
+        ],
       );
     }
 
     // Mode recommandations - afficher par catégorie
     if (recommendations.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.people_outline,
-              size: 48,
-              color: subtleColor.withOpacity(0.5),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'CHARGEMENT',
-              style: TextStyle(
-                color: subtleColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 2,
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.people_outline,
+                size: 48,
+                color: subtleColor.withOpacity(0.5),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Text(
+                'CHARGEMENT',
+                style: TextStyle(
+                  color: subtleColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return ListView(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      children: [
-        // Vétérinaires
-        if (recommendations['veterinarians']!.isNotEmpty) ...[
-          _buildSectionTitle('VÉTÉRINAIRES', subtleColor),
-          ...(recommendations['veterinarians'] as List).map((result) =>
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _buildResultCard(result, isDark, textColor, subtleColor),
-            )
-          ).toList(),
-          const SizedBox(height: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Vétérinaires
+          if ((selectedFilter == 'all' || selectedFilter == 'veterinarian') &&
+              recommendations['veterinarians']!.isNotEmpty) ...[
+            _buildSectionTitle('VÉTÉRINAIRES', subtleColor),
+            ...(recommendations['veterinarians'] as List).map((result) =>
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildResultCard(result, isDark, textColor, subtleColor),
+              )
+            ).toList(),
+            const SizedBox(height: 24),
+          ],
+          
+          // Agriculteurs
+          if ((selectedFilter == 'all' || selectedFilter == 'farmer') &&
+              recommendations['farmers']!.isNotEmpty) ...[
+            _buildSectionTitle('AGRICULTEURS', subtleColor),
+            ...(recommendations['farmers'] as List).map((result) =>
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildResultCard(result, isDark, textColor, subtleColor),
+              )
+            ).toList(),
+            const SizedBox(height: 24),
+          ],
+          
+          // Éleveurs
+          if ((selectedFilter == 'all' || selectedFilter == 'livestock_breeder') &&
+              recommendations['livestock_breeders']!.isNotEmpty) ...[
+            _buildSectionTitle('ÉLEVEURS', subtleColor),
+            ...(recommendations['livestock_breeders'] as List).map((result) =>
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildResultCard(result, isDark, textColor, subtleColor),
+              )
+            ).toList(),
+            const SizedBox(height: 24),
+          ],
+          
+          // Fermes
+          if ((selectedFilter == 'all' || selectedFilter == 'farm') &&
+              recommendations['farms']!.isNotEmpty) ...[
+            _buildSectionTitle('FERMES', subtleColor),
+            ...(recommendations['farms'] as List).map((result) =>
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildResultCard(result, isDark, textColor, subtleColor),
+              )
+            ).toList(),
+          ],
+          
+          // Message si aucun résultat pour le filtre sélectionné
+          if (selectedFilter != 'all' &&
+              ((selectedFilter == 'veterinarian' && recommendations['veterinarians']!.isEmpty) ||
+               (selectedFilter == 'farmer' && recommendations['farmers']!.isEmpty) ||
+               (selectedFilter == 'livestock_breeder' && recommendations['livestock_breeders']!.isEmpty) ||
+               (selectedFilter == 'farm' && recommendations['farms']!.isEmpty))) ...[
+            SizedBox(
+              height: 200,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.inbox_outlined,
+                      size: 48,
+                      color: subtleColor.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'AUCUN RÉSULTAT',
+                      style: TextStyle(
+                        color: subtleColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Pas de recommandations pour cette catégorie',
+                      style: TextStyle(
+                        color: subtleColor.withOpacity(0.7),
+                        fontSize: 13,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: 40),
         ],
-        
-        // Agriculteurs
-        if (recommendations['farmers']!.isNotEmpty) ...[
-          _buildSectionTitle('AGRICULTEURS', subtleColor),
-          ...(recommendations['farmers'] as List).map((result) =>
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _buildResultCard(result, isDark, textColor, subtleColor),
-            )
-          ).toList(),
-          const SizedBox(height: 24),
-        ],
-        
-        // Éleveurs
-        if (recommendations['livestock_breeders']!.isNotEmpty) ...[
-          _buildSectionTitle('ÉLEVEURS', subtleColor),
-          ...(recommendations['livestock_breeders'] as List).map((result) =>
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _buildResultCard(result, isDark, textColor, subtleColor),
-            )
-          ).toList(),
-          const SizedBox(height: 24),
-        ],
-        
-        // Fermes
-        if (recommendations['farms']!.isNotEmpty) ...[
-          _buildSectionTitle('FERMES', subtleColor),
-          ...(recommendations['farms'] as List).map((result) =>
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _buildResultCard(result, isDark, textColor, subtleColor),
-            )
-          ).toList(),
-        ],
-      ],
+      ),
     );
   }
 
