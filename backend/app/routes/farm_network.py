@@ -448,6 +448,7 @@ def follow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
     🌾 Suivre une ferme spécifique.
     """
     try:
+        # 1. Check if already following
         existing = db.query(FarmFollowing).filter(
             FarmFollowing.follower_id == user_id,
             FarmFollowing.farm_id == farm_id
@@ -456,18 +457,32 @@ def follow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
         if existing:
             return {"message": "Déjà suivi"}
         
+        # 2. Ensure FarmProfile exists (create if missing)
+        profile = db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).first()
+        if not profile:
+            print(f'⚠️  Creating missing FarmProfile for farm {farm_id}')
+            profile = FarmProfile(
+                farm_id=farm_id,
+                user_id=0,  # Set to 0 since we don't know the farm owner in this context
+                is_public=True,
+                description="",
+                specialties="",
+                total_followers=0
+            )
+            db.add(profile)
+            db.flush()  # Flush to ensure profile has an ID
+        
+        # 3. Create FarmFollowing record
         following = FarmFollowing(follower_id=user_id, farm_id=farm_id)
         db.add(following)
+        db.flush()  # Ensure the record is in the session
         
-        # Mettre à jour le compteur total_followers dans FarmProfile
-        profile = db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).first()
-        if profile:
-            profile.total_followers = (profile.total_followers or 0) + 1
-        
+        # 4. Increment total_followers
+        profile.total_followers = (profile.total_followers or 0) + 1
         db.commit()
         
-        print(f'✅ User {user_id} following farm {farm_id}')
-        return {"message": "Ferme suivie", "total_followers": profile.total_followers if profile else 0}
+        print(f'✅ User {user_id} following farm {farm_id}. New followers: {profile.total_followers}')
+        return {"message": "Ferme suivie", "total_followers": profile.total_followers}
     except Exception as e:
         db.rollback()
         print(f'❌ Error following farm: {str(e)}')
@@ -482,6 +497,7 @@ def unfollow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
     🌾 Arrêter de suivre une ferme.
     """
     try:
+        # 1. Find the follow record
         following = db.query(FarmFollowing).filter(
             FarmFollowing.follower_id == user_id,
             FarmFollowing.farm_id == farm_id
@@ -491,17 +507,31 @@ def unfollow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
             print(f'⚠️ User {user_id} is not following farm {farm_id}')
             return {"message": "Ferme non suivie"}
         
+        # 2. Delete the follow record
         db.delete(following)
+        db.flush()  # Ensure the deletion is in the session
         
-        # Mettre à jour le compteur total_followers dans FarmProfile
+        # 3. Get or create FarmProfile
         profile = db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).first()
-        if profile:
-            profile.total_followers = max(0, (profile.total_followers or 1) - 1)
+        if not profile:
+            print(f'⚠️ Creating missing FarmProfile for farm {farm_id}')
+            profile = FarmProfile(
+                farm_id=farm_id,
+                user_id=0,
+                is_public=True,
+                description="",
+                specialties="",
+                total_followers=0
+            )
+            db.add(profile)
+            db.flush()
         
+        # 4. Decrement total_followers
+        profile.total_followers = max(0, (profile.total_followers or 1) - 1)
         db.commit()
         
-        print(f'✅ User {user_id} unfollowed farm {farm_id}')
-        return {"message": "Ferme non suivie", "total_followers": profile.total_followers if profile else 0}
+        print(f'✅ User {user_id} unfollowed farm {farm_id}. New followers: {profile.total_followers}')
+        return {"message": "Ferme non suivie", "total_followers": profile.total_followers}
     except Exception as e:
         db.rollback()
         print(f'❌ Error unfollowing farm: {str(e)}')
