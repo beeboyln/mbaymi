@@ -120,9 +120,14 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
         // Unfollow - decrement followers count
         final currentCount = _farmFollowersCount[farmId] ?? 0;
         await ApiService.unfollowFarm(farmId: farmId, userId: currentUserId);
+        
+        // Invalidate cache to sync with backend
+        _globalDataCache.remove('public_farms');
+        
         setState(() {
           _followedFarmIds.remove(farmId);
           _farmFollowersCount[farmId] = (currentCount - 1).clamp(0, double.infinity).toInt();
+          _farmsFuture = _getPublicFarmsCached(); // Reload with fresh data
         });
         if (mounted) {
           _showToast('Vous ne suivez plus cette ferme', Colors.black87, Icons.person_remove_outlined);
@@ -131,9 +136,14 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
         // Follow - increment followers count
         final currentCount = _farmFollowersCount[farmId] ?? 0;
         await ApiService.followFarm(farmId: farmId, userId: currentUserId);
+        
+        // Invalidate cache to sync with backend
+        _globalDataCache.remove('public_farms');
+        
         setState(() {
           _followedFarmIds.add(farmId);
           _farmFollowersCount[farmId] = currentCount + 1;
+          _farmsFuture = _getPublicFarmsCached(); // Reload with fresh data
         });
         if (mounted) {
           _showToast('Ferme ajoutée à vos abonnements', AppColors.primary, Icons.check_circle_outline);

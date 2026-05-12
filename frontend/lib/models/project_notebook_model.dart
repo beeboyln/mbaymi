@@ -99,16 +99,20 @@ class ProjectNotebook {
       id: json['id'],
       title: json['title'],
       description: json['description'],
-      farmId: json['farmId'],
-      createdBy: json['createdBy'],
+      farmId: json['farmId'].toString(),
+      createdBy: json['createdBy'].toString(),
       sections: List<NotebookSection>.from(
         (json['sections'] as List? ?? []).map((x) => NotebookSection.fromJson(x)),
       ),
-      tags: List<String>.from(json['tags'] ?? []),
+      tags: List<String>.from(
+        (json['tags'] as List? ?? []).map((x) => x.toString()),
+      ),
       category: json['category'] ?? 'general',
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
-      sharedWith: List<String>.from(json['sharedWith'] ?? []),
+      sharedWith: List<String>.from(
+        (json['sharedWith'] as List? ?? []).map((x) => x.toString()),
+      ),
       isPublic: json['isPublic'] ?? false,
       comments: List<NoteComment>.from(
         (json['comments'] as List? ?? []).map((x) => NoteComment.fromJson(x)),
@@ -157,7 +161,7 @@ class NotebookSection {
   factory NotebookSection.fromJson(Map<String, dynamic> json) {
     return NotebookSection(
       id: json['id'],
-      title: json['title'],
+      title: json['title'].toString(),
       contents: List<NoteContent>.from(
         (json['contents'] as List? ?? []).map((x) => NoteContent.fromJson(x)),
       ),
@@ -212,8 +216,8 @@ class NoteContent {
   factory NoteContent.fromJson(Map<String, dynamic> json) {
     return NoteContent(
       id: json['id'],
-      type: json['type'],
-      content: json['content'],
+      type: json['type'].toString(),
+      content: json['content'].toString(),
       metadata: json['metadata'] ?? {},
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
@@ -252,11 +256,13 @@ class NoteComment {
   factory NoteComment.fromJson(Map<String, dynamic> json) {
     return NoteComment(
       id: json['id'],
-      userId: json['userId'],
-      userName: json['userName'],
+      userId: json['userId'].toString(),
+      userName: json['userName'].toString(),
       text: json['text'],
       createdAt: DateTime.parse(json['createdAt']),
-      mentions: List<String>.from(json['mentions'] ?? []),
+      mentions: List<String>.from(
+        (json['mentions'] as List? ?? []).map((x) => x.toString()),
+      ),
     );
   }
 }
@@ -301,7 +307,7 @@ class NoteVersion {
         (json['sections'] as List? ?? []).map((x) => NotebookSection.fromJson(x)),
       ),
       createdAt: DateTime.parse(json['createdAt']),
-      createdBy: json['createdBy'],
+      createdBy: json['createdBy'].toString(),
       changeDescription: json['changeDescription'],
     );
   }

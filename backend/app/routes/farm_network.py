@@ -121,6 +121,9 @@ def get_farm_profile(farm_id: int, db: Session = Depends(get_db)):
         farm = db.query(Farm).filter(Farm.id == farm_id).first()
         user = db.query(User).filter(User.id == farm.user_id).first()
         
+        # Compter les followers depuis FarmFollowing
+        followers_count = db.query(FarmFollowing).filter(FarmFollowing.farm_id == farm_id).count()
+        
         # Safe specialties handling
         specialties = []
         if profile.specialties:
@@ -138,7 +141,7 @@ def get_farm_profile(farm_id: int, db: Session = Depends(get_db)):
             "description": profile.description or "",
             "specialties": specialties,
             "is_public": profile.is_public,
-            "total_followers": profile.total_followers or 0,
+            "total_followers": followers_count,
             "created_at": profile.created_at.isoformat(),
         }
     except HTTPException:
@@ -180,12 +183,15 @@ def search_farm_profiles(
                 except Exception:
                     specialties = []
             
+            # Compter les followers depuis FarmFollowing
+            followers_count = db.query(FarmFollowing).filter(FarmFollowing.farm_id == farm.id).count()
+            
             farms_data.append({
                 "farm_id": farm.id,
                 "farm_name": farm.name,
                 "location": farm.location,
                 "specialties": specialties,
-                "followers": profile.total_followers or 0,
+                "followers": followers_count,
             })
         
         return {
@@ -452,10 +458,16 @@ def follow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
         
         following = FarmFollowing(follower_id=user_id, farm_id=farm_id)
         db.add(following)
+        
+        # Mettre à jour le compteur total_followers dans FarmProfile
+        profile = db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).first()
+        if profile:
+            profile.total_followers = (profile.total_followers or 0) + 1
+        
         db.commit()
         
         print(f'✅ User {user_id} following farm {farm_id}')
-        return {"message": "Ferme suivie"}
+        return {"message": "Ferme suivie", "total_followers": profile.total_followers if profile else 0}
     except Exception as e:
         db.rollback()
         print(f'❌ Error following farm: {str(e)}')
@@ -480,10 +492,16 @@ def unfollow_farm(farm_id: int, user_id: int, db: Session = Depends(get_db)):
             return {"message": "Ferme non suivie"}
         
         db.delete(following)
+        
+        # Mettre à jour le compteur total_followers dans FarmProfile
+        profile = db.query(FarmProfile).filter(FarmProfile.farm_id == farm_id).first()
+        if profile:
+            profile.total_followers = max(0, (profile.total_followers or 1) - 1)
+        
         db.commit()
         
         print(f'✅ User {user_id} unfollowed farm {farm_id}')
-        return {"message": "Ferme non suivie"}
+        return {"message": "Ferme non suivie", "total_followers": profile.total_followers if profile else 0}
     except Exception as e:
         db.rollback()
         print(f'❌ Error unfollowing farm: {str(e)}')
@@ -628,6 +646,9 @@ def get_farm_details(farm_id: int, db: Session = Depends(get_db)):
             except Exception:
                 specialties = []
         
+        # Compter les followers depuis FarmFollowing
+        followers_count = db.query(FarmFollowing).filter(FarmFollowing.farm_id == farm_id).count()
+        
         return {
             "farm_id": farm.id,
             "farm_name": farm.name,
@@ -636,7 +657,7 @@ def get_farm_details(farm_id: int, db: Session = Depends(get_db)):
             "owner_id": farm.user_id,
             "description": profile.description or "",
             "specialties": specialties,
-            "followers": profile.total_followers or 0,
+            "followers": followers_count,
             "is_public": profile.is_public,
             "crops": crops_data,
             "photos": photos_data,
@@ -677,6 +698,9 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
                 except:
                     specialties = []
             
+            # Compter les followers depuis FarmFollowing
+            followers_count = db.query(FarmFollowing).filter(FarmFollowing.farm_id == farm.id).count()
+            
             farm_data = {
                 "farm_id": farm.id,
                 "farm_name": farm.name,
@@ -687,7 +711,7 @@ def get_public_farms(skip: int = 0, limit: int = 10, db: Session = Depends(get_d
                 "profile_image_farm": farm.image_url,
                 "description": profile.description or "",
                 "specialties": specialties,
-                "followers": profile.total_followers or 0,
+                "followers": followers_count,
             }
             farms_list.append(farm_data)
         

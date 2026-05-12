@@ -43,6 +43,24 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
     super.dispose();
   }
 
+  String _translateRole(String? role) {
+    if (role == null) return '';
+    switch (role.toLowerCase()) {
+      case 'farmer':
+        return 'Agriculteur';
+      case 'livestock_breeder':
+        return 'Éleveur';
+      case 'veterinarian':
+        return 'Vétérinaire';
+      case 'buyer':
+        return 'Acheteur';
+      case 'seller':
+        return 'Vendeur';
+      default:
+        return role;
+    }
+  }
+
   Future<void> _loadRecommendations() async {
     setState(() {
       isLoading = true;
@@ -1068,7 +1086,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    result['role'] ?? (isFarmer ? 'Agriculteur' : 'Éleveur'),
+                    _translateRole(result['role']) ?? (isFarmer ? 'Agriculteur' : 'Éleveur'),
                     style: TextStyle(
                       color: subtleColor,
                       fontSize: 12,
