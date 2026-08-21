@@ -24,12 +24,13 @@ jobs:
       - name: Install dependencies
         run: |
           cd frontend
+          cp .env.example .env
           flutter pub get
 
       - name: Build Flutter web
         run: |
           cd frontend
-          flutter build web --release
+          flutter build web --release --no-wasm-dry-run
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v42
