@@ -95,16 +95,6 @@ def include_routes():
     app.include_router(animals.router)  # Individual animal management system
     app.include_router(notebooks.router)  # Project notebook (cahiers agricoles)
     
-    print("[DEBUG] farm_posts.router routes:")
-    for route in app.routes:
-        if "farm-posts" in str(route.path):
-            print(f"  {route.methods} {route.path}")
-    
-    print("[DEBUG] api_inputs.router routes:")
-    for route in app.routes:
-        if "input" in str(route.path).lower():
-            print(f"  {route.methods} {route.path}")
-
 # Health check endpoint (wakes up Render free tier)
 @app.get("/health")
 @app.get("/api/health")
