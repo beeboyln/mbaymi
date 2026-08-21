@@ -1,4 +1,3 @@
-import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 /// Modèle pour un cahier de projet agricole

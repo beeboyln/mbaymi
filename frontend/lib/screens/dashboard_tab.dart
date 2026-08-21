@@ -8,7 +8,7 @@ import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/services/weather_service.dart';
 import 'package:mbaymi/models/news_model.dart';
-import 'package:mbaymi/screens/news_detail_screen.dart';
+import 'package:mbaymi/screens/social/news_detail_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAINTERS
@@ -1006,8 +1006,8 @@ class _DashboardTabState extends State<DashboardTab>
                     ],
                   ),
                 ] else ...[
-                  Text('Agriculteur', style: TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.w500,
+                  Text('Bienvenu', style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w500,
                     color: isDark ? const Color(0xFFF0E8D8) : AppColors.textLight,
                     letterSpacing: -1.0,
                   )),
@@ -1450,7 +1450,7 @@ class _DashboardTabState extends State<DashboardTab>
             Container(width: 24, height: 1, color: primary),
             const SizedBox(width: 8),
             Text('ACTUALITÉS', style: TextStyle(
-              fontSize: 7.5, fontWeight: FontWeight.w500,
+              fontSize: 10, fontWeight: FontWeight.w600,
               letterSpacing: 2.8, color: textSec.withOpacity(0.5),
             )),
             const SizedBox(width: 8),

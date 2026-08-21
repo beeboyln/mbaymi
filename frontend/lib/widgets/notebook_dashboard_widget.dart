@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/project_notebook_model.dart';
 import '../services/notebook_provider.dart';
-import '../screens/project_notebook_list_screen.dart';
+import 'package:mbaymi/screens/notebook/project_notebook_list_screen.dart';
 
 /// Widget de présentation rapide des cahiers sur le dashboard
 /// À ajouter dans dashboard_tab.dart ou home_screen.dart

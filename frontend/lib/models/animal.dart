@@ -1,6 +1,5 @@
 /// Animal Management Models for individual livestock tracking
 library;
-import 'package:flutter/foundation.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANIMAL MODEL

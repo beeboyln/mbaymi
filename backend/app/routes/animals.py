@@ -271,7 +271,7 @@ def add_reproduction_record(
 @router.get("/{animal_id}/reproduction", response_model=List[AnimalReproductionResponse])
 def get_reproduction_records(
     animal_id: int,
-    user_id: int,
+    user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all reproduction records for an animal."""
@@ -296,7 +296,7 @@ def get_reproduction_records(
 def add_production_record(
     animal_id: int,
     record: AnimalProductionCreate,
-    user_id: int,
+    user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Add a production record (milk, eggs, wool, meat, etc.)."""
@@ -327,7 +327,7 @@ def add_production_record(
 @router.get("/{animal_id}/production", response_model=List[AnimalProductionResponse])
 def get_production_records(
     animal_id: int,
-    user_id: int,
+    user_id: int = Depends(get_current_user),
     metric_type: Optional[str] = Query(None),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
@@ -356,7 +356,7 @@ def get_production_records(
 @router.get("/{animal_id}/production/stats", response_model=AnimalProductionStatistic)
 def get_production_statistics(
     animal_id: int,
-    user_id: int,
+    user_id: int = Depends(get_current_user),
     metric_type: str = Query(...),
     days: int = Query(30),
     db: Session = Depends(get_db)
@@ -443,7 +443,7 @@ def add_care_reminder(
 @router.get("/{animal_id}/reminders", response_model=List[AnimalCareReminderResponse])
 def get_care_reminders(
     animal_id: int,
-    user_id: int,
+    user_id: int = Depends(get_current_user),
     is_completed: Optional[bool] = Query(None),
     tag: Optional[str] = Query(None),
     priority: Optional[str] = Query(None),
@@ -471,7 +471,7 @@ def get_care_reminders(
 
 @router.get("/upcoming", response_model=List[AnimalCareReminderResponse])
 def get_upcoming_reminders(
-    user_id: int,
+    user_id: int = Depends(get_current_user),
     days_ahead: int = Query(7),
     db: Session = Depends(get_db)
 ):
@@ -494,7 +494,7 @@ def get_upcoming_reminders(
 def update_care_reminder(
     reminder_id: int,
     update: AnimalCareReminderUpdate,
-    user_id: int,
+    user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Update a care reminder."""

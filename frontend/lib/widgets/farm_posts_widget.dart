@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
-import 'package:mbaymi/screens/create_farm_post_dialog.dart';
+import 'package:mbaymi/screens/social/create_farm_post_dialog.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 

@@ -7,6 +7,7 @@ class Livestock(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    animal_id = Column(Integer, ForeignKey("animals.id"), nullable=True)  # Link to Animal record for detailed tracking
     animal_type = Column(String(50), nullable=False)  # cattle, goat, sheep, poultry, pig
     breed = Column(String(100))
     quantity = Column(Integer, default=1)

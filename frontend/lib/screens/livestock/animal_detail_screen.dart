@@ -1,9 +1,7 @@
 /// Animal Detail Screen - Complete profile with tabs
 library;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:mbaymi/models/animal.dart';
-import 'package:mbaymi/services/animal_service.dart';
 import 'package:mbaymi/screens/livestock/animal_health_tab.dart';
 import 'package:mbaymi/screens/livestock/animal_production_tab.dart';
 import 'package:mbaymi/screens/livestock/animal_reproduction_tab.dart';

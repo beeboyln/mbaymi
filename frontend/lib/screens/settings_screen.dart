@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 import '../services/theme_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
-import 'privacy_policy_screen.dart';
-import 'terms_of_use_screen.dart' hide AppColors;
-import 'trust_credibility_screen.dart';
+import 'legal/privacy_policy_screen.dart';
+import 'legal/terms_of_use_screen.dart';
+import 'legal/trust_credibility_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);

@@ -1,10 +1,8 @@
 /// Animal List Screen - Display all animals with filters and actions
 library;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:mbaymi/models/animal.dart';
 import 'package:mbaymi/services/animal_service.dart';
-import 'package:mbaymi/widgets/app_button.dart';
 import 'package:mbaymi/screens/livestock/animal_detail_screen.dart';
 import 'package:mbaymi/screens/livestock/add_animal_dialog.dart';
 

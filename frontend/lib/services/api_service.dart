@@ -51,7 +51,6 @@ class ApiService {
     int maxRetries = _maxRetries,
   }) async {
     int attempt = 0;
-    Duration delay = _initialDelay;
 
     while (true) {
       try {
@@ -3050,7 +3049,7 @@ class ApiService {
       );
 
       final response = await request.send();
-      final responseString = await response.stream.bytesToString();
+      await response.stream.drain();
 
       if (response.statusCode != 200) {
         throw Exception('Erreur upload: ${response.statusCode}');
