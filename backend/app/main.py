@@ -157,10 +157,6 @@ def version():
         "git_commit": os.getenv("GIT_COMMIT", None),
     }
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy", "message": "Mbaymi API is running"}
-
 @app.post("/admin/migrate")
 def run_migration(key: str = None):
     """
@@ -222,7 +218,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         "https://mbaymi-staging.vercel.app",
         "https://mbaymi.com",
         "https://www.mbaymi.com",
-        "https://cuddly-lil-bigboyllmnd-9965fc8f.koyeb.app",
+        "https://burning-yetty-bigboyme-428f3176.koyeb.app",
     ]
     
     response_origin = origin if origin in allowed_origins else MAIN_DOMAIN
