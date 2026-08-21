@@ -34,7 +34,7 @@ app.add_middleware(
 
 print("[OK] CORS middleware configured with these origins:")
 for origin in settings.ALLOWED_ORIGINS:
-    print(f"   ✓ {origin}")
+    print(f"   - {origin}")
 
 # ✅ OPTIMIZATION 1: Add Gzip compression (80% smaller responses)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
