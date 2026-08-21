@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.livestock import Livestock
+from app.models.farm_post import FarmImagePost
 from app.models.user import User
 from app.schemas.schemas import LivestockCreate, LivestockResponse
 
@@ -130,8 +131,16 @@ def update_livestock(livestock_id: int, livestock: LivestockCreate, db: Session 
 def delete_livestock(livestock_id: int, db: Session = Depends(get_db)):
     """Soft delete livestock by setting deleted_at timestamp"""
     livestock = db.query(Livestock).filter(Livestock.id == livestock_id).first()
+
+    deleted_posts = db.query(FarmImagePost).filter(
+        FarmImagePost.livestock_id == livestock_id
+    ).delete(synchronize_session=False)
+
     if not livestock:
-        raise HTTPException(status_code=404, detail="Livestock not found")
+        db.commit()
+        return {
+            "message": f"Livestock {livestock_id} not found; {deleted_posts} orphan posts removed"
+        }
     
     # Soft delete: set deleted_at timestamp instead of hard delete
     from datetime import datetime

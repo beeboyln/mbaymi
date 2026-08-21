@@ -151,6 +151,9 @@ def get_farm_posts_feed(user_id: int = None, db: Session = Depends(get_db)):
             farm = db.query(Farm).filter(Farm.id == post.farm_id).first() if post.farm_id else None
             user = db.query(User).filter(User.id == post.user_id).first()
             livestock = db.query(Livestock).filter(Livestock.id == post.livestock_id).first() if post.livestock_id else None
+
+            if post.livestock_id and (livestock is None or livestock.deleted_at is not None):
+                continue
             
             # Get farm or livestock name
             if farm:
@@ -221,6 +224,9 @@ def get_subscriptions_feed(user_id: int, db: Session = Depends(get_db)):
             farm = db.query(Farm).filter(Farm.id == post.farm_id).first() if post.farm_id else None
             user = db.query(User).filter(User.id == post.user_id).first()
             livestock = db.query(Livestock).filter(Livestock.id == post.livestock_id).first() if post.livestock_id else None
+
+            if post.livestock_id and (livestock is None or livestock.deleted_at is not None):
+                continue
             
             # Get farm or livestock name
             if farm:
@@ -294,6 +300,13 @@ def get_farm_posts(farm_id: int, user_id: int = None, db: Session = Depends(get_
 @router.get("/livestock/{livestock_id}")
 def get_livestock_posts(livestock_id: int, user_id: int = None, db: Session = Depends(get_db)):
     """Récupérer tous les posts d'un animal (livestock) spécifique"""
+    livestock = db.query(Livestock).filter(
+        Livestock.id == livestock_id,
+        Livestock.deleted_at == None,
+    ).first()
+    if not livestock:
+        return []
+
     posts = db.query(FarmImagePost).filter(FarmImagePost.livestock_id == livestock_id).order_by(desc(FarmImagePost.created_at)).all()
     
     result = []
