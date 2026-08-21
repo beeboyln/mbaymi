@@ -6,6 +6,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/utils/app_text_styles.dart';
 import 'package:mbaymi/services/weather_service.dart';
 import 'package:mbaymi/models/news_model.dart';
 import 'package:mbaymi/screens/social/news_detail_screen.dart';
@@ -331,10 +332,9 @@ class _Tag extends StatelessWidget {
           Icon(icon, size: 8, color: fg),
           const SizedBox(width: 4),
         ],
-        Text(text, style: TextStyle(
-          fontSize: 7.5, fontWeight: FontWeight.w600,
-          letterSpacing: 1.6, color: fg,
-        )),
+        Text(text, style: AppTextStyles.label.copyWith(
+          letterSpacing: 1.2, color: fg,
+        ))
       ],
     ),
   );
@@ -380,10 +380,9 @@ class _NewsCategoryTag extends StatelessWidget {
         children: [
           Icon(s.icon, size: 7.5, color: s.fg),
           const SizedBox(width: 3),
-          Text(s.label, style: TextStyle(
-            fontSize: 7, fontWeight: FontWeight.w700,
-            letterSpacing: 1.3, color: s.fg,
-          )),
+          Text(s.label, style: AppTextStyles.label.copyWith(
+            fontWeight: FontWeight.w700, letterSpacing: 1.0, color: s.fg,
+          ))
         ],
       ),
     );
@@ -530,7 +529,7 @@ class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixi
                 )),
                 const SizedBox(height: 2),
                 Text('Appuyez pour découvrir', style: TextStyle(
-                  fontSize: 9.5,
+                  fontSize: 11,
                   fontWeight: FontWeight.w300,
                   color: accent.withOpacity(0.70),
                   letterSpacing: 0.3,
@@ -573,7 +572,7 @@ class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixi
                       Text(
                         'LA TERRE NOURRIT. LA TECH GUIDEE.',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 2.0,
                           color: accent,
@@ -584,7 +583,7 @@ class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixi
                       Text(
                         'De Dakar au Sahel, chaque agriculteur mérite les meilleures informations au bon moment.',
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w300,
                           color: isDark
                               ? Colors.white.withOpacity(0.65)
@@ -958,7 +957,7 @@ class _DashboardTabState extends State<DashboardTab>
                 Row(
                   children: [
                     Text(_date(), style: TextStyle(
-                      fontSize: 10.5, fontWeight: FontWeight.w300,
+                      fontSize: 12, fontWeight: FontWeight.w300,
                       color: primary.withOpacity(0.60), letterSpacing: 0.2,
                     )),
                     const Spacer(),
@@ -969,9 +968,8 @@ class _DashboardTabState extends State<DashboardTab>
                   ],
                 ),
                 const Spacer(),
-                Text('Bonjour,', style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w300,
-                  color: accent.withOpacity(0.85), letterSpacing: 0.5,
+                Text('Bonjour,', style: AppTextStyles.body.copyWith(
+                  fontSize: 17, color: accent.withOpacity(0.90), letterSpacing: 0.2,
                 )),
                 const SizedBox(height: 4),
                 if (AuthService.isAuthenticated && AuthService.currentSession?.name != null) ...[
@@ -982,8 +980,8 @@ class _DashboardTabState extends State<DashboardTab>
                       Text(
                         AuthService.currentSession!.name.split(' ').first,
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w200,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w400,
                           color: accent.withOpacity(0.80),
                           letterSpacing: -0.5,
                         ),
@@ -994,10 +992,10 @@ class _DashboardTabState extends State<DashboardTab>
                           child: Text(
                             AuthService.currentSession!.name.split(' ').skip(1).join(' '),
                             style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 25,
+                              fontWeight: FontWeight.w600,
                               color: isDark ? const Color(0xFFF0E8D8) : AppColors.textLight,
-                              letterSpacing: -1.0,
+                              letterSpacing: -0.5,
                               height: 1.1,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -1007,7 +1005,7 @@ class _DashboardTabState extends State<DashboardTab>
                   ),
                 ] else ...[
                   Text('Bienvenu', style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w500,
+                    fontSize: 20, fontWeight: FontWeight.w600,
                     color: isDark ? const Color(0xFFF0E8D8) : AppColors.textLight,
                     letterSpacing: -1.0,
                   )),
@@ -1076,7 +1074,7 @@ class _DashboardTabState extends State<DashboardTab>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('MÉTÉO', style: TextStyle(
-                          fontSize: 7, fontWeight: FontWeight.w500,
+                          fontSize: 10, fontWeight: FontWeight.w500,
                           letterSpacing: 3.0, color: textSec.withOpacity(0.5),
                         )),
                         const SizedBox(height: 12),
@@ -1125,7 +1123,7 @@ class _DashboardTabState extends State<DashboardTab>
                                     ),
                                     child: Text(
                                       '↓${minT.round()}°  ↑${maxT.round()}°',
-                                      style: TextStyle(fontSize: 9, color: textSec, fontWeight: FontWeight.w400),
+                                      style: TextStyle(fontSize: 11, color: textSec, fontWeight: FontWeight.w400),
                                     ),
                                   ),
                                 ],
@@ -1167,7 +1165,7 @@ class _DashboardTabState extends State<DashboardTab>
                             ),
                             const SizedBox(width: 7),
                             Text('CONSEIL', style: TextStyle(
-                              fontSize: 7, fontWeight: FontWeight.w500,
+                              fontSize: 10, fontWeight: FontWeight.w500,
                               letterSpacing: 2.5, color: textSec.withOpacity(0.5),
                             )),
                           ]),
@@ -1179,9 +1177,8 @@ class _DashboardTabState extends State<DashboardTab>
                               _Shimmer(width: 90, height: 10, radius: 3),
                             ])
                           else
-                            Text(advice, style: TextStyle(
-                              fontSize: 11.5, color: textPri,
-                              fontWeight: FontWeight.w300, height: 1.55,
+                            Text(advice, style: AppTextStyles.body.copyWith(
+                              color: textPri, height: 1.55,
                             ), maxLines: 3, overflow: TextOverflow.ellipsis),
 
                           const SizedBox(height: 14),
@@ -1201,13 +1198,13 @@ class _DashboardTabState extends State<DashboardTab>
                                       size: 10, color: const Color(0xFF78909C).withOpacity(0.80)),
                                   const SizedBox(width: 5),
                                   Text('${windSpeed.round()} km/h', style: TextStyle(
-                                    fontSize: 10, fontWeight: FontWeight.w500,
+                                    fontSize: 12, fontWeight: FontWeight.w500,
                                     color: isDark ? Colors.white.withOpacity(0.75) : Colors.black.withOpacity(0.60),
                                     height: 1.0,
                                   )),
                                   const SizedBox(width: 3),
                                   Text('vent', style: TextStyle(
-                                    fontSize: 8, fontWeight: FontWeight.w300,
+                                    fontSize: 10, fontWeight: FontWeight.w300,
                                     color: const Color(0xFF78909C).withOpacity(0.70),
                                     letterSpacing: 0.4,
                                   )),
@@ -1301,13 +1298,13 @@ class _DashboardTabState extends State<DashboardTab>
 
                 // ✨ Micro-texte descriptif
                 Text('VOS TERRES', style: TextStyle(
-                  fontSize: 8, fontWeight: FontWeight.w400,
+                  fontSize: 10, fontWeight: FontWeight.w400,
                   letterSpacing: 2.5, color: Colors.white.withOpacity(0.45),
                 )),
                 const SizedBox(height: 4),
                 const Text('Mes Fermes', style: TextStyle(
-                  fontSize: 26, fontWeight: FontWeight.w200,
-                  color: Colors.white, height: 1.0, letterSpacing: -1.8,
+                  fontSize: 28, fontWeight: FontWeight.w500,
+                  color: Colors.white, height: 1.0, letterSpacing: -1.0,
                 )),
 
                 const SizedBox(height: 16),
@@ -1325,7 +1322,7 @@ class _DashboardTabState extends State<DashboardTab>
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Text('Explorer', style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600,
+                        fontSize: 15, fontWeight: FontWeight.w600,
                         color: AppColors.primary, letterSpacing: 0.2,
                       )),
                       const SizedBox(width: 6),
@@ -1341,7 +1338,7 @@ class _DashboardTabState extends State<DashboardTab>
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text('Parcelles', style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w300, color: Colors.white,
+                      fontSize: 15, fontWeight: FontWeight.w400, color: Colors.white,
                     )),
                   ),
                 ]),
@@ -1407,8 +1404,8 @@ class _DashboardTabState extends State<DashboardTab>
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 16, 8, 16),
               child: Text(_tips[_tipIdx], style: TextStyle(
-                fontSize: 12, color: textPri,
-                fontWeight: FontWeight.w300, height: 1.6,
+                fontSize: 15, color: textPri,
+                fontWeight: FontWeight.w400, height: 1.55,
               )),
             ),
           ),
@@ -1450,7 +1447,7 @@ class _DashboardTabState extends State<DashboardTab>
             Container(width: 24, height: 1, color: primary),
             const SizedBox(width: 8),
             Text('ACTUALITÉS', style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w600,
+              fontSize: 12, fontWeight: FontWeight.w600,
               letterSpacing: 2.8, color: textSec.withOpacity(0.5),
             )),
             const SizedBox(width: 8),
@@ -1472,7 +1469,7 @@ class _DashboardTabState extends State<DashboardTab>
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(_selectedFilter, style: TextStyle(
-                    fontSize: 10.5, fontWeight: FontWeight.w400,
+                    fontSize: 12, fontWeight: FontWeight.w400,
                     color: primary, letterSpacing: 1.2,
                   )),
                   const SizedBox(width: 3),
@@ -1517,7 +1514,7 @@ class _DashboardTabState extends State<DashboardTab>
                               ] : null,
                             ),
                             child: Text(f, style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 13,
                               fontWeight: sel ? FontWeight.w500 : FontWeight.w300,
                               color: sel ? Colors.white : primary.withOpacity(0.60),
                               letterSpacing: 1.0,
@@ -1642,8 +1639,8 @@ class _DashboardTabState extends State<DashboardTab>
                       ],
                       Text(article.title,
                         style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w400,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
                           color: textPri,
                           height: 1.45,
                           letterSpacing: 0.05,
@@ -1656,15 +1653,15 @@ class _DashboardTabState extends State<DashboardTab>
                         Expanded(
                           child: Text(article.source ?? 'Source',
                             style: TextStyle(
-                              fontSize: 8.5, fontWeight: FontWeight.w300,
-                              color: primary.withOpacity(0.65), letterSpacing: 0.2,
+                              fontSize: 11, fontWeight: FontWeight.w400,
+                              color: primary.withOpacity(0.65), letterSpacing: 0.1,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(article.timeAgo, style: TextStyle(
-                          fontSize: 8.5, fontWeight: FontWeight.w300,
+                          fontSize: 11, fontWeight: FontWeight.w400,
                           color: textSec.withOpacity(0.50),
                         )),
                       ]),

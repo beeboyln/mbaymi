@@ -396,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
                 letterSpacing: 0.1,
                 color: isSelected ? AppColors.primary : inactiveText,
@@ -493,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           style: TextStyle(
             color: _isDarkMode ? AppColors.textDark : AppColors.textLight,
             fontWeight: FontWeight.w400,
-            fontSize: 17,
+            fontSize: 18,
             letterSpacing: -0.3,
           ),
         ),
@@ -557,7 +557,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ? AppColors.textDark
                                   : AppColors.textLight,
                               fontWeight: FontWeight.w400,
-                              fontSize: 13,
+                              fontSize: 15,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -658,7 +658,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Text(
               'Connexion requise',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 22,
                 fontWeight: FontWeight.w300,
                 color: _isDarkMode ? AppColors.textDark : AppColors.textLight,
                 letterSpacing: -0.5,
@@ -669,7 +669,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               'Créez un compte ou connectez-vous\npour accéder à cette fonctionnalité.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 14,
                 fontWeight: FontWeight.w300,
                 color: _isDarkMode
                     ? AppColors.textSecondaryDark
@@ -695,7 +695,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Text(
                       'Se connecter',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w400,
                         color: Colors.white,
                         letterSpacing: 0.2,
@@ -732,7 +732,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: Text(
                         'Créer un compte',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.w300,
                           color: _isDarkMode
                               ? AppColors.textSecondaryDark
@@ -829,7 +829,7 @@ class _ActionMenuSheet extends StatelessWidget {
                   Text(
                     'NOUVELLE ACTION',
                     style: TextStyle(
-                      fontSize: 8,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                       letterSpacing: 2.8,
                       color: textSec,
@@ -1115,7 +1115,7 @@ class _ActionMenuSheet extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 13.5,
+                      fontSize: 15,
                       fontWeight: FontWeight.w400,
                       color: textPrimary,
                       letterSpacing: 0.1,
@@ -1125,7 +1125,7 @@ class _ActionMenuSheet extends StatelessWidget {
                   Text(
                     sublabel,
                     style: TextStyle(
-                      fontSize: 10.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w300,
                       color: textSec,
                     ),
@@ -1164,7 +1164,7 @@ class _ActionMenuSheet extends StatelessWidget {
           style: TextStyle(
             color: textPrimary,
             fontWeight: FontWeight.w400,
-            fontSize: 16,
+            fontSize: 18,
             letterSpacing: -0.3,
           ),
         ),
@@ -1220,7 +1220,7 @@ class _ActionMenuSheet extends StatelessWidget {
                             style: TextStyle(
                               color: textPrimary,
                               fontWeight: FontWeight.w400,
-                              fontSize: 13,
+                              fontSize: 15,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1253,7 +1253,7 @@ class _ActionMenuSheet extends StatelessWidget {
                     ? AppColors.textSecondaryDark
                     : AppColors.textSecondaryLight,
                 fontWeight: FontWeight.w300,
-                fontSize: 13,
+                fontSize: 14,
               ),
             ),
           ),
