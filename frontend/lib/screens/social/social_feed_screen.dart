@@ -1,6 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
@@ -32,6 +38,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   String _feedFilter = 'all';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _headerVisible = true;
+  double? _lastScrollOffset;
 
   // Préchargement pour éviter le délai à l'ouverture du sheet
   Future<List<dynamic>>? _farmsFuture;
@@ -137,6 +145,24 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     }
   }
 
+  bool _handleFeedScroll(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification) {
+      final currentOffset = notification.metrics.pixels;
+      final previousOffset = _lastScrollOffset;
+      _lastScrollOffset = currentOffset;
+
+      if (previousOffset != null && currentOffset > previousOffset && _headerVisible) {
+        setState(() => _headerVisible = false);
+      } else if (previousOffset != null && currentOffset < previousOffset && !_headerVisible) {
+        setState(() => _headerVisible = true);
+      }
+    }
+    if (notification is ScrollEndNotification) {
+      _lastScrollOffset = notification.metrics.pixels;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
@@ -146,38 +172,51 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: bg,
-      appBar: AppBar(
-        backgroundColor: bg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: text, size: 22),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-        ),
-        title: Text(
-          'MBAYMI',
-          style: TextStyle(
-            color: text,
-            fontSize: 16,
-            fontWeight: FontWeight.w200,
-            letterSpacing: 3,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(_headerVisible ? kToolbarHeight + 0.5 : 0),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          height: _headerVisible ? kToolbarHeight + 0.5 : 0,
+          child: ClipRect(
+            child: AppBar(
+              backgroundColor: bg,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.menu, color: text, size: 22),
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              ),
+              title: Text(
+                'MBAYMI',
+                style: TextStyle(
+                  color: text,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w200,
+                  letterSpacing: 3,
+                ),
+              ),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.add, size: 22, color: text),
+                  tooltip: 'Nouveau post',
+                  onPressed: () => _onAddPostPressed(isDark),
+                ),
+              ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(0.5),
+                child: Container(height: 0.5, color: AppColors.getBorderColor(isDark)),
+              ),
+            ),
           ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add, size: 22, color: text),
-            tooltip: 'Nouveau post',
-            onPressed: () => _onAddPostPressed(isDark),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.getBorderColor(isDark)),
         ),
       ),
       drawer: _buildDrawer(isDark),
-      body: _buildFeed(isDark),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _handleFeedScroll,
+        child: _buildFeed(isDark),
+      ),
     );
   }
 
@@ -693,19 +732,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                   label: '${post['shares_count'] ?? 0}',
                   color: text,
                   textColor: text,
-                  onTap: () async {
+                  onTap: () {
                     HapticFeedback.lightImpact();
-                    final old = (post['shares_count'] ?? 0) as int;
-                    post['shares_count'] = old + 1;
-                    wrapper['data'] = post;
-                    setState(() {});
-                    try {
-                      await ApiService.shareFarmPost(postId);
-                    } catch (_) {
-                      post['shares_count'] = old;
-                      wrapper['data'] = post;
-                      setState(() {});
-                    }
+                    _sharePost(post, wrapper);
                   },
                 ),
                 const Spacer(),
@@ -866,6 +895,60 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   void _pushAnimal(int lid, dynamic post, bool isDark) => Navigator.push(context,
       MaterialPageRoute(builder: (_) => AnimalDetailScreen(livestockId: lid, animal: post, isDarkMode: isDark)));
+
+  Future<void> _sharePost(dynamic post, Map<String, dynamic> wrapper) async {
+    final postId = (post['id'] as int?) ?? 0;
+    final farmName = post['farm_name']?.toString() ?? 'Ferme';
+    final ownerName = post['owner_name']?.toString() ?? 'Agriculteur';
+    final caption = post['caption']?.toString() ?? '';
+    final imageUrl = _extractImageUrl(post['image_url']);
+    final text = '$farmName - par $ownerName\n${caption.isNotEmpty ? '$caption\n' : ''}Découvrez cette publication sur MBAYMI.';
+
+    try {
+      final whatsappText = imageUrl == null
+          ? text
+          : '$text\n$imageUrl';
+      final whatsappUri = Uri.parse(
+        'whatsapp://send?text=${Uri.encodeComponent(whatsappText)}',
+      );
+      if (!kIsWeb && await canLaunchUrl(whatsappUri)) {
+        await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+        _recordShare(post, wrapper);
+        await ApiService.shareFarmPost(postId);
+        return;
+      }
+
+      XFile? imageFile;
+      if (!kIsWeb && imageUrl != null && imageUrl.isNotEmpty) {
+        final response = await http.get(Uri.parse(imageUrl));
+        if (response.statusCode == 200) {
+          final directory = await getTemporaryDirectory();
+          final file = File('${directory.path}/mbaymi_post_$postId.jpg');
+          await file.writeAsBytes(response.bodyBytes);
+          imageFile = XFile(file.path, mimeType: 'image/jpeg');
+        }
+      }
+
+      if (!mounted) return;
+      if (imageFile != null) {
+        await Share.shareXFiles([imageFile], text: text, subject: farmName);
+      } else {
+        await Share.share(text, subject: farmName);
+      }
+
+      _recordShare(post, wrapper);
+      await ApiService.shareFarmPost(postId);
+    } catch (error) {
+      if (mounted) _showSnack('Partage impossible', error: true);
+    }
+  }
+
+  void _recordShare(dynamic post, Map<String, dynamic> wrapper) {
+    final old = (post['shares_count'] ?? 0) as int;
+    post['shares_count'] = old + 1;
+    wrapper['data'] = post;
+    if (mounted) setState(() {});
+  }
 
   void _showSnack(String msg, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(

@@ -27,6 +27,8 @@ class _MarketTabState extends State<MarketTab> {
   final int _userId = AuthService.currentSession?.userId ?? 0;
   bool _showMyAds = true;
   bool _showPrices = false;
+  bool _headerVisible = true;
+  double? _lastScrollOffset;
   
   // Filtres avancés
   double _minPrice = 0;
@@ -76,6 +78,20 @@ class _MarketTabState extends State<MarketTab> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  bool _handleScroll(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification) {
+      final current = notification.metrics.pixels;
+      final previous = _lastScrollOffset;
+      _lastScrollOffset = current;
+      if (previous != null && current > previous && _headerVisible) {
+        setState(() => _headerVisible = false);
+      } else if (previous != null && current < previous && !_headerVisible) {
+        setState(() => _headerVisible = true);
+      }
+    }
+    return false;
   }
   
   /// Get all sales with persistent caching
@@ -135,7 +151,14 @@ class _MarketTabState extends State<MarketTab> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: bgColor,
-      appBar: AppBar(
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(_headerVisible ? kToolbarHeight + 1 : 0),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: _headerVisible ? kToolbarHeight + 1 : 0,
+          curve: Curves.easeOutCubic,
+          child: ClipRect(
+            child: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
         leading: IconButton(
@@ -220,9 +243,14 @@ class _MarketTabState extends State<MarketTab> {
             color: AppColors.getBorderColor(isDark),
           ),
         ),
+            ),
+          ),
+        ),
       ),
       drawer: _buildDrawer(isDark, textColor, secondaryTextColor),
-      body: RefreshIndicator(
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _handleScroll,
+        child: RefreshIndicator(
         onRefresh: _refreshData,
         color: AppColors.primary,
         backgroundColor: AppColors.getCardBgColor(isDark),
@@ -241,6 +269,7 @@ class _MarketTabState extends State<MarketTab> {
             // Bottom padding
             const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
           ],
+        ),
         ),
       ),
     );

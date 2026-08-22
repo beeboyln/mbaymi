@@ -38,6 +38,8 @@ class FarmTab extends StatefulWidget {
 
 class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   int _section = 0;
+  bool _headerVisible = true;
+  double? _lastScrollOffset;
   late AnimationController _sectionAnim;
   late Animation<double> _sectionSlide;
   late Animation<double> _sectionFade;
@@ -59,6 +61,20 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   void dispose() {
     _sectionAnim.dispose();
     super.dispose();
+  }
+
+  bool _handleScroll(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification) {
+      final current = notification.metrics.pixels;
+      final previous = _lastScrollOffset;
+      _lastScrollOffset = current;
+      if (previous != null && current > previous && _headerVisible) {
+        setState(() => _headerVisible = false);
+      } else if (previous != null && current < previous && !_headerVisible) {
+        setState(() => _headerVisible = true);
+      }
+    }
+    return false;
   }
 
   @override
@@ -342,7 +358,14 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: bg,
-      appBar: AppBar(
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(_headerVisible ? kToolbarHeight : 0),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: _headerVisible ? kToolbarHeight : 0,
+          curve: Curves.easeOutCubic,
+          child: ClipRect(
+            child: AppBar(
         backgroundColor: bg,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -368,6 +391,9 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
             ],
           ),
         ],
+            ),
+          ),
+        ),
       ),
       drawer: _drawer(dark),
       body: Column(children: [
@@ -377,7 +403,9 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
           dark: dark,
         ),
         Expanded(
-          child: RefreshIndicator(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _handleScroll,
+            child: RefreshIndicator(
             color: AppColors.accent,
             backgroundColor: bg,
             onRefresh: _refresh,
@@ -394,6 +422,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+            ),
             ),
           ),
         ),
