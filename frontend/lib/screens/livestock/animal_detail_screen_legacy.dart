@@ -118,6 +118,18 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
                 child: FutureBuilder<List<Map<String, dynamic>>>(
                   future: _photosFuture,
                   builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.fromLTRB(24, 24, 24, 40),
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 1.5),
+                          ),
+                        ),
+                      );
+                    }
                     final photos = snapshot.data ?? [];
                     final loading =
                         snapshot.connectionState == ConnectionState.waiting;

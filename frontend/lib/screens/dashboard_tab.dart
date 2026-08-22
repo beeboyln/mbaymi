@@ -1445,7 +1445,7 @@ class _DashboardTabState extends State<DashboardTab>
 
                 // ✨ Micro-texte descriptif
                 Text(
-                  isLoading ? 'CHARGEMENT' : (hasFarm ? 'VOTRE FERME' : 'VOS TERRES'),
+                  hasFarm ? 'VOTRE FERME' : 'VOS TERRES',
                   style: TextStyle(
                   fontSize: 10, fontWeight: FontWeight.w400,
                   letterSpacing: 2.5, color: Colors.white.withOpacity(0.45),
@@ -1463,20 +1463,28 @@ class _DashboardTabState extends State<DashboardTab>
                       child: child,
                     ),
                   ),
-                  child: Text(
-                    isLoading
-                      ? 'Chargement de vos fermes...'
-                      : (hasFarm
+                  child: isLoading
+                    ? const SizedBox(
+                        key: ValueKey('farm_loading'),
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.8,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        hasFarm
                         ? (farmName?.isNotEmpty == true ? farmName! : 'Ferme')
-                        : 'Créer ma première ferme'),
-                    key: ValueKey(farmName ?? 'empty'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.w500,
-                      color: Colors.white, height: 1.0, letterSpacing: -1.0,
+                        : 'Créer ma première ferme',
+                        key: ValueKey(farmName ?? 'empty'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 28, fontWeight: FontWeight.w500,
+                          color: Colors.white, height: 1.0, letterSpacing: -1.0,
+                        ),
                     ),
-                  ),
                 ),
 
                 const SizedBox(height: 16),
@@ -1491,16 +1499,26 @@ class _DashboardTabState extends State<DashboardTab>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text(
-                          isLoading
-                              ? 'CHARGEMENT'
-                              : (hasFarm ? 'EXPLORER' : 'CRÉER MA FERME'),
-                          style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500,
-                          color: Colors.white, letterSpacing: 1.5,
-                        )),
-                        const SizedBox(width: 9),
-                        Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white.withOpacity(0.9)),
+                        if (isLoading)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        else ...[
+                          Text(
+                            hasFarm ? 'EXPLORER' : 'CRÉER MA FERME',
+                            style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w500,
+                              color: Colors.white, letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white.withOpacity(0.9)),
+                        ],
                       ]),
                     ),
                   ),

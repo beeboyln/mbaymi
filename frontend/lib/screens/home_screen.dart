@@ -785,6 +785,21 @@ class _ActionMenuSheet extends StatelessWidget {
     return false;
   }
 
+  Future<T> _withLoading<T>(Future<T> Function() action) async {
+    showDialog<void>(
+      context: homeContext,
+      barrierDismissible: false,
+      builder: (_) => _ActionLoadingDialog(isDarkMode: isDarkMode),
+    );
+    try {
+      return await action();
+    } finally {
+      if (Navigator.of(homeContext, rootNavigator: true).canPop()) {
+        Navigator.of(homeContext, rootNavigator: true).pop();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bg = isDarkMode ? AppColors.darkCardBg : AppColors.lightBg;
@@ -880,7 +895,7 @@ class _ActionMenuSheet extends StatelessWidget {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
                   try {
-                    final farms = await getUserFarms();
+                    final farms = await _withLoading(getUserFarms);
                     if (farms.isEmpty) {
                       ScaffoldMessenger.of(homeContext).showSnackBar(
                         AppColors.createSnackBar(
@@ -957,7 +972,7 @@ class _ActionMenuSheet extends StatelessWidget {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
                   try {
-                    final farms = await getUserFarms();
+                    final farms = await _withLoading(getUserFarms);
                     if (farms.isEmpty) {
                       ScaffoldMessenger.of(homeContext).showSnackBar(
                         AppColors.createSnackBar(
@@ -1024,7 +1039,7 @@ class _ActionMenuSheet extends StatelessWidget {
                   Navigator.pop(context);
                   HapticFeedback.lightImpact();
                   try {
-                    final farms = await getUserFarms();
+                    final farms = await _withLoading(getUserFarms);
                     if (farms.isEmpty) {
                       ScaffoldMessenger.of(homeContext).showSnackBar(
                         AppColors.createSnackBar(
@@ -1145,10 +1160,10 @@ class _ActionMenuSheet extends StatelessWidget {
 
   // ─── FARM PICKER ──────────────────────────────────────────────────────────
   void _showFarmPicker(
-    BuildContext ctx,
-    List<dynamic> farms,
-    void Function(int) onSelected,
-  ) {
+     BuildContext ctx,
+     List<dynamic> farms,
+     void Function(int) onSelected,
+   ) {
     final bg = isDarkMode ? AppColors.darkCardBg : AppColors.lightBg;
     final border = isDarkMode ? AppColors.borderDark : AppColors.borderLight;
     final textPrimary = isDarkMode ? AppColors.textDark : AppColors.textLight;
@@ -1273,4 +1288,35 @@ class _ActionMenuSheet extends StatelessWidget {
           size: 22,
         ),
       );
+}
+
+class _ActionLoadingDialog extends StatelessWidget {
+  final bool isDarkMode;
+
+  const _ActionLoadingDialog({required this.isDarkMode});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Center(
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: (isDarkMode ? AppColors.darkCardBg : AppColors.lightBg).withOpacity(0.94),
+            shape: BoxShape.circle,
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

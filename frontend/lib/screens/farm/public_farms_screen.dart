@@ -193,9 +193,20 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
     return _globalCropsCache[farmId]!;
   }
 
-  Future<List<dynamic>> _getLivestockCached(int farmId) {
+  Future<List<dynamic>> _getLivestockCached(int farmId, int? ownerId) {
     if (!_globalLivestockCache.containsKey(farmId)) {
-      _globalLivestockCache[farmId] = ApiService.getUserLivestock(farmId).catchError((_) => <dynamic>[]);
+      _globalLivestockCache[farmId] = ownerId == null
+          ? Future.value(<dynamic>[])
+          : ApiService.getAllLivestockWithPhotos().then(
+              (animals) => animals.where((animal) {
+                if (animal is! Map) return false;
+                final value = animal['user_id'] ?? animal['owner_id'];
+                final animalOwnerId = value is int
+                    ? value
+                    : int.tryParse(value?.toString() ?? '');
+                return animalOwnerId == ownerId;
+              }).toList(),
+            ).catchError((_) => <dynamic>[]);
     }
     return _globalLivestockCache[farmId]!;
   }
@@ -993,7 +1004,7 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
       );
     } else {
       return FutureBuilder<List<dynamic>>(
-        future: _getLivestockCached(farmId),
+        future: _getLivestockCached(farmId, farmOwnerId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return SizedBox(

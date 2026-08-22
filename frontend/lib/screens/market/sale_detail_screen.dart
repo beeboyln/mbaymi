@@ -357,6 +357,16 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                                       child: Image.network(
                                         imageUrl,
                                         fit: BoxFit.cover,
+                                        loadingBuilder: (context, child, progress) {
+                                          if (progress == null) return child;
+                                          return const Center(
+                                            child: SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(strokeWidth: 1.5),
+                                            ),
+                                          );
+                                        },
                                         errorBuilder: (c, e, s) => Center(
                                           child: Icon(Icons.broken_image, color: Colors.grey[400]),
                                         ),

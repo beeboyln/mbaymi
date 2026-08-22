@@ -188,7 +188,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
   
   Future<List<dynamic>> _loadLivestock() async {
-    return await ApiService.getUserLivestock(widget.userId);
+    return _isOwn
+        ? ApiService.getUserLivestock(widget.userId)
+        : ApiService.getPublicUserLivestock(widget.userId);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────

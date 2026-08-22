@@ -43,6 +43,11 @@ class ApiService {
   static Stream<void> get onProfileUpdated => _profileUpdateController.stream;
   static void notifyProfileUpdated() => _profileUpdateController.add(null);
 
+  // Notifies screens that cached livestock lists must be refreshed.
+  static final async_for_api.StreamController<void> _livestockController = async_for_api.StreamController<void>.broadcast();
+  static Stream<void> get onLivestockChanged => _livestockController.stream;
+  static void notifyLivestockChanged() => _livestockController.add(null);
+
   /// 🔄 Retry helper with exponential backoff et timeout global
   /// Handles transient network errors (timeouts, connection issues)
   /// Special handling for cold starts with progressive delays
@@ -235,7 +240,9 @@ class ApiService {
         body: jsonEncode(payload),
       );
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final livestock = jsonDecode(response.body);
+        notifyLivestockChanged();
+        return livestock;
       } else if (response.statusCode == 400) {
         throw Exception('INVALID_REGISTRATION');
       } else if (response.statusCode == 409) {
@@ -275,7 +282,9 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final livestock = jsonDecode(response.body);
+        notifyLivestockChanged();
+        return livestock;
       } else if (response.statusCode == 401) {
         throw Exception('INVALID_CREDENTIALS');
       } else if (response.statusCode == 400) {
@@ -1319,7 +1328,9 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final livestock = jsonDecode(response.body);
+        notifyLivestockChanged();
+        return livestock;
       } else {
         throw Exception('Failed to add livestock: ${response.body}');
       }
@@ -1342,6 +1353,21 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error getting livestock: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getPublicUserLivestock(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/livestock/public/user/$userId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List;
+      }
+      throw Exception('Failed to get public livestock');
+    } catch (e) {
+      throw Exception('Error getting public livestock: $e');
     }
   }
 
@@ -1441,7 +1467,9 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final livestock = jsonDecode(response.body);
+        notifyLivestockChanged();
+        return livestock;
       } else {
         throw Exception('Failed to update livestock: ${response.body}');
       }
@@ -1460,6 +1488,7 @@ class ApiService {
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Failed to delete livestock: ${response.body}');
       }
+      notifyLivestockChanged();
     } catch (e) {
       throw Exception('Error deleting livestock: $e');
     }
@@ -1486,13 +1515,16 @@ class ApiService {
 
   static Future<List<dynamic>> getAllLivestockWithPhotos({int? userId}) async {
     try {
-      final url = userId != null 
-        ? '$baseUrl/livestock/public?user_id=$userId'
-        : '$baseUrl/livestock/public';
+        final url = userId != null
+          ? '$baseUrl/livestock/mine'
+          : '$baseUrl/livestock/public';
+        final headers = userId != null
+          ? await _getAuthHeaders()
+          : {'Content-Type': 'application/json'};
         
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
       );
 
       if (response.statusCode == 200) {

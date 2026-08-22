@@ -681,6 +681,18 @@ class _MarketTabState extends State<MarketTab> {
       sliver: FutureBuilder<List<dynamic>>(
         future: _getMyCliSalesCached(),
         builder: (_, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: SkeletonGridLoader(
+                  crossAxisCount: 2,
+                  itemCount: 4,
+                  isDarkMode: isDark,
+                ),
+              ),
+            );
+          }
           if (!snap.hasData || snap.data!.isEmpty) {
             return SliverToBoxAdapter(
               child: _buildEmptyState(

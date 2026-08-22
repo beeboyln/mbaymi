@@ -23,6 +23,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   int _userId = 0;
   late StreamSubscription<void> _farmPostSub;
   late StreamSubscription<dynamic> _followChangedSub;
+  late StreamSubscription<void> _livestockChangedSub;
 
   late Future<Map<String, dynamic>> _feedFuture;
   List<Map<String, dynamic>> _combinedItems = [];
@@ -43,7 +44,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     _feedFuture = _getOrCreateFeed();
     if (_userId > 0) {
       _farmsFuture = ApiService.getUserFarms();
-      _livestockFuture = ApiService.getAllLivestockWithPhotos(userId: _userId);
+      _livestockFuture = _getOwnLivestockWithPhotos();
     }
     _farmPostSub = ApiService.onFarmPostCreated.listen((_) {
       if (mounted) _refreshFeed();
@@ -51,12 +52,20 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     _followChangedSub = ApiService.onFollowChanged.listen((_) {
       if (mounted) _refreshFeed();
     });
+    _livestockChangedSub = ApiService.onLivestockChanged.listen((_) {
+      if (mounted && _userId > 0) {
+        setState(() {
+          _livestockFuture = _getOwnLivestockWithPhotos();
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _farmPostSub.cancel();
     _followChangedSub.cancel();
+    _livestockChangedSub.cancel();
     super.dispose();
   }
 
@@ -67,6 +76,17 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       return (value['url'] ?? value['image_url'] ?? value['image'] ?? value['photo'] ?? value['src'])?.toString();
     }
     return null;
+  }
+
+  Future<List<dynamic>> _getOwnLivestockWithPhotos() async {
+    final livestock = await ApiService.getAllLivestockWithPhotos(userId: _userId);
+    return livestock.where((animal) {
+      if (animal is! Map) return false;
+      final ownerId = animal['user_id'] ?? animal['owner_id'];
+      return ownerId is int
+          ? ownerId == _userId
+          : int.tryParse(ownerId?.toString() ?? '') == _userId;
+    }).toList();
   }
 
   Future<Map<String, dynamic>> _getOrCreateFeed() {
@@ -165,7 +185,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   Widget _buildDrawer(bool isDark) {
     final bg = AppColors.getBgColor(isDark);
-    final text = AppColors.getTextColor(isDark);
     final sub = AppColors.getSecondaryTextColor(isDark);
     final border = AppColors.getBorderColor(isDark);
 
@@ -307,7 +326,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     try {
       if (type == 'farm') {
         // Utilise le future préchargé — instantané si déjà résolu
-        final farms = await (_farmsFuture ??= ApiService.getUserFarms());
+        final farms = await _withLoading(
+          () => (_farmsFuture ??= ApiService.getUserFarms()),
+        );
         if (!mounted) return;
         if (farms.isEmpty) { _showSnack('Aucune ferme. Créez-en une d\'abord.', error: true); return; }
 
@@ -337,7 +358,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           ),
         ));
       } else {
-        final livestocks = await (_livestockFuture ??= ApiService.getAllLivestockWithPhotos(userId: _userId));
+        final livestocks = await _withLoading(
+          () => (_livestockFuture ??= _getOwnLivestockWithPhotos()),
+        );
         if (!mounted) return;
         if (livestocks.isEmpty) { _showSnack('Aucun bétail. Créez-en d\'abord.', error: true); return; }
 
@@ -378,6 +401,21 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       }
     } catch (e) {
       _showSnack('Erreur: $e', error: true);
+    }
+  }
+
+  Future<T> _withLoading<T>(Future<T> Function() action) async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _LoadingDialog(),
+    );
+    try {
+      return await action();
+    } finally {
+      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
     }
   }
 
@@ -479,6 +517,22 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                                 ? Image.network(
                                     it.imageUrl!,
                                     fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return Center(
+                                        child: SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 1.5,
+                                            value: progress.expectedTotalBytes != null
+                                                ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                                                : null,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                     errorBuilder: (_, __, ___) => Container(
                                       color: card,
                                       child: Icon(it.icon, size: 24, color: sub),
@@ -888,4 +942,34 @@ class _SelectItem {
     required this.icon,
     required this.extra,
   });
+}
+
+class _LoadingDialog extends StatelessWidget {
+  const _LoadingDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Center(
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppColors.getCardBgColor(isDark).withOpacity(0.94),
+            shape: BoxShape.circle,
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

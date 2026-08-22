@@ -135,6 +135,20 @@ class _FarmCardState extends State<FarmCard> {
               FutureBuilder<List<dynamic>>(
                 future: widget.cropsFuture,
                 builder: (ctx, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Positioned(
+                      right: 12,
+                      bottom: 12,
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  }
                   if ((snap.data ?? []).isEmpty) {
                     return const SizedBox.shrink();
                   }

@@ -211,6 +211,16 @@ class _FarmProfileScreenState extends State<FarmProfileScreen> {
                                   FutureBuilder<List<dynamic>>(
                                     future: _postsFuture,
                                     builder: (_, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 1.5,
+                                            color: Color(0xFF6B8E23),
+                                          ),
+                                        );
+                                      }
                                       final count = snapshot.data?.length ?? 0;
                                       return Text(
                                         '$count',

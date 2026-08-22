@@ -5,6 +5,7 @@ from app.models.livestock import Livestock
 from app.models.farm_post import FarmImagePost
 from app.models.user import User
 from app.schemas.schemas import LivestockCreate, LivestockResponse
+from app.routes.auth import get_current_user
 
 router = APIRouter(prefix="/api/livestock", tags=["livestock"])
 
@@ -36,13 +37,30 @@ def add_livestock(livestock: LivestockCreate, user_id: int, db: Session = Depend
     
     return new_livestock
 
+@router.get("/mine")
+def get_my_livestock(
+    current_user: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the authenticated user's active livestock, including private animals."""
+    return get_public_livestock(db=db, user_id=current_user, owner_id=current_user)
+
 @router.get("/public")
-def get_public_livestock(db: Session = Depends(get_db), user_id: int = None):
+def get_public_livestock(
+    db: Session = Depends(get_db),
+    user_id: int = None,
+    owner_id: int = None,
+):
     """Get all livestock for network display with user info"""
     try:
         from app.models.user import User
-        # Only get non-deleted livestock
-        livestock_list = db.query(Livestock).filter(Livestock.deleted_at == None).all()
+        # Public requests may not use a query parameter to access private animals.
+        livestock_query = db.query(Livestock).filter(Livestock.deleted_at == None)
+        if owner_id is not None:
+            livestock_query = livestock_query.filter(Livestock.user_id == owner_id)
+        else:
+            livestock_query = livestock_query.filter(Livestock.visibility == "PUBLIC")
+        livestock_list = livestock_query.all()
         
         # Enrich with user information
         enriched = []
@@ -98,6 +116,15 @@ def get_user_livestock(user_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"Error fetching livestock for user {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching livestock")
+
+@router.get("/public/user/{user_id}")
+def get_public_user_livestock(user_id: int, db: Session = Depends(get_db)):
+    """Get only public active livestock for a public user profile."""
+    return db.query(Livestock).filter(
+        Livestock.user_id == user_id,
+        Livestock.deleted_at == None,
+        Livestock.visibility == "PUBLIC",
+    ).all()
 
 @router.get("/{livestock_id:int}", response_model=LivestockResponse)
 def get_livestock(livestock_id: int, db: Session = Depends(get_db)):
