@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -39,7 +40,6 @@ class FarmTab extends StatefulWidget {
 class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   int _section = 0;
   bool _headerVisible = true;
-  double? _lastScrollOffset;
   late AnimationController _sectionAnim;
   late Animation<double> _sectionSlide;
   late Animation<double> _sectionFade;
@@ -64,13 +64,10 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   }
 
   bool _handleScroll(ScrollNotification notification) {
-    if (notification is ScrollUpdateNotification) {
-      final current = notification.metrics.pixels;
-      final previous = _lastScrollOffset;
-      _lastScrollOffset = current;
-      if (previous != null && current > previous && _headerVisible) {
+    if (notification is UserScrollNotification) {
+      if (notification.direction == ScrollDirection.reverse && _headerVisible) {
         setState(() => _headerVisible = false);
-      } else if (previous != null && current < previous && !_headerVisible) {
+      } else if (notification.direction == ScrollDirection.forward && !_headerVisible) {
         setState(() => _headerVisible = true);
       }
     }
@@ -359,13 +356,18 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: bg,
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(_headerVisible ? kToolbarHeight : 0),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          height: _headerVisible ? kToolbarHeight : 0,
-          curve: Curves.easeOutCubic,
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: SizedBox(
+          height: kToolbarHeight,
           child: ClipRect(
-            child: AppBar(
+            child: AnimatedSlide(
+              offset: _headerVisible ? Offset.zero : const Offset(0, -1),
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              child: AnimatedOpacity(
+                opacity: _headerVisible ? 1 : 0,
+                duration: const Duration(milliseconds: 120),
+                child: AppBar(
         backgroundColor: bg,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -391,6 +393,8 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
             ],
           ),
         ],
+                ),
+              ),
             ),
           ),
         ),

@@ -38,8 +38,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   String _feedFilter = 'all';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  bool _headerVisible = true;
-  double? _lastScrollOffset;
 
   // Préchargement pour éviter le délai à l'ouverture du sheet
   Future<List<dynamic>>? _farmsFuture;
@@ -145,24 +143,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     }
   }
 
-  bool _handleFeedScroll(ScrollNotification notification) {
-    if (notification is ScrollUpdateNotification) {
-      final currentOffset = notification.metrics.pixels;
-      final previousOffset = _lastScrollOffset;
-      _lastScrollOffset = currentOffset;
-
-      if (previousOffset != null && currentOffset > previousOffset && _headerVisible) {
-        setState(() => _headerVisible = false);
-      } else if (previousOffset != null && currentOffset < previousOffset && !_headerVisible) {
-        setState(() => _headerVisible = true);
-      }
-    }
-    if (notification is ScrollEndNotification) {
-      _lastScrollOffset = notification.metrics.pixels;
-    }
-    return false;
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
@@ -172,51 +152,38 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: bg,
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(_headerVisible ? kToolbarHeight + 0.5 : 0),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          height: _headerVisible ? kToolbarHeight + 0.5 : 0,
-          child: ClipRect(
-            child: AppBar(
-              backgroundColor: bg,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              leading: IconButton(
-                icon: Icon(Icons.menu, color: text, size: 22),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-              ),
-              title: Text(
-                'MBAYMI',
-                style: TextStyle(
-                  color: text,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w200,
-                  letterSpacing: 3,
-                ),
-              ),
-              centerTitle: true,
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.add, size: 22, color: text),
-                  tooltip: 'Nouveau post',
-                  onPressed: () => _onAddPostPressed(isDark),
-                ),
-              ],
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(0.5),
-                child: Container(height: 0.5, color: AppColors.getBorderColor(isDark)),
-              ),
-            ),
+      appBar: AppBar(
+        backgroundColor: bg,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.menu, color: text, size: 22),
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
+        title: Text(
+          'MBAYMI',
+          style: TextStyle(
+            color: text,
+            fontSize: 16,
+            fontWeight: FontWeight.w200,
+            letterSpacing: 3,
           ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add, size: 22, color: text),
+            tooltip: 'Nouveau post',
+            onPressed: () => _onAddPostPressed(isDark),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(height: 0.5, color: AppColors.getBorderColor(isDark)),
         ),
       ),
       drawer: _buildDrawer(isDark),
-      body: NotificationListener<ScrollNotification>(
-        onNotification: _handleFeedScroll,
-        child: _buildFeed(isDark),
-      ),
+      body: _buildFeed(isDark),
     );
   }
 
