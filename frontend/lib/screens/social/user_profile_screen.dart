@@ -7,6 +7,7 @@ import 'package:mbaymi/screens/farm/tab/farm_tab.dart';
 import 'package:mbaymi/screens/farm/parcel_screen.dart';
 import 'package:mbaymi/screens/livestock/edit_livestock_screen.dart';
 import 'package:mbaymi/screens/notebook/project_notebook_list_screen.dart';
+import 'package:mbaymi/screens/home_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/widgets/skeleton_loader.dart';
 import 'dart:async';
@@ -398,7 +399,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         onConfirm: () async {
           await ApiService.logout();
           if (mounted) {
-            Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              (_) => false,
+            );
           }
         },
       ),

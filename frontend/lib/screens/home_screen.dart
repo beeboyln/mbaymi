@@ -8,6 +8,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/screens/farm/tab/farm_tab.dart';
 import 'package:mbaymi/screens/farm/create_farm_screen.dart';
 import 'package:mbaymi/screens/livestock/livestock_screen.dart';
+import 'package:mbaymi/screens/livestock/create_livestock_screen.dart';
 import 'package:mbaymi/screens/market/market_screen.dart';
 import 'package:mbaymi/screens/veterinarian/advice_screen.dart';
 import 'package:mbaymi/screens/dashboard_tab.dart';
@@ -939,9 +940,7 @@ class _ActionMenuSheet extends StatelessWidget {
     Navigator.push(
       homeContext,
       MaterialPageRoute(
-        builder: (_) => LivestockTab(
-          isDarkMode: isDarkModeRef(),
-        ),
+        builder: (_) => CreateLivestockScreen(userId: userId),
       ),
     );
   },

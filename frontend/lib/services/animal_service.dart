@@ -1,15 +1,14 @@
 /// Animal Management Service for API calls
 library;
 import 'package:mbaymi/models/animal.dart';
+import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/token_storage.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class AnimalService {
   /// Get the base URL from environment configuration
-  static String get _baseUrl => 
-    '${dotenv.env['API_BASE_URL'] ?? 'https://cuddly-lil-bigboyllmnd-9965fc8f.koyeb.app/api'}/animals';
+  static String get _baseUrl => '${ApiService.baseUrl}/animals';
   
   /// Get authorization headers with JWT token
   static Future<Map<String, String>> _getAuthHeaders() async {

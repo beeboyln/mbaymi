@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/token_storage.dart';
 import '../models/project_notebook_model.dart';
 
@@ -13,11 +13,7 @@ class NotebookService {
 
   NotebookService(this._prefs);
 
-  /// Get base API URL from dotenv, with fallback
-  String get _baseUrl {
-    return dotenv.env['API_BASE_URL'] ?? 
-           'https://burning-yetty-bigboyme-428f3176.koyeb.app/api';
-  }
+  String get _baseUrl => ApiService.baseUrl;
 
   /// Get auth token from TokenStorage (not SharedPreferences!)
   Future<String?> _getTokenFromStorage() async {

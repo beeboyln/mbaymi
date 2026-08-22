@@ -838,6 +838,8 @@ class _AnimalCard extends StatelessWidget {
     final type = (animal['animal_type'] ?? 'Animal') as String;
     final breed = animal['breed'] as String? ?? '';
     final qty = animal['quantity'] as int? ?? 1;
+    final ageMonths = animal['age_months'];
+    final weightKg = animal['weight_kg'];
     final photo = animal['image_url'] ??
         animal['imageUrl'] ??
         (animal['photos'] is List && (animal['photos'] as List).isNotEmpty
@@ -861,9 +863,8 @@ class _AnimalCard extends StatelessWidget {
               width: 72,
               height: 72,
               color: dark ? AppColors.darkCardBg : AppColors.lightCardBg,
-              child: photo != null
-                  ? Image.network(photo,
-                      fit: BoxFit.cover,
+                child: photo != null
+                  ? Image.network(photo.toString(),
                       errorBuilder: (_, __, ___) => Icon(
                           Icons.pets,
                           size: 24,
@@ -895,6 +896,34 @@ class _AnimalCard extends StatelessWidget {
                             fontSize: 10,
                             letterSpacing: 0.5,
                             color: sub)),
+                  ],
+                  if (ageMonths != null || weightKg != null) ...[
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        if (ageMonths != null)
+                          Flexible(
+                            child: Text(
+                              '$ageMonths mois',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, color: sub),
+                            ),
+                          ),
+                        if (ageMonths != null && weightKg != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Text('|', style: TextStyle(color: sub)),
+                          ),
+                        if (weightKg != null)
+                          Flexible(
+                            child: Text(
+                              '$weightKg kg',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, color: sub),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                   const SizedBox(height: 6),
                   Container(

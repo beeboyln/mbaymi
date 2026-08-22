@@ -139,8 +139,14 @@ class ApiService {
 
   // For local development on Windows/Web: use localhost
   // For Android Emulator: use 'http://10.0.2.2:8000/api'
-  // Read from .env (API_BASE_URL) if provided; otherwise use production URL
-  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'https://cuddly-lil-bigboyllmnd-9965fc8f.koyeb.app/api';
+  // API_BASE_URL selects localhost in development and Koyeb in production.
+  static String get baseUrl {
+    final configuredUrl = dotenv.env['API_BASE_URL']?.trim();
+    if (configuredUrl == null || configuredUrl.isEmpty) {
+      throw StateError('API_BASE_URL is missing from the environment');
+    }
+    return configuredUrl.replaceFirst(RegExp(r'/+$'), '');
+  }
 
   /// Helper: Get auth headers with access token.
   static Future<Map<String, String>> _getAuthHeaders() async {
@@ -1334,6 +1340,38 @@ class ApiService {
       } else {
         throw Exception('Failed to get livestock');
       }
+    } catch (e) {
+      throw Exception('Error getting livestock: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getLivestockById(int livestockId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/livestock/$livestockId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+      }
+
+      if (response.statusCode == 404) {
+        final publicResponse = await http.get(
+          Uri.parse('$baseUrl/livestock/public'),
+          headers: {'Content-Type': 'application/json'},
+        );
+        if (publicResponse.statusCode == 200) {
+          final animals = jsonDecode(publicResponse.body) as List<dynamic>;
+          for (final animal in animals) {
+            final data = Map<String, dynamic>.from(animal as Map);
+            if (data['id'].toString() == livestockId.toString()) {
+              return data;
+            }
+          }
+        }
+      }
+      throw Exception('Failed to get livestock: ${response.statusCode}');
     } catch (e) {
       throw Exception('Error getting livestock: $e');
     }

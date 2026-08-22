@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
 import 'dart:math';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
@@ -88,6 +90,26 @@ class _RingsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RingsPainter o) => false;
+}
+
+class _FarmPlaceholderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.10)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final path = Path()..moveTo(0, size.height * 0.78);
+    for (double x = 0; x <= size.width; x += 3) {
+      path.lineTo(x, size.height * 0.78 - sin(x / size.width * pi) * size.height * 0.12);
+    }
+    canvas.drawPath(path, paint);
+    canvas.drawCircle(Offset(size.width * 0.78, size.height * 0.25), 28, paint);
+    canvas.drawLine(Offset(size.width * 0.78, size.height * 0.25), Offset(size.width * 0.78, size.height * 0.68), paint);
+  }
+
+  @override
+  bool shouldRepaint(_FarmPlaceholderPainter oldDelegate) => false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -621,6 +643,7 @@ class _DashboardTabState extends State<DashboardTab>
   String _selectedFilter = 'Local';
   late Future<Map<String, dynamic>> _weatherFuture;
   late Future<List<NewsArticle>>    _newsFuture;
+  late Future<List<dynamic>> _farmsFuture;
 
   static final _gcWeather = <String, Future<Map<String, dynamic>>>{};
   static final _gcNews    = <String, Future<List<NewsArticle>>>{};
@@ -630,6 +653,10 @@ class _DashboardTabState extends State<DashboardTab>
   AnimationController? _grainCtrl;
   AnimationController? _weatherIconCtrl;
   AnimationController? _filterSlideCtrl;
+  AnimationController? _farmRevealCtrl;
+  Timer? _farmImageTimer;
+  int _farmImageIndex = 0;
+  bool _farmBannerVisible = true;
 
   bool _filterOpen      = false;
   bool _initialized     = false;
@@ -659,6 +686,10 @@ class _DashboardTabState extends State<DashboardTab>
     _grainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 120))..repeat();
     _weatherIconCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
     _filterSlideCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 340));
+    _farmRevealCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
 
     final ec = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
     _entryCtrl = ec;
@@ -673,11 +704,18 @@ class _DashboardTabState extends State<DashboardTab>
 
     _weatherFuture = _getOrCreateWeather();
     _newsFuture    = _getOrCreateNews();
+    _farmsFuture = widget.userId == null
+      ? Future.value(<dynamic>[])
+      : ApiService.getUserFarms();
     _tipIdx        = _rng.nextInt(_tips.length);
     _initialized   = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _entryCtrl?.forward();
+      _startFarmImageTimer();
+      Future<void>.delayed(const Duration(seconds: 2), () {
+        if (mounted) _farmRevealCtrl?.forward();
+      });
     });
   }
 
@@ -688,7 +726,30 @@ class _DashboardTabState extends State<DashboardTab>
     _grainCtrl?.dispose();
     _weatherIconCtrl?.dispose();
     _filterSlideCtrl?.dispose();
+    _farmRevealCtrl?.dispose();
+    _farmImageTimer?.cancel();
     super.dispose();
+  }
+
+  void _setFarmBannerVisible(bool visible) {
+    if (_farmBannerVisible == visible || !mounted) return;
+    setState(() => _farmBannerVisible = visible);
+    if (visible) {
+      _startFarmImageTimer();
+    } else {
+      _farmImageTimer?.cancel();
+      _farmImageTimer = null;
+    }
+  }
+
+  void _startFarmImageTimer() {
+    if (!_farmBannerVisible || _farmImageTimer != null) return;
+    _farmImageTimer = Timer.periodic(const Duration(seconds: 5), (_) => _advanceFarmImage());
+  }
+
+  void _advanceFarmImage() {
+    if (!_farmBannerVisible || !mounted) return;
+    setState(() => _farmImageIndex++);
   }
 
   Widget _s(int i, Widget child) {
@@ -777,7 +838,12 @@ class _DashboardTabState extends State<DashboardTab>
         color: primary,
         backgroundColor: surface,
         displacement: 36,
-        child: CustomScrollView(
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            _setFarmBannerVisible(notification.metrics.pixels < 500);
+            return false;
+          },
+          child: CustomScrollView(
           physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
           slivers: [
             // Hero
@@ -827,6 +893,7 @@ class _DashboardTabState extends State<DashboardTab>
 
             const SliverPadding(padding: EdgeInsets.only(bottom: 90)),
           ],
+          ),
         ),
       ),
     );
@@ -1230,25 +1297,105 @@ class _DashboardTabState extends State<DashboardTab>
   Widget _farmBanner(bool isDark, Color primary, Color accent) {
     return GestureDetector(
       onTap: _navigateToFarmsTab,
-      child: Container(
-        height: 180,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [const Color(0xFF251608), const Color(0xFF160C04)]
-                : [const Color(0xFF7A3514), const Color(0xFF3E1C08)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: primary.withOpacity(0.24),
-              blurRadius: 28, offset: const Offset(0, 12), spreadRadius: -6,
+      child: FutureBuilder<List<dynamic>>(
+        future: _farmsFuture,
+        builder: (context, snapshot) {
+          final farms = snapshot.data ?? const <dynamic>[];
+          final isLoading = snapshot.connectionState == ConnectionState.waiting;
+          final farm = farms.isEmpty
+              ? null
+            : farms[_farmImageIndex % farms.length] as Map;
+          final image = _farmImageUrl(farm);
+          final farmName = farm?['name']?.toString().trim();
+          final hasFarm = !isLoading && farm != null;
+          final hasImage = image != null && image.isNotEmpty;
+
+          return Container(
+            height: 180,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF160C04) : const Color(0xFF3E1C08),
+              boxShadow: [
+                BoxShadow(
+                  color: primary.withOpacity(0.24),
+                  blurRadius: 28, offset: const Offset(0, 12), spreadRadius: -6,
+                ),
+              ],
             ),
-          ],
-        ),
-        clipBehavior: Clip.hardEdge,
-        child: Stack(children: [
+            clipBehavior: Clip.hardEdge,
+            child: Stack(children: [
+          if (hasImage)
+            Positioned.fill(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 900),
+                layoutBuilder: (currentChild, previousChildren) => Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                ),
+                child: GestureDetector(
+                  onTap: farms.length > 1 ? _advanceFarmImage : _navigateToFarmsTab,
+                  child: CachedNetworkImage(
+                  imageUrl: image,
+                  key: ValueKey(image),
+                  fit: BoxFit.cover,
+                  fadeInDuration: const Duration(milliseconds: 500),
+                  placeholder: (_, __) => _farmPlaceholder(),
+                  errorWidget: (_, __, ___) => _farmPlaceholder(),
+                  ),
+                ),
+              ),
+            ),
+          if (!hasImage)
+            Positioned.fill(child: _farmPlaceholder()),
+          if (hasImage)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Colors.black.withOpacity(0.62),
+                        Colors.black.withOpacity(0.28),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.42, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          AnimatedBuilder(
+            animation: _farmRevealCtrl ?? const AlwaysStoppedAnimation(0),
+            builder: (_, child) {
+              final progress = Curves.easeInOutCubic.transform(
+                _farmRevealCtrl?.value ?? 0,
+              );
+              return Positioned.fill(
+                child: Opacity(
+                  opacity: 1 - progress,
+                  child: Transform.translate(
+                    offset: Offset(-MediaQuery.of(context).size.width * progress, 0),
+                    child: child,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark
+                      ? [const Color(0xFF251608), const Color(0xFF160C04)]
+                      : [const Color(0xFF7A3514), const Color(0xFF3E1C08)],
+                ),
+              ),
+            ),
+          ),
           // Grain
           Positioned.fill(
             child: AnimatedBuilder(
@@ -1297,56 +1444,111 @@ class _DashboardTabState extends State<DashboardTab>
                 const Spacer(),
 
                 // ✨ Micro-texte descriptif
-                Text('VOS TERRES', style: TextStyle(
+                Text(
+                  isLoading ? 'CHARGEMENT' : (hasFarm ? 'VOTRE FERME' : 'VOS TERRES'),
+                  style: TextStyle(
                   fontSize: 10, fontWeight: FontWeight.w400,
                   letterSpacing: 2.5, color: Colors.white.withOpacity(0.45),
                 )),
                 const SizedBox(height: 4),
-                const Text('Mes Fermes', style: TextStyle(
-                  fontSize: 28, fontWeight: FontWeight.w500,
-                  color: Colors.white, height: 1.0, letterSpacing: -1.0,
-                )),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.12),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: Text(
+                    isLoading
+                      ? 'Chargement de vos fermes...'
+                      : (hasFarm
+                        ? (farmName?.isNotEmpty == true ? farmName! : 'Ferme')
+                        : 'Créer ma première ferme'),
+                    key: ValueKey(farmName ?? 'empty'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 28, fontWeight: FontWeight.w500,
+                      color: Colors.white, height: 1.0, letterSpacing: -1.0,
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 16),
                 Row(children: [
                   // CTA principal
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.18),
-                            blurRadius: 12, offset: const Offset(0, 4)),
-                      ],
+                  GestureDetector(
+                    onTap: isLoading ? null : _navigateToFarmsTab,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text(
+                          isLoading
+                              ? 'CHARGEMENT'
+                              : (hasFarm ? 'EXPLORER' : 'CRÉER MA FERME'),
+                          style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w500,
+                          color: Colors.white, letterSpacing: 1.5,
+                        )),
+                        const SizedBox(width: 9),
+                        Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white.withOpacity(0.9)),
+                      ]),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('Explorer', style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600,
-                        color: AppColors.primary, letterSpacing: 0.2,
-                      )),
-                      const SizedBox(width: 6),
-                      Icon(Icons.arrow_forward_rounded, size: 13, color: AppColors.primary),
-                    ]),
                   ),
+                  if (farms.length > 1) ...[
+                    const SizedBox(width: 14),
+                    Row(
+                      children: List.generate(farms.length, (index) => Container(
+                        width: index == (_farmImageIndex % farms.length) ? 18 : 5,
+                        height: 4,
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(index == (_farmImageIndex % farms.length) ? 0.9 : 0.38),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      )),
+                    ),
+                  ],
                   const SizedBox(width: 10),
                   // Secondaire ghost
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text('Parcelles', style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w400, color: Colors.white,
-                    )),
-                  ),
+                 
                 ]),
               ],
             ),
           ),
-        ]),
+            ]),
+          );
+        },
       ),
+    );
+  }
+
+  String? _farmImageUrl(dynamic farm) {
+    if (farm is! Map) return null;
+    final value = farm['image_url'] ?? farm['imageUrl'] ?? farm['image'] ?? farm['photo'];
+    if (value is Map) return (value['url'] ?? value['image_url'])?.toString();
+    return value?.toString();
+  }
+
+  Widget _farmPlaceholder() {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF6B351D), Color(0xFF1F241B)],
+        ),
+      ),
+      child: CustomPaint(painter: _FarmPlaceholderPainter()),
     );
   }
 
