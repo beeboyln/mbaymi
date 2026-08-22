@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -48,10 +49,12 @@ class SocialFeedScreen extends StatefulWidget {
   State<SocialFeedScreen> createState() => _SocialFeedScreenState();
 }
 
-class _SocialFeedScreenState extends State<SocialFeedScreen> {
+class _SocialFeedScreenState extends State<SocialFeedScreen>
+  with SingleTickerProviderStateMixin {
   late final int _userId;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _headerVisible = true;
+  late final AnimationController _headerController;
   final ValueNotifier<String> _feedFilter = ValueNotifier<String>('all');
 
   late StreamSubscription<void> _farmPostSub;
@@ -67,6 +70,11 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   @override
   void initState() {
     super.initState();
+    _headerController = AnimationController(
+      vsync: this,
+      value: 1,
+      duration: const Duration(milliseconds: 260),
+    );
     _userId = AuthService.currentSession?.userId ?? 0;
     _feedFuture = _getOrCreateFeed();
 
@@ -96,6 +104,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   @override
   void dispose() {
+    _headerController.dispose();
     _farmPostSub.cancel();
     _followChangedSub.cancel();
     _livestockChangedSub.cancel();
@@ -119,7 +128,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final key = 'feed_$_userId';
     return _globalFeedCache.putIfAbsent(key, _loadCombinedFeed);
   }
-
   void _refreshFeed() {
     _globalFeedCache.remove('feed_$_userId');
     _livestockFuture = null;
@@ -179,17 +187,22 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final bg = AppColors.getBgColor(isDark);
     final text = AppColors.getTextColor(isDark);
 
-    return Scaffold(
+    return AnimatedBuilder(
+      animation: _headerController,
+      builder: (context, child) => Scaffold(
       key: _scaffoldKey,
       backgroundColor: bg,
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(_headerVisible ? kToolbarHeight : 0),
+        preferredSize: Size.fromHeight(kToolbarHeight * _headerController.value),
         child: ClipRect(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            height: _headerVisible ? kToolbarHeight : 0,
-            child: AppBar(
+          child: OverflowBox(
+            alignment: Alignment.topCenter,
+            minHeight: 0,
+            maxHeight: kToolbarHeight,
+            child: Align(
+              alignment: Alignment.topCenter,
+              heightFactor: _headerController.value,
+              child: AppBar(
         backgroundColor: bg,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -222,8 +235,10 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           ),
         ),
       ),
+      ),
       drawer: _buildDrawer(isDark),
       body: _buildFeedBody(isDark),
+      ),
     );
   }
 
@@ -324,13 +339,19 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       backgroundColor: AppColors.getCardBgColor(isDark),
       child: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
-          if (notification is ScrollUpdateNotification) {
-            final delta = notification.scrollDelta ?? 0;
-            if (delta.abs() >= 2) {
-              final shouldShow = delta < 0 || notification.metrics.pixels <= 0;
-              if (shouldShow != _headerVisible && mounted) {
-                setState(() => _headerVisible = shouldShow);
-              }
+          if (notification.depth != 0 || notification.metrics.outOfRange) {
+            return false;
+          }
+          if (notification is UserScrollNotification &&
+              notification.direction != ScrollDirection.idle) {
+            final shouldShow = notification.direction == ScrollDirection.forward &&
+                notification.metrics.pixels > 0;
+            if (shouldShow != _headerVisible && mounted) {
+              setState(() => _headerVisible = shouldShow);
+              _headerController.animateTo(
+                shouldShow ? 1 : 0,
+                curve: Curves.easeOutCubic,
+              );
             }
           }
           return false;
@@ -362,6 +383,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
               return ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).padding.bottom + 56,
+                ),
                 itemCount: filteredItems.length,
                 itemBuilder: (_, i) => _buildPostCard(filteredItems[i], isDark),
               );

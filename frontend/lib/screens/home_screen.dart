@@ -37,6 +37,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
   bool _headerVisible = true;
+  late final AnimationController _headerController;
   late Map<int, Widget> _screens;
   late List<int> _screenIndices;
 
@@ -49,6 +50,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _headerController = AnimationController(
+      vsync: this,
+      value: 1,
+      duration: const Duration(milliseconds: 260),
+    );
     _userId = widget.userId;
     _screens = {};
     _screenIndices = [];
@@ -69,6 +75,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _headerController.dispose();
+    super.dispose();
   }
 
   /// Initialize notebooks - must complete before displaying content
@@ -181,6 +193,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final shouldShow = delta < 0 || notification.metrics.pixels <= 0;
     if (shouldShow != _headerVisible && mounted) {
       setState(() => _headerVisible = shouldShow);
+      _headerController.animateTo(shouldShow ? 1 : 0, curve: Curves.easeOutCubic);
     }
     return false;
   }
@@ -208,7 +221,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ? (isDarkMode ? const Color(0xFF060E0D) : const Color(0xFFF4FAF9))
         : AppColors.getBgColor(isDarkMode);
 
-    return PopScope(
+    return AnimatedBuilder(
+      animation: _headerController,
+      builder: (context, child) => PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) setState(() {});
@@ -216,12 +231,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Scaffold(
         backgroundColor: AppColors.getBgColor(isDarkMode),
         appBar: PreferredSize(
-          preferredSize: Size.fromHeight(_headerVisible ? kToolbarHeight : 0),
+          preferredSize: Size.fromHeight(kToolbarHeight * _headerController.value),
           child: ClipRect(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
-              height: _headerVisible ? kToolbarHeight : 0,
+              height: kToolbarHeight * _headerController.value,
               child: _buildAppBar(isDarkMode, appBarBg),
             ),
           ),
@@ -231,6 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: _getScreen(_selectedIndex),
         ),
         bottomNavigationBar: _buildBottomBar(isDarkMode, appBarBg, isVeterinarian),
+      ),
       ),
     );
   }

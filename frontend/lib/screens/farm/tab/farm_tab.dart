@@ -40,6 +40,7 @@ class FarmTab extends StatefulWidget {
 class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   int _section = 0;
   bool _headerVisible = true;
+  late final AnimationController _headerController;
   late AnimationController _sectionAnim;
   late Animation<double> _sectionSlide;
   late Animation<double> _sectionFade;
@@ -47,6 +48,11 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _headerController = AnimationController(
+      vsync: this,
+      value: 1,
+      duration: const Duration(milliseconds: 260),
+    );
     _section = widget.initialSection;
     _sectionAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 280));
@@ -59,6 +65,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _headerController.dispose();
     _sectionAnim.dispose();
     super.dispose();
   }
@@ -67,8 +74,10 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
     if (notification is UserScrollNotification) {
       if (notification.direction == ScrollDirection.reverse && _headerVisible) {
         setState(() => _headerVisible = false);
+        _headerController.animateTo(0, curve: Curves.easeOutCubic);
       } else if (notification.direction == ScrollDirection.forward && !_headerVisible) {
         setState(() => _headerVisible = true);
+        _headerController.animateTo(1, curve: Curves.easeOutCubic);
       }
     }
     return false;
@@ -353,16 +362,16 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
     final bg = AppColors.getBgColor(dark);
     final fg = dark ? Colors.white : Colors.black87;
 
-    return Scaffold(
+    return AnimatedBuilder(
+      animation: _headerController,
+      builder: (context, child) => Scaffold(
       backgroundColor: bg,
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(
-          _headerVisible ? kToolbarHeight : 0,
-        ),
+        preferredSize: Size.fromHeight(kToolbarHeight * _headerController.value),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          height: _headerVisible ? kToolbarHeight : 0,
+          height: kToolbarHeight * _headerController.value,
           child: ClipRect(
             child: AnimatedSlide(
               offset: _headerVisible ? Offset.zero : const Offset(0, -1),
@@ -408,7 +417,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
         AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          height: _headerVisible ? null : 0,
+          height: 56 * _headerController.value,
           child: ClipRect(
             child: SectionBar(
               selected: _section,
@@ -442,6 +451,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
           ),
         ),
       ]),
+      ),
     );
   }
 
