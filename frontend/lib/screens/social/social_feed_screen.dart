@@ -4,9 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
@@ -872,27 +870,17 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final text = '$farmName - par $ownerName\n${caption.isNotEmpty ? '$caption\n' : ''}Découvrez cette publication sur MBAYMI.';
 
     try {
-      final whatsappText = imageUrl == null
-          ? text
-          : '$text\n$imageUrl';
-      final whatsappUri = Uri.parse(
-        'whatsapp://send?text=${Uri.encodeComponent(whatsappText)}',
-      );
-      if (!kIsWeb && await canLaunchUrl(whatsappUri)) {
-        await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-        _recordShare(post, wrapper);
-        await ApiService.shareFarmPost(postId);
-        return;
-      }
-
       XFile? imageFile;
       if (!kIsWeb && imageUrl != null && imageUrl.isNotEmpty) {
-        final response = await http.get(Uri.parse(imageUrl));
+        final response = await http.get(Uri.parse(imageUrl)).timeout(
+          const Duration(seconds: 15),
+        );
         if (response.statusCode == 200) {
-          final directory = await getTemporaryDirectory();
-          final file = File('${directory.path}/mbaymi_post_$postId.jpg');
-          await file.writeAsBytes(response.bodyBytes);
-          imageFile = XFile(file.path, mimeType: 'image/jpeg');
+          imageFile = XFile.fromData(
+            response.bodyBytes,
+            name: 'mbaymi_post_$postId.jpg',
+            mimeType: response.headers['content-type'] ?? 'image/jpeg',
+          );
         }
       }
 
@@ -900,11 +888,18 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       if (imageFile != null) {
         await Share.shareXFiles([imageFile], text: text, subject: farmName);
       } else {
-        await Share.share(text, subject: farmName);
+        final whatsappUri = Uri.parse(
+          'whatsapp://send?text=${Uri.encodeComponent(text)}',
+        );
+        if (!kIsWeb && await canLaunchUrl(whatsappUri)) {
+          await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+        } else {
+          await Share.share(text, subject: farmName);
+        }
       }
 
       _recordShare(post, wrapper);
-      await ApiService.shareFarmPost(postId);
+      ApiService.shareFarmPost(postId).catchError((_) {});
     } catch (error) {
       if (mounted) _showSnack('Partage impossible', error: true);
     }
