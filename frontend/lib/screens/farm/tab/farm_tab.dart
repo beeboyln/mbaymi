@@ -356,9 +356,13 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: bg,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: SizedBox(
-          height: kToolbarHeight,
+        preferredSize: Size.fromHeight(
+          _headerVisible ? kToolbarHeight : 0,
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          height: _headerVisible ? kToolbarHeight : 0,
           child: ClipRect(
             child: AnimatedSlide(
               offset: _headerVisible ? Offset.zero : const Offset(0, -1),
@@ -401,10 +405,17 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
       ),
       drawer: _drawer(dark),
       body: Column(children: [
-        SectionBar(
-          selected: _section,
-          onSelect: _switchSection,
-          dark: dark,
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          height: _headerVisible ? null : 0,
+          child: ClipRect(
+            child: SectionBar(
+              selected: _section,
+              onSelect: _switchSection,
+              dark: dark,
+            ),
+          ),
         ),
         Expanded(
           child: NotificationListener<ScrollNotification>(
