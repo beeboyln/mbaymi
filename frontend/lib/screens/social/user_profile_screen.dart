@@ -16,7 +16,6 @@ import 'dart:async';
 // DESIGN TOKENS — Zara-inspired luxury minimalism
 // ─────────────────────────────────────────────────────────────────────────────
 class _Z {
-  // Spacing
   static const double s4 = 4;
   static const double s8 = 8;
   static const double s12 = 12;
@@ -27,40 +26,41 @@ class _Z {
   static const double s48 = 48;
   static const double s64 = 64;
 
-  // Typography
-  static const String font = 'Georgia'; // Serif for Zara editorial feel
+  static const String font = 'Georgia';
 
-  static TextStyle heading(Color c) => TextStyle(
-        fontFamily: font,
-        fontSize: 13,
-        fontWeight: FontWeight.w400,
-        letterSpacing: 3,
-        color: c,
-      );
+  // Optimization: Pre-built base text styles to prevent re-instantiation
+  static const TextStyle _headingBase = TextStyle(
+    fontFamily: font,
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 3,
+  );
 
-  static TextStyle label(Color c) => TextStyle(
-        fontFamily: font,
-        fontSize: 10,
-        fontWeight: FontWeight.w400,
-        letterSpacing: 2.5,
-        color: c,
-      );
+  static const TextStyle _labelBase = TextStyle(
+    fontFamily: font,
+    fontSize: 10,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 2.5,
+  );
 
-  static TextStyle body(Color c) => TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w300,
-        letterSpacing: 0.3,
-        color: c,
-        height: 1.6,
-      );
+  static const TextStyle _bodyBase = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w300,
+    letterSpacing: 0.3,
+    height: 1.6,
+  );
 
-  static TextStyle stat(Color c) => TextStyle(
-        fontFamily: font,
-        fontSize: 22,
-        fontWeight: FontWeight.w300,
-        letterSpacing: 1,
-        color: c,
-      );
+  static const TextStyle _statBase = TextStyle(
+    fontFamily: font,
+    fontSize: 22,
+    fontWeight: FontWeight.w300,
+    letterSpacing: 1,
+  );
+
+  static TextStyle heading(Color c) => _headingBase.copyWith(color: c);
+  static TextStyle label(Color c) => _labelBase.copyWith(color: c);
+  static TextStyle body(Color c) => _bodyBase.copyWith(color: c);
+  static TextStyle stat(Color c) => _statBase.copyWith(color: c);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,12 +91,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   int _tab = 0;
   final _picker = ImagePicker();
   
-  // Cache global statique pour chaque userId
   static final Map<int, Future<Map<String, dynamic>>> _globalProfileCache = {};
   static final Map<int, Future<List<dynamic>>> _globalFarmsCache = {};
   static final Map<int, Future<List<dynamic>>> _globalLivestockCache = {};
   
-  // Listeners pour mettre à jour quand les données changent
   late StreamSubscription<void> _farmPostSub;
   late StreamSubscription<void> _profileUpdateSub;
 
@@ -111,7 +109,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     _farmsFuture = _getOrCreateFarms();
     _livestockFuture = _getOrCreateLivestock();
     
-    // S'abonner aux changements pour recharger les données
     _farmPostSub = ApiService.onFarmPostCreated.listen((_) {
       if (mounted) _refreshData();
     });
@@ -131,7 +128,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   @override
   void didUpdateWidget(UserProfileScreen old) {
     super.didUpdateWidget(old);
-    // Recharger seulement si l'userId change
     if (old.userId != widget.userId) {
       _profileFuture = _getOrCreateProfile();
       _farmsFuture = _getOrCreateFarms();
@@ -140,7 +136,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     }
   }
   
-  // Méthodes de cache global - similaire à social_feed_screen
   Future<Map<String, dynamic>> _getOrCreateProfile() {
     if (!_globalProfileCache.containsKey(widget.userId)) {
       _globalProfileCache[widget.userId] = _loadProfile();
@@ -163,7 +158,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
   
   void _refreshData() {
-    // Vider le cache et recharger
     _globalProfileCache.remove(widget.userId);
     _globalFarmsCache.remove(widget.userId);
     _globalLivestockCache.remove(widget.userId);
@@ -192,12 +186,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         ? ApiService.getUserLivestock(widget.userId)
         : ApiService.getPublicUserLivestock(widget.userId);
   }
-
-  // ── Helpers ─────────────────────────────────────────────────────────────
-  Color _bg(bool dark) => AppColors.getBgColor(dark);
-  Color _text(bool dark) => AppColors.getTextColor(dark);
-  Color _sub(bool dark) => AppColors.getSecondaryTextColor(dark);
-  Color _border(bool dark) => AppColors.getBorderColor(dark);
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
@@ -277,113 +265,25 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
   // ── Dialogs ──────────────────────────────────────────────────────────────
   void _showEditDialog(String name, String email, String phone) {
-    final dark = widget.isDarkMode;
-    final nameC = TextEditingController(text: name);
-    final emailC = TextEditingController(text: email);
-    final phoneC = TextEditingController(text: phone);
-
     showDialog(
       context: context,
-      builder: (_) => _ZaraDialog(
-        isDark: dark,
-        title: 'MODIFIER LE PROFIL',
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _ZaraField(controller: nameC, label: 'NOM', dark: dark),
-            const SizedBox(height: _Z.s16),
-            _ZaraField(
-                controller: emailC,
-                label: 'EMAIL',
-                dark: dark,
-                type: TextInputType.emailAddress),
-            const SizedBox(height: _Z.s16),
-            _ZaraField(
-                controller: phoneC,
-                label: 'TÉLÉPHONE',
-                dark: dark,
-                type: TextInputType.phone),
-            const SizedBox(height: _Z.s24),
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-                _showPasswordDialog();
-              },
-              child: Row(
-                children: [
-                  const SizedBox(
-                    width: 20,
-                    height: 1,
-                  ),
-                  Expanded(
-                      child: Container(height: 0.5, color: Colors.red.shade300)),
-                  const SizedBox(width: _Z.s8),
-                  Text('CHANGER MOT DE PASSE',
-                      style: TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 2,
-                          color: Colors.red.shade400)),
-                  const SizedBox(width: _Z.s8),
-                  Expanded(
-                      child: Container(height: 0.5, color: Colors.red.shade300)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        onConfirm: () {
-          _updateProfile(
-              nameC.text.trim(), emailC.text.trim(), phoneC.text.trim());
-          nameC.dispose();
-          emailC.dispose();
-          phoneC.dispose();
-        },
-        onCancel: () {
-          nameC.dispose();
-          emailC.dispose();
-          phoneC.dispose();
-        },
+      builder: (_) => _EditProfileDialog(
+        isDark: widget.isDarkMode,
+        initialName: name,
+        initialEmail: email,
+        initialPhone: phone,
+        onConfirm: _updateProfile,
+        onChangePasswordTap: () => _showPasswordDialog(),
       ),
     );
   }
 
   void _showPasswordDialog() {
-    final dark = widget.isDarkMode;
-    final curC = TextEditingController();
-    final newC = TextEditingController();
-    final conC = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (_) => _ZaraDialog(
-        isDark: dark,
-        title: 'MOT DE PASSE',
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _ZaraField(
-                controller: curC, label: 'ACTUEL', dark: dark, obscure: true),
-            const SizedBox(height: _Z.s16),
-            _ZaraField(
-                controller: newC, label: 'NOUVEAU', dark: dark, obscure: true),
-            const SizedBox(height: _Z.s16),
-            _ZaraField(
-                controller: conC, label: 'CONFIRMER', dark: dark, obscure: true),
-          ],
-        ),
-        onConfirm: () {
-          _changePassword(curC.text.trim(), newC.text.trim(), conC.text.trim());
-          curC.dispose();
-          newC.dispose();
-          conC.dispose();
-        },
-        onCancel: () {
-          curC.dispose();
-          newC.dispose();
-          conC.dispose();
-        },
-        confirmLabel: 'MODIFIER',
-        confirmColor: Colors.red.shade700,
+      builder: (_) => _ChangePasswordDialog(
+        isDark: widget.isDarkMode,
+        onConfirm: _changePassword,
       ),
     );
   }
@@ -395,7 +295,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         isDark: widget.isDarkMode,
         title: 'SE DÉCONNECTER',
         content: Text('Voulez-vous vraiment vous déconnecter ?',
-            style: _Z.body(_sub(widget.isDarkMode))),
+            style: _Z.body(AppColors.getSecondaryTextColor(widget.isDarkMode))),
         confirmLabel: 'DÉCONNECTER',
         confirmColor: Colors.red.shade700,
         onConfirm: () async {
@@ -416,16 +316,19 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final dark = widget.isDarkMode;
+    final bg = AppColors.getBgColor(dark);
+    final text = AppColors.getTextColor(dark);
+    final sub = AppColors.getSecondaryTextColor(dark);
 
     return Scaffold(
-      backgroundColor: _bg(dark),
+      backgroundColor: bg,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: Text('PROFIL', style: _Z.label(_text(dark))),
-        iconTheme: IconThemeData(color: _text(dark)),
+        title: Text('PROFIL', style: _Z.label(text)),
+        iconTheme: IconThemeData(color: text),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: _Z.s16),
@@ -434,8 +337,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                 HapticFeedback.lightImpact();
                 _showLogoutDialog();
               },
-              child: Text('SORTIR',
-                  style: _Z.label(_sub(dark))),
+              child: Text('SORTIR', style: _Z.label(sub)),
             ),
           ),
         ],
@@ -446,12 +348,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         child: FutureBuilder<Map<String, dynamic>>(
           future: _profileFuture,
           builder: (ctx, snap) {
-            // Transition fluide avec AnimatedSwitcher
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) {
-                return FadeTransition(opacity: animation, child: child);
-              },
+              transitionBuilder: (child, animation) =>
+                  FadeTransition(opacity: animation, child: child),
               child: _buildProfileContent(dark, snap),
             );
           },
@@ -460,12 +360,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     );
   }
 
-  /// Construit le contenu du profil avec transition fluide
   Widget _buildProfileContent(
     bool dark,
     AsyncSnapshot<Map<String, dynamic>> snap,
   ) {
-    // Skeleton pendant le chargement
     if (snap.connectionState == ConnectionState.waiting) {
       return SkeletonPageLoader(
         isDarkMode: dark,
@@ -474,20 +372,19 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       );
     }
 
-    // Erreur
     if (snap.hasError) {
       return Center(
         key: const ValueKey('error'),
         child: Text(
-          'Erreur',
-          style: _Z.body(_sub(dark)),
+          'Erreur de chargement',
+          style: _Z.body(AppColors.getSecondaryTextColor(dark)),
         ),
       );
     }
 
     final p = snap.data!;
-    final name = p['name'] ?? 'Utilisateur';
-    final email = p['email'] ?? '';
+    final name = (p['name'] as String?) ?? 'Utilisateur';
+    final email = (p['email'] as String?) ?? '';
     final avatar = p['profile_image'] as String?;
     final followers = p['total_followers'] ?? 0;
     final posts = p['total_posts'] ?? 0;
@@ -498,10 +395,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Hero header ───────────────────────────────────────
           _buildHero(dark, name, email, avatar, followers, posts),
 
-          // ── Quick action ──────────────────────────────────────
           if (_isOwn)
             Column(
               children: [
@@ -525,15 +420,23 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     label: 'MON CAHIER',
                     icon: Icons.description_outlined,
                     dark: dark,
-                    onTap: () {
+                    onTap: () async {
                       HapticFeedback.lightImpact();
-                      // Déterminer la première farm pour le cahier
-                      final defaultFarmId = '1'; // À adapter selon votre logique
+                      // Optimisation: Récupération dynamique de la première ferme si disponible
+                      String targetFarmId = '1';
+                      try {
+                        final farms = await _farmsFuture;
+                        if (farms.isNotEmpty && farms.first['id'] != null) {
+                          targetFarmId = farms.first['id'].toString();
+                        }
+                      } catch (_) {}
+
+                      if (!mounted) return;
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => ProjectNotebookListScreen(
-                            farmId: defaultFarmId,
+                            farmId: targetFarmId,
                             userId: widget.userId.toString(),
                           ),
                         ),
@@ -546,23 +449,18 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
           const SizedBox(height: _Z.s32),
 
-          // ── Section title ─────────────────────────────────────
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: _Z.s24),
-            child: Text('MES RESSOURCES', style: _Z.label(_sub(dark))),
+            padding: const EdgeInsets.symmetric(horizontal: _Z.s24),
+            child: Text('MES RESSOURCES',
+                style: _Z.label(AppColors.getSecondaryTextColor(dark))),
           ),
           const SizedBox(height: _Z.s16),
 
-          // ── Tab bar ───────────────────────────────────────────
           _buildTabs(dark),
 
-          // ── Tab content ───────────────────────────────────────
           Padding(
             padding: const EdgeInsets.all(_Z.s24),
-            child: _tab == 0
-                ? _buildFarms(dark)
-                : _buildLivestock(dark),
+            child: _tab == 0 ? _buildFarms(dark) : _buildLivestock(dark),
           ),
 
           const SizedBox(height: _Z.s64),
@@ -574,6 +472,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   // ── Hero ─────────────────────────────────────────────────────────────────
   Widget _buildHero(bool dark, String name, String email, String? avatar,
       int followers, int posts) {
+    final text = AppColors.getTextColor(dark);
+    final sub = AppColors.getSecondaryTextColor(dark);
+    final border = AppColors.getBorderColor(dark);
+    final bg = AppColors.getBgColor(dark);
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -583,13 +486,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         right: _Z.s24,
       ),
       decoration: BoxDecoration(
-        border: Border(
-            bottom: BorderSide(color: _border(dark), width: 0.5)),
+        border: Border(bottom: BorderSide(color: border, width: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar row
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -607,14 +508,18 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                       height: 72,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: _border(dark), width: 1),
+                        border: Border.all(color: border, width: 1),
                       ),
                       child: ClipOval(
                         child: avatar != null && avatar.isNotEmpty
-                            ? Image.network(avatar,
+                            ? Image.network(
+                                avatar,
                                 fit: BoxFit.cover,
+                                cacheWidth: 200, // Mémoire cache optimisée
+                                cacheHeight: 200,
                                 errorBuilder: (_, __, ___) =>
-                                    _defaultAvatar(name, dark))
+                                    _defaultAvatar(name, dark),
+                              )
                             : _defaultAvatar(name, dark),
                       ),
                     ),
@@ -626,19 +531,16 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                           width: 20,
                           height: 20,
                           decoration: BoxDecoration(
-                            color: _text(dark),
+                            color: text,
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.add,
-                              size: 12,
-                              color: _bg(dark)),
+                          child: Icon(Icons.add, size: 12, color: bg),
                         ),
                       ),
                   ],
                 ),
               ),
               const Spacer(),
-              // Stats
               _buildStat(followers.toString(), 'ABONNÉS', dark),
               const SizedBox(width: _Z.s32),
               _buildStat(posts.toString(), 'POSTS', dark),
@@ -647,7 +549,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
           const SizedBox(height: _Z.s20),
 
-          // Name
           GestureDetector(
             onTap: _isOwn
                 ? () {
@@ -657,16 +558,16 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                 : null,
             child: Row(
               children: [
-                Text(name.toUpperCase(), style: _Z.heading(_text(dark))),
+                Text(name.toUpperCase(), style: _Z.heading(text)),
                 if (_isOwn) ...[
                   const SizedBox(width: _Z.s8),
-                  Icon(Icons.edit, size: 12, color: _sub(dark)),
+                  Icon(Icons.edit, size: 12, color: sub),
                 ],
               ],
             ),
           ),
           const SizedBox(height: _Z.s4),
-          Text(email, style: _Z.body(_sub(dark))),
+          Text(email, style: _Z.body(sub)),
         ],
       ),
     );
@@ -676,9 +577,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(value, style: _Z.stat(_text(dark))),
+        Text(value, style: _Z.stat(AppColors.getTextColor(dark))),
         const SizedBox(height: 2),
-        Text(label, style: _Z.label(_sub(dark))),
+        Text(label, style: _Z.label(AppColors.getSecondaryTextColor(dark))),
       ],
     );
   }
@@ -690,10 +591,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
           style: TextStyle(
-              fontFamily: _Z.font,
-              fontSize: 28,
-              fontWeight: FontWeight.w300,
-              color: _text(dark)),
+            fontFamily: _Z.font,
+            fontSize: 28,
+            fontWeight: FontWeight.w300,
+            color: AppColors.getTextColor(dark),
+          ),
         ),
       ),
     );
@@ -703,13 +605,17 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   Widget _buildTabs(bool dark) {
     const tabs = ['FERMES', 'BÉTAIL'];
     final icons = [Icons.landscape_outlined, Icons.pets_outlined];
+    final border = AppColors.getBorderColor(dark);
+    final text = AppColors.getTextColor(dark);
+    final sub = AppColors.getSecondaryTextColor(dark);
 
     return Container(
       decoration: BoxDecoration(
-          border: Border(
-        top: BorderSide(color: _border(dark), width: 0.5),
-        bottom: BorderSide(color: _border(dark), width: 0.5),
-      )),
+        border: Border(
+          top: BorderSide(color: border, width: 0.5),
+          bottom: BorderSide(color: border, width: 0.5),
+        ),
+      ),
       child: Row(
         children: List.generate(
           tabs.length,
@@ -720,14 +626,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                 setState(() => _tab = i);
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: _Z.s16),
+                padding: const EdgeInsets.symmetric(vertical: _Z.s16),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: _tab == i
-                          ? _text(dark)
-                          : Colors.transparent,
+                      color: _tab == i ? text : Colors.transparent,
                       width: 1.5,
                     ),
                   ),
@@ -736,16 +639,17 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(icons[i],
-                        size: 14,
-                        color: _tab == i ? _text(dark) : _sub(dark)),
+                        size: 14, color: _tab == i ? text : sub),
                     const SizedBox(width: _Z.s8),
-                    Text(tabs[i],
-                        style: TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w400,
-                          color: _tab == i ? _text(dark) : _sub(dark),
-                        )),
+                    Text(
+                      tabs[i],
+                      style: TextStyle(
+                        fontSize: 10,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w400,
+                        color: _tab == i ? text : sub,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -763,9 +667,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       builder: (_, snap) {
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(opacity: animation, child: child);
-          },
+          transitionBuilder: (child, animation) =>
+              FadeTransition(opacity: animation, child: child),
           child: _buildFarmContent(dark, snap),
         );
       },
@@ -785,14 +688,18 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     final farms = snap.data ?? [];
     if (farms.isEmpty) return _empty('Aucune ferme', dark);
 
-    return Column(
+    // Optimisation UI/UX & performance : ListView.builder au lieu d'une Column exhaustive
+    return ListView.builder(
       key: const ValueKey('farms_content'),
-      children: farms.map((f) {
-        final farm = f as Map<String, dynamic>;
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: farms.length,
+      itemBuilder: (context, index) {
+        final farm = farms[index] as Map<String, dynamic>;
         final id = farm['id'] as int?;
         return _ZaraResourceTile(
-          title: farm['name'] ?? 'Ferme',
-          subtitle: farm['location'] ?? '',
+          title: (farm['name'] as String?) ?? 'Ferme',
+          subtitle: (farm['location'] as String?) ?? '',
           image: farm['image_url'] as String?,
           dark: dark,
           onTap: id == null
@@ -807,7 +714,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                         readOnly: false,
                       ))),
         );
-      }).toList(),
+      },
     );
   }
 
@@ -818,9 +725,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       builder: (_, snap) {
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(opacity: animation, child: child);
-          },
+          transitionBuilder: (child, animation) =>
+              FadeTransition(opacity: animation, child: child),
           child: _buildLivestockContent(dark, snap),
         );
       },
@@ -840,22 +746,28 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     final animals = snap.data ?? [];
     if (animals.isEmpty) return _empty('Aucun bétail', dark);
 
-    return Column(
+    // Optimisation UI/UX & performance : ListView.builder au lieu d'une Column
+    return ListView.builder(
       key: const ValueKey('livestock_content'),
-      children: animals.map((a) {
-        final animal = a as Map<String, dynamic>;
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: animals.length,
+      itemBuilder: (context, index) {
+        final animal = animals[index] as Map<String, dynamic>;
         final id = animal['id'] as int?;
         final qty = animal['quantity'] as int? ?? 1;
-        final photo = animal['image_url'] ??
-            (animal['photos'] is List &&
-                    (animal['photos'] as List).isNotEmpty
-                ? (animal['photos'] as List).first
-                : null);
+        
+        // Dynamic casting sécurisé du champ photos
+        String? photo = animal['image_url'] as String?;
+        if (photo == null && animal['photos'] is List && (animal['photos'] as List).isNotEmpty) {
+          photo = (animal['photos'] as List).first.toString();
+        }
+
         return _ZaraResourceTile(
-          title: animal['animal_type'] ?? 'Animal',
-          subtitle: animal['breed'] ?? '',
+          title: (animal['animal_type'] as String?) ?? 'Animal',
+          subtitle: (animal['breed'] as String?) ?? '',
           badge: 'x$qty',
-          image: photo as String?,
+          image: photo,
           dark: dark,
           onTap: id == null
               ? null
@@ -865,7 +777,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                       builder: (_) => EditLivestockScreen(
                           livestockId: id, livestock: animal))),
         );
-      }).toList(),
+      },
     );
   }
 
@@ -873,8 +785,181 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: _Z.s48),
       child: Center(
-          child:
-              Text(msg.toUpperCase(), style: _Z.label(_sub(dark)))),
+        child: Text(
+          msg.toUpperCase(),
+          style: _Z.label(AppColors.getSecondaryTextColor(dark)),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DIALOG STATEFUL IMPLEMENTATIONS (Correction Fuite Mémoire TextEditingController)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EditProfileDialog extends StatefulWidget {
+  final bool isDark;
+  final String initialName;
+  final String initialEmail;
+  final String initialPhone;
+  final Function(String, String, String) onConfirm;
+  final VoidCallback onChangePasswordTap;
+
+  const _EditProfileDialog({
+    required this.isDark,
+    required this.initialName,
+    required this.initialEmail,
+    required this.initialPhone,
+    required this.onConfirm,
+    required this.onChangePasswordTap,
+  });
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  late final TextEditingController _nameC;
+  late final TextEditingController _emailC;
+  late final TextEditingController _phoneC;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameC = TextEditingController(text: widget.initialName);
+    _emailC = TextEditingController(text: widget.initialEmail);
+    _phoneC = TextEditingController(text: widget.initialPhone);
+  }
+
+  @override
+  void dispose() {
+    _nameC.dispose();
+    _emailC.dispose();
+    _phoneC.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _ZaraDialog(
+      isDark: widget.isDark,
+      title: 'MODIFIER LE PROFIL',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ZaraField(controller: _nameC, label: 'NOM', dark: widget.isDark),
+          const SizedBox(height: _Z.s16),
+          _ZaraField(
+            controller: _emailC,
+            label: 'EMAIL',
+            dark: widget.isDark,
+            type: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: _Z.s16),
+          _ZaraField(
+            controller: _phoneC,
+            label: 'TÉLÉPHONE',
+            dark: widget.isDark,
+            type: TextInputType.phone,
+          ),
+          const SizedBox(height: _Z.s24),
+          GestureDetector(
+            onTap: () {
+              Navigator.pop(context);
+              widget.onChangePasswordTap();
+            },
+            child: Row(
+              children: [
+                const SizedBox(width: 20, height: 1),
+                Expanded(
+                    child: Container(height: 0.5, color: Colors.red.shade300)),
+                const SizedBox(width: _Z.s8),
+                Text('CHANGER MOT DE PASSE',
+                    style: TextStyle(
+                        fontSize: 10,
+                        letterSpacing: 2,
+                        color: Colors.red.shade400)),
+                const SizedBox(width: _Z.s8),
+                Expanded(
+                    child: Container(height: 0.5, color: Colors.red.shade300)),
+              ],
+            ),
+          ),
+        ],
+      ),
+      onConfirm: () {
+        widget.onConfirm(
+          _nameC.text.trim(),
+          _emailC.text.trim(),
+          _phoneC.text.trim(),
+        );
+      },
+    );
+  }
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  final bool isDark;
+  final Function(String, String, String) onConfirm;
+
+  const _ChangePasswordDialog({
+    required this.isDark,
+    required this.onConfirm,
+  });
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  late final TextEditingController _curC;
+  late final TextEditingController _newC;
+  late final TextEditingController _conC;
+
+  @override
+  void initState() {
+    super.initState();
+    _curC = TextEditingController();
+    _newC = TextEditingController();
+    _conC = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _curC.dispose();
+    _newC.dispose();
+    _conC.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _ZaraDialog(
+      isDark: widget.isDark,
+      title: 'MOT DE PASSE',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ZaraField(
+              controller: _curC, label: 'ACTUEL', dark: widget.isDark, obscure: true),
+          const SizedBox(height: _Z.s16),
+          _ZaraField(
+              controller: _newC, label: 'NOUVEAU', dark: widget.isDark, obscure: true),
+          const SizedBox(height: _Z.s16),
+          _ZaraField(
+              controller: _conC, label: 'CONFIRMER', dark: widget.isDark, obscure: true),
+        ],
+      ),
+      onConfirm: () {
+        widget.onConfirm(
+          _curC.text.trim(),
+          _newC.text.trim(),
+          _conC.text.trim(),
+        );
+      },
+      confirmLabel: 'MODIFIER',
+      confirmColor: Colors.red.shade700,
     );
   }
 }
@@ -883,7 +968,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 // COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Zara-style resource tile (Farm / Livestock)
 class _ZaraResourceTile extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -901,12 +985,12 @@ class _ZaraResourceTile extends StatelessWidget {
     this.onTap,
   });
 
-  Color get _text => AppColors.getTextColor(dark);
-  Color get _sub => AppColors.getSecondaryTextColor(dark);
-  Color get _border => AppColors.getBorderColor(dark);
-
   @override
   Widget build(BuildContext context) {
+    final text = AppColors.getTextColor(dark);
+    final sub = AppColors.getSecondaryTextColor(dark);
+    final border = AppColors.getBorderColor(dark);
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -916,57 +1000,75 @@ class _ZaraResourceTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: _Z.s12),
         padding: const EdgeInsets.all(_Z.s16),
         decoration: BoxDecoration(
-          border: Border.all(color: _border, width: 0.5),
+          border: Border.all(color: border, width: 0.5),
         ),
         child: Row(
           children: [
-            // Image
             Container(
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                  border: Border.all(color: _border, width: 0.5)),
+                border: Border.all(color: border, width: 0.5),
+              ),
               child: image != null && image!.isNotEmpty
-                  ? Image.network(image!, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(Icons.image_not_supported,
-                          size: 18, color: _sub))
-                  : Icon(Icons.landscape_outlined,
-                      size: 18, color: _sub),
+                  ? Image.network(
+                      image!,
+                      fit: BoxFit.cover,
+                      cacheWidth: 120, // Image cache resize
+                      cacheHeight: 120,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.image_not_supported,
+                        size: 18,
+                        color: sub,
+                      ),
+                    )
+                  : Icon(Icons.landscape_outlined, size: 18, color: sub),
             ),
             const SizedBox(width: _Z.s16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title.toUpperCase(),
-                      style: TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w400,
-                          color: _text),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    title.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w400,
+                      color: text,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   if (subtitle.isNotEmpty) ...[
                     const SizedBox(height: 3),
-                    Text(subtitle,
-                        style: TextStyle(
-                            fontSize: 11,
-                            letterSpacing: 0.3,
-                            color: _sub),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 0.3,
+                        color: sub,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ],
               ),
             ),
             if (badge != null) ...[
               const SizedBox(width: _Z.s12),
-              Text(badge!,
-                  style: TextStyle(
-                      fontSize: 10, letterSpacing: 1, color: _sub)),
+              Text(
+                badge!,
+                style: TextStyle(
+                  fontSize: 10,
+                  letterSpacing: 1,
+                  color: sub,
+                ),
+              ),
             ],
             const SizedBox(width: _Z.s8),
-            Icon(Icons.arrow_forward_ios, size: 12, color: _sub),
+            Icon(Icons.arrow_forward_ios, size: 12, color: sub),
           ],
         ),
       ),
@@ -974,7 +1076,6 @@ class _ZaraResourceTile extends StatelessWidget {
   }
 }
 
-/// Zara-style action tile
 class _ZaraActionTile extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -1001,7 +1102,9 @@ class _ZaraActionTile extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(
-            vertical: _Z.s16, horizontal: _Z.s20),
+          vertical: _Z.s16,
+          horizontal: _Z.s20,
+        ),
         decoration: BoxDecoration(
           border: Border.all(color: border, width: 0.5),
         ),
@@ -1010,12 +1113,15 @@ class _ZaraActionTile extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: text),
             const SizedBox(width: _Z.s12),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 10,
-                    letterSpacing: 2.5,
-                    fontWeight: FontWeight.w400,
-                    color: text)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                letterSpacing: 2.5,
+                fontWeight: FontWeight.w400,
+                color: text,
+              ),
+            ),
           ],
         ),
       ),
@@ -1023,7 +1129,6 @@ class _ZaraActionTile extends StatelessWidget {
   }
 }
 
-/// Zara-style text field
 class _ZaraField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -1050,26 +1155,26 @@ class _ZaraField extends StatelessWidget {
       keyboardType: type,
       obscureText: obscure,
       style: TextStyle(
-          fontSize: 13,
-          letterSpacing: 0.3,
-          color: text,
-          fontWeight: FontWeight.w300),
+        fontSize: 13,
+        letterSpacing: 0.3,
+        color: text,
+        fontWeight: FontWeight.w300,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-            fontSize: 10, letterSpacing: 2, color: sub),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+        labelStyle: TextStyle(fontSize: 10, letterSpacing: 2, color: sub),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
         enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: border, width: 0.5)),
+          borderSide: BorderSide(color: border, width: 0.5),
+        ),
         focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: text, width: 1)),
+          borderSide: BorderSide(color: text, width: 1),
+        ),
       ),
     );
   }
 }
 
-/// Zara-style dialog — sharp corners, minimal decoration
 class _ZaraDialog extends StatelessWidget {
   final bool isDark;
   final String title;
@@ -1110,23 +1215,20 @@ class _ZaraDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title
-            Text(title,
-                style: TextStyle(
-                    fontSize: 10,
-                    letterSpacing: 3,
-                    fontWeight: FontWeight.w400,
-                    color: text)),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 10,
+                letterSpacing: 3,
+                fontWeight: FontWeight.w400,
+                color: text,
+              ),
+            ),
             const SizedBox(height: _Z.s4),
             Container(height: 0.5, color: border),
             const SizedBox(height: _Z.s24),
-
-            // Content
             content,
-
             const SizedBox(height: _Z.s32),
-
-            // Actions
             Row(
               children: [
                 Expanded(
@@ -1137,17 +1239,19 @@ class _ZaraDialog extends StatelessWidget {
                       onCancel?.call();
                     },
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(
-                          border:
-                              Border.all(color: border, width: 0.5)),
+                        border: Border.all(color: border, width: 0.5),
+                      ),
                       child: Center(
-                        child: Text('ANNULER',
-                            style: TextStyle(
-                                fontSize: 10,
-                                letterSpacing: 2,
-                                color: sub)),
+                        child: Text(
+                          'ANNULER',
+                          style: TextStyle(
+                            fontSize: 10,
+                            letterSpacing: 2,
+                            color: sub,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1161,15 +1265,17 @@ class _ZaraDialog extends StatelessWidget {
                       onConfirm();
                     },
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       color: actionColor,
                       child: Center(
-                        child: Text(confirmLabel,
-                            style: const TextStyle(
-                                fontSize: 10,
-                                letterSpacing: 2,
-                                color: Colors.white)),
+                        child: Text(
+                          confirmLabel,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            letterSpacing: 2,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                   ),

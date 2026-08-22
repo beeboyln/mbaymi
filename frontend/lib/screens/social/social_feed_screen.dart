@@ -1,20 +1,45 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import 'package:mbaymi/screens/farm/farm_detail_screen.dart';
+import 'package:mbaymi/screens/livestock/animal_detail_screen_legacy.dart';
+import 'package:mbaymi/screens/social/create_farm_post_dialog.dart';
+import 'package:mbaymi/screens/social/profile_detail_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/utils/app_colors.dart';
-import 'package:mbaymi/screens/farm/farm_detail_screen.dart';
-import 'package:mbaymi/screens/social/profile_detail_screen.dart';
-import 'package:mbaymi/screens/livestock/animal_detail_screen_legacy.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
-import 'package:mbaymi/screens/social/create_farm_post_dialog.dart';
+
+// ── MODEL TYPÉ POUR LES POSTS ──────────────────────────────────────────────────
+
+class FeedItem {
+  final Map<String, dynamic> data;
+  final DateTime timestamp;
+  final bool isSubscription;
+
+  const FeedItem({
+    required this.data,
+    required this.timestamp,
+    required this.isSubscription,
+  });
+
+  factory FeedItem.fromPostMap(Map<String, dynamic> map, {bool isSub = false}) {
+    return FeedItem(
+      data: map,
+      timestamp: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
+      isSubscription: isSub,
+    );
+  }
+}
+
+// ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 
 class SocialFeedScreen extends StatefulWidget {
   const SocialFeedScreen({super.key});
@@ -24,20 +49,18 @@ class SocialFeedScreen extends StatefulWidget {
 }
 
 class _SocialFeedScreenState extends State<SocialFeedScreen> {
-  int _userId = 0;
+  late final int _userId;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _headerVisible = true;
+  final ValueNotifier<String> _feedFilter = ValueNotifier<String>('all');
+
   late StreamSubscription<void> _farmPostSub;
   late StreamSubscription<dynamic> _followChangedSub;
   late StreamSubscription<void> _livestockChangedSub;
 
-  late Future<Map<String, dynamic>> _feedFuture;
-  List<Map<String, dynamic>> _combinedItems = [];
+  late Future<List<FeedItem>> _feedFuture;
+  static final Map<String, Future<List<FeedItem>>> _globalFeedCache = {};
 
-  static final Map<String, Future<Map<String, dynamic>>> _globalFeedCache = {};
-
-  String _feedFilter = 'all';
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  // Préchargement pour éviter le délai à l'ouverture du sheet
   Future<List<dynamic>>? _farmsFuture;
   Future<List<dynamic>>? _livestockFuture;
 
@@ -46,10 +69,16 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     super.initState();
     _userId = AuthService.currentSession?.userId ?? 0;
     _feedFuture = _getOrCreateFeed();
+
     if (_userId > 0) {
       _farmsFuture = ApiService.getUserFarms();
       _livestockFuture = _getOwnLivestockWithPhotos();
     }
+
+    _setupListeners();
+  }
+
+  void _setupListeners() {
     _farmPostSub = ApiService.onFarmPostCreated.listen((_) {
       if (mounted) _refreshFeed();
     });
@@ -70,7 +99,67 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     _farmPostSub.cancel();
     _followChangedSub.cancel();
     _livestockChangedSub.cancel();
+    _feedFilter.dispose();
     super.dispose();
+  }
+
+  // ── LOGIQUE DE CACHE ET CHARGEMENT ──────────────────────────────────────────
+
+  Future<List<dynamic>> _getOwnLivestockWithPhotos() async {
+    final livestock = await ApiService.getAllLivestockWithPhotos(userId: _userId);
+    return livestock.where((animal) {
+      if (animal is! Map) return false;
+      final ownerId = animal['user_id'] ?? animal['owner_id'];
+      final parsedId = ownerId is int ? ownerId : int.tryParse(ownerId?.toString() ?? '');
+      return parsedId == _userId;
+    }).toList();
+  }
+
+  Future<List<FeedItem>> _getOrCreateFeed() {
+    final key = 'feed_$_userId';
+    return _globalFeedCache.putIfAbsent(key, _loadCombinedFeed);
+  }
+
+  void _refreshFeed() {
+    _globalFeedCache.remove('feed_$_userId');
+    _livestockFuture = null;
+    if (mounted) {
+      setState(() {
+        _feedFuture = _getOrCreateFeed();
+      });
+    }
+  }
+
+  Future<List<FeedItem>> _loadCombinedFeed() async {
+    try {
+      List<FeedItem> items = [];
+
+      if (_userId > 0) {
+        final results = await Future.wait<dynamic>([
+          ApiService.getSubscriptionsFeed(userId: _userId),
+          ApiService.getFarmPostsFeed(userId: _userId),
+        ], eagerError: false);
+
+        final subIds = ((results[0] as List?)?.map((p) => p['id'] as int).toSet()) ?? <int>{};
+        final farmPosts = (results[1] as List?) ?? [];
+
+        items = farmPosts.map((post) {
+          final mapData = post as Map<String, dynamic>;
+          final id = mapData['id'] as int? ?? 0;
+          return FeedItem.fromPostMap(mapData, isSub: subIds.contains(id));
+        }).toList();
+      } else {
+        final farmPosts = await ApiService.getFarmPostsFeed(userId: 0);
+        items = farmPosts
+            .map((post) => FeedItem.fromPostMap(post as Map<String, dynamic>, isSub: false))
+            .toList();
+      }
+
+      items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return items;
+    } catch (e) {
+      throw Exception('Erreur chargement: $e');
+    }
   }
 
   String? _extractImageUrl(dynamic value) {
@@ -82,64 +171,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return null;
   }
 
-  Future<List<dynamic>> _getOwnLivestockWithPhotos() async {
-    final livestock = await ApiService.getAllLivestockWithPhotos(userId: _userId);
-    return livestock.where((animal) {
-      if (animal is! Map) return false;
-      final ownerId = animal['user_id'] ?? animal['owner_id'];
-      return ownerId is int
-          ? ownerId == _userId
-          : int.tryParse(ownerId?.toString() ?? '') == _userId;
-    }).toList();
-  }
-
-  Future<Map<String, dynamic>> _getOrCreateFeed() {
-    final key = 'feed_$_userId';
-    return _globalFeedCache.putIfAbsent(key, _loadCombinedFeed);
-  }
-
-  void _refreshFeed() {
-    _globalFeedCache.remove('feed_$_userId');
-    // Invalidate livestock cache to refresh the list and exclude deleted animals
-    _livestockFuture = null;
-    if (mounted) setState(() => _feedFuture = _getOrCreateFeed());
-  }
-
-  Future<Map<String, dynamic>> _loadCombinedFeed() async {
-    try {
-      List<dynamic> items = [];
-
-      if (_userId > 0) {
-        final results = await Future.wait<dynamic>([
-          ApiService.getSubscriptionsFeed(userId: _userId),
-          ApiService.getFarmPostsFeed(userId: _userId),
-        ], eagerError: false);
-
-        final subIds = ((results[0] as List?)?.map((p) => p['id'] as int).toSet()) ?? <int>{};
-        final farmPosts = (results[1] as List?) ?? [];
-
-        items = farmPosts.map((post) => {
-          'type': 'farm_post',
-          'data': post,
-          'timestamp': DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now(),
-          'isSubscription': subIds.contains(post['id'] as int),
-        }).toList();
-      } else {
-        final farmPosts = await ApiService.getFarmPostsFeed(userId: 0);
-        items = farmPosts.map((post) => {
-          'type': 'farm_post',
-          'data': post,
-          'timestamp': DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now(),
-          'isSubscription': false,
-        }).toList();
-      }
-
-      items.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
-      return {'items': items};
-    } catch (e) {
-      throw Exception('Erreur chargement: $e');
-    }
-  }
+  // ── UI BUILD ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +182,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: bg,
-      appBar: AppBar(
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(_headerVisible ? kToolbarHeight : 0),
+        child: ClipRect(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            height: _headerVisible ? kToolbarHeight : 0,
+            child: AppBar(
         backgroundColor: bg,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -179,9 +218,12 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           preferredSize: const Size.fromHeight(0.5),
           child: Container(height: 0.5, color: AppColors.getBorderColor(isDark)),
         ),
+            ),
+          ),
+        ),
       ),
       drawer: _buildDrawer(isDark),
-      body: _buildFeed(isDark),
+      body: _buildFeedBody(isDark),
     );
   }
 
@@ -196,33 +238,38 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       backgroundColor: bg,
       width: 260,
       child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundColor: AppColors.primary.withOpacity(0.15),
-                child: const Icon(Icons.agriculture, color: AppColors.primary, size: 22),
-              ),
-            ),
-            _drawerLabel('NAVIGATION', sub),
-            _drawerItem(Icons.home_outlined, Icons.home, 'TOUS', _feedFilter == 'all', isDark, () => _setFilter('all')),
-            _drawerItem(Icons.favorite_outline, Icons.favorite, 'ABONNÉS', _feedFilter == 'following', isDark, () => _setFilter('following')),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Divider(height: 1, color: border),
-            ),
-            _drawerLabel('DÉCOUVRIR', sub),
-            _drawerItem(Icons.explore_outlined, Icons.explore, 'EXPLORER', false, isDark, () => Navigator.pop(context)),
-            _drawerItem(Icons.local_fire_department_outlined, Icons.local_fire_department, 'TENDANCES', false, isDark, () => Navigator.pop(context)),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Text('MBAYMI v1.0', style: TextStyle(fontSize: 10, letterSpacing: 1, color: sub.withOpacity(0.4))),
-            ),
-          ],
+        child: ValueListenableBuilder<String>(
+          valueListenable: _feedFilter,
+          builder: (context, currentFilter, _) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: AppColors.primary.withOpacity(0.15),
+                    child: const Icon(Icons.agriculture, color: AppColors.primary, size: 22),
+                  ),
+                ),
+                _drawerLabel('NAVIGATION', sub),
+                _drawerItem(Icons.home_outlined, Icons.home, 'TOUS', currentFilter == 'all', isDark, () => _setFilter('all')),
+                _drawerItem(Icons.favorite_outline, Icons.favorite, 'ABONNÉS', currentFilter == 'following', isDark, () => _setFilter('following')),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Divider(height: 1, color: border),
+                ),
+                _drawerLabel('DÉCOUVRIR', sub),
+                _drawerItem(Icons.explore_outlined, Icons.explore, 'EXPLORER', false, isDark, () => Navigator.pop(context)),
+                _drawerItem(Icons.local_fire_department_outlined, Icons.local_fire_department, 'TENDANCES', false, isDark, () => Navigator.pop(context)),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: Text('MBAYMI v1.0', style: TextStyle(fontSize: 10, letterSpacing: 1, color: sub.withOpacity(0.4))),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -230,7 +277,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   void _setFilter(String filter) {
     Navigator.pop(context);
-    if (_feedFilter != filter) setState(() => _feedFilter = filter);
+    _feedFilter.value = filter;
   }
 
   Widget _drawerLabel(String label, Color color) => Padding(
@@ -268,14 +315,27 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     );
   }
 
-  // ── FEED ────────────────────────────────────────────────────────────────────
+  // ── FEED LIST ───────────────────────────────────────────────────────────────
 
-  Widget _buildFeed(bool isDark) {
+  Widget _buildFeedBody(bool isDark) {
     return RefreshIndicator(
       onRefresh: () async => _refreshFeed(),
       color: AppColors.primary,
       backgroundColor: AppColors.getCardBgColor(isDark),
-      child: FutureBuilder<Map<String, dynamic>>(
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification is ScrollUpdateNotification) {
+            final delta = notification.scrollDelta ?? 0;
+            if (delta.abs() >= 2) {
+              final shouldShow = delta < 0 || notification.metrics.pixels <= 0;
+              if (shouldShow != _headerVisible && mounted) {
+                setState(() => _headerVisible = shouldShow);
+              }
+            }
+          }
+          return false;
+        },
+        child: FutureBuilder<List<FeedItem>>(
         future: _feedFuture,
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
@@ -289,29 +349,31 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           }
           if (snap.hasError) return _buildError(snap.error.toString(), isDark);
 
-          _combinedItems = ((snap.data?['items'] as List?) ?? []).cast<Map<String, dynamic>>();
+          final allItems = snap.data ?? [];
 
-          final items = _feedFilter == 'following'
-              ? _combinedItems.where((i) => i['isSubscription'] == true).toList()
-              : _combinedItems;
+          return ValueListenableBuilder<String>(
+            valueListenable: _feedFilter,
+            builder: (context, filter, _) {
+              final filteredItems = filter == 'following'
+                  ? allItems.where((i) => i.isSubscription).toList()
+                  : allItems;
 
-          if (items.isEmpty) return _buildEmpty(isDark, _feedFilter == 'following');
+              if (filteredItems.isEmpty) return _buildEmpty(isDark, filter == 'following');
 
-          return ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: items.length,
-            itemBuilder: (_, i) {
-              final item = items[i];
-              if (item['type'] == 'farm_post') return _buildPostCard(item['data'], item, isDark);
-              return const SizedBox.shrink();
+              return ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: filteredItems.length,
+                itemBuilder: (_, i) => _buildPostCard(filteredItems[i], isDark),
+              );
             },
           );
         },
+        ),
       ),
     );
   }
 
-  // ── ADD POST ─────────────────────────────────────────────────────────────────
+  // ── ADD POST & SHEETS ───────────────────────────────────────────────────────
 
   Future<void> _onAddPostPressed(bool isDark) async {
     if (_userId <= 0) {
@@ -329,10 +391,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
     try {
       if (type == 'farm') {
-        // Utilise le future préchargé — instantané si déjà résolu
-        final farms = await _withLoading(
-          () => (_farmsFuture ??= ApiService.getUserFarms()),
-        );
+        final farms = await _withLoading(() => (_farmsFuture ??= ApiService.getUserFarms()));
         if (!mounted) return;
         if (farms.isEmpty) { _showSnack('Aucune ferme. Créez-en une d\'abord.', error: true); return; }
 
@@ -348,7 +407,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               name: (f['farm_name'] ?? f['name'] ?? 'Ferme') as String,
               imageUrl: _extractImageUrl(f['profile_image_farm'] ?? f['profile_image'] ?? f['image_url']),
               icon: Icons.landscape_outlined,
-              extra: {},
+              extra: const {},
             )).toList(),
             isDark: isDark,
           ),
@@ -362,9 +421,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           ),
         ));
       } else {
-        final livestocks = await _withLoading(
-          () => (_livestockFuture ??= _getOwnLivestockWithPhotos()),
-        );
+        final livestocks = await _withLoading(() => (_livestockFuture ??= _getOwnLivestockWithPhotos()));
         if (!mounted) return;
         if (livestocks.isEmpty) { _showSnack('Aucun bétail. Créez-en d\'abord.', error: true); return; }
 
@@ -469,7 +526,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     );
   }
 
-  /// Generic selection bottom sheet — fixes the overflow by using SizedBox.expand + fit constraints
   Widget _buildSelectionSheet({
     required String title,
     required List<_SelectItem> items,
@@ -484,7 +540,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
           Container(
             margin: const EdgeInsets.only(top: 12, bottom: 8),
             width: 36,
@@ -537,10 +592,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                                         ),
                                       );
                                     },
-                                    errorBuilder: (_, __, ___) => Container(
-                                      color: card,
-                                      child: Icon(it.icon, size: 24, color: sub),
-                                    ),
+                                    errorBuilder: (_, __, ___) => Container(color: card, child: Icon(it.icon, size: 24, color: sub)),
                                   )
                                 : Container(color: card, child: Icon(it.icon, size: 24, color: sub)),
                           ),
@@ -568,25 +620,24 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   // ── POST CARD ────────────────────────────────────────────────────────────────
 
-  Widget _buildPostCard(dynamic post, Map<String, dynamic> wrapper, bool isDark) {
-    final farmName   = post['farm_name']?.toString() ?? 'Ferme';
-    final ownerName  = post['owner_name']?.toString() ?? 'Agriculteur';
-    final caption    = post['caption']?.toString() ?? '';
-    final imageUrl   = _extractImageUrl(post['image_url']);
-    final postId     = (post['id'] as int?) ?? 0;
-    final farmId     = (post['farm_id'] as int?) ?? 0;
+  Widget _buildPostCard(FeedItem item, bool isDark) {
+    final post = item.data;
+    final farmName = post['farm_name']?.toString() ?? 'Ferme';
+    final ownerName = post['owner_name']?.toString() ?? 'Agriculteur';
+    final caption = post['caption']?.toString() ?? '';
+    final imageUrl = _extractImageUrl(post['image_url']);
+    final postId = (post['id'] as int?) ?? 0;
+    final farmId = (post['farm_id'] as int?) ?? 0;
     final livestockId = post['livestock_id'] as int?;
-    final userId     = (post['user_id'] as int?) ?? 0;
+    final userId = (post['user_id'] as int?) ?? 0;
     final isVerified = post['is_verified'] == true;
-    final isSub      = wrapper['isSubscription'] == true;
 
-    final bg     = AppColors.getBgColor(isDark);
-    final text   = AppColors.getTextColor(isDark);
-    final sub    = AppColors.getSecondaryTextColor(isDark);
+    final bg = AppColors.getBgColor(isDark);
+    final text = AppColors.getTextColor(isDark);
+    final sub = AppColors.getSecondaryTextColor(isDark);
     final border = AppColors.getBorderColor(isDark);
 
-    final createdAt = DateTime.tryParse(post['created_at'] as String? ?? '') ?? DateTime.now();
-    final diff = DateTime.now().difference(createdAt);
+    final diff = DateTime.now().difference(item.timestamp);
     final timeText = diff.inDays == 0 ? 'AUJOURD\'HUI' : diff.inDays == 1 ? 'HIER' : '${diff.inDays}J';
 
     return Container(
@@ -597,14 +648,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──
+          // Header
           GestureDetector(
             onTap: () => userId > 0 ? _pushProfile(userId, isDark) : null,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
               child: Row(
                 children: [
-                  _avatar(post, isSub),
+                  _avatar(post, item.isSubscription),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -648,12 +699,12 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             ),
           ),
 
-          // ── Image ──
+          // Image
           GestureDetector(
             onDoubleTap: () async {
               if (_userId <= 0 || post['is_liked'] == true) return;
               HapticFeedback.mediumImpact();
-              _toggleLike(post, wrapper, postId, like: true);
+              _toggleLike(post, postId, like: true);
             },
             child: AspectRatio(
               aspectRatio: 1,
@@ -667,7 +718,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             ),
           ),
 
-          // ── Actions ──
+          // Actions
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
@@ -680,7 +731,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                   onTap: () async {
                     if (_userId <= 0) { _showSnack('Connexion requise', error: true); return; }
                     HapticFeedback.lightImpact();
-                    _toggleLike(post, wrapper, postId, like: post['is_liked'] != true);
+                    _toggleLike(post, postId, like: post['is_liked'] != true);
                   },
                 ),
                 const SizedBox(width: 18),
@@ -699,7 +750,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                   textColor: text,
                   onTap: () {
                     HapticFeedback.lightImpact();
-                    _sharePost(post, wrapper);
+                    _sharePost(post);
                   },
                 ),
                 const Spacer(),
@@ -708,7 +759,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
             ),
           ),
 
-          // ── Likes label ──
+          // Details
           if ((post['likes_count'] ?? 0) > 0)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -718,7 +769,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               ),
             ),
 
-          // ── Caption ──
           if (caption.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 6, 14, 4),
@@ -735,7 +785,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               ),
             ),
 
-          // ── Comments link ──
           if ((post['comments_count'] ?? 0) > 0)
             GestureDetector(
               onTap: () => _openComments(post, isDark),
@@ -748,7 +797,6 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               ),
             ),
 
-          // ── Views ──
           if ((post['views_count'] ?? 0) > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
@@ -767,7 +815,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // ── HELPERS & ACTIONS ───────────────────────────────────────────────────────
 
   Widget _avatar(dynamic post, bool isSub) {
     final img = _extractImageUrl(post['owner_profile_image']);
@@ -780,8 +828,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       ),
       child: ClipOval(
         child: img != null
-            ? Image.network(img, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _avatarFallback())
+            ? Image.network(img, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _avatarFallback())
             : _avatarFallback(),
       ),
     );
@@ -816,13 +863,15 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     );
   }
 
-  void _toggleLike(dynamic post, Map<String, dynamic> wrapper, int postId, {required bool like}) async {
+  void _toggleLike(dynamic post, int postId, {required bool like}) async {
     final old = post['is_liked'] as bool? ?? false;
     final oldCount = (post['likes_count'] ?? 0) as int;
-    post['is_liked'] = like;
-    post['likes_count'] = like ? oldCount + 1 : oldCount - 1;
-    wrapper['data'] = post;
-    setState(() {});
+
+    setState(() {
+      post['is_liked'] = like;
+      post['likes_count'] = like ? oldCount + 1 : oldCount - 1;
+    });
+
     try {
       if (like) {
         await ApiService.likeFarmPost(postId);
@@ -830,10 +879,12 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         await ApiService.unlikeFarmPost(postId);
       }
     } catch (_) {
-      post['is_liked'] = old;
-      post['likes_count'] = oldCount;
-      wrapper['data'] = post;
-      setState(() {});
+      if (mounted) {
+        setState(() {
+          post['is_liked'] = old;
+          post['likes_count'] = oldCount;
+        });
+      }
     }
   }
 
@@ -861,7 +912,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   void _pushAnimal(int lid, dynamic post, bool isDark) => Navigator.push(context,
       MaterialPageRoute(builder: (_) => AnimalDetailScreen(livestockId: lid, animal: post, isDarkMode: isDark)));
 
-  Future<void> _sharePost(dynamic post, Map<String, dynamic> wrapper) async {
+  Future<void> _sharePost(dynamic post) async {
     final postId = (post['id'] as int?) ?? 0;
     final farmName = post['farm_name']?.toString() ?? 'Ferme';
     final ownerName = post['owner_name']?.toString() ?? 'Agriculteur';
@@ -872,9 +923,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     try {
       XFile? imageFile;
       if (!kIsWeb && imageUrl != null && imageUrl.isNotEmpty) {
-        final response = await http.get(Uri.parse(imageUrl)).timeout(
-          const Duration(seconds: 15),
-        );
+        final response = await http.get(Uri.parse(imageUrl)).timeout(const Duration(seconds: 15));
         if (response.statusCode == 200) {
           imageFile = XFile.fromData(
             response.bodyBytes,
@@ -888,9 +937,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       if (imageFile != null) {
         await Share.shareXFiles([imageFile], text: text, subject: farmName);
       } else {
-        final whatsappUri = Uri.parse(
-          'whatsapp://send?text=${Uri.encodeComponent(text)}',
-        );
+        final whatsappUri = Uri.parse('whatsapp://send?text=${Uri.encodeComponent(text)}');
         if (!kIsWeb && await canLaunchUrl(whatsappUri)) {
           await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
         } else {
@@ -898,18 +945,20 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         }
       }
 
-      _recordShare(post, wrapper);
+      _recordShare(post);
       ApiService.shareFarmPost(postId).catchError((_) {});
     } catch (error) {
       if (mounted) _showSnack('Partage impossible', error: true);
     }
   }
 
-  void _recordShare(dynamic post, Map<String, dynamic> wrapper) {
-    final old = (post['shares_count'] ?? 0) as int;
-    post['shares_count'] = old + 1;
-    wrapper['data'] = post;
-    if (mounted) setState(() {});
+  void _recordShare(dynamic post) {
+    if (mounted) {
+      setState(() {
+        final old = (post['shares_count'] ?? 0) as int;
+        post['shares_count'] = old + 1;
+      });
+    }
   }
 
   void _showSnack(String msg, {bool error = false}) {
@@ -918,7 +967,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     );
   }
 
-  // ── Empty / Error ────────────────────────────────────────────────────────────
+  // ── EMPTY / ERROR STATES ────────────────────────────────────────────────────
 
   Widget _buildEmpty(bool isDark, bool isFollowing) {
     final text = AppColors.getTextColor(isDark);
@@ -929,8 +978,11 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isFollowing ? Icons.favorite_outline : Icons.image_outlined,
-                size: 40, color: AppColors.primary.withOpacity(0.4)),
+            Icon(
+              isFollowing ? Icons.favorite_outline : Icons.image_outlined,
+              size: 40,
+              color: AppColors.primary.withOpacity(0.4),
+            ),
             const SizedBox(height: 16),
             Text(
               isFollowing ? 'AUCUN ABONNEMENT' : 'AUCUN POST',
@@ -971,7 +1023,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 }
 
-// ── Data class helper ─────────────────────────────────────────────────────────
+// ── DATA CLASSES & DIALOGS ────────────────────────────────────────────────----
 
 class _SelectItem {
   final int id;

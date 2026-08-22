@@ -36,6 +36,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
+  bool _headerVisible = true;
   late Map<int, Widget> _screens;
   late List<int> _screenIndices;
 
@@ -173,6 +174,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _createDashboard();
   }
 
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification is! ScrollUpdateNotification) return false;
+    final delta = notification.scrollDelta ?? 0;
+    if (delta.abs() < 2) return false;
+    final shouldShow = delta < 0 || notification.metrics.pixels <= 0;
+    if (shouldShow != _headerVisible && mounted) {
+      setState(() => _headerVisible = shouldShow);
+    }
+    return false;
+  }
+
   // ─── AUTH GUARD — même comportement pour toutes les actions ──────────────
   /// Returns true if user is logged in, otherwise shows the auth sheet
   bool _requireAuth(BuildContext ctx) {
@@ -203,8 +215,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       },
       child: Scaffold(
         backgroundColor: AppColors.getBgColor(isDarkMode),
-        appBar: _buildAppBar(isDarkMode, appBarBg),
-        body: _getScreen(_selectedIndex),
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(_headerVisible ? kToolbarHeight : 0),
+          child: ClipRect(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              height: _headerVisible ? kToolbarHeight : 0,
+              child: _buildAppBar(isDarkMode, appBarBg),
+            ),
+          ),
+        ),
+        body: NotificationListener<ScrollNotification>(
+          onNotification: _handleScrollNotification,
+          child: _getScreen(_selectedIndex),
+        ),
         bottomNavigationBar: _buildBottomBar(isDarkMode, appBarBg, isVeterinarian),
       ),
     );
