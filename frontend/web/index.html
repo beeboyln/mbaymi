@@ -18,7 +18,19 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Mbaymi, l'application de gestion agricole et d'élevage.">
+
+  <!-- Metadata used when the app link is shared on social platforms -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Mbaymi">
+  <meta property="og:title" content="Mbaymi">
+  <meta property="og:description" content="Mbaymi, l'application de gestion agricole et d'élevage.">
+  <meta property="og:image" content="aa.png">
+  <meta property="og:image:type" content="image/png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Mbaymi">
+  <meta name="twitter:description" content="Mbaymi, l'application de gestion agricole et d'élevage.">
+  <meta name="twitter:image" content="aa.png">
 
   <!-- Prevent mobile browsers from zooming when focusing inputs -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -43,51 +55,34 @@
     body {
       -webkit-overflow-scrolling: touch;
       margin: 0;
-      overflow: auto;
+      overflow: hidden;
     }
   </style>
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="mbaymi">
-  <link rel="apple-touch-icon" href="assets/assets/images/a.jpg">
+  <meta name="apple-mobile-web-app-title" content="Mbaymi">
+  <link rel="apple-touch-icon" href="aa.png">
 
-  <!-- Favicon (using project asset a.jpg) -->
-  <link rel="icon" type="image/jpeg" href="assets/assets/images/a.jpg"/>
+  <link rel="icon" type="image/png" href="aa.png"/>
 
-  <title>mbaymi</title>
+  <title>Mbaymi</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
   <script>
-    // Shim: when visualViewport shrinks (keyboard opens), try to bring the active element into view
+    // Notify Flutter about visual viewport changes without moving the document.
+    // Flutter handles keyboard insets and scrolling; moving the DOM here can
+    // leave a large blank area in embedded browsers while the keyboard is open.
     (function() {
       const vv = window.visualViewport;
       if (!vv) return;
       vv.addEventListener('resize', () => {
-        const active = document.activeElement;
-        // Post a message so Flutter web can react (visual viewport changed)
         try {
           window.postMessage({ type: 'visualViewport', height: vv.height, offsetTop: vv.offsetTop }, '*');
         } catch (e) {}
-        if (!active) return;
-        // small delay so layout has settled
-        setTimeout(() => {
-          try {
-            active.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          } catch (e) {}
-          // fallback: compute rect and adjust page scroll if needed
-          try {
-            const r = active.getBoundingClientRect();
-            const viewHeight = vv.height || window.innerHeight;
-            if (r.top < 0 || r.bottom > viewHeight) {
-              const delta = r.top - (viewHeight / 2) + (r.height / 2);
-              window.scrollTo({ top: window.pageYOffset + delta, behavior: 'smooth' });
-            }
-          } catch (e) {}
-        }, 60);
       });
     })();
       // Robust canvas/root sizing for high-DPR / large resolutions (fix white canvas area)
@@ -148,7 +143,6 @@
         }
 
         window.addEventListener('resize', fixFlutterSizing);
-        if (window.visualViewport) window.visualViewport.addEventListener('resize', fixFlutterSizing);
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleFixes(); });
         document.addEventListener('DOMContentLoaded', scheduleFixes);
         // also run once now in case script loads after content
