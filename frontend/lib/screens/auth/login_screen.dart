@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mbaymi/src/visual_viewport_listener_stub.dart'
-  if (dart.library.html) 'package:mbaymi/src/visual_viewport_listener_web.dart';
+    if (dart.library.html) 'package:mbaymi/src/visual_viewport_listener_web.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final isEmail = identifier.contains('@');
-      
+
       late Map<String, dynamic> result;
       if (isEmail) {
         result = await ApiService.login(email: identifier, password: password);
@@ -93,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final userRole = result['role'] ?? 'farmer';
-      
+
       await AuthService.login(
         userId: int.parse(result['id'].toString()),
         email: result['email'] ?? identifier,
@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (!mounted) return;
-      
+
       if (userRole == 'admin') {
         Navigator.of(context).pushReplacementNamed('/admin-dashboard');
       } else {
@@ -133,8 +133,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF000000) : const Color(0xFFFFFBF5);
-    final textColor = isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A1A);
-    final subtleColor = isDark ? const Color(0xFF6B6B6B) : const Color(0xFF757575);
+    final textColor =
+        isDark ? const Color(0xFFF5F5F5) : const Color(0xFF1A1A1A);
+    final subtleColor =
+        isDark ? const Color(0xFF6B6B6B) : const Color(0xFF757575);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -170,15 +172,15 @@ class _LoginScreenState extends State<LoginScreen> {
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                  maxWidth: 480,
-                ),
-                child: Align(
-                  alignment: Alignment.center,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                    maxWidth: 480,
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 24),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -194,9 +196,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        
+
                         const SizedBox(height: 24),
-                        
+
                         // Slogan
                         Center(
                           child: Column(
@@ -226,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                        
+
                         const SizedBox(height: 36),
 
                         // Mode toggle
@@ -236,11 +238,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             GestureDetector(
                               onTap: () => setState(() => _isPhoneMode = false),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: !_isPhoneMode ? Colors.green : Colors.transparent,
+                                      color: !_isPhoneMode
+                                          ? Colors.green
+                                          : Colors.transparent,
                                       width: 2,
                                     ),
                                   ),
@@ -249,9 +254,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   'EMAIL',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    fontWeight: !_isPhoneMode ? FontWeight.w600 : FontWeight.w400,
+                                    fontWeight: !_isPhoneMode
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
                                     letterSpacing: 1.5,
-                                    color: !_isPhoneMode ? Colors.green : subtleColor,
+                                    color: !_isPhoneMode
+                                        ? Colors.green
+                                        : subtleColor,
                                   ),
                                 ),
                               ),
@@ -260,11 +269,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             GestureDetector(
                               onTap: () => setState(() => _isPhoneMode = true),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: _isPhoneMode ? Colors.green : Colors.transparent,
+                                      color: _isPhoneMode
+                                          ? Colors.green
+                                          : Colors.transparent,
                                       width: 2,
                                     ),
                                   ),
@@ -273,30 +285,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                   'TÉLÉPHONE',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    fontWeight: _isPhoneMode ? FontWeight.w600 : FontWeight.w400,
+                                    fontWeight: _isPhoneMode
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
                                     letterSpacing: 1.5,
-                                    color: _isPhoneMode ? Colors.green : subtleColor,
+                                    color: _isPhoneMode
+                                        ? Colors.green
+                                        : subtleColor,
                                   ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        
+
                         const SizedBox(height: 28),
 
                         // Input Champ Identifiant
                         _buildTextField(
                           controller: _identifierController,
                           focusNode: _identifierFocus,
-                          label: _isPhoneMode ? 'NUMÉRO DE TÉLÉPHONE' : 'ADRESSE EMAIL',
+                          label: _isPhoneMode
+                              ? 'NUMÉRO DE TÉLÉPHONE'
+                              : 'ADRESSE EMAIL',
                           isDark: isDark,
                           textColor: textColor,
                           subtleColor: subtleColor,
-                          keyboardType: _isPhoneMode ? TextInputType.phone : TextInputType.emailAddress,
+                          keyboardType: _isPhoneMode
+                              ? TextInputType.phone
+                              : TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
-                          hint: _isPhoneMode ? 'Ex: +221 XX XX XX XX' : 'Ex: vous@exemple.com',
-                          onSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
+                          hint: _isPhoneMode
+                              ? 'Ex: +221 XX XX XX XX'
+                              : 'Ex: vous@exemple.com',
+                          onSubmitted: (_) => FocusScope.of(context)
+                              .requestFocus(_passwordFocus),
                         ),
 
                         const SizedBox(height: 24),
@@ -318,7 +341,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         _buildLoginButton(isDark, textColor),
 
                         const SizedBox(height: 24),
-                        
+
                         // Message de sécurité
                         Container(
                           padding: const EdgeInsets.all(12),
@@ -361,11 +384,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             Expanded(
                               child: Container(
                                 height: 0.5,
-                                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                                color: isDark
+                                    ? const Color(0xFF2A2A2A)
+                                    : const Color(0xFFE0E0E0),
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
                                 'OU',
                                 style: TextStyle(
@@ -378,7 +404,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             Expanded(
                               child: Container(
                                 height: 0.5,
-                                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                                color: isDark
+                                    ? const Color(0xFF2A2A2A)
+                                    : const Color(0xFFE0E0E0),
                               ),
                             ),
                           ],
@@ -389,7 +417,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Lien Register
                         Center(
                           child: GestureDetector(
-                            onTap: () => Navigator.of(context).pushNamed('/register'),
+                            onTap: () =>
+                                Navigator.of(context).pushNamed('/register'),
                             child: RichText(
                               text: TextSpan(
                                 style: TextStyle(
@@ -471,13 +500,15 @@ class _LoginScreenState extends State<LoginScreen> {
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
             enabledBorder: UnderlineInputBorder(
               borderSide: BorderSide(
-                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                color:
+                    isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
                 width: 1,
               ),
             ),
             focusedBorder: UnderlineInputBorder(
               borderSide: BorderSide(
-                color: isDark ? const Color(0xFF757575) : const Color(0xFF1A1A1A),
+                color:
+                    isDark ? const Color(0xFF757575) : const Color(0xFF1A1A1A),
                 width: 1.5,
               ),
             ),
@@ -527,23 +558,28 @@ class _LoginScreenState extends State<LoginScreen> {
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
             enabledBorder: UnderlineInputBorder(
               borderSide: BorderSide(
-                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+                color:
+                    isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
                 width: 1,
               ),
             ),
             focusedBorder: UnderlineInputBorder(
               borderSide: BorderSide(
-                color: isDark ? const Color(0xFF757575) : const Color(0xFF1A1A1A),
+                color:
+                    isDark ? const Color(0xFF757575) : const Color(0xFF1A1A1A),
                 width: 1.5,
               ),
             ),
             suffixIcon: IconButton(
               icon: Icon(
-                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                _obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
                 size: 20,
                 color: subtleColor,
               ),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
             ),
           ),
         ),
@@ -559,7 +595,8 @@ class _LoginScreenState extends State<LoginScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: isDark ? Colors.white : const Color(0xFF1A1A1A),
           foregroundColor: isDark ? Colors.black : Colors.white,
-          disabledBackgroundColor: isDark ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
+          disabledBackgroundColor:
+              isDark ? const Color(0xFF404040) : const Color(0xFFE0E0E0),
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),

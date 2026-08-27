@@ -50,7 +50,7 @@ class _MarketTabState extends State<MarketTab> {
     'Fatick'
   ];
   
-  // ✅ STATIC PERSISTENT CACHE - survives widget rebuilds and navigation
+  // ✅ STATIC PERSISTENT CACHE
   static final Map<String, Future<List<dynamic>>> _globalSalesCache = {};
   static final Map<String, Future<List<MarketPrice>>> _globalPricesCache = {};
   
@@ -67,18 +67,11 @@ class _MarketTabState extends State<MarketTab> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
-  void initState() {
-    super.initState();
-    // Data is loaded via getters - no need for explicit _loadData()
-  }
-
-  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
   
-  /// Get all sales with persistent caching
   Future<List<dynamic>> _getSalesCached() {
     const cacheKey = 'sales_all';
     if (!_globalSalesCache.containsKey(cacheKey)) {
@@ -87,7 +80,6 @@ class _MarketTabState extends State<MarketTab> {
     return _globalSalesCache[cacheKey]!;
   }
   
-  /// Get my sales with persistent caching
   Future<List<dynamic>> _getMyCliSalesCached() {
     if (_userId <= 0) return Future.value([]);
     final cacheKey = 'sales_user_$_userId';
@@ -97,7 +89,6 @@ class _MarketTabState extends State<MarketTab> {
     return _globalSalesCache[cacheKey]!;
   }
   
-  /// Get market prices with persistent caching
   Future<List<MarketPrice>> _getMarketPricesCached() {
     const cacheKey = 'prices_market';
     if (!_globalPricesCache.containsKey(cacheKey)) {
@@ -108,7 +99,6 @@ class _MarketTabState extends State<MarketTab> {
 
   Future<void> _refreshData() async {
     HapticFeedback.mediumImpact();
-    // Clear all caches for refresh
     _globalSalesCache.remove('sales_all');
     _globalSalesCache.remove('sales_user_$_userId');
     _globalPricesCache.remove('prices_market');
@@ -117,7 +107,6 @@ class _MarketTabState extends State<MarketTab> {
     if (mounted) {
       setState(() {});
     }
-    // Reload all data
     await Future.wait([
       _getSalesCached(),
       _getMarketPricesCached(),
@@ -131,186 +120,144 @@ class _MarketTabState extends State<MarketTab> {
     final bgColor = AppColors.getBgColor(isDark);
     final textColor = AppColors.getTextColor(isDark);
     final secondaryTextColor = AppColors.getSecondaryTextColor(isDark);
-    
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: textColor, size: 24),
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            _scaffoldKey.currentState?.openDrawer();
-          },
-        ),
-        title: Text(
-          'MARCHÉ',
-          style: TextStyle(
-            color: textColor,
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
-            letterSpacing: 2.5,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          Consumer<CartProvider>(
-            builder: (context, cartProvider, _) {
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.shopping_basket_outlined, 
-                      color: textColor, size: 24),
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= 768;
+
+        return Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: bgColor,
+          appBar: AppBar(
+            backgroundColor: bgColor,
+            elevation: 0,
+            leading: isDesktop
+                ? null
+                : IconButton(
+                    icon: Icon(Icons.menu, color: textColor, size: 24),
                     onPressed: () {
                       HapticFeedback.lightImpact();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CartScreen(),
-                        ),
-                      );
+                      _scaffoldKey.currentState?.openDrawer();
                     },
                   ),
-                  if (cartProvider.itemCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        child: Text(
-                          '${cartProvider.itemCount}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
+            title: Text(
+              'MARCHÉ',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 2.5,
+              ),
+            ),
+            centerTitle: !isDesktop,
+            actions: [
+              Consumer<CartProvider>(
+                builder: (context, cartProvider, _) {
+                  return Stack(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.shopping_basket_outlined, color: textColor, size: 24),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const CartScreen()),
+                          );
+                        },
                       ),
-                    ),
-                ],
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.add, color: textColor, size: 24),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CreateSaleScreen()),
-              ).then((r) => r == true ? _refreshData() : null);
-            },
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 0.5,
-            color: AppColors.getBorderColor(isDark),
-          ),
-        ),
-      ),
-      drawer: _buildDrawer(isDark, textColor, secondaryTextColor),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        color: AppColors.primary,
-        backgroundColor: AppColors.getCardBgColor(isDark),
-        child: CustomScrollView(
-          slivers: [
-            _buildSearchBar(isDark, textColor, secondaryTextColor),
-            
-            if (_userId > 0) ...[
-              _buildMyAdsHeader(isDark, textColor, secondaryTextColor),
-              if (_showMyAds) _buildMyAdsGrid(isDark),
+                      if (cartProvider.itemCount > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            child: Text(
+                              '${cartProvider.itemCount}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.add, color: textColor, size: 24),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CreateSaleScreen()),
+                  ).then((r) => r == true ? _refreshData() : null);
+                },
+              ),
             ],
-            
-            _buildRecentOffersHeader(isDark, textColor, secondaryTextColor),
-            _buildOffersGrid(isDark),
-            
-            // Bottom padding
-            const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
-          ],
-        ),
-      ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1),
+              child: Container(
+                height: 0.5,
+                color: AppColors.getBorderColor(isDark),
+              ),
+            ),
+          ),
+          drawer: isDesktop ? null : _buildDrawer(isDark, textColor, secondaryTextColor),
+          body: isDesktop
+              ? _buildDesktopLayout(isDark, textColor, secondaryTextColor)
+              : _buildMobileLayout(isDark, textColor, secondaryTextColor),
+        );
+      },
     );
   }
-  
-  Widget _buildDrawer(bool isDark, Color textColor, Color secondaryTextColor) {
-    final bgColor = AppColors.getBgColor(isDark);
+
+  // ── CONTENU DU MENU (UTILISÉ POUR LE DRAWER MOBILE ET LA SIDEBAR DESKTOP) ──
+
+  Widget _buildFilterContent(bool isDark, Color textColor, Color secondaryTextColor, {bool isDrawer = false}) {
     final borderColor = AppColors.getBorderColor(isDark);
-    
-    return Drawer(
-      backgroundColor: bgColor,
-      width: 280,
-      child: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary,
-                            AppColors.primary.withOpacity(0.7),
-                          ],
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.shopping_bag_outlined,
-                        color: Colors.white,
-                        size: 24,
-                      ),
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary,
+                        AppColors.primary.withOpacity(0.7),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'FILTRES',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 2,
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: const Icon(
+                    Icons.shopping_bag_outlined,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
-              ),
-              
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Divider(
-                  color: borderColor,
-                  thickness: 0.5,
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Section CATÉGORIES
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text(
-                  'CATÉGORIES',
+                const SizedBox(height: 16),
+                Text(
+                  'FILTRES',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -318,11 +265,34 @@ class _MarketTabState extends State<MarketTab> {
                     color: secondaryTextColor,
                   ),
                 ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Divider(color: borderColor, thickness: 0.5),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Section CATÉGORIES
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: Text(
+              'CATÉGORIES',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 2,
+                color: secondaryTextColor,
               ),
-              
-              const SizedBox(height: 8),
-              
-              ..._categories.map((cat) => _buildDrawerCategoryItem(
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          ..._categories.map((cat) => _buildDrawerCategoryItem(
                 cat,
                 _selectedCategory == cat,
                 isDark,
@@ -330,112 +300,188 @@ class _MarketTabState extends State<MarketTab> {
                 () {
                   HapticFeedback.lightImpact();
                   setState(() => _selectedCategory = cat);
-                  Navigator.pop(context);
+                  if (isDrawer) Navigator.pop(context);
                 },
               )),
-              
-              const SizedBox(height: 16),
-              
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Divider(
-                  color: borderColor,
-                  thickness: 0.5,
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Section PRIX DU MARCHÉ
-              InkWell(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  setState(() => _showPrices = !_showPrices);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'PRIX DU MARCHÉ',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 2,
-                          color: secondaryTextColor,
-                        ),
-                      ),
-                      Icon(
-                        _showPrices ? Icons.expand_less : Icons.expand_more,
-                        color: textColor,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              if (_showPrices) ...[
-                const SizedBox(height: 8),
-                _buildDrawerMarketPrices(isDark, textColor, secondaryTextColor),
-              ],
-              
-              const SizedBox(height: 24),
-              
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Divider(
-                  color: borderColor,
-                  thickness: 0.5,
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Section FILTRES AVANCÉS
-              InkWell(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  setState(() => _showAdvancedFilters = !_showAdvancedFilters);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'FILTRES AVANCÉS',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 2,
-                          color: secondaryTextColor,
-                        ),
-                      ),
-                      Icon(
-                        _showAdvancedFilters ? Icons.expand_less : Icons.expand_more,
-                        color: textColor,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              if (_showAdvancedFilters) ...[
-                const SizedBox(height: 12),
-                _buildAdvancedFiltersSection(isDark, textColor, secondaryTextColor),
-              ],
-              
-              const SizedBox(height: 24),
-            ],
+
+          const SizedBox(height: 16),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Divider(color: borderColor, thickness: 0.5),
           ),
-        ),
+
+          const SizedBox(height: 16),
+
+          // Section PRIX DU MARCHÉ
+          InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() => _showPrices = !_showPrices);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'PRIX DU MARCHÉ',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 2,
+                      color: secondaryTextColor,
+                    ),
+                  ),
+                  Icon(
+                    _showPrices ? Icons.expand_less : Icons.expand_more,
+                    color: textColor,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (_showPrices) ...[
+            const SizedBox(height: 8),
+            _buildDrawerMarketPrices(isDark, textColor, secondaryTextColor),
+          ],
+
+          const SizedBox(height: 24),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Divider(color: borderColor, thickness: 0.5),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Section FILTRES AVANCÉS
+          InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() => _showAdvancedFilters = !_showAdvancedFilters);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'FILTRES AVANCÉS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 2,
+                      color: secondaryTextColor,
+                    ),
+                  ),
+                  Icon(
+                    _showAdvancedFilters ? Icons.expand_less : Icons.expand_more,
+                    color: textColor,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (_showAdvancedFilters) ...[
+            const SizedBox(height: 12),
+            _buildAdvancedFiltersSection(isDark, textColor, secondaryTextColor),
+          ],
+
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
-  
+
+  Widget _buildDrawer(bool isDark, Color textColor, Color secondaryTextColor) {
+    final bgColor = AppColors.getBgColor(isDark);
+    return Drawer(
+      backgroundColor: bgColor,
+      width: 280,
+      child: SafeArea(
+        child: _buildFilterContent(isDark, textColor, secondaryTextColor, isDrawer: true),
+      ),
+    );
+  }
+
+  // ── DESKTOP & MOBILE LAYOUTS ───────────────────────────────────────────────
+
+  Widget _buildDesktopLayout(bool isDark, Color textColor, Color secondaryTextColor) {
+    final borderColor = AppColors.getBorderColor(isDark);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Sidebar fixe à gauche
+        SizedBox(
+          width: 280,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(right: BorderSide(color: borderColor, width: 0.5)),
+            ),
+            child: SafeArea(
+              child: _buildFilterContent(isDark, textColor, secondaryTextColor, isDrawer: false),
+            ),
+          ),
+        ),
+
+        // Zone principale du marché à droite
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _refreshData,
+            color: AppColors.primary,
+            backgroundColor: AppColors.getCardBgColor(isDark),
+            child: CustomScrollView(
+              slivers: [
+                _buildSearchBar(isDark, textColor, secondaryTextColor),
+
+                if (_userId > 0) ...[
+                  _buildMyAdsHeader(isDark, textColor, secondaryTextColor),
+                  if (_showMyAds) _buildMyAdsGrid(isDark, crossAxisCount: 3),
+                ],
+
+                _buildRecentOffersHeader(isDark, textColor, secondaryTextColor),
+                _buildOffersGrid(isDark, crossAxisCount: 3),
+
+                const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(bool isDark, Color textColor, Color secondaryTextColor) {
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      color: AppColors.primary,
+      backgroundColor: AppColors.getCardBgColor(isDark),
+      child: CustomScrollView(
+        slivers: [
+          _buildSearchBar(isDark, textColor, secondaryTextColor),
+
+          if (_userId > 0) ...[
+            _buildMyAdsHeader(isDark, textColor, secondaryTextColor),
+            if (_showMyAds) _buildMyAdsGrid(isDark, crossAxisCount: 2),
+          ],
+
+          _buildRecentOffersHeader(isDark, textColor, secondaryTextColor),
+          _buildOffersGrid(isDark, crossAxisCount: 2),
+
+          const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
+        ],
+      ),
+    );
+  }
+
+  // ── WIDGET COMPONENTS ──────────────────────────────────────────────────────
+
   Widget _buildDrawerCategoryItem(
     String category,
     bool isSelected,
@@ -675,7 +721,7 @@ class _MarketTabState extends State<MarketTab> {
     );
   }
 
-  SliverPadding _buildMyAdsGrid(bool isDark) {
+  SliverPadding _buildMyAdsGrid(bool isDark, {int crossAxisCount = 2}) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       sliver: FutureBuilder<List<dynamic>>(
@@ -686,7 +732,7 @@ class _MarketTabState extends State<MarketTab> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: SkeletonGridLoader(
-                  crossAxisCount: 2,
+                  crossAxisCount: crossAxisCount,
                   itemCount: 4,
                   isDarkMode: isDark,
                 ),
@@ -708,8 +754,8 @@ class _MarketTabState extends State<MarketTab> {
               (ctx, i) => _buildSaleCard(snap.data![i], true, isDark),
               childCount: snap.data!.length,
             ),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
               childAspectRatio: 0.7,
@@ -758,7 +804,7 @@ class _MarketTabState extends State<MarketTab> {
     );
   }
 
-  SliverPadding _buildOffersGrid(bool isDark) {
+  SliverPadding _buildOffersGrid(bool isDark, {int crossAxisCount = 2}) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
       sliver: FutureBuilder<List<dynamic>>(
@@ -769,7 +815,7 @@ class _MarketTabState extends State<MarketTab> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: SkeletonGridLoader(
-                  crossAxisCount: 2,
+                  crossAxisCount: crossAxisCount,
                   itemCount: 4,
                   isDarkMode: isDark,
                 ),
@@ -806,8 +852,8 @@ class _MarketTabState extends State<MarketTab> {
               (ctx, i) => _buildSaleCard(filtered[i], false, isDark),
               childCount: filtered.length,
             ),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
               childAspectRatio: 0.7,

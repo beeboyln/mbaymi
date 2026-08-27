@@ -178,100 +178,151 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final bg = AppColors.getBgColor(isDark);
     final text = AppColors.getTextColor(isDark);
 
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: bg,
-      appBar: AppBar(
-        backgroundColor: bg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: text, size: 22),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-        ),
-        title: Text(
-          'MBAYMI',
-          style: TextStyle(
-            color: text,
-            fontSize: 16,
-            fontWeight: FontWeight.w200,
-            letterSpacing: 3,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= 768;
+
+        return Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: bg,
+          appBar: AppBar(
+            backgroundColor: bg,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            leading: isDesktop
+                ? null
+                : IconButton(
+                    icon: Icon(Icons.menu, color: text, size: 22),
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
+            title: Text(
+              'MBAYMI',
+              style: TextStyle(
+                color: text,
+                fontSize: 16,
+                fontWeight: FontWeight.w200,
+                letterSpacing: 3,
+              ),
+            ),
+            centerTitle: !isDesktop,
+            actions: [
+              IconButton(
+                icon: Icon(Icons.add, size: 22, color: text),
+                tooltip: 'Nouveau post',
+                onPressed: () => _onAddPostPressed(isDark),
+              ),
+            ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(0.5),
+              child: Container(height: 0.5, color: AppColors.getBorderColor(isDark)),
+            ),
           ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add, size: 22, color: text),
-            tooltip: 'Nouveau post',
-            onPressed: () => _onAddPostPressed(isDark),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.getBorderColor(isDark)),
-        ),
-      ),
-      drawer: _buildDrawer(isDark),
-      body: _buildFeedBody(isDark),
+          drawer: isDesktop ? null : _buildDrawer(isDark),
+          body: _buildFeedBody(isDark, isDesktop),
+        );
+      },
     );
   }
 
-  // ── DRAWER ──────────────────────────────────────────────────────────────────
+  // ── NAVIGATION CONTENT (PARTAGÉ DESKTOP / DRAWER MOBILE) ────────────────────
 
-  Widget _buildDrawer(bool isDark) {
-    final bg = AppColors.getBgColor(isDark);
+  Widget _buildNavigationContent(bool isDark, {bool isDrawer = false}) {
     final sub = AppColors.getSecondaryTextColor(isDark);
     final border = AppColors.getBorderColor(isDark);
 
+    return ValueListenableBuilder<String>(
+      valueListenable: _feedFilter,
+      builder: (context, currentFilter, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.primary.withOpacity(0.15),
+                child: const Icon(Icons.agriculture, color: AppColors.primary, size: 20),
+              ),
+            ),
+            _drawerLabel('COMMUNAUTÉ', sub),
+            _drawerItem(
+              Icons.home_outlined,
+              Icons.home,
+              'TOUS',
+              currentFilter == 'all',
+              isDark,
+              () {
+                _feedFilter.value = 'all';
+                if (isDrawer) Navigator.pop(context);
+              },
+            ),
+            _drawerItem(
+              Icons.favorite_outline,
+              Icons.favorite,
+              'ABONNÉS',
+              currentFilter == 'following',
+              isDark,
+              () {
+                _feedFilter.value = 'following';
+                if (isDrawer) Navigator.pop(context);
+              },
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Divider(height: 1, color: border),
+            ),
+            _drawerLabel('DÉCOUVRIR', sub),
+            _drawerItem(
+              Icons.explore_outlined,
+              Icons.explore,
+              'EXPLORER',
+              false,
+              isDark,
+              () {
+                if (isDrawer) Navigator.pop(context);
+              },
+            ),
+            _drawerItem(
+              Icons.local_fire_department_outlined,
+              Icons.local_fire_department,
+              'TENDANCES',
+              false,
+              isDark,
+              () {
+                if (isDrawer) Navigator.pop(context);
+              },
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Text(
+                'MBAYMI v1.0',
+                style: TextStyle(fontSize: 10, letterSpacing: 1, color: sub.withOpacity(0.4)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDrawer(bool isDark) {
+    final bg = AppColors.getBgColor(isDark);
     return Drawer(
       backgroundColor: bg,
       width: 260,
       child: SafeArea(
-        child: ValueListenableBuilder<String>(
-          valueListenable: _feedFilter,
-          builder: (context, currentFilter, _) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                  child: CircleAvatar(
-                    radius: 22,
-                    backgroundColor: AppColors.primary.withOpacity(0.15),
-                    child: const Icon(Icons.agriculture, color: AppColors.primary, size: 22),
-                  ),
-                ),
-                _drawerLabel('NAVIGATION', sub),
-                _drawerItem(Icons.home_outlined, Icons.home, 'TOUS', currentFilter == 'all', isDark, () => _setFilter('all')),
-                _drawerItem(Icons.favorite_outline, Icons.favorite, 'ABONNÉS', currentFilter == 'following', isDark, () => _setFilter('following')),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  child: Divider(height: 1, color: border),
-                ),
-                _drawerLabel('DÉCOUVRIR', sub),
-                _drawerItem(Icons.explore_outlined, Icons.explore, 'EXPLORER', false, isDark, () => Navigator.pop(context)),
-                _drawerItem(Icons.local_fire_department_outlined, Icons.local_fire_department, 'TENDANCES', false, isDark, () => Navigator.pop(context)),
-                const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  child: Text('MBAYMI v1.0', style: TextStyle(fontSize: 10, letterSpacing: 1, color: sub.withOpacity(0.4))),
-                ),
-              ],
-            );
-          },
-        ),
+        child: _buildNavigationContent(isDark, isDrawer: true),
       ),
     );
   }
 
-  void _setFilter(String filter) {
-    Navigator.pop(context);
-    _feedFilter.value = filter;
-  }
-
   Widget _drawerLabel(String label, Color color) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-        child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: 2, color: color)),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 2, color: color),
+        ),
       );
 
   Widget _drawerItem(IconData icon, IconData selIcon, String label, bool selected, bool isDark, VoidCallback onTap) {
@@ -304,9 +355,9 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     );
   }
 
-  // ── FEED LIST ───────────────────────────────────────────────────────────────
+  // ── FEED BODY & RESPONSIVE LAYOUT ──────────────────────────────────────────
 
-  Widget _buildFeedBody(bool isDark) {
+  Widget _buildFeedBody(bool isDark, bool isDesktop) {
     return RefreshIndicator(
       onRefresh: () async => _refreshFeed(),
       color: AppColors.primary,
@@ -319,7 +370,10 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               child: SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(strokeWidth: 1.5, valueColor: AlwaysStoppedAnimation(AppColors.primary)),
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                ),
               ),
             );
           }
@@ -334,17 +388,64 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                   ? allItems.where((i) => i.isSubscription).toList()
                   : allItems;
 
-              if (filteredItems.isEmpty) return _buildEmpty(isDark, filter == 'following');
-
-              return ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: filteredItems.length,
-                itemBuilder: (_, i) => _buildPostCard(filteredItems[i], isDark),
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1280),
+                  child: isDesktop
+                      ? _buildDesktopLayout(filteredItems, isDark, filter)
+                      : _buildMobileLayout(filteredItems, isDark, filter),
+                ),
               );
             },
           );
         },
       ),
+    );
+  }
+
+  // ── MOBILE LAYOUT (100% Vertical) ───────────────────────────────────────────
+
+  Widget _buildMobileLayout(List<FeedItem> items, bool isDark, String filter) {
+    if (items.isEmpty) return _buildEmpty(isDark, filter == 'following');
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: items.length,
+      itemBuilder: (_, i) => _buildPostCard(items[i], isDark),
+    );
+  }
+
+  // ── DESKTOP LAYOUT (Menu Ouvert à Gauche + Flux d'images à Droite) ─────────────
+
+  Widget _buildDesktopLayout(List<FeedItem> items, bool isDark, String filter) {
+    final border = AppColors.getBorderColor(isDark);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Panneau Menu Fixe à Gauche (~240px)
+        SizedBox(
+          width: 240,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(right: BorderSide(color: border, width: 0.5)),
+            ),
+            child: _buildNavigationContent(isDark, isDrawer: false),
+          ),
+        ),
+
+        // Zone d'images / Contenu Principal à Droite (Prend tout l'espace restant)
+        Expanded(
+          child: items.isEmpty
+              ? _buildEmpty(isDark, filter == 'following')
+              : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  itemCount: items.length,
+                  itemBuilder: (_, i) => _buildPostCard(items[i], isDark),
+                ),
+        ),
+      ],
     );
   }
 
@@ -616,9 +717,11 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final timeText = diff.inDays == 0 ? 'AUJOURD\'HUI' : diff.inDays == 1 ? 'HIER' : '${diff.inDays}J';
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: bg,
-        border: Border(bottom: BorderSide(color: border, width: 0.5)),
+        border: Border.all(color: border, width: 0.5),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -682,14 +785,16 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
               _toggleLike(post, postId, like: true);
             },
             child: AspectRatio(
-              aspectRatio: 1,
-              child: imageUrl != null
-                  ? Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _imagePlaceholder(isDark),
-                    )
-                  : _imagePlaceholder(isDark),
+              aspectRatio: 16 / 9,
+              child: ClipRRect(
+                child: imageUrl != null
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _imagePlaceholder(isDark),
+                      )
+                    : _imagePlaceholder(isDark),
+              ),
             ),
           ),
 
@@ -998,7 +1103,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 }
 
-// ── DATA CLASSES & DIALOGS ────────────────────────────────────────────────----
+// ── DATA CLASSES & DIALOGS ────────────────────────────────────────────────────
 
 class _SelectItem {
   final int id;

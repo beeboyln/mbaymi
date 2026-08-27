@@ -56,10 +56,10 @@ class _WavePainter extends CustomPainter {
     path.moveTo(0, size.height);
     path.lineTo(0, baseY + 10 * sin(phase));
     for (double x = 0; x <= size.width; x += 2) {
-      final y = baseY
-          + 12 * sin(x / size.width * 2 * pi + phase)
-          + 6  * sin(x / size.width * 4 * pi - phase * 1.3)
-          + 3  * cos(x / size.width * 6 * pi + phase * 0.7);
+      final y = baseY +
+          12 * sin(x / size.width * 2 * pi + phase) +
+          6 * sin(x / size.width * 4 * pi - phase * 1.3) +
+          3 * cos(x / size.width * 6 * pi + phase * 0.7);
       path.lineTo(x, y);
     }
     path.lineTo(size.width, size.height);
@@ -101,11 +101,13 @@ class _FarmPlaceholderPainter extends CustomPainter {
       ..strokeWidth = 1;
     final path = Path()..moveTo(0, size.height * 0.78);
     for (double x = 0; x <= size.width; x += 3) {
-      path.lineTo(x, size.height * 0.78 - sin(x / size.width * pi) * size.height * 0.12);
+      path.lineTo(x,
+          size.height * 0.78 - sin(x / size.width * pi) * size.height * 0.12);
     }
     canvas.drawPath(path, paint);
     canvas.drawCircle(Offset(size.width * 0.78, size.height * 0.25), 28, paint);
-    canvas.drawLine(Offset(size.width * 0.78, size.height * 0.25), Offset(size.width * 0.78, size.height * 0.68), paint);
+    canvas.drawLine(Offset(size.width * 0.78, size.height * 0.25),
+        Offset(size.width * 0.78, size.height * 0.68), paint);
   }
 
   @override
@@ -113,7 +115,7 @@ class _FarmPlaceholderPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ILLUSTRATION HERO — silhouette agricole minimaliste
+// ILLUSTRATION HERO
 // ─────────────────────────────────────────────────────────────────────────────
 class _AgriIllustrationPainter extends CustomPainter {
   final Color primary;
@@ -132,7 +134,7 @@ class _AgriIllustrationPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    final baseOpacity   = isDark ? 0.20 : 0.14;
+    final baseOpacity = isDark ? 0.20 : 0.14;
     final accentOpacity = isDark ? 0.35 : 0.26;
 
     final fillPrimary = Paint()
@@ -147,13 +149,12 @@ class _AgriIllustrationPainter extends CustomPainter {
       ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
 
-    // Sol
     final groundPath = Path();
     groundPath.moveTo(0, h * 0.72);
     for (double x = 0; x <= w; x += 2) {
-      final y = h * 0.72
-          + 2.2 * sin(x / w * pi * 2 + phase * 0.4)
-          + 1.0 * sin(x / w * pi * 5 - phase * 0.6);
+      final y = h * 0.72 +
+          2.2 * sin(x / w * pi * 2 + phase * 0.4) +
+          1.0 * sin(x / w * pi * 5 - phase * 0.6);
       groundPath.lineTo(x, y);
     }
     groundPath.lineTo(w, h);
@@ -161,7 +162,6 @@ class _AgriIllustrationPainter extends CustomPainter {
     groundPath.close();
     canvas.drawPath(groundPath, fillPrimary);
 
-    // Sillons
     for (int row = 0; row < 3; row++) {
       final yBase = h * (0.76 + row * 0.07);
       final rowPath = Path();
@@ -170,52 +170,60 @@ class _AgriIllustrationPainter extends CustomPainter {
         final y = yBase + 0.8 * sin((x / w * pi * 6) + phase * 0.3 + row * 0.8);
         rowPath.lineTo(x, y);
       }
-      canvas.drawPath(rowPath, Paint()
-        ..color = primary.withOpacity(baseOpacity * 0.45)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.7);
+      canvas.drawPath(
+          rowPath,
+          Paint()
+            ..color = primary.withOpacity(baseOpacity * 0.45)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.7);
     }
 
-    // Tige
     final stemSway = 1.6 * sin(phase * 2 * pi);
     final stemPath = Path();
     stemPath.moveTo(w * 0.5, h * 0.72);
     stemPath.cubicTo(
-      w * 0.5 + stemSway * 0.3, h * 0.55,
-      w * 0.5 + stemSway, h * 0.40,
-      w * 0.5 + stemSway, h * 0.28,
+      w * 0.5 + stemSway * 0.3,
+      h * 0.55,
+      w * 0.5 + stemSway,
+      h * 0.40,
+      w * 0.5 + stemSway,
+      h * 0.28,
     );
     canvas.drawPath(stemPath, strokePrimary..strokeWidth = 1.3);
 
-    // Grande feuille gauche
     final leaf1 = Path();
     final lx = w * 0.5 + stemSway * 0.5;
     final ly = h * 0.46;
     leaf1.moveTo(lx, ly);
-    leaf1.cubicTo(lx - w * 0.14, ly - h * 0.06, lx - w * 0.22, ly + h * 0.04, lx - w * 0.18, ly + h * 0.09);
-    leaf1.cubicTo(lx - w * 0.10, ly + h * 0.06, lx - w * 0.04, ly + h * 0.02, lx, ly);
+    leaf1.cubicTo(lx - w * 0.14, ly - h * 0.06, lx - w * 0.22, ly + h * 0.04,
+        lx - w * 0.18, ly + h * 0.09);
+    leaf1.cubicTo(
+        lx - w * 0.10, ly + h * 0.06, lx - w * 0.04, ly + h * 0.02, lx, ly);
     canvas.drawPath(leaf1, fillAccent);
 
-    // Nervure
     final vein1 = Path();
     vein1.moveTo(lx, ly);
-    vein1.quadraticBezierTo(lx - w * 0.11, ly + h * 0.03, lx - w * 0.18, ly + h * 0.09);
-    canvas.drawPath(vein1, Paint()
-      ..color = accent.withOpacity(accentOpacity * 0.45)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.55
-      ..strokeCap = StrokeCap.round);
+    vein1.quadraticBezierTo(
+        lx - w * 0.11, ly + h * 0.03, lx - w * 0.18, ly + h * 0.09);
+    canvas.drawPath(
+        vein1,
+        Paint()
+          ..color = accent.withOpacity(accentOpacity * 0.45)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.55
+          ..strokeCap = StrokeCap.round);
 
-    // Petite feuille droite
     final leaf2 = Path();
     final rx = w * 0.5 + stemSway * 0.8;
     final ry = h * 0.36;
     leaf2.moveTo(rx, ry);
-    leaf2.cubicTo(rx + w * 0.10, ry - h * 0.05, rx + w * 0.16, ry + h * 0.03, rx + w * 0.13, ry + h * 0.08);
-    leaf2.cubicTo(rx + w * 0.06, ry + h * 0.05, rx + w * 0.02, ry + h * 0.01, rx, ry);
-    canvas.drawPath(leaf2, fillAccent..color = accent.withOpacity(accentOpacity * 0.70));
+    leaf2.cubicTo(rx + w * 0.10, ry - h * 0.05, rx + w * 0.16, ry + h * 0.03,
+        rx + w * 0.13, ry + h * 0.08);
+    leaf2.cubicTo(
+        rx + w * 0.06, ry + h * 0.05, rx + w * 0.02, ry + h * 0.01, rx, ry);
+    canvas.drawPath(
+        leaf2, fillAccent..color = accent.withOpacity(accentOpacity * 0.70));
 
-    // Épi
     final grainX = w * 0.5 + stemSway;
     final grainY = h * 0.28;
     for (int g = 0; g < 5; g++) {
@@ -224,8 +232,18 @@ class _AgriIllustrationPainter extends CustomPainter {
       final grainPaint = Paint()
         ..color = primary.withOpacity(baseOpacity + g * 0.016)
         ..style = PaintingStyle.fill;
-      canvas.drawOval(Rect.fromCenter(center: Offset(grainX - gw * 0.6, gy), width: gw * 0.85, height: h * 0.020), grainPaint);
-      canvas.drawOval(Rect.fromCenter(center: Offset(grainX + gw * 0.6, gy), width: gw * 0.85, height: h * 0.020), grainPaint);
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset(grainX - gw * 0.6, gy),
+              width: gw * 0.85,
+              height: h * 0.020),
+          grainPaint);
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset(grainX + gw * 0.6, gy),
+              width: gw * 0.85,
+              height: h * 0.020),
+          grainPaint);
     }
   }
 
@@ -284,7 +302,8 @@ class _WeatherBadge extends StatelessWidget {
         color: iconColor.withOpacity(isDark ? glowOpacity * 1.5 : glowOpacity),
       ),
       child: Center(
-        child: Icon(_iconData, size: 21, color: iconColor.withOpacity(isDark ? 0.88 : 0.78)),
+        child: Icon(_iconData,
+            size: 21, color: iconColor.withOpacity(isDark ? 0.88 : 0.78)),
       ),
     );
   }
@@ -300,15 +319,24 @@ class _Shimmer extends StatefulWidget {
   @override
   State<_Shimmer> createState() => _ShimmerState();
 }
-class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
+
+class _ShimmerState extends State<_Shimmer>
+    with SingleTickerProviderStateMixin {
   late AnimationController _c;
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1500))
+      ..repeat();
   }
+
   @override
-  void dispose() { _c.dispose(); super.dispose(); }
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -323,8 +351,16 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
             begin: Alignment(-2 + 4 * _c.value, 0),
             end: Alignment(-2 + 4 * _c.value + 2, 0),
             colors: isDark
-                ? [const Color(0xFF1C1410), const Color(0xFF2A1F16), const Color(0xFF1C1410)]
-                : [const Color(0xFFEDE8DE), const Color(0xFFF5F1E8), const Color(0xFFEDE8DE)],
+                ? [
+                    const Color(0xFF1C1410),
+                    const Color(0xFF2A1F16),
+                    const Color(0xFF1C1410)
+                  ]
+                : [
+                    const Color(0xFFEDE8DE),
+                    const Color(0xFFF5F1E8),
+                    const Color(0xFFEDE8DE)
+                  ],
             stops: const [0.0, 0.5, 1.0],
           ),
         ),
@@ -334,7 +370,7 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PILL TAG minimal
+// PILL TAG
 // ─────────────────────────────────────────────────────────────────────────────
 class _Tag extends StatelessWidget {
   final String text;
@@ -345,21 +381,25 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: EdgeInsets.symmetric(horizontal: icon != null ? 8 : 9, vertical: 4),
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[
-          Icon(icon, size: 8, color: fg),
-          const SizedBox(width: 4),
-        ],
-        Text(text, style: AppTextStyles.label.copyWith(
-          letterSpacing: 1.2, color: fg,
-        ))
-      ],
-    ),
-  );
+        padding:
+            EdgeInsets.symmetric(horizontal: icon != null ? 8 : 9, vertical: 4),
+        decoration:
+            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(0)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 8, color: fg),
+              const SizedBox(width: 4),
+            ],
+            Text(text,
+                style: AppTextStyles.label.copyWith(
+                  letterSpacing: 1.2,
+                  color: fg,
+                ))
+          ],
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -372,23 +412,40 @@ class _NewsCategoryTag extends StatelessWidget {
   static _CategoryStyle _style(String cat) {
     final c = cat.toLowerCase();
     if (c.contains('local') || c.contains('senegal')) {
-      return _CategoryStyle(bg: const Color(0xFF2E7D32).withOpacity(0.13),
-          fg: const Color(0xFF4CAF50), icon: Icons.location_on_rounded, label: 'LOCAL');
+      return _CategoryStyle(
+          bg: const Color(0xFF2E7D32).withOpacity(0.13),
+          fg: const Color(0xFF4CAF50),
+          icon: Icons.location_on_rounded,
+          label: 'LOCAL');
     }
-    if (c.contains('international') || c.contains('world') || c.contains('global')) {
-      return _CategoryStyle(bg: const Color(0xFF1565C0).withOpacity(0.12),
-          fg: const Color(0xFF42A5F5), icon: Icons.public_rounded, label: 'INTL');
+    if (c.contains('international') ||
+        c.contains('world') ||
+        c.contains('global')) {
+      return _CategoryStyle(
+          bg: const Color(0xFF1565C0).withOpacity(0.12),
+          fg: const Color(0xFF42A5F5),
+          icon: Icons.public_rounded,
+          label: 'INTL');
     }
     if (c.contains('national')) {
-      return _CategoryStyle(bg: const Color(0xFFE65100).withOpacity(0.12),
-          fg: const Color(0xFFFF7043), icon: Icons.flag_rounded, label: 'NATIONAL');
+      return _CategoryStyle(
+          bg: const Color(0xFFE65100).withOpacity(0.12),
+          fg: const Color(0xFFFF7043),
+          icon: Icons.flag_rounded,
+          label: 'NATIONAL');
     }
     if (c.contains('marché') || c.contains('market') || c.contains('prix')) {
-      return _CategoryStyle(bg: const Color(0xFF6A1B9A).withOpacity(0.12),
-          fg: const Color(0xFFCE93D8), icon: Icons.trending_up_rounded, label: 'MARCHÉ');
+      return _CategoryStyle(
+          bg: const Color(0xFF6A1B9A).withOpacity(0.12),
+          fg: const Color(0xFFCE93D8),
+          icon: Icons.trending_up_rounded,
+          label: 'MARCHÉ');
     }
-    return _CategoryStyle(bg: const Color(0xFF558B2F).withOpacity(0.12),
-        fg: const Color(0xFF8BC34A), icon: Icons.eco_rounded, label: 'AGRI');
+    return _CategoryStyle(
+        bg: const Color(0xFF558B2F).withOpacity(0.12),
+        fg: const Color(0xFF8BC34A),
+        icon: Icons.eco_rounded,
+        label: 'AGRI');
   }
 
   @override
@@ -396,15 +453,19 @@ class _NewsCategoryTag extends StatelessWidget {
     final s = _style(category);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-      decoration: BoxDecoration(color: s.bg, borderRadius: BorderRadius.circular(3)),
+      decoration:
+          BoxDecoration(color: s.bg, borderRadius: BorderRadius.circular(0)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(s.icon, size: 7.5, color: s.fg),
           const SizedBox(width: 3),
-          Text(s.label, style: AppTextStyles.label.copyWith(
-            fontWeight: FontWeight.w700, letterSpacing: 1.0, color: s.fg,
-          ))
+          Text(s.label,
+              style: AppTextStyles.label.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+                color: s.fg,
+              ))
         ],
       ),
     );
@@ -415,22 +476,28 @@ class _CategoryStyle {
   final Color bg, fg;
   final IconData icon;
   final String label;
-  const _CategoryStyle({required this.bg, required this.fg, required this.icon, required this.label});
+  const _CategoryStyle(
+      {required this.bg,
+      required this.fg,
+      required this.icon,
+      required this.label});
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
-// ✨ TAGLINE WIDGET — révélation au clic
+// TAGLINE WIDGET
 // ─────────────────────────────────────────────────────────────────────────────
 class _AgriTagline extends StatefulWidget {
   final Color primary;
   final Color accent;
   final bool isDark;
-  const _AgriTagline({required this.primary, required this.accent, required this.isDark});
+  const _AgriTagline(
+      {required this.primary, required this.accent, required this.isDark});
   @override
   State<_AgriTagline> createState() => _AgriTaglineState();
 }
-class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixin {
+
+class _AgriTaglineState extends State<_AgriTagline>
+    with TickerProviderStateMixin {
   late AnimationController _entryCtrl;
   late Animation<double> _entryFade;
   late Animation<Offset> _entrySlide;
@@ -445,17 +512,21 @@ class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
-    _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _entryCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 700));
+    _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _entrySlide = Tween<Offset>(begin: const Offset(0, 0.10), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
+        .animate(
+            CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
 
-    _revealCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
-    _revealFade  = CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOut);
+    _revealCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 520));
+    _revealFade = CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOut);
     _revealSlide = Tween<Offset>(begin: const Offset(0, 0.18), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOutCubic));
-    _revealScale = Tween<double>(begin: 0.94, end: 1.0)
-        .animate(CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOutCubic));
+        .animate(
+            CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOutCubic));
+    _revealScale = Tween<double>(begin: 0.94, end: 1.0).animate(
+        CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOutCubic));
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) _entryCtrl.forward();
@@ -478,8 +549,8 @@ class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixi
   @override
   Widget build(BuildContext context) {
     final primary = widget.primary;
-    final accent  = widget.accent;
-    final isDark  = widget.isDark;
+    final accent = widget.accent;
+    final isDark = widget.isDark;
 
     return FadeTransition(
       opacity: _entryFade,
@@ -489,9 +560,9 @@ class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixi
           onTap: _revealed ? null : _onTap,
           child: Container(
             width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF0D1A0A) : const Color(0xFFF0F7EC),
+              borderRadius: BorderRadius.circular(0),
             ),
             child: AnimatedSize(
               duration: const Duration(milliseconds: 460),
@@ -520,17 +591,22 @@ class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixi
                   color: accent.withOpacity(0.10),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.chat_bubble_outline_rounded, color: accent, size: 16),
+                child: Icon(Icons.chat_bubble_outline_rounded,
+                    color: accent, size: 16),
               ),
               Positioned(
-                top: -1, right: -1,
+                top: -1,
+                right: -1,
                 child: Container(
-                  width: 8, height: 8,
+                  width: 8,
+                  height: 8,
                   decoration: BoxDecoration(
                     color: accent,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isDark ? const Color(0xFF0D1A0A) : const Color(0xFFF0F7EC),
+                      color: isDark
+                          ? const Color(0xFF0D1A0A)
+                          : const Color(0xFFF0F7EC),
                       width: 1.5,
                     ),
                   ),
@@ -543,23 +619,28 @@ class _AgriTaglineState extends State<_AgriTagline> with TickerProviderStateMixi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Un message pour vous', style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  color: isDark ? Colors.white.withOpacity(0.75) : Colors.black.withOpacity(0.60),
-                  letterSpacing: 0.1,
-                )),
+                Text('Un message pour vous',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: isDark
+                          ? Colors.white.withOpacity(0.75)
+                          : Colors.black.withOpacity(0.60),
+                      letterSpacing: 0.1,
+                    )),
                 const SizedBox(height: 2),
-                Text('Appuyez pour découvrir', style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w300,
-                  color: accent.withOpacity(0.70),
-                  letterSpacing: 0.3,
-                )),
+                Text('Appuyez pour découvrir',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w300,
+                      color: accent.withOpacity(0.70),
+                      letterSpacing: 0.3,
+                    )),
               ],
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: primary.withOpacity(0.30), size: 16),
+          Icon(Icons.chevron_right_rounded,
+              color: primary.withOpacity(0.30), size: 16),
         ],
       ),
     );
@@ -633,7 +714,11 @@ class DashboardTab extends StatefulWidget {
   final bool isDarkMode;
   final int? userId;
   final VoidCallback? onNavigateToFarmTab;
-  const DashboardTab({super.key, this.isDarkMode = false, this.userId, this.onNavigateToFarmTab});
+  const DashboardTab(
+      {super.key,
+      this.isDarkMode = false,
+      this.userId,
+      this.onNavigateToFarmTab});
   @override
   State<DashboardTab> createState() => _DashboardTabState();
 }
@@ -642,11 +727,11 @@ class _DashboardTabState extends State<DashboardTab>
     with TickerProviderStateMixin {
   String _selectedFilter = 'Local';
   late Future<Map<String, dynamic>> _weatherFuture;
-  late Future<List<NewsArticle>>    _newsFuture;
+  late Future<List<NewsArticle>> _newsFuture;
   late Future<List<dynamic>> _farmsFuture;
 
   static final _gcWeather = <String, Future<Map<String, dynamic>>>{};
-  static final _gcNews    = <String, Future<List<NewsArticle>>>{};
+  static final _gcNews = <String, Future<List<NewsArticle>>>{};
 
   AnimationController? _waveCtrl;
   AnimationController? _entryCtrl;
@@ -658,12 +743,12 @@ class _DashboardTabState extends State<DashboardTab>
   int _farmImageIndex = 0;
   bool _farmBannerVisible = true;
 
-  bool _filterOpen      = false;
-  bool _initialized     = false;
-  int  _filterDirection = 1;
+  bool _filterOpen = false;
+  bool _initialized = false;
+  int _filterDirection = 1;
 
   List<Animation<double>>? _fade;
-  List<Animation<Offset>>?  _slide;
+  List<Animation<Offset>>? _slide;
 
   int _tipIdx = 0;
   final _tips = [
@@ -682,33 +767,51 @@ class _DashboardTabState extends State<DashboardTab>
   void initState() {
     super.initState();
 
-    _waveCtrl  = AnimationController(vsync: this, duration: const Duration(seconds: 9))..repeat(reverse: true);
-    _grainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 120))..repeat();
-    _weatherIconCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
-    _filterSlideCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 340));
+    _waveCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 9))
+          ..repeat(reverse: true);
+    _grainCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 120))
+      ..repeat();
+    _weatherIconCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 4))
+          ..repeat();
+    _filterSlideCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 340));
     _farmRevealCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     );
 
-    final ec = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+    final ec = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1600));
     _entryCtrl = ec;
 
-    _fade = List.generate(7, (i) => Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: ec, curve: Interval(i * 0.08, min(i * 0.08 + 0.45, 1.0), curve: Curves.easeOut)),
-    ));
-    _slide = List.generate(7, (i) =>
-      Tween<Offset>(begin: const Offset(0, 0.14), end: Offset.zero).animate(
-        CurvedAnimation(parent: ec, curve: Interval(i * 0.08, min(i * 0.08 + 0.45, 1.0), curve: Curves.easeOutCubic)),
-      ));
+    _fade = List.generate(
+        7,
+        (i) => Tween<double>(begin: 0, end: 1).animate(
+              CurvedAnimation(
+                  parent: ec,
+                  curve: Interval(i * 0.08, min(i * 0.08 + 0.45, 1.0),
+                      curve: Curves.easeOut)),
+            ));
+    _slide = List.generate(
+        7,
+        (i) => Tween<Offset>(begin: const Offset(0, 0.14), end: Offset.zero)
+                .animate(
+              CurvedAnimation(
+                  parent: ec,
+                  curve: Interval(i * 0.08, min(i * 0.08 + 0.45, 1.0),
+                      curve: Curves.easeOutCubic)),
+            ));
 
     _weatherFuture = _getOrCreateWeather();
-    _newsFuture    = _getOrCreateNews();
+    _newsFuture = _getOrCreateNews();
     _farmsFuture = widget.userId == null
-      ? Future.value(<dynamic>[])
-      : ApiService.getUserFarms();
-    _tipIdx        = _rng.nextInt(_tips.length);
-    _initialized   = true;
+        ? Future.value(<dynamic>[])
+        : ApiService.getUserFarms();
+    _tipIdx = _rng.nextInt(_tips.length);
+    _initialized = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _entryCtrl?.forward();
@@ -744,7 +847,8 @@ class _DashboardTabState extends State<DashboardTab>
 
   void _startFarmImageTimer() {
     if (!_farmBannerVisible || _farmImageTimer != null) return;
-    _farmImageTimer = Timer.periodic(const Duration(seconds: 5), (_) => _advanceFarmImage());
+    _farmImageTimer =
+        Timer.periodic(const Duration(seconds: 5), (_) => _advanceFarmImage());
   }
 
   void _advanceFarmImage() {
@@ -753,10 +857,11 @@ class _DashboardTabState extends State<DashboardTab>
   }
 
   Widget _s(int i, Widget child) {
-    final f = _fade; final s = _slide;
+    final f = _fade;
+    final s = _slide;
     if (f == null || s == null) return child;
-    return FadeTransition(opacity: f[i],
-      child: SlideTransition(position: s[i], child: child));
+    return FadeTransition(
+        opacity: f[i], child: SlideTransition(position: s[i], child: child));
   }
 
   Future<Map<String, dynamic>> _getOrCreateWeather() =>
@@ -766,30 +871,60 @@ class _DashboardTabState extends State<DashboardTab>
       _gcNews['n_$_selectedFilter'] ??= ApiService.getAgriculturalNews();
 
   Future<void> _refresh() async {
-    _gcWeather.clear(); _gcNews.clear();
+    _gcWeather.clear();
+    _gcNews.clear();
     _entryCtrl?.forward(from: 0);
     setState(() {
       _weatherFuture = _getOrCreateWeather();
-      _newsFuture    = _getOrCreateNews();
-      _filterOpen    = false;
+      _newsFuture = _getOrCreateNews();
+      _filterOpen = false;
     });
     await Future.delayed(const Duration(milliseconds: 600));
   }
 
   List<NewsArticle> _filter(List<NewsArticle> a) => a.where((art) {
-    final cat = (art.category ?? '').toLowerCase();
-    final src = (art.source   ?? '').toLowerCase();
-    switch (_selectedFilter) {
-      case 'Local':         return cat.contains('local') || cat.contains('senegal') || src.contains('local') || src.contains('senegal');
-      case 'International': return cat.contains('international') || cat.contains('world') || cat.contains('global');
-      default:              return true;
-    }
-  }).toList();
+        final cat = (art.category ?? '').toLowerCase();
+        final src = (art.source ?? '').toLowerCase();
+        switch (_selectedFilter) {
+          case 'Local':
+            return cat.contains('local') ||
+                cat.contains('senegal') ||
+                src.contains('local') ||
+                src.contains('senegal');
+          case 'International':
+            return cat.contains('international') ||
+                cat.contains('world') ||
+                cat.contains('global');
+          default:
+            return true;
+        }
+      }).toList();
 
   String _date() {
     final n = DateTime.now();
-    const days   = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-    const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+    const days = [
+      'Lundi',
+      'Mardi',
+      'Mercredi',
+      'Jeudi',
+      'Vendredi',
+      'Samedi',
+      'Dimanche'
+    ];
+    const months = [
+      'janvier',
+      'février',
+      'mars',
+      'avril',
+      'mai',
+      'juin',
+      'juillet',
+      'août',
+      'septembre',
+      'octobre',
+      'novembre',
+      'décembre'
+    ];
     return '${days[n.weekday - 1]} ${n.day} ${months[n.month - 1]} ${n.year}';
   }
 
@@ -807,10 +942,10 @@ class _DashboardTabState extends State<DashboardTab>
     HapticFeedback.selectionClick();
     setState(() {
       _selectedFilter = newFilter;
-      _filterOpen     = false;
-      _newsKey        = newFilter;
+      _filterOpen = false;
+      _newsKey = newFilter;
       _gcNews.clear();
-      _newsFuture     = _getOrCreateNews();
+      _newsFuture = _getOrCreateNews();
     });
   }
 
@@ -820,16 +955,17 @@ class _DashboardTabState extends State<DashboardTab>
   @override
   Widget build(BuildContext context) {
     if (!_initialized) return const SizedBox.shrink();
-    final tp     = Provider.of<ThemeProvider>(context);
+    final tp = Provider.of<ThemeProvider>(context);
     final isDark = tp.isDarkMode;
 
-    final bg      = isDark ? AppColors.darkBg      : AppColors.lightBg;
-    final surface = isDark ? AppColors.darkCardBg   : const Color(0xFFFAF8F4);
-    final border  = isDark ? AppColors.borderDark   : AppColors.borderLight;
+    final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
+    final surface = isDark ? AppColors.darkCardBg : const Color(0xFFFAF8F4);
+    final border = isDark ? AppColors.borderDark : AppColors.borderLight;
     const primary = AppColors.primary;
-    const accent  = AppColors.accent;
-    final textPri = isDark ? AppColors.textDark     : AppColors.textLight;
-    final textSec = isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+    const accent = AppColors.accent;
+    final textPri = isDark ? AppColors.textDark : AppColors.textLight;
+    final textSec =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
 
     return Scaffold(
       backgroundColor: bg,
@@ -843,59 +979,146 @@ class _DashboardTabState extends State<DashboardTab>
             _setFarmBannerVisible(notification.metrics.pixels < 500);
             return false;
           },
-          child: CustomScrollView(
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          slivers: [
-            // Hero
-            SliverToBoxAdapter(
-              child: _s(0, _hero(isDark, bg, primary, accent, textPri, textSec)),
-            ),
-
-            // ✨ Tagline agricole
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
-              sliver: SliverToBoxAdapter(
-                child: _s(1, _AgriTagline(primary: primary, accent: accent, isDark: isDark)),
-              ),
-            ),
-
-            // Weather
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-              sliver: SliverToBoxAdapter(
-                child: _s(2, _weatherCard(isDark, surface, border, primary, accent, textPri, textSec)),
-              ),
-            ),
-
-            // Farm banner
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              sliver: SliverToBoxAdapter(
-                child: _s(3, _farmBanner(isDark, primary, accent)),
-              ),
-            ),
-
-            // Tip card
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              sliver: SliverToBoxAdapter(
-                child: _s(4, _tipCard(isDark, surface, border, primary, accent, textPri, textSec)),
-              ),
-            ),
-
-            // News
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 32, 16, 14),
-              sliver: SliverToBoxAdapter(
-                child: _s(5, _newsSection(isDark, surface, border, primary, accent, textPri, textSec)),
-              ),
-            ),
-
-            const SliverPadding(padding: EdgeInsets.only(bottom: 90)),
-          ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 900;
+              return isDesktop
+                  ? _buildDesktopLayout(isDark, bg, surface, border, primary,
+                      accent, textPri, textSec)
+                  : _buildMobileLayout(isDark, bg, surface, border, primary,
+                      accent, textPri, textSec);
+            },
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDesktopLayout(
+    bool isDark,
+    Color bg,
+    Color surface,
+    Color border,
+    Color primary,
+    Color accent,
+    Color textPri,
+    Color textSec,
+  ) {
+    return SingleChildScrollView(
+      physics:
+          const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 90),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Colonne Gauche (60%)
+              Expanded(
+                flex: 6,
+                child: Column(
+                  children: [
+                    _s(0, _hero(isDark, bg, primary, accent, textPri, textSec)),
+                    const SizedBox(height: 20),
+                    _s(
+                        2,
+                        _weatherCard(isDark, surface, border, primary, accent,
+                            textPri, textSec)),
+                    const SizedBox(height: 20),
+                    _s(3, _farmBanner(isDark, primary, accent)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              // Colonne Droite (40%)
+              Expanded(
+                flex: 4,
+                child: Column(
+                  children: [
+                    _s(
+                        1,
+                        _AgriTagline(
+                            primary: primary, accent: accent, isDark: isDark)),
+                    const SizedBox(height: 20),
+                    _s(
+                        4,
+                        _tipCard(isDark, surface, border, primary, accent,
+                            textPri, textSec)),
+                    const SizedBox(height: 24),
+                    _s(
+                        5,
+                        _newsSection(isDark, surface, border, primary, accent,
+                            textPri, textSec)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(
+    bool isDark,
+    Color bg,
+    Color surface,
+    Color border,
+    Color primary,
+    Color accent,
+    Color textPri,
+    Color textSec,
+  ) {
+    return CustomScrollView(
+      physics:
+          const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        SliverToBoxAdapter(
+          child: _s(0, _hero(isDark, bg, primary, accent, textPri, textSec)),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+          sliver: SliverToBoxAdapter(
+            child: _s(1,
+                _AgriTagline(primary: primary, accent: accent, isDark: isDark)),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+          sliver: SliverToBoxAdapter(
+            child: _s(
+                2,
+                _weatherCard(isDark, surface, border, primary, accent, textPri,
+                    textSec)),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          sliver: SliverToBoxAdapter(
+            child: _s(3, _farmBanner(isDark, primary, accent)),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          sliver: SliverToBoxAdapter(
+            child: _s(
+                4,
+                _tipCard(isDark, surface, border, primary, accent, textPri,
+                    textSec)),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 32, 16, 14),
+          sliver: SliverToBoxAdapter(
+            child: _s(
+                5,
+                _newsSection(isDark, surface, border, primary, accent, textPri,
+                    textSec)),
+          ),
+        ),
+        const SliverPadding(padding: EdgeInsets.only(bottom: 90)),
+      ],
     );
   }
 
@@ -909,10 +1132,10 @@ class _DashboardTabState extends State<DashboardTab>
       child: Stack(
         clipBehavior: Clip.hardEdge,
         children: [
-          // Fond
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(0),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -923,31 +1146,30 @@ class _DashboardTabState extends State<DashboardTab>
               ),
             ),
           ),
-
-          // Grain subtil
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _grainCtrl ?? const AlwaysStoppedAnimation(0),
               builder: (_, __) => CustomPaint(
-                painter: _GrainPainter(seed: _grainCtrl?.value ?? 0, color: primary),
+                painter:
+                    _GrainPainter(seed: _grainCtrl?.value ?? 0, color: primary),
               ),
             ),
           ),
-
-          // Rings
           Positioned(
-            top: -30, right: -60,
+            top: -30,
+            right: -60,
             child: SizedBox(
-              width: 260, height: 260,
+              width: 260,
+              height: 260,
               child: CustomPaint(painter: _RingsPainter(color: primary)),
             ),
           ),
-
-          // Glow
           Positioned(
-            top: -80, right: -80,
+            top: -80,
+            right: -80,
             child: Container(
-              width: 220, height: 220,
+              width: 220,
+              height: 220,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(colors: [
@@ -957,10 +1179,10 @@ class _DashboardTabState extends State<DashboardTab>
               ),
             ),
           ),
-
-          // Illustration
           Positioned(
-            right: 12, bottom: 16, top: 16,
+            right: 12,
+            bottom: 16,
+            top: 16,
             child: SizedBox(
               width: 124,
               child: AnimatedBuilder(
@@ -976,10 +1198,10 @@ class _DashboardTabState extends State<DashboardTab>
               ),
             ),
           ),
-
-          // Vague 1
           Positioned(
-            bottom: 0, left: 0, right: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
             child: AnimatedBuilder(
               animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
               builder: (_, __) => SizedBox(
@@ -995,10 +1217,10 @@ class _DashboardTabState extends State<DashboardTab>
               ),
             ),
           ),
-
-          // Vague 2
           Positioned(
-            bottom: 0, left: 0, right: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
             child: AnimatedBuilder(
               animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
               builder: (_, __) => SizedBox(
@@ -1014,32 +1236,37 @@ class _DashboardTabState extends State<DashboardTab>
               ),
             ),
           ),
-
-          // Contenu texte
           Padding(
-            padding: EdgeInsets.fromLTRB(22, MediaQuery.of(context).padding.top + 12, 22, 32),
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text(_date(), style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w300,
-                      color: primary.withOpacity(0.60), letterSpacing: 0.2,
-                    )),
+                    Text(_date(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w300,
+                          color: primary.withOpacity(0.60),
+                          letterSpacing: 0.2,
+                        )),
                     const Spacer(),
                     _Tag('SAISON SÈCHE',
-                      bg: primary.withOpacity(0.10),
-                      fg: primary.withOpacity(0.80),
-                      icon: Icons.wb_sunny_outlined),
+                        bg: primary.withOpacity(0.10),
+                        fg: primary.withOpacity(0.80),
+                        icon: Icons.wb_sunny_outlined),
                   ],
                 ),
                 const Spacer(),
-                Text('Bonjour,', style: AppTextStyles.body.copyWith(
-                  fontSize: 17, color: accent.withOpacity(0.90), letterSpacing: 0.2,
-                )),
+                Text('Bonjour,',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 17,
+                      color: accent.withOpacity(0.90),
+                      letterSpacing: 0.2,
+                    )),
                 const SizedBox(height: 4),
-                if (AuthService.isAuthenticated && AuthService.currentSession?.name != null) ...[
+                if (AuthService.isAuthenticated &&
+                    AuthService.currentSession?.name != null) ...[
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
@@ -1054,14 +1281,20 @@ class _DashboardTabState extends State<DashboardTab>
                         ),
                       ),
                       const SizedBox(width: 7),
-                      if (AuthService.currentSession!.name.split(' ').length > 1)
+                      if (AuthService.currentSession!.name.split(' ').length >
+                          1)
                         Flexible(
                           child: Text(
-                            AuthService.currentSession!.name.split(' ').skip(1).join(' '),
+                            AuthService.currentSession!.name
+                                .split(' ')
+                                .skip(1)
+                                .join(' '),
                             style: TextStyle(
                               fontSize: 25,
                               fontWeight: FontWeight.w600,
-                              color: isDark ? const Color(0xFFF0E8D8) : AppColors.textLight,
+                              color: isDark
+                                  ? const Color(0xFFF0E8D8)
+                                  : AppColors.textLight,
                               letterSpacing: -0.5,
                               height: 1.1,
                             ),
@@ -1071,11 +1304,15 @@ class _DashboardTabState extends State<DashboardTab>
                     ],
                   ),
                 ] else ...[
-                  Text('Bienvenu', style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.w600,
-                    color: isDark ? const Color(0xFFF0E8D8) : AppColors.textLight,
-                    letterSpacing: -1.0,
-                  )),
+                  Text('Bienvenu',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? const Color(0xFFF0E8D8)
+                            : AppColors.textLight,
+                        letterSpacing: -1.0,
+                      )),
                 ],
               ],
             ),
@@ -1086,26 +1323,27 @@ class _DashboardTabState extends State<DashboardTab>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // WEATHER CARD — épuré, sans bordure, ombre douce
+  // WEATHER CARD
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _weatherCard(bool isDark, Color surface, Color border, Color primary,
       Color accent, Color textPri, Color textSec) {
     return FutureBuilder<Map<String, dynamic>>(
       future: _weatherFuture,
       builder: (_, snap) {
-        final loading   = snap.connectionState == ConnectionState.waiting;
-        final w         = snap.data ?? {};
-        final maxT      = (w['max_temp'] as num?)?.toDouble()     ?? 29;
-        final minT      = (w['min_temp'] as num?)?.toDouble()     ?? 21;
-        final code      = (w['daily_weather_code'] as int?)       ?? 1;
-        final advice    = WeatherService.getWeatherAdvice(code, maxT);
-        final windSpeed = (w['wind_speed'] as num?)?.toDouble()
-            ?? (w['wind_speed_10m_max'] as num?)?.toDouble()     ?? 14.0;
+        final loading = snap.connectionState == ConnectionState.waiting;
+        final w = snap.data ?? {};
+        final maxT = (w['max_temp'] as num?)?.toDouble() ?? 29;
+        final minT = (w['min_temp'] as num?)?.toDouble() ?? 21;
+        final code = (w['daily_weather_code'] as int?) ?? 1;
+        final advice = WeatherService.getWeatherAdvice(code, maxT);
+        final windSpeed = (w['wind_speed'] as num?)?.toDouble() ??
+            (w['wind_speed_10m_max'] as num?)?.toDouble() ??
+            14.0;
 
         return Container(
           decoration: BoxDecoration(
             color: surface,
-            // ✨ Pas de Border, juste une ombre propre
+            borderRadius: BorderRadius.circular(0),
             boxShadow: [
               BoxShadow(
                 color: isDark
@@ -1120,7 +1358,6 @@ class _DashboardTabState extends State<DashboardTab>
           clipBehavior: Clip.hardEdge,
           child: Column(
             children: [
-              // Bande top — dégradé discret
               Container(
                 height: 2,
                 decoration: BoxDecoration(
@@ -1136,23 +1373,26 @@ class _DashboardTabState extends State<DashboardTab>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Gauche — temp
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('MÉTÉO', style: TextStyle(
-                          fontSize: 10, fontWeight: FontWeight.w500,
-                          letterSpacing: 3.0, color: textSec.withOpacity(0.5),
-                        )),
+                        Text('MÉTÉO',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 3.0,
+                              color: textSec.withOpacity(0.5),
+                            )),
                         const SizedBox(height: 12),
                         if (loading)
-                          const _Shimmer(width: 100, height: 76, radius: 6)
+                          const _Shimmer(width: 100, height: 76, radius: 0)
                         else
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               AnimatedBuilder(
-                                animation: _weatherIconCtrl ?? const AlwaysStoppedAnimation(0),
+                                animation: _weatherIconCtrl ??
+                                    const AlwaysStoppedAnimation(0),
                                 builder: (_, __) => _WeatherBadge(
                                   weatherCode: code,
                                   phase: _weatherIconCtrl?.value ?? 0,
@@ -1166,31 +1406,42 @@ class _DashboardTabState extends State<DashboardTab>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text('${maxT.round()}', style: TextStyle(
-                                        fontSize: 54, fontWeight: FontWeight.w800,
-                                        color: textPri, height: 0.88, letterSpacing: -3.5,
-                                      )),
+                                      Text('${maxT.round()}',
+                                          style: TextStyle(
+                                            fontSize: 54,
+                                            fontWeight: FontWeight.w800,
+                                            color: textPri,
+                                            height: 0.88,
+                                            letterSpacing: -3.5,
+                                          )),
                                       Padding(
                                         padding: const EdgeInsets.only(top: 6),
-                                        child: Text('°C', style: TextStyle(
-                                          fontSize: 15, fontWeight: FontWeight.w200, color: accent,
-                                        )),
+                                        child: Text('°C',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w200,
+                                              color: accent,
+                                            )),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 6),
-                                  // Min / max pill
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
                                       color: primary.withOpacity(0.06),
-                                      borderRadius: BorderRadius.circular(4),
+                                      borderRadius: BorderRadius.circular(0),
                                     ),
                                     child: Text(
                                       '↓${minT.round()}°  ↑${maxT.round()}°',
-                                      style: TextStyle(fontSize: 11, color: textSec, fontWeight: FontWeight.w400),
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: textSec,
+                                          fontWeight: FontWeight.w400),
                                     ),
                                   ),
                                 ],
@@ -1199,24 +1450,23 @@ class _DashboardTabState extends State<DashboardTab>
                           ),
                       ],
                     ),
-
                     const SizedBox(width: 20),
-
-                    // Séparateur fin
                     Container(
                       width: 1,
                       height: 80,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, textSec.withOpacity(0.12), Colors.transparent],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            textSec.withOpacity(0.12),
+                            Colors.transparent
+                          ],
                         ),
                       ),
                     ),
-
                     const SizedBox(width: 20),
-
-                    // Droite — conseil
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1226,55 +1476,74 @@ class _DashboardTabState extends State<DashboardTab>
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
                                 color: accent.withOpacity(0.10),
-                                borderRadius: BorderRadius.circular(7),
+                                borderRadius: BorderRadius.circular(0),
                               ),
-                              child: Icon(Icons.eco_rounded, color: accent, size: 12),
+                              child: Icon(Icons.eco_rounded,
+                                  color: accent, size: 12),
                             ),
                             const SizedBox(width: 7),
-                            Text('CONSEIL', style: TextStyle(
-                              fontSize: 10, fontWeight: FontWeight.w500,
-                              letterSpacing: 2.5, color: textSec.withOpacity(0.5),
-                            )),
+                            Text('CONSEIL',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 2.5,
+                                  color: textSec.withOpacity(0.5),
+                                )),
                           ]),
                           const SizedBox(height: 10),
                           if (loading)
                             const Column(children: [
-                              _Shimmer(width: double.infinity, height: 10, radius: 3),
+                              _Shimmer(
+                                  width: double.infinity,
+                                  height: 10,
+                                  radius: 0),
                               SizedBox(height: 5),
-                              _Shimmer(width: 90, height: 10, radius: 3),
+                              _Shimmer(width: 90, height: 10, radius: 0),
                             ])
                           else
-                            Text(advice, style: AppTextStyles.body.copyWith(
-                              color: textPri, height: 1.55,
-                            ), maxLines: 3, overflow: TextOverflow.ellipsis),
-
+                            Text(advice,
+                                style: AppTextStyles.body.copyWith(
+                                  color: textPri,
+                                  height: 1.55,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis),
                           const SizedBox(height: 14),
-
-                          // Vent — sans bordure, fond léger
                           if (!loading)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF78909C).withOpacity(isDark ? 0.12 : 0.08),
-                                borderRadius: BorderRadius.circular(6),
+                                color: const Color(0xFF78909C)
+                                    .withOpacity(isDark ? 0.12 : 0.08),
+                                borderRadius: BorderRadius.circular(0),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(Icons.air_rounded,
-                                      size: 10, color: const Color(0xFF78909C).withOpacity(0.80)),
+                                      size: 10,
+                                      color: const Color(0xFF78909C)
+                                          .withOpacity(0.80)),
                                   const SizedBox(width: 5),
-                                  Text('${windSpeed.round()} km/h', style: TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.w500,
-                                    color: isDark ? Colors.white.withOpacity(0.75) : Colors.black.withOpacity(0.60),
-                                    height: 1.0,
-                                  )),
+                                  Text('${windSpeed.round()} km/h',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: isDark
+                                            ? Colors.white.withOpacity(0.75)
+                                            : Colors.black.withOpacity(0.60),
+                                        height: 1.0,
+                                      )),
                                   const SizedBox(width: 3),
-                                  Text('vent', style: TextStyle(
-                                    fontSize: 10, fontWeight: FontWeight.w300,
-                                    color: const Color(0xFF78909C).withOpacity(0.70),
-                                    letterSpacing: 0.4,
-                                  )),
+                                  Text('vent',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w300,
+                                        color: const Color(0xFF78909C)
+                                            .withOpacity(0.70),
+                                        letterSpacing: 0.4,
+                                      )),
                                 ],
                               ),
                             ),
@@ -1292,7 +1561,7 @@ class _DashboardTabState extends State<DashboardTab>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // FARM BANNER — élégant, sans bordure
+  // FARM BANNER
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _farmBanner(bool isDark, Color primary, Color accent) {
     return GestureDetector(
@@ -1304,7 +1573,7 @@ class _DashboardTabState extends State<DashboardTab>
           final isLoading = snapshot.connectionState == ConnectionState.waiting;
           final farm = farms.isEmpty
               ? null
-            : farms[_farmImageIndex % farms.length] as Map;
+              : farms[_farmImageIndex % farms.length] as Map;
           final image = _farmImageUrl(farm);
           final farmName = farm?['name']?.toString().trim();
           final hasFarm = !isLoading && farm != null;
@@ -1314,235 +1583,255 @@ class _DashboardTabState extends State<DashboardTab>
             height: 180,
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF160C04) : const Color(0xFF3E1C08),
+              borderRadius: BorderRadius.circular(0),
               boxShadow: [
                 BoxShadow(
                   color: primary.withOpacity(0.24),
-                  blurRadius: 28, offset: const Offset(0, 12), spreadRadius: -6,
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
+                  spreadRadius: -6,
                 ),
               ],
             ),
             clipBehavior: Clip.hardEdge,
             child: Stack(children: [
-          if (hasImage)
-            Positioned.fill(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 900),
-                layoutBuilder: (currentChild, previousChildren) => Stack(
-                  fit: StackFit.expand,
-                  children: <Widget>[
-                    ...previousChildren,
-                    if (currentChild != null) currentChild,
-                  ],
-                ),
-                child: GestureDetector(
-                  onTap: farms.length > 1 ? _advanceFarmImage : _navigateToFarmsTab,
-                  child: CachedNetworkImage(
-                  imageUrl: image,
-                  key: ValueKey(image),
-                  fit: BoxFit.cover,
-                  fadeInDuration: const Duration(milliseconds: 500),
-                  placeholder: (_, __) => _farmPlaceholder(),
-                  errorWidget: (_, __, ___) => _farmPlaceholder(),
+              if (hasImage)
+                Positioned.fill(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 900),
+                    layoutBuilder: (currentChild, previousChildren) => Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        ...previousChildren,
+                        if (currentChild != null) currentChild,
+                      ],
+                    ),
+                    child: GestureDetector(
+                      onTap: farms.length > 1
+                          ? _advanceFarmImage
+                          : _navigateToFarmsTab,
+                      child: CachedNetworkImage(
+                        imageUrl: image,
+                        key: ValueKey(image),
+                        fit: BoxFit.cover,
+                        fadeInDuration: const Duration(milliseconds: 500),
+                        placeholder: (_, __) => _farmPlaceholder(),
+                        errorWidget: (_, __, ___) => _farmPlaceholder(),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          if (!hasImage)
-            Positioned.fill(child: _farmPlaceholder()),
-          if (hasImage)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
+              if (!hasImage) Positioned.fill(child: _farmPlaceholder()),
+              if (hasImage)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            Colors.black.withOpacity(0.62),
+                            Colors.black.withOpacity(0.28),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.42, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              AnimatedBuilder(
+                animation: _farmRevealCtrl ?? const AlwaysStoppedAnimation(0),
+                builder: (_, child) {
+                  final progress = Curves.easeInOutCubic.transform(
+                    _farmRevealCtrl?.value ?? 0,
+                  );
+                  return Positioned.fill(
+                    child: Opacity(
+                      opacity: 1 - progress,
+                      child: Transform.translate(
+                        offset: Offset(
+                            -MediaQuery.of(context).size.width * progress, 0),
+                        child: child,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        Colors.black.withOpacity(0.62),
-                        Colors.black.withOpacity(0.28),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 0.42, 1.0],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isDark
+                          ? [const Color(0xFF251608), const Color(0xFF160C04)]
+                          : [const Color(0xFF7A3514), const Color(0xFF3E1C08)],
                     ),
                   ),
                 ),
               ),
-            ),
-          AnimatedBuilder(
-            animation: _farmRevealCtrl ?? const AlwaysStoppedAnimation(0),
-            builder: (_, child) {
-              final progress = Curves.easeInOutCubic.transform(
-                _farmRevealCtrl?.value ?? 0,
-              );
-              return Positioned.fill(
-                child: Opacity(
-                  opacity: 1 - progress,
-                  child: Transform.translate(
-                    offset: Offset(-MediaQuery.of(context).size.width * progress, 0),
-                    child: child,
-                  ),
-                ),
-              );
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isDark
-                      ? [const Color(0xFF251608), const Color(0xFF160C04)]
-                      : [const Color(0xFF7A3514), const Color(0xFF3E1C08)],
-                ),
-              ),
-            ),
-          ),
-          // Grain
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _grainCtrl ?? const AlwaysStoppedAnimation(0),
-              builder: (_, __) => CustomPaint(
-                painter: _GrainPainter(
-                  seed: (_grainCtrl?.value ?? 0) * 0.3,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-          // Vague
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: AnimatedBuilder(
-              animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
-              builder: (_, __) => SizedBox(
-                height: 80,
-                child: CustomPaint(
-                  painter: _WavePainter(
-                    phase: (_waveCtrl?.value ?? 0) * 2 * pi + 2.5,
-                    color: Colors.white.withOpacity(0.05),
-                    yOffset: 0.38,
-                  ),
-                  size: Size(MediaQuery.of(context).size.width, 80),
-                ),
-              ),
-            ),
-          ),
-          // Rings
-          const Positioned(
-            top: -60, right: -60,
-            child: SizedBox(
-              width: 220, height: 220,
-              child: CustomPaint(painter: _RingsPainter(color: Colors.white)),
-            ),
-          ),
-          // Contenu
-          Padding(
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Tag('GESTION', bg: Colors.white.withOpacity(0.12), fg: Colors.white.withOpacity(0.85)),
-                const Spacer(),
-
-                // ✨ Micro-texte descriptif
-                Text(
-                  hasFarm ? 'VOTRE FERME' : 'VOS TERRES',
-                  style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w400,
-                  letterSpacing: 2.5, color: Colors.white.withOpacity(0.45),
-                )),
-                const SizedBox(height: 4),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 500),
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.12),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
+              Positioned.fill(
+                child: AnimatedBuilder(
+                  animation: _grainCtrl ?? const AlwaysStoppedAnimation(0),
+                  builder: (_, __) => CustomPaint(
+                    painter: _GrainPainter(
+                      seed: (_grainCtrl?.value ?? 0) * 0.3,
+                      color: Colors.white,
                     ),
                   ),
-                  child: isLoading
-                    ? const SizedBox(
-                        key: ValueKey('farm_loading'),
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.8,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        hasFarm
-                        ? (farmName?.isNotEmpty == true ? farmName! : 'Ferme')
-                        : 'Créer ma première ferme',
-                        key: ValueKey(farmName ?? 'empty'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 28, fontWeight: FontWeight.w500,
-                          color: Colors.white, height: 1.0, letterSpacing: -1.0,
-                        ),
-                    ),
                 ),
-
-                const SizedBox(height: 16),
-                Row(children: [
-                  // CTA principal
-                  GestureDetector(
-                    onTap: isLoading ? null : _navigateToFarmsTab,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: AnimatedBuilder(
+                  animation: _waveCtrl ?? const AlwaysStoppedAnimation(0),
+                  builder: (_, __) => SizedBox(
+                    height: 80,
+                    child: CustomPaint(
+                      painter: _WavePainter(
+                        phase: (_waveCtrl?.value ?? 0) * 2 * pi + 2.5,
+                        color: Colors.white.withOpacity(0.05),
+                        yOffset: 0.38,
                       ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        if (isLoading)
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: Colors.white,
-                            ),
-                          )
-                        else ...[
-                          Text(
-                            hasFarm ? 'EXPLORER' : 'CRÉER MA FERME',
-                            style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w500,
-                              color: Colors.white, letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(width: 9),
-                          Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white.withOpacity(0.9)),
-                        ],
-                      ]),
+                      size: Size(MediaQuery.of(context).size.width, 80),
                     ),
                   ),
-                  if (farms.length > 1) ...[
-                    const SizedBox(width: 14),
-                    Row(
-                      children: List.generate(farms.length, (index) => Container(
-                        width: index == (_farmImageIndex % farms.length) ? 18 : 5,
-                        height: 4,
-                        margin: const EdgeInsets.only(right: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(index == (_farmImageIndex % farms.length) ? 0.9 : 0.38),
-                          borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const Positioned(
+                top: -60,
+                right: -60,
+                child: SizedBox(
+                  width: 220,
+                  height: 220,
+                  child:
+                      CustomPaint(painter: _RingsPainter(color: Colors.white)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Tag('GESTION',
+                        bg: Colors.white.withOpacity(0.12),
+                        fg: Colors.white.withOpacity(0.85)),
+                    const Spacer(),
+                    Text(hasFarm ? 'VOTRE FERME' : 'VOS TERRES',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: 2.5,
+                          color: Colors.white.withOpacity(0.45),
+                        )),
+                    const SizedBox(height: 4),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 500),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.12),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
                         ),
-                      )),
+                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              key: ValueKey('farm_loading'),
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.8,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              hasFarm
+                                  ? (farmName?.isNotEmpty == true
+                                      ? farmName!
+                                      : 'Ferme')
+                                  : 'Créer ma première ferme',
+                              key: ValueKey(farmName ?? 'empty'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                                height: 1.0,
+                                letterSpacing: -1.0,
+                              ),
+                            ),
                     ),
+                    const SizedBox(height: 16),
+                    Row(children: [
+                      GestureDetector(
+                        onTap: isLoading ? null : _navigateToFarmsTab,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 17, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(0),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            if (isLoading)
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                            else ...[
+                              Text(
+                                hasFarm ? 'EXPLORER' : 'CRÉER MA FERME',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(width: 9),
+                              Icon(Icons.arrow_forward_rounded,
+                                  size: 13,
+                                  color: Colors.white.withOpacity(0.9)),
+                            ],
+                          ]),
+                        ),
+                      ),
+                      if (farms.length > 1) ...[
+                        const SizedBox(width: 14),
+                        Row(
+                          children: List.generate(
+                              farms.length,
+                              (index) => Container(
+                                    width: index ==
+                                            (_farmImageIndex % farms.length)
+                                        ? 18
+                                        : 5,
+                                    height: 4,
+                                    margin: const EdgeInsets.only(right: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(index ==
+                                              (_farmImageIndex % farms.length)
+                                          ? 0.9
+                                          : 0.38),
+                                      borderRadius: BorderRadius.circular(0),
+                                    ),
+                                  )),
+                        ),
+                      ],
+                    ]),
                   ],
-                  const SizedBox(width: 10),
-                  // Secondaire ghost
-                 
-                ]),
-              ],
-            ),
-          ),
+                ),
+              ),
             ]),
           );
         },
@@ -1552,7 +1841,8 @@ class _DashboardTabState extends State<DashboardTab>
 
   String? _farmImageUrl(dynamic farm) {
     if (farm is! Map) return null;
-    final value = farm['image_url'] ?? farm['imageUrl'] ?? farm['image'] ?? farm['photo'];
+    final value =
+        farm['image_url'] ?? farm['imageUrl'] ?? farm['image'] ?? farm['photo'];
     if (value is Map) return (value['url'] ?? value['image_url'])?.toString();
     return value?.toString();
   }
@@ -1571,7 +1861,7 @@ class _DashboardTabState extends State<DashboardTab>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TIP CARD — sans bordure, respiration maximale
+  // TIP CARD (CONSERVÉ AVEC BORDER RADIUS 12)
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _tipCard(bool isDark, Color surface, Color border, Color primary,
       Color accent, Color textPri, Color textSec) {
@@ -1580,8 +1870,10 @@ class _DashboardTabState extends State<DashboardTab>
       transitionBuilder: (child, anim) => FadeTransition(
         opacity: anim,
         child: SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0.05, 0), end: Offset.zero)
-              .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+          position: Tween<Offset>(
+                  begin: const Offset(0.05, 0), end: Offset.zero)
+              .animate(
+                  CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: child,
         ),
       ),
@@ -1589,24 +1881,34 @@ class _DashboardTabState extends State<DashboardTab>
         key: ValueKey(_tipIdx),
         decoration: BoxDecoration(
           color: surface,
-          // ✨ Ombre sans bordure
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: isDark ? Colors.black.withOpacity(0.22) : primary.withOpacity(0.05),
-              blurRadius: 20, offset: const Offset(0, 6), spreadRadius: -2,
+              color: isDark
+                  ? Colors.black.withOpacity(0.22)
+                  : primary.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+              spreadRadius: -2,
             ),
           ],
         ),
         child: Row(children: [
-          // Bande accent gauche
           Container(
-            width: 3, height: 70,
+            width: 3,
+            height: 70,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [accent.withOpacity(0.25), accent, accent.withOpacity(0.25)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  accent.withOpacity(0.25),
+                  accent,
+                  accent.withOpacity(0.25)
+                ],
               ),
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(18)),
+              borderRadius:
+                  const BorderRadius.horizontal(left: Radius.circular(18)),
             ),
           ),
           Padding(
@@ -1617,16 +1919,20 @@ class _DashboardTabState extends State<DashboardTab>
                 color: accent.withOpacity(0.09),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.tips_and_updates_rounded, color: accent, size: 14),
+              child:
+                  Icon(Icons.tips_and_updates_rounded, color: accent, size: 14),
             ),
           ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 16, 8, 16),
-              child: Text(_tips[_tipIdx], style: TextStyle(
-                fontSize: 15, color: textPri,
-                fontWeight: FontWeight.w400, height: 1.55,
-              )),
+              child: Text(_tips[_tipIdx],
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: textPri,
+                    fontWeight: FontWeight.w400,
+                    height: 1.55,
+                  )),
             ),
           ),
           GestureDetector(
@@ -1660,18 +1966,21 @@ class _DashboardTabState extends State<DashboardTab>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(width: 24, height: 1, color: primary),
             const SizedBox(width: 8),
-            Text('ACTUALITÉS', style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w600,
-              letterSpacing: 2.8, color: textSec.withOpacity(0.5),
-            )),
+            Text('ACTUALITÉS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2.8,
+                  color: textSec.withOpacity(0.5),
+                )),
             const SizedBox(width: 8),
-            Expanded(child: Container(height: 1, color: textSec.withOpacity(0.08))),
+            Expanded(
+                child: Container(height: 1, color: textSec.withOpacity(0.08))),
             const SizedBox(width: 12),
             GestureDetector(
               onTap: () {
@@ -1680,18 +1989,22 @@ class _DashboardTabState extends State<DashboardTab>
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: _filterOpen
                       ? primary.withOpacity(0.08)
                       : primary.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(0),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(_selectedFilter, style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w400,
-                    color: primary, letterSpacing: 1.2,
-                  )),
+                  Text(_selectedFilter,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: primary,
+                        letterSpacing: 1.2,
+                      )),
                   const SizedBox(width: 3),
                   AnimatedRotation(
                     turns: _filterOpen ? 0.5 : 0,
@@ -1705,8 +2018,6 @@ class _DashboardTabState extends State<DashboardTab>
             ),
           ],
         ),
-
-        // Filter chips
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
@@ -1724,21 +2035,30 @@ class _DashboardTabState extends State<DashboardTab>
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
                             margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: sel ? primary : primary.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(7),
-                              boxShadow: sel ? [
-                                BoxShadow(color: primary.withOpacity(0.18),
-                                    blurRadius: 10, offset: const Offset(0, 3)),
-                              ] : null,
+                              borderRadius: BorderRadius.circular(0),
+                              boxShadow: sel
+                                  ? [
+                                      BoxShadow(
+                                          color: primary.withOpacity(0.18),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 3)),
+                                    ]
+                                  : null,
                             ),
-                            child: Text(f, style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: sel ? FontWeight.w500 : FontWeight.w300,
-                              color: sel ? Colors.white : primary.withOpacity(0.60),
-                              letterSpacing: 1.0,
-                            )),
+                            child: Text(f,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight:
+                                      sel ? FontWeight.w500 : FontWeight.w300,
+                                  color: sel
+                                      ? Colors.white
+                                      : primary.withOpacity(0.60),
+                                  letterSpacing: 1.0,
+                                )),
                           ),
                         );
                       }).toList(),
@@ -1747,19 +2067,19 @@ class _DashboardTabState extends State<DashboardTab>
                 )
               : const SizedBox.shrink(),
         ),
-
         const SizedBox(height: 18),
-
-        // News list
         FutureBuilder<List<NewsArticle>>(
           future: _newsFuture,
           builder: (_, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
               return Column(
-                children: List.generate(3, (_) => const Padding(
-                  padding: EdgeInsets.only(bottom: 14),
-                  child: _Shimmer(width: double.infinity, height: 90, radius: 10),
-                )),
+                children: List.generate(
+                    3,
+                    (_) => const Padding(
+                          padding: EdgeInsets.only(bottom: 14),
+                          child: _Shimmer(
+                              width: double.infinity, height: 90, radius: 0),
+                        )),
               );
             }
             final articles = _filter(snap.data ?? []);
@@ -1769,9 +2089,13 @@ class _DashboardTabState extends State<DashboardTab>
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: surface,
+                  borderRadius: BorderRadius.circular(0),
                 ),
                 child: Text('Aucune actualité disponible',
-                    style: TextStyle(color: textSec, fontSize: 12, fontWeight: FontWeight.w300)),
+                    style: TextStyle(
+                        color: textSec,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w300)),
               );
             }
 
@@ -1784,15 +2108,19 @@ class _DashboardTabState extends State<DashboardTab>
                 position: Tween<Offset>(
                   begin: Offset(capturedDir * 0.15, 0.0),
                   end: Offset.zero,
-                ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                ).animate(
+                    CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
                 child: FadeTransition(opacity: anim, child: child),
               ),
               child: Column(
                 key: ValueKey(_newsKey),
-                children: articles.map((article) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _newsCard(article, isDark, surface, border, primary, accent, textPri, textSec),
-                )).toList(),
+                children: articles
+                    .map((article) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _newsCard(article, isDark, surface, border,
+                              primary, accent, textPri, textSec),
+                        ))
+                    .toList(),
               ),
             );
           },
@@ -1802,22 +2130,24 @@ class _DashboardTabState extends State<DashboardTab>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // NEWS CARD — sans bordure, shadow douce, respiration Zara
+  // NEWS CARD
   // ═══════════════════════════════════════════════════════════════════════════
-  Widget _newsCard(NewsArticle article, bool isDark, Color surface, Color border,
-      Color primary, Color accent, Color textPri, Color textSec) {
+  Widget _newsCard(NewsArticle article, bool isDark, Color surface,
+      Color border, Color primary, Color accent, Color textPri, Color textSec) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(0),
         onTap: () {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (_) => NewsDetailScreen(article: article)));
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => NewsDetailScreen(article: article)));
         },
         child: Container(
           decoration: BoxDecoration(
             color: surface,
-            // ✨ Ombre sans bordure — style Zara
+            borderRadius: BorderRadius.circular(0),
             boxShadow: [
               BoxShadow(
                 color: isDark
@@ -1832,69 +2162,74 @@ class _DashboardTabState extends State<DashboardTab>
           child: IntrinsicHeight(
             child: Row(
               children: [
-              // Accent bar gauche — fine et élégante
-              Container(
-                width: 2.5,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [accent.withOpacity(0.8), primary.withOpacity(0.2)],
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(14),
-                    bottomLeft: Radius.circular(14),
-                  ),
-                ),
-              ),
-              // Contenu
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (article.category != null && article.category!.isNotEmpty) ...[
-                        _NewsCategoryTag(article.category!),
-                        const SizedBox(height: 7),
+                Container(
+                  width: 2.5,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        accent.withOpacity(0.8),
+                        primary.withOpacity(0.2)
                       ],
-                      Text(article.title,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: textPri,
-                          height: 1.45,
-                          letterSpacing: 0.05,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 7),
-                      Row(children: [
-                        Expanded(
-                          child: Text(article.source ?? 'Source',
-                            style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.w400,
-                              color: primary.withOpacity(0.65), letterSpacing: 0.1,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(article.timeAgo, style: TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.w400,
-                          color: textSec.withOpacity(0.50),
-                        )),
-                      ]),
-                    ],
+                    ),
+                    borderRadius: BorderRadius.circular(0),
                   ),
                 ),
-              ),
-              // Chevron discret
-              Padding(
-                padding: const EdgeInsets.only(right: 14),
-                child: Icon(Icons.chevron_right_rounded,
-                    color: primary.withOpacity(0.35), size: 16),
-              ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (article.category != null &&
+                            article.category!.isNotEmpty) ...[
+                          _NewsCategoryTag(article.category!),
+                          const SizedBox(height: 7),
+                        ],
+                        Text(
+                          article.title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: textPri,
+                            height: 1.45,
+                            letterSpacing: 0.05,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 7),
+                        Row(children: [
+                          Expanded(
+                            child: Text(
+                              article.source ?? 'Source',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: primary.withOpacity(0.65),
+                                letterSpacing: 0.1,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(article.timeAgo,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: textSec.withOpacity(0.50),
+                              )),
+                        ]),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: Icon(Icons.chevron_right_rounded,
+                      color: primary.withOpacity(0.35), size: 16),
+                ),
               ],
             ),
           ),
