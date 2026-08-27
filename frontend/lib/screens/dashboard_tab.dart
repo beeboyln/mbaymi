@@ -807,9 +807,7 @@ class _DashboardTabState extends State<DashboardTab>
 
     _weatherFuture = _getOrCreateWeather();
     _newsFuture = _getOrCreateNews();
-    _farmsFuture = widget.userId == null
-        ? Future.value(<dynamic>[])
-        : ApiService.getUserFarms();
+    _farmsFuture = _loadFarms();
     _tipIdx = _rng.nextInt(_tips.length);
     _initialized = true;
 
@@ -832,6 +830,28 @@ class _DashboardTabState extends State<DashboardTab>
     _farmRevealCtrl?.dispose();
     _farmImageTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(DashboardTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      _reloadFarms();
+    }
+  }
+
+  Future<List<dynamic>> _loadFarms() {
+    if (widget.userId == null && AuthService.currentSession?.userId == null) {
+      return Future.value(<dynamic>[]);
+    }
+    return ApiService.getUserFarms();
+  }
+
+  void _reloadFarms() {
+    if (!mounted) return;
+    setState(() {
+      _farmsFuture = _loadFarms();
+    });
   }
 
   void _setFarmBannerVisible(bool visible) {
@@ -877,6 +897,7 @@ class _DashboardTabState extends State<DashboardTab>
     setState(() {
       _weatherFuture = _getOrCreateWeather();
       _newsFuture = _getOrCreateNews();
+      _farmsFuture = _loadFarms();
       _filterOpen = false;
     });
     await Future.delayed(const Duration(milliseconds: 600));
@@ -1571,12 +1592,13 @@ class _DashboardTabState extends State<DashboardTab>
         builder: (context, snapshot) {
           final farms = snapshot.data ?? const <dynamic>[];
           final isLoading = snapshot.connectionState == ConnectionState.waiting;
+          final hasError = snapshot.hasError;
           final farm = farms.isEmpty
               ? null
               : farms[_farmImageIndex % farms.length] as Map;
           final image = _farmImageUrl(farm);
           final farmName = farm?['name']?.toString().trim();
-          final hasFarm = !isLoading && farm != null;
+          final hasFarm = !isLoading && !hasError && farm != null;
           final hasImage = image != null && image.isNotEmpty;
 
           return Container(
@@ -1750,12 +1772,15 @@ class _DashboardTabState extends State<DashboardTab>
                               ),
                             )
                           : Text(
-                              hasFarm
-                                  ? (farmName?.isNotEmpty == true
+                                hasError
+                                  ? 'Ferme indisponible'
+                                  : hasFarm
+                                    ? (farmName?.isNotEmpty == true
                                       ? farmName!
                                       : 'Ferme')
-                                  : 'Créer ma première ferme',
-                              key: ValueKey(farmName ?? 'empty'),
+                                    : 'Créer ma première ferme',
+                                key: ValueKey(
+                                  hasError ? 'farm_error' : farmName ?? 'empty'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -1770,7 +1795,9 @@ class _DashboardTabState extends State<DashboardTab>
                     const SizedBox(height: 16),
                     Row(children: [
                       GestureDetector(
-                        onTap: isLoading ? null : _navigateToFarmsTab,
+                        onTap: isLoading || hasError
+                          ? (hasError ? _reloadFarms : null)
+                          : _navigateToFarmsTab,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 17, vertical: 10),
