@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS finance_transactions (
 ALTER TABLE inputs ADD COLUMN IF NOT EXISTS reorder_threshold DOUBLE PRECISION DEFAULT 0;
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS input_id INTEGER;
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS quantity_used DOUBLE PRECISION;
+ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS input_id INTEGER;
+ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS quantity_used DOUBLE PRECISION;
+ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS finance_type VARCHAR(20);
+ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS finance_amount DOUBLE PRECISION;
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS finance_type VARCHAR(20);
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS finance_amount DOUBLE PRECISION;
 
@@ -51,6 +55,8 @@ ADD COLUMN IF NOT EXISTS input_id INTEGER;
 
 ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS activity_id INTEGER;
 CREATE INDEX IF NOT EXISTS ix_finance_transactions_activity_id ON finance_transactions (activity_id);
+ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS problem_id INTEGER;
+CREATE INDEX IF NOT EXISTS ix_finance_transactions_problem_id ON finance_transactions (problem_id);
 CREATE INDEX IF NOT EXISTS ix_finance_transactions_input_id
 ON finance_transactions (input_id);
 

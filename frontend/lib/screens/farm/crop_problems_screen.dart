@@ -717,6 +717,24 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
   String _selectedSeverity = 'medium';
   String _description = '';
   bool _isLoading = false;
+  int? _selectedInputId;
+  String _financeType = 'expense';
+  final _quantityCtrl = TextEditingController();
+  final _financeCtrl = TextEditingController();
+  late Future<List<dynamic>> _inputsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _inputsFuture = ApiService.listInputsForCrop(widget.cropId);
+  }
+
+  @override
+  void dispose() {
+    _quantityCtrl.dispose();
+    _financeCtrl.dispose();
+    super.dispose();
+  }
 
   final List<Map<String, String>> _problems = [
     {'value': 'yellowing', 'label': 'Jaunissement des feuilles'},
@@ -813,6 +831,43 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
                 'Description',
                 _buildDescriptionField(),
               ),
+              const SizedBox(height: 24),
+
+              FutureBuilder<List<dynamic>>(
+                future: _inputsFuture,
+                builder: (context, snapshot) {
+                  final inputs = snapshot.data ?? [];
+                  if (inputs.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFormSection('Médicament utilisé (optionnel)', DropdownButtonFormField<int?>(
+                        value: _selectedInputId,
+                        isExpanded: true,
+                        items: [
+                          const DropdownMenuItem<int?>(value: null, child: Text('Aucun médicament')),
+                          ...inputs.map((item) => DropdownMenuItem<int?>(value: item['id'] as int, child: Text('${item['name'] ?? item['input_type']} (${item['quantity'] ?? 0} ${item['unit'] ?? ''})'))),
+                        ],
+                        onChanged: (value) => setState(() => _selectedInputId = value),
+                      )),
+                      if (_selectedInputId != null) ...[
+                        const SizedBox(height: 12),
+                        TextField(controller: _quantityCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Quantité utilisée')),
+                      ],
+                      const SizedBox(height: 20),
+                    ],
+                  );
+                },
+              ),
+              _buildFormSection('Dépense de traitement (optionnel)', Column(
+                children: [
+                  Row(children: [
+                    Expanded(child: RadioListTile<String>(title: const Text('Dépense'), value: 'expense', groupValue: _financeType, onChanged: (v) => setState(() => _financeType = v!))),
+                    Expanded(child: RadioListTile<String>(title: const Text('Revenu'), value: 'income', groupValue: _financeType, onChanged: (v) => setState(() => _financeType = v!))),
+                  ]),
+                  TextField(controller: _financeCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Montant (FCFA)')),
+                ],
+              )),
               const SizedBox(height: 24),
 
               // Bouton soumettre
@@ -1022,6 +1077,13 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
 
     setState(() => _isLoading = true);
 
+    final quantity = double.tryParse(_quantityCtrl.text.replaceAll(',', '.'));
+    final financeAmount = double.tryParse(_financeCtrl.text.replaceAll(',', '.'));
+    if (_selectedInputId != null && (quantity == null || quantity <= 0)) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
     try {
       await ApiService.reportCropProblem(
         cropId: widget.cropId,
@@ -1030,6 +1092,10 @@ class __ReportProblemFormState extends State<_ReportProblemForm> {
         problemType: _selectedProblem,
         description: _description.trim(),
         severity: _selectedSeverity,
+        inputId: _selectedInputId,
+        quantityUsed: quantity,
+        financeType: financeAmount == null ? null : _financeType,
+        financeAmount: financeAmount,
       );
       widget.onSuccess();
     } catch (e) {

@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from typing import Optional
 from app.database import get_db
 from app.models import CropProblem, Crop, Farm
+from app.models.input import Input
+from app.models.finance import FinanceTransaction
 
 router = APIRouter(prefix="/api/crop-problems", tags=["Crop Problems"])
 
@@ -20,6 +22,10 @@ class CropProblemCreate(BaseModel):
     description: str = ""
     photo_url: Optional[str] = None
     severity: str = "medium"  # low, medium, high
+    input_id: Optional[int] = None
+    quantity_used: Optional[float] = None
+    finance_type: Optional[str] = None
+    finance_amount: Optional[float] = None
 
 class UpdateProblemStatus(BaseModel):
     status: str  # identified, treated, resolved
@@ -53,6 +59,21 @@ def report_crop_problem(
         crop = db.query(Crop).filter(Crop.id == problem.crop_id, Crop.farm_id == problem.farm_id).first()
         if not crop:
             raise HTTPException(status_code=404, detail="Culture non trouvée")
+
+        input_item = None
+        if problem.input_id is not None:
+            input_item = db.query(Input).filter(
+                Input.id == problem.input_id,
+                Input.farm_id == problem.farm_id,
+                (Input.crop_id == problem.crop_id) | Input.crop_id.is_(None),
+            ).first()
+            if not input_item or problem.quantity_used is None or problem.quantity_used <= 0:
+                raise HTTPException(status_code=400, detail="Intrant ou quantité de traitement invalide")
+            if input_item.quantity is None or problem.quantity_used > input_item.quantity:
+                raise HTTPException(status_code=400, detail="Stock de médicament insuffisant")
+            input_item.quantity -= problem.quantity_used
+        if problem.finance_amount is not None and problem.finance_amount > 0 and problem.finance_type not in ('expense', 'income'):
+            raise HTTPException(status_code=400, detail="finance_type must be expense or income")
         
         # Créer le problème
         crop_problem = CropProblem(
@@ -64,10 +85,22 @@ def report_crop_problem(
             photo_url=problem.photo_url,
             severity=problem.severity,
             status="reported",
+            input_id=problem.input_id,
+            quantity_used=problem.quantity_used,
+            finance_type=problem.finance_type,
+            finance_amount=problem.finance_amount,
         )
         db.add(crop_problem)
         db.commit()
         db.refresh(crop_problem)
+        if problem.finance_amount is not None and problem.finance_amount > 0:
+            db.add(FinanceTransaction(
+                farm_id=problem.farm_id, crop_id=problem.crop_id,
+                problem_id=crop_problem.id, transaction_type=problem.finance_type,
+                category=f"Traitement - {problem.problem_type}", amount=problem.finance_amount,
+                notes=problem.description,
+            ))
+            db.commit()
         
         return {
             "id": crop_problem.id,
@@ -78,6 +111,9 @@ def report_crop_problem(
             "created_at": crop_problem.created_at.isoformat(),
             "message": "✅ Problème signalé avec succès"
         }
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
 from app.models.base import Base
 from datetime import datetime
 
@@ -38,3 +38,7 @@ class CropProblem(Base):
     
     # Notes sur le traitement
     treatment_notes = Column(Text)
+    input_id = Column(Integer, ForeignKey("inputs.id", ondelete="SET NULL"), nullable=True)
+    quantity_used = Column(Float, nullable=True)
+    finance_type = Column(String(20), nullable=True)
+    finance_amount = Column(Float, nullable=True)

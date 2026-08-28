@@ -1831,6 +1831,10 @@ class ApiService {
     String description = '',
     String? photoUrl,
     String severity = 'medium',
+    int? inputId,
+    double? quantityUsed,
+    String? financeType,
+    double? financeAmount,
   }) async {
     try {
       return await _withRetry(() async {
@@ -1846,6 +1850,10 @@ class ApiService {
             'description': description,
             'photo_url': photoUrl,
             'severity': severity,
+            'input_id': inputId,
+            'quantity_used': quantityUsed,
+            'finance_type': financeType,
+            'finance_amount': financeAmount,
           }),
         );
 

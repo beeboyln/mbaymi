@@ -57,8 +57,14 @@ def init_db():
             conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS finance_amount DOUBLE PRECISION;"))
             conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS input_id INTEGER;"))
             conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS activity_id INTEGER;"))
+            conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS problem_id INTEGER;"))
+            conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS input_id INTEGER;"))
+            conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS quantity_used DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS finance_type VARCHAR(20);"))
+            conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS finance_amount DOUBLE PRECISION;"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_input_id ON finance_transactions (input_id);"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_activity_id ON finance_transactions (activity_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_problem_id ON finance_transactions (problem_id);"))
             conn.execute(text("ALTER TABLE farm_post_comments ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES farm_post_comments(id) ON DELETE CASCADE;"))
             
             # Update users table: make email and phone nullable for phone-only or email-only registration
