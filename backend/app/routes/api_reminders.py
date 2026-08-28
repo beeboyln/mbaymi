@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.routes.auth import get_current_user_obj
 from app.models.user import User
-from app.models.farm import Farm
+from app.models.farm import Farm, Crop
 from app.schemas.schemas import ReminderCreate, ReminderResponse
 from app.services.reminder_service import ReminderService
 
@@ -29,6 +29,17 @@ def list_reminders(farm_id: int, current_user: User = Depends(get_current_user_o
     if farm.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You don't own this farm")
     return ReminderService.list_reminders_for_farm(db, farm_id)
+
+
+@router.get("/crop/{crop_id}")
+def list_reminders_for_crop(crop_id: int, current_user: User = Depends(get_current_user_obj), db: Session = Depends(get_db)):
+    crop = db.query(Crop).filter(Crop.id == crop_id).first()
+    if not crop:
+        raise HTTPException(status_code=404, detail="Crop not found")
+    farm = db.query(Farm).filter(Farm.id == crop.farm_id).first()
+    if not farm or farm.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You don't own this farm")
+    return ReminderService.list_reminders_for_crop(db, crop_id)
 
 
 @router.get("/{reminder_id}")

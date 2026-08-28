@@ -56,7 +56,7 @@ class _ParcelRemindersScreenState extends State<ParcelRemindersScreen>
   }
 
   void _load() {
-    _listFuture = ApiService.listRemindersForFarm(widget.farmId);
+    _listFuture = ApiService.listRemindersForCrop(widget.farmId, widget.cropId);
   }
 
   String _repeatLabel(String r) {

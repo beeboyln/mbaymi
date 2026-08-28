@@ -328,19 +328,19 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                 GestureDetector(
                   onTap: _toggleMenu,
                   child: Container(
-                    width: 30,
-                    height: 30,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.62),
+                      color: Colors.black.withOpacity(0.78),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.15),
-                        width: 0.5,
+                        color: Colors.white.withOpacity(0.45),
+                        width: 1,
                       ),
                     ),
                     child: const Icon(
                       Icons.menu_outlined,
-                      size: 13,
-                      color: Colors.white60,
+                      size: 21,
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -367,13 +367,15 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                             widget.onEdit?.call();
                           },
                           child: Container(
-                            width: 40,
-                            height: 40,
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.edit_note_outlined,
-                              size: 16,
-                              color: Colors.white60,
+                            width: 132,
+                            height: 46,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.edit_note_outlined, size: 19, color: Colors.white),
+                                SizedBox(width: 10),
+                                Text('MODIFIER', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Colors.white, fontWeight: FontWeight.w600)),
+                              ],
                             ),
                           ),
                         ),
@@ -388,13 +390,15 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                             widget.onDelete?.call();
                           },
                           child: Container(
-                            width: 40,
-                            height: 40,
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.delete_outline,
-                              size: 16,
-                              color: Color(0xFFFF5252),
+                            width: 132,
+                            height: 46,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 19, color: Color(0xFFFF5252)),
+                                SizedBox(width: 10),
+                                Text('SUPPRIMER', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Color(0xFFFF5252), fontWeight: FontWeight.w600)),
+                              ],
                             ),
                           ),
                         ),

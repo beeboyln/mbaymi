@@ -52,6 +52,8 @@ def check_due_reminders():
                     actor_id=None,
                     actor_name="Rappel",
                     action_url=f"/reminder/{reminder.id}",
+                    farm_id=reminder.farm_id,
+                    crop_id=reminder.crop_id,
                 )
                 
                 # Mark notification as sent

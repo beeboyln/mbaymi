@@ -724,6 +724,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
       image: image,
       isOwner: isOwner,
       dark: dark,
+      aspectRatio: 1.15,
       cropsFuture: _crops(farmId),
       onEdit: () => Navigator.push(
               context,

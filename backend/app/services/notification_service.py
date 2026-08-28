@@ -17,6 +17,8 @@ class NotificationService:
         actor_id: Optional[int] = None,
         actor_name: Optional[str] = None,
         actor_image: Optional[str] = None,
+        farm_id: Optional[int] = None,
+        crop_id: Optional[int] = None,
     ) -> Notification:
         """Créer une nouvelle notification"""
         notification = Notification(
@@ -28,6 +30,8 @@ class NotificationService:
             actor_id=actor_id,
             actor_name=actor_name,
             actor_image=actor_image,
+            farm_id=farm_id,
+            crop_id=crop_id,
             is_read=False,
             created_at=datetime.utcnow(),
         )

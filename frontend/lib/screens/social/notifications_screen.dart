@@ -6,6 +6,8 @@ import 'package:mbaymi/models/notification_model.dart';
 import 'package:mbaymi/services/notification_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/screens/social/profile_detail_screen.dart';
+import 'package:mbaymi/screens/farm/parcel_screen.dart';
+import 'package:mbaymi/screens/farm/parcel_reminders_screen.dart';
 
 /// 🔔 Page des notifications
 class NotificationsScreen extends StatefulWidget {
@@ -85,6 +87,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.share_outlined;
       case 'message':
         return Icons.mail_outline;
+      case 'reminder':
+        return Icons.alarm_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -319,8 +323,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         print('🎯 actorId: ${notification.actorId}');
         print('👤 actorName: ${notification.actorName}');
         _markAsRead(notification);
-        
-        if (notification.actorId != null) {
+
+        if (notification.type == 'reminder' &&
+            notification.farmId != null &&
+            notification.cropId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ParcelRemindersScreen(
+                farmId: notification.farmId!,
+                cropId: notification.cropId!,
+              ),
+            ),
+          );
+        } else if (notification.type == 'reminder' && notification.farmId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ParcelScreen(
+                farmId: notification.farmId!,
+                userId: notification.userId,
+              ),
+            ),
+          );
+        } else if (notification.actorId != null) {
           print('➡️ Navigating to ProfileDetailScreen with userId=${notification.actorId}');
           Navigator.push(
             context,

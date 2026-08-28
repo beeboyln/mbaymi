@@ -40,6 +40,10 @@ class ReminderService:
         return db.query(Reminder).filter(Reminder.farm_id == farm_id).order_by(Reminder.remind_at.asc()).offset(skip).limit(limit).all()
 
     @staticmethod
+    def list_reminders_for_crop(db: Session, crop_id: int, skip: int = 0, limit: int = 100) -> List[Reminder]:
+        return db.query(Reminder).filter(Reminder.crop_id == crop_id).order_by(Reminder.remind_at.asc()).offset(skip).limit(limit).all()
+
+    @staticmethod
     def mark_done(db: Session, reminder_id: int) -> Optional[Reminder]:
         r = db.query(Reminder).filter(Reminder.id == reminder_id).first()
         if not r:

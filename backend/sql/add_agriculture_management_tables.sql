@@ -56,3 +56,8 @@ CREATE TABLE IF NOT EXISTS reminders (
     is_done BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS farm_id INTEGER;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS crop_id INTEGER;
+CREATE INDEX IF NOT EXISTS ix_notifications_farm_id ON notifications (farm_id);
+CREATE INDEX IF NOT EXISTS ix_notifications_crop_id ON notifications (crop_id);

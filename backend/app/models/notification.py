@@ -16,6 +16,8 @@ class Notification(Base):
     actor_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # ID de l'utilisateur qui a déclenché
     actor_name = Column(String(255), nullable=True)  # Nom de la personne qui a déclenché la notif
     actor_image = Column(String(500), nullable=True)  # Image de la personne
+    farm_id = Column(Integer, ForeignKey("farms.id", ondelete="CASCADE"), nullable=True, index=True)
+    crop_id = Column(Integer, ForeignKey("crops.id", ondelete="CASCADE"), nullable=True, index=True)
     is_read = Column(Boolean, default=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
@@ -33,6 +35,8 @@ class Notification(Base):
             'actor_id': self.actor_id,
             'actor_name': self.actor_name,
             'actor_image': self.actor_image,
+            'farm_id': self.farm_id,
+            'crop_id': self.crop_id,
             'is_read': self.is_read,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }

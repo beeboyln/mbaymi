@@ -980,6 +980,26 @@ class ApiService {
     }
   }
 
+  static Future<List<dynamic>> listRemindersForCrop(int farmId, int cropId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/reminders/crop/$cropId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/reminders/crop/$cropId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as List;
+      if (response.statusCode == 404 || response.statusCode == 405) {
+        final farmReminders = await listRemindersForFarm(farmId);
+        return farmReminders.where((reminder) => reminder['crop_id'] == cropId).toList();
+      }
+      throw Exception('Failed to list reminders for crop');
+    } catch (e) {
+      throw Exception('Error listing reminders for crop: $e');
+    }
+  }
+
   static Future<Map<String, dynamic>> getReminder(int reminderId) async {
     try {
       final headers = await _getAuthHeaders();

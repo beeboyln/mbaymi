@@ -31,6 +31,7 @@ class FarmCard extends StatefulWidget {
   final String? image;
   final bool isOwner;
   final bool dark;
+  final double aspectRatio;
   final Future<List<dynamic>> cropsFuture;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -47,6 +48,7 @@ class FarmCard extends StatefulWidget {
     required this.image,
     required this.isOwner,
     required this.dark,
+    this.aspectRatio = 3 / 2,
     required this.cropsFuture,
     required this.onEdit,
     required this.onDelete,
@@ -84,7 +86,7 @@ class _FarmCardState extends State<FarmCard> {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: 3 / 2,
+      aspectRatio: widget.aspectRatio,
       child: ClipRect(
         child: Stack(children: [
           // Image + pins

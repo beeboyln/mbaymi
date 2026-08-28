@@ -9,6 +9,8 @@ class NotificationModel {
   final String? actorName;
   final String? actorImage;
   final int? actorId; // ID de l'utilisateur qui a déclenché la notification
+  final int? farmId;
+  final int? cropId;
   final bool isRead;
   final DateTime createdAt;
 
@@ -22,6 +24,8 @@ class NotificationModel {
     this.actorName,
     this.actorImage,
     this.actorId,
+    this.farmId,
+    this.cropId,
     required this.isRead,
     required this.createdAt,
   });
@@ -37,6 +41,8 @@ class NotificationModel {
       actorName: json['actor_name'] as String?,
       actorImage: json['actor_image'] as String?,
       actorId: json['actor_id'] as int?,
+      farmId: json['farm_id'] as int?,
+      cropId: json['crop_id'] as int?,
       isRead: json['is_read'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
@@ -53,6 +59,8 @@ class NotificationModel {
       'actor_name': actorName,
       'actor_image': actorImage,
       'actor_id': actorId,
+      'farm_id': farmId,
+      'crop_id': cropId,
       'is_read': isRead,
       'created_at': createdAt.toIso8601String(),
     };
