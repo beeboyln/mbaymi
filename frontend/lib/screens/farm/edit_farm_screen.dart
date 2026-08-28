@@ -127,7 +127,9 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
       String? profileUrl = widget.farm['image_url'] ?? widget.farm['imageUrl'];
       if (_profileFile != null) {
         final u = await ApiService.uploadImageToCloudinary(_profileFile!);
-        if (u != null) profileUrl = u;
+        if (u != null) {
+          profileUrl = '$u?v=${DateTime.now().millisecondsSinceEpoch}';
+        }
       }
 
       final farmId = widget.farm['id'] as int;
@@ -139,6 +141,11 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
         soilType: _type,
         imageUrl: profileUrl,
       );
+
+      if (_profileFile != null) {
+        imageCache.clearLiveImages();
+        imageCache.clear();
+      }
 
       // Update farm visibility if it changed
       final userId = AuthService.currentSession?.userId;
@@ -380,9 +387,12 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
   }
 
   Widget _buildCurrentImage(bool isDark) {
-    String? url;
-    
-    if (widget.farm['photos'] != null && (widget.farm['photos'] as List).isNotEmpty) {
+    String? url = widget.farm['image_url'] as String? ??
+        widget.farm['imageUrl'] as String?;
+
+    if (url == null &&
+        widget.farm['photos'] != null &&
+        (widget.farm['photos'] as List).isNotEmpty) {
       final firstPhoto = (widget.farm['photos'] as List).first;
       if (firstPhoto is Map) {
         url = firstPhoto['image_url'] as String?;
@@ -390,8 +400,6 @@ class _EditFarmScreenState extends State<EditFarmScreen> {
         url = firstPhoto;
       }
     }
-    
-    url ??= widget.farm['image_url'] as String? ?? widget.farm['imageUrl'] as String?;
     
     if (url == null) {
       return Center(

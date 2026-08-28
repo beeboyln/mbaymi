@@ -30,6 +30,8 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
   late Future<Map<String, dynamic>> _summaryFuture;
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
+  String _searchQuery = '';
+  String _selectedType = 'Tous';
 
   @override
   void initState() {
@@ -298,6 +300,49 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
     );
   }
 
+  Widget _buildFilters(List<String> filters) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        children: [
+          TextField(
+            onChanged: (value) => setState(() => _searchQuery = value),
+            style: const TextStyle(fontSize: 13, color: _Z.ink),
+            decoration: InputDecoration(
+              hintText: 'Rechercher une transaction…',
+              hintStyle: const TextStyle(color: _Z.muted, fontSize: 13),
+              prefixIcon: const Icon(Icons.search, size: 18, color: _Z.muted),
+              filled: true,
+              fillColor: _Z.cardBg,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: _Z.faint)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: _Z.faint)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: filters.map((filter) {
+              final selected = filter == _selectedType;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: filter == filters.last ? 0 : 6),
+                  child: ChoiceChip(
+                    label: SizedBox(width: double.infinity, child: Text(filter.toUpperCase(), textAlign: TextAlign.center, style: TextStyle(fontSize: 9, letterSpacing: 1, color: selected ? Colors.white : _Z.muted))),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _selectedType = filter),
+                    selectedColor: _Z.ink,
+                    backgroundColor: _Z.cardBg,
+                    side: const BorderSide(color: _Z.faint),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -437,6 +482,13 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                     );
                   }
                   final items = snap.data ?? [];
+                  final query = _searchQuery.trim().toLowerCase();
+                  final filteredItems = items.where((item) {
+                    final type = item['transaction_type'] == 'income' ? 'Revenu' : 'Dépense';
+                    final searchable = '${item['category'] ?? ''} ${item['notes'] ?? ''}'.toLowerCase();
+                    return (_selectedType == 'Tous' || type == _selectedType) &&
+                        (query.isEmpty || searchable.contains(query));
+                  }).toList();
                   if (items.isEmpty) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 48),
@@ -462,13 +514,27 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                     );
                   }
 
+                  final filters = ['Tous', 'Dépense', 'Revenu'];
+
                   return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: items.length,
+                    itemCount: filteredItems.isEmpty ? 2 : filteredItems.length + 1,
                     separatorBuilder: (_, __) => Container(height: 1, color: _Z.faint),
                     itemBuilder: (context, i) {
-                      final it = items[i] as Map<String, dynamic>;
+                      if (i == 0) return _buildFilters(filters);
+                      if (filteredItems.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 48),
+                          child: Center(
+                            child: Text(
+                              'AUCUN RÉSULTAT',
+                              style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted),
+                            ),
+                          ),
+                        );
+                      }
+                      final it = filteredItems[i - 1] as Map<String, dynamic>;
                       final isExpense = it['transaction_type'] == 'expense';
 
                       return GestureDetector(
@@ -480,6 +546,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
                             ),
                             builder: (_) => Column(
+
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const SizedBox(height: 12),

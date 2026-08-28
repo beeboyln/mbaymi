@@ -37,6 +37,8 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
   late Future<List<dynamic>> _listFuture;
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
+  String _searchQuery = '';
+  String _selectedType = 'Tous';
 
   @override
   void initState() {
@@ -71,6 +73,25 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
     if (v == null) return '';
     final n = (v is num) ? v.toDouble() : double.tryParse(v.toString()) ?? 0.0;
     return NumberFormat('#,##0', 'fr_FR').format(n);
+  }
+
+  String _normalizeSearchText(Object? value) {
+    return value
+        .toString()
+        .toLowerCase()
+        .replaceAll('é', 'e')
+        .replaceAll('è', 'e')
+        .replaceAll('ê', 'e')
+        .replaceAll('ë', 'e')
+        .replaceAll('à', 'a')
+        .replaceAll('â', 'a')
+        .replaceAll('î', 'i')
+        .replaceAll('ï', 'i')
+        .replaceAll('ô', 'o')
+        .replaceAll('ù', 'u')
+        .replaceAll('û', 'u')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .trim();
   }
 
   void _showError(String msg) {
@@ -335,6 +356,25 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
 
             final items = snap.data ?? [];
 
+            final types = items
+                .map((item) => (item['input_type'] ?? 'Autre').toString())
+                .toSet()
+                .toList()
+              ..sort();
+            final query = _normalizeSearchText(_searchQuery);
+            final filteredItems = items.where((item) {
+              final type = (item['input_type'] ?? 'Autre').toString();
+              final searchable = _normalizeSearchText(
+                '${item['name'] ?? ''} $type ${item['unit'] ?? ''} ${item['notes'] ?? ''}',
+              );
+              return (_selectedType == 'Tous' || type == _selectedType) &&
+                  (query.isEmpty || searchable.contains(query));
+            }).toList();
+            final totalCost = items.fold<double>(
+              0,
+              (sum, item) => sum + ((item['cost'] as num?)?.toDouble() ?? 0),
+            );
+
             if (items.isEmpty) {
               return Center(
                 child: Column(
@@ -359,9 +399,12 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
               );
             }
 
+            final filterTypes = ['Tous', ...types];
+            final groupedItems = filteredItems;
+
             // Group by type
             final Map<String, List<dynamic>> grouped = {};
-            for (final item in items) {
+            for (final item in groupedItems) {
               final t = item['input_type'] ?? 'Autre';
               grouped.putIfAbsent(t, () => []).add(item);
             }
@@ -372,7 +415,21 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
               onRefresh: () async => setState(() => _load()),
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-                children: grouped.entries.expand((entry) {
+                children: [
+                  _buildOverview(totalCost, items.length),
+                  _buildFilters(filterTypes),
+                  if (groupedItems.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48),
+                      child: Center(
+                        child: Text(
+                          'AUCUN RÉSULTAT',
+                          style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted),
+                        ),
+                      ),
+                    )
+                  else
+                    ...grouped.entries.expand((entry) {
                   final type = entry.key;
                   final typeItems = entry.value;
                   final color = _typeColor(type);
@@ -420,7 +477,8 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
                       );
                     }),
                   ];
-                }).toList(),
+                  }).toList(),
+                ],
               ),
             );
           },
@@ -442,6 +500,67 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildOverview(double totalCost, int count) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: _Z.ink, borderRadius: BorderRadius.circular(8)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('INVESTISSEMENT TOTAL', style: TextStyle(fontSize: 9, letterSpacing: 1.5, color: Colors.white54)),
+            const SizedBox(height: 6),
+            Text('${_formatCost(totalCost)} FCFA', style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w500)),
+          ]),
+          Text('$count ENREG.', style: const TextStyle(fontSize: 9, letterSpacing: 1.2, color: Colors.white54)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilters(List<String> types) {
+    return Column(
+      children: [
+        TextField(
+          onChanged: (value) => setState(() => _searchQuery = value),
+          style: const TextStyle(fontSize: 13, color: _Z.ink),
+          decoration: InputDecoration(
+            hintText: 'Rechercher un intrant…',
+            hintStyle: const TextStyle(color: _Z.muted, fontSize: 13),
+            prefixIcon: const Icon(Icons.search, size: 18, color: _Z.muted),
+            filled: true,
+            fillColor: _Z.cardBg,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: _Z.faint)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: _Z.faint)),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 34,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: types.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            itemBuilder: (_, index) {
+              final type = types[index];
+              final selected = type == _selectedType;
+              return ChoiceChip(
+                label: Text(type.toUpperCase(), style: TextStyle(fontSize: 9, letterSpacing: 1, color: selected ? Colors.white : _Z.muted)),
+                selected: selected,
+                onSelected: (_) => setState(() => _selectedType = type),
+                selectedColor: _Z.ink,
+                backgroundColor: _Z.cardBg,
+                side: const BorderSide(color: _Z.faint),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -44,6 +44,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   late AnimationController _sectionAnim;
   late Animation<double> _sectionSlide;
   late Animation<double> _sectionFade;
+  final _pageScrollController = ScrollController();
 
   @override
   void initState() {
@@ -67,6 +68,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   void dispose() {
     _headerController.dispose();
     _sectionAnim.dispose();
+    _pageScrollController.dispose();
     super.dispose();
   }
 
@@ -129,6 +131,9 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
     });
 
   Future<void> _refresh() async {
+    final previousOffset = _pageScrollController.hasClients
+        ? _pageScrollController.offset
+        : 0.0;
     final cacheKey = _section == 1
         ? 'livestock_${widget.userId}'
         : 'farms_${widget.userId ?? 'user_${AuthService.currentSession?.userId}'}';
@@ -136,6 +141,14 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
     if (_section == 0) _cropsCache.clear();
     setState(() {});
     _sectionAnim.forward(from: 0);
+
+    await (_section == 1 ? _livestock() : _farms());
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_pageScrollController.hasClients) return;
+      final maxOffset = _pageScrollController.position.maxScrollExtent;
+      _pageScrollController.jumpTo(previousOffset.clamp(0.0, maxOffset));
+    });
   }
 
   void _switchSection(int s) {
@@ -434,6 +447,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
             backgroundColor: bg,
             onRefresh: _refresh,
             child: SingleChildScrollView(
+              controller: _pageScrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -500,6 +514,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
           color: AppColors.accent,
           backgroundColor: bg,
           child: SingleChildScrollView(
+            controller: _pageScrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             child: Padding(
               padding: const EdgeInsets.all(32),
