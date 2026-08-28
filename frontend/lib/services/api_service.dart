@@ -1072,6 +1072,10 @@ class ApiService {
     DateTime? activityDate,
     String? notes,
     List<String>? imageUrls,
+    int? inputId,
+    double? quantityUsed,
+    String? financeType,
+    double? financeAmount,
   }) async {
     try {
       final response = await http.post(
@@ -1085,6 +1089,10 @@ class ApiService {
           'activity_date': activityDate?.toIso8601String(),
           'notes': notes,
           'image_urls': imageUrls,
+          'input_id': inputId,
+          'quantity_used': quantityUsed,
+          'finance_type': financeType,
+          'finance_amount': financeAmount,
         }),
       );
 
@@ -1140,6 +1148,8 @@ class ApiService {
     DateTime? activityDate,
     String? notes,
     List<String>? imageUrls,
+    String? financeType,
+    double? financeAmount,
   }) async {
     try {
       final response = await http.put(
@@ -1152,6 +1162,8 @@ class ApiService {
           'activity_date': activityDate?.toIso8601String(),
           'notes': notes,
           'image_urls': imageUrls,
+          'finance_type': financeType,
+          'finance_amount': financeAmount,
         }),
       );
 

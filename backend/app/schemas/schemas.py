@@ -150,6 +150,10 @@ class ActivityCreate(BaseModel):
     activity_type: str
     activity_date: Optional[datetime] = None
     notes: Optional[str] = None
+    input_id: Optional[int] = None
+    quantity_used: Optional[float] = None
+    finance_type: Optional[str] = None  # expense / income
+    finance_amount: Optional[float] = None
     image_urls: Optional[List[str]] = None
 
 class ActivityResponse(ActivityCreate):
@@ -257,6 +261,7 @@ class InputCreate(BaseModel):
     input_type: Optional[str] = None
     name: Optional[str] = None
     quantity: Optional[float] = None
+    reorder_threshold: Optional[float] = 0
     unit: Optional[str] = None
     applied_date: Optional[datetime] = None
     cost: Optional[float] = None

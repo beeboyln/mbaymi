@@ -50,8 +50,15 @@ def init_db():
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_farm_id ON notifications (farm_id);"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_crop_id ON notifications (crop_id);"))
             conn.execute(text("ALTER TABLE crops ADD COLUMN IF NOT EXISTS area DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE inputs ADD COLUMN IF NOT EXISTS reorder_threshold DOUBLE PRECISION DEFAULT 0;"))
+            conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS input_id INTEGER;"))
+            conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS quantity_used DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS finance_type VARCHAR(20);"))
+            conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS finance_amount DOUBLE PRECISION;"))
             conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS input_id INTEGER;"))
+            conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS activity_id INTEGER;"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_input_id ON finance_transactions (input_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_activity_id ON finance_transactions (activity_id);"))
             conn.execute(text("ALTER TABLE farm_post_comments ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES farm_post_comments(id) ON DELETE CASCADE;"))
             
             # Update users table: make email and phone nullable for phone-only or email-only registration

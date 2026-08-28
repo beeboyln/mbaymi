@@ -24,6 +24,9 @@ class InputService:
             input_type=data.get("input_type"),
             name=data.get("name"),
             quantity=data.get("quantity"),
+            reorder_threshold=data.get("reorder_threshold") or (
+                data.get("quantity") * 0.2 if data.get("quantity") else 0
+            ),
             unit=data.get("unit"),
             applied_date=data.get("applied_date", datetime.utcnow()),
             cost=data.get("cost"),
@@ -66,7 +69,7 @@ class InputService:
         if not i:
             return None
         for k, v in updates.items():
-            if hasattr(i, k):
+            if hasattr(i, k) and not (k == "reorder_threshold" and v is None):
                 setattr(i, k, v)
         transaction = InputService._find_finance_transaction(db, input_id)
         if transaction:

@@ -113,6 +113,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
     required TextEditingController qtyCtrl,
     required TextEditingController unitCtrl,
     required TextEditingController costCtrl,
+    required TextEditingController thresholdCtrl,
     required TextEditingController notesCtrl,
     required VoidCallback onSubmit,
   }) {
@@ -175,6 +176,8 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
             const SizedBox(height: 14),
             _ZField(controller: costCtrl, label: 'COÛT (FCFA)', hint: '0', numeric: true),
             const SizedBox(height: 14),
+            _ZField(controller: thresholdCtrl, label: 'SEUIL DE RÉAPPROVISIONNEMENT', hint: 'Automatique : 20 %', numeric: true),
+            const SizedBox(height: 14),
             _ZField(controller: notesCtrl, label: 'NOTES', hint: 'Détails supplémentaires…', maxLines: 2),
             const SizedBox(height: 24),
 
@@ -212,6 +215,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
     final qtyCtrl = TextEditingController();
     final unitCtrl = TextEditingController();
     final costCtrl = TextEditingController();
+    final thresholdCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
 
     await showModalBottomSheet(
@@ -227,6 +231,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
         qtyCtrl: qtyCtrl,
         unitCtrl: unitCtrl,
         costCtrl: costCtrl,
+        thresholdCtrl: thresholdCtrl,
         notesCtrl: notesCtrl,
         onSubmit: () async {
           try {
@@ -238,6 +243,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
               'quantity': double.tryParse(qtyCtrl.text),
               'unit': unitCtrl.text.trim(),
               'cost': double.tryParse(costCtrl.text),
+              'reorder_threshold': double.tryParse(thresholdCtrl.text),
               'notes': notesCtrl.text.trim(),
             });
             if (!mounted || !ctx.mounted) return;
@@ -260,6 +266,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
     final qtyCtrl = TextEditingController(text: (input['quantity'] ?? '').toString());
     final unitCtrl = TextEditingController(text: input['unit'] ?? '');
     final costCtrl = TextEditingController(text: (input['cost'] ?? '').toString());
+    final thresholdCtrl = TextEditingController(text: (input['reorder_threshold'] ?? '').toString());
     final notesCtrl = TextEditingController(text: input['notes'] ?? '');
 
     await showModalBottomSheet(
@@ -275,6 +282,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
         qtyCtrl: qtyCtrl,
         unitCtrl: unitCtrl,
         costCtrl: costCtrl,
+        thresholdCtrl: thresholdCtrl,
         notesCtrl: notesCtrl,
         onSubmit: () async {
           try {
@@ -284,6 +292,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
               'quantity': double.tryParse(qtyCtrl.text),
               'unit': unitCtrl.text.trim(),
               'cost': double.tryParse(costCtrl.text),
+              'reorder_threshold': double.tryParse(thresholdCtrl.text),
               'notes': notesCtrl.text.trim(),
             });
             if (!mounted || !ctx.mounted) return;

@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS inputs (
     input_type VARCHAR(50),
     name VARCHAR(150),
     quantity DOUBLE PRECISION,
+    reorder_threshold DOUBLE PRECISION DEFAULT 0,
     unit VARCHAR(50),
     applied_date TIMESTAMP WITH TIME ZONE DEFAULT now(),
     cost DOUBLE PRECISION,
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS finance_transactions (
     farm_id INTEGER NOT NULL REFERENCES farms(id),
     crop_id INTEGER NULL REFERENCES crops(id),
     input_id INTEGER NULL REFERENCES inputs(id) ON DELETE SET NULL,
+    activity_id INTEGER NULL REFERENCES activities(id) ON DELETE CASCADE,
     transaction_type VARCHAR(20) NOT NULL,
     category VARCHAR(100),
     amount DOUBLE PRECISION NOT NULL,
@@ -38,9 +40,17 @@ CREATE TABLE IF NOT EXISTS finance_transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+ALTER TABLE inputs ADD COLUMN IF NOT EXISTS reorder_threshold DOUBLE PRECISION DEFAULT 0;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS input_id INTEGER;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS quantity_used DOUBLE PRECISION;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS finance_type VARCHAR(20);
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS finance_amount DOUBLE PRECISION;
+
 ALTER TABLE finance_transactions
 ADD COLUMN IF NOT EXISTS input_id INTEGER;
 
+ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS activity_id INTEGER;
+CREATE INDEX IF NOT EXISTS ix_finance_transactions_activity_id ON finance_transactions (activity_id);
 CREATE INDEX IF NOT EXISTS ix_finance_transactions_input_id
 ON finance_transactions (input_id);
 

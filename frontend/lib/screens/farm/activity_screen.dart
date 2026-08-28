@@ -113,8 +113,13 @@ class _ActivityScreenState extends State<ActivityScreen>
   // Form state
   final _notesCtrl = TextEditingController();
   final _customTypeCtrl = TextEditingController();
+  final _quantityUsedCtrl = TextEditingController();
+  final _financeAmountCtrl = TextEditingController();
   String _selectedType = '';
   DateTime? _date;
+  int? _selectedInputId;
+  String _financeType = 'expense';
+  late Future<List<dynamic>> _inputsFuture;
   final List<XFile> _imageFiles = [];
   final List<Uint8List> _imageBytes = [];
 
@@ -133,6 +138,7 @@ class _ActivityScreenState extends State<ActivityScreen>
   void initState() {
     super.initState();
     _future = ApiService.getActivitiesForCrop(widget.cropId);
+    _inputsFuture = ApiService.listInputsForCrop(widget.cropId);
     _formAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 250));
     _formFade = CurvedAnimation(parent: _formAnim, curve: Curves.easeOut);
@@ -142,12 +148,19 @@ class _ActivityScreenState extends State<ActivityScreen>
   void dispose() {
     _notesCtrl.dispose();
     _customTypeCtrl.dispose();
+    _quantityUsedCtrl.dispose();
+    _financeAmountCtrl.dispose();
     _formAnim.dispose();
     super.dispose();
   }
 
-  void _refresh() =>
-      setState(() => _future = ApiService.getActivitiesForCrop(widget.cropId));
+  void _refresh() {
+    if (!mounted) return;
+    setState(() {
+      _future = ApiService.getActivitiesForCrop(widget.cropId);
+      _inputsFuture = ApiService.listInputsForCrop(widget.cropId);
+    });
+  }
 
   void _toggleForm() {
     HapticFeedback.lightImpact();
@@ -187,6 +200,19 @@ class _ActivityScreenState extends State<ActivityScreen>
       _snack('Sélectionnez un type d\'activité', error: true);
       return;
     }
+    final quantityUsed = _selectedInputId == null
+        ? null
+        : double.tryParse(_quantityUsedCtrl.text.replaceAll(',', '.'));
+    if (_selectedInputId != null && (quantityUsed == null || quantityUsed <= 0)) {
+      _snack('Saisissez une quantité d\'intrant utilisée', error: true);
+      return;
+    }
+    final financeAmount = double.tryParse(_financeAmountCtrl.text.replaceAll(',', '.'));
+    if (_financeAmountCtrl.text.trim().isNotEmpty &&
+        (financeAmount == null || financeAmount <= 0)) {
+      _snack('Saisissez un montant financier valide', error: true);
+      return;
+    }
     HapticFeedback.mediumImpact();
     setState(() => _loading = true);
     try {
@@ -203,15 +229,23 @@ class _ActivityScreenState extends State<ActivityScreen>
         activityDate: _date,
         notes: _notesCtrl.text.trim(),
         imageUrls: urls,
+        inputId: _selectedInputId,
+        quantityUsed: quantityUsed,
+        financeType: financeAmount == null ? null : _financeType,
+        financeAmount: financeAmount,
       );
       if (mounted) {
         _notesCtrl.clear();
         _customTypeCtrl.clear();
+          _quantityUsedCtrl.clear();
+          _financeAmountCtrl.clear();
         _imageFiles.clear();
         _imageBytes.clear();
         setState(() {
           _date = null;
           _selectedType = '';
+          _selectedInputId = null;
+          _financeType = 'expense';
           _showForm = false;
           _loading = false;
         });
@@ -220,7 +254,7 @@ class _ActivityScreenState extends State<ActivityScreen>
         _refresh();
       }
     } catch (e) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
       _snack('Erreur: $e', error: true);
     }
   }
@@ -234,7 +268,7 @@ class _ActivityScreenState extends State<ActivityScreen>
     } catch (e) {
       _snack('Erreur: $e', error: true);
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -256,7 +290,7 @@ class _ActivityScreenState extends State<ActivityScreen>
     } catch (e) {
       _snack('Erreur: $e', error: true);
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -508,6 +542,103 @@ class _ActivityScreenState extends State<ActivityScreen>
         ),
         const SizedBox(height: _Z.s20),
 
+        FutureBuilder<List<dynamic>>(
+          future: _inputsFuture,
+          builder: (context, snapshot) {
+            final inputs = snapshot.data ?? [];
+            if (inputs.isEmpty) return const SizedBox.shrink();
+            final matchingInputs = inputs.where((item) => item['id'] == _selectedInputId);
+            final selected = matchingInputs.isEmpty ? null : matchingInputs.first;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('INTRANT UTILISÉ (OPTIONNEL)', style: _Z.mono(_sub, size: 9, spacing: 2.5)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<int?>(
+                  value: _selectedInputId,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    hintText: 'Aucun intrant',
+                    hintStyle: _Z.body(_sub),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: _border, width: 0.5)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: _text, width: 0.5)),
+                  ),
+                  items: [
+                    const DropdownMenuItem<int?>(value: null, child: Text('Aucun intrant')),
+                    ...inputs.map((item) => DropdownMenuItem<int?>(
+                          value: item['id'] as int,
+                          child: Text('${item['name'] ?? item['input_type'] ?? 'Intrant'} (${item['quantity'] ?? 0} ${item['unit'] ?? ''})'),
+                        )),
+                  ],
+                  onChanged: (value) => setState(() => _selectedInputId = value),
+                ),
+                if (selected != null) ...[
+                  const SizedBox(height: _Z.s12),
+                  TextField(
+                    controller: _quantityUsedCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: _Z.body(_text),
+                    decoration: InputDecoration(
+                      labelText: 'QUANTITÉ UTILISÉE (${selected['unit'] ?? ''})',
+                      labelStyle: _Z.mono(_sub, size: 9, spacing: 1.5),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: _border, width: 0.5)),
+                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: _text, width: 0.5)),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: _Z.s20),
+              ],
+            );
+          },
+        ),
+
+        Text('IMPACT FINANCIER (OPTIONNEL)', style: _Z.mono(_sub, size: 9, spacing: 2.5)),
+        const SizedBox(height: _Z.s8),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _financeType = 'expense'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: _Z.s12),
+                  decoration: BoxDecoration(
+                    color: _financeType == 'expense' ? Colors.red.withOpacity(0.12) : Colors.transparent,
+                    border: Border.all(color: _financeType == 'expense' ? Colors.red.shade300 : _border),
+                  ),
+                  child: Text('DÉPENSE', textAlign: TextAlign.center, style: _Z.mono(_financeType == 'expense' ? Colors.red.shade700 : _sub, size: 10, spacing: 1.5)),
+                ),
+              ),
+            ),
+            const SizedBox(width: _Z.s8),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _financeType = 'income'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: _Z.s12),
+                  decoration: BoxDecoration(
+                    color: _financeType == 'income' ? Colors.green.withOpacity(0.12) : Colors.transparent,
+                    border: Border.all(color: _financeType == 'income' ? Colors.green.shade300 : _border),
+                  ),
+                  child: Text('REVENU', textAlign: TextAlign.center, style: _Z.mono(_financeType == 'income' ? Colors.green.shade700 : _sub, size: 10, spacing: 1.5)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: _Z.s12),
+        TextField(
+          controller: _financeAmountCtrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          style: _Z.body(_text),
+          decoration: InputDecoration(
+            labelText: 'MONTANT (FCFA)',
+            labelStyle: _Z.mono(_sub, size: 9, spacing: 1.5),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: _border, width: 0.5)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: _text, width: 0.5)),
+          ),
+        ),
+        const SizedBox(height: _Z.s20),
+
         // ── Notes ───────────────────────────────────────────────────────
         TextField(
           controller: _notesCtrl,
@@ -679,6 +810,8 @@ class _ActivityScreenState extends State<ActivityScreen>
         ? DateTime.tryParse(a['activity_date'].toString())
         : null;
     final imgs = (a['image_urls'] as List?) ?? [];
+    final financeAmount = (a['finance_amount'] as num?)?.toDouble();
+    final financeType = a['finance_type']?.toString();
     final isCreator =
         !widget.readOnly && a['user_id'] == widget.userId;
 
@@ -726,6 +859,13 @@ class _ActivityScreenState extends State<ActivityScreen>
                         Text(_fmt(date),
                             style: _Z.mono(_sub,
                                 size: 10, spacing: 1)),
+                      ],
+                      if (financeAmount != null && financeAmount > 0 && financeType != null) ...[
+                        const SizedBox(height: _Z.s8),
+                        Text(
+                          '${financeType == 'expense' ? 'DÉPENSE' : 'REVENU'} · ${_formatActivityAmount(financeAmount)} FCFA',
+                          style: _Z.mono(financeType == 'expense' ? Colors.red.shade700 : Colors.green.shade700, size: 9, spacing: 1.2),
+                        ),
                       ],
                     ],
                   ),
@@ -797,6 +937,9 @@ class _ActivityScreenState extends State<ActivityScreen>
       ),
     );
   }
+
+  String _formatActivityAmount(double amount) =>
+      NumberFormat('#,##0', 'fr_FR').format(amount);
 
   // ── Dialogs ───────────────────────────────────────────────────────────────
   void _showEditDialog(Map<String, dynamic> a) {

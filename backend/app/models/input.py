@@ -11,6 +11,7 @@ class Input(Base):
     input_type = Column(String(50))  # seeds, fertilizer, pesticide, other
     name = Column(String(150))  # e.g., NPK 15-15-15, hybrid maize seeds
     quantity = Column(Float, nullable=True)
+    reorder_threshold = Column(Float, nullable=True, default=0)
     unit = Column(String(50), nullable=True)  # kg, L, g, units
     applied_date = Column(DateTime, default=datetime.utcnow)
     cost = Column(Float, nullable=True)
