@@ -1050,22 +1050,10 @@ class _ActionMenuSheet extends StatelessWidget {
                       return;
                     }
                     if (farms.length == 1) {
-                      Navigator.push(
-                        homeContext,
-                        MaterialPageRoute(
-                          builder: (_) => ParcelFinanceScreen(
-                            farmId: farms[0]['id'] as int,
-                          ),
-                        ),
-                      );
+                      _openFinanceForFarm(homeContext, farms[0]['id'] as int);
                     } else {
                       _showFarmPicker(homeContext, farms, (id) {
-                        Navigator.push(
-                          homeContext,
-                          MaterialPageRoute(
-                            builder: (_) => ParcelFinanceScreen(farmId: id),
-                          ),
-                        );
+                        _openFinanceForFarm(homeContext, id);
                       });
                     }
                   } catch (e) {
@@ -1153,6 +1141,60 @@ class _ActionMenuSheet extends StatelessWidget {
               size: 16,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFinanceForFarm(BuildContext ctx, int farmId) async {
+    try {
+      final crops = await _withLoading(() => ApiService.getFarmCrops(farmId));
+      if (!ctx.mounted) return;
+      if (crops.isEmpty) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          AppColors.createSnackBar(message: 'Créez une parcelle d’abord', isError: true),
+        );
+        return;
+      }
+      if (crops.length == 1) {
+        Navigator.push(ctx, MaterialPageRoute(
+          builder: (_) => ParcelFinanceScreen(farmId: farmId, cropId: crops[0]['id'] as int),
+        ));
+        return;
+      }
+      _showCropPicker(ctx, farmId, crops);
+    } catch (e) {
+      if (!ctx.mounted) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        AppColors.createSnackBar(message: 'Erreur : ${e.toString()}', isError: true),
+      );
+    }
+  }
+
+  void _showCropPicker(BuildContext ctx, int farmId, List<dynamic> crops) {
+    showDialog(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        title: const Text('Sélectionnez une parcelle'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: crops.length,
+            itemBuilder: (_, index) {
+              final crop = crops[index] as Map<String, dynamic>;
+              return ListTile(
+                leading: const Icon(Icons.grid_view_outlined),
+                title: Text((crop['crop_name'] ?? crop['name'] ?? 'Parcelle').toString()),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(ctx, MaterialPageRoute(
+                    builder: (_) => ParcelFinanceScreen(farmId: farmId, cropId: crop['id'] as int),
+                  ));
+                },
+              );
+            },
+          ),
         ),
       ),
     );

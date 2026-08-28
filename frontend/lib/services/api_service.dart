@@ -756,6 +756,22 @@ class ApiService {
     }
   }
 
+  static Future<List<dynamic>> listInputsForCrop(int cropId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/inputs/crop/$cropId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/inputs/crop/$cropId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as List;
+      throw Exception('Failed to list inputs for crop');
+    } catch (e) {
+      throw Exception('Error listing inputs for crop: $e');
+    }
+  }
+
   static Future<Map<String, dynamic>> getInput(int inputId) async {
     try {
       final headers = await _getAuthHeaders();
@@ -836,6 +852,22 @@ class ApiService {
     }
   }
 
+  static Future<List<dynamic>> listTransactionsForCrop(int cropId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/finance/transactions/crop/$cropId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/finance/transactions/crop/$cropId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as List;
+      throw Exception('Failed to list transactions for crop');
+    } catch (e) {
+      throw Exception('Error listing transactions for crop: $e');
+    }
+  }
+
   static Future<Map<String, dynamic>> getTransaction(int transactionId) async {
     try {
       final headers = await _getAuthHeaders();
@@ -896,6 +928,22 @@ class ApiService {
       throw Exception('Failed to get finance summary');
     } catch (e) {
       throw Exception('Error getting finance summary: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getFinanceSummaryForCrop(int cropId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      var response = await http.get(Uri.parse('$baseUrl/finance/summary/crop/$cropId'), headers: headers);
+      if (response.statusCode == 401) {
+        response = await _handleUnauthorized((newHeaders) async {
+          return await http.get(Uri.parse('$baseUrl/finance/summary/crop/$cropId'), headers: newHeaders);
+        });
+      }
+      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception('Failed to get crop finance summary');
+    } catch (e) {
+      throw Exception('Error getting crop finance summary: $e');
     }
   }
 

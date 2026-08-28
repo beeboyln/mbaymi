@@ -5,20 +5,20 @@ import 'package:mbaymi/utils/app_colors.dart';
 
 // ─── ZARA-STYLE DESIGN TOKENS ───────────────────────────────────────────────
 class _Z {
-  static const bg = Color(0xFFF7F6F4);
+  static const bg = Color(0xFFF8F8F7);
   static const ink = Color(0xFF111111);
-  static const muted = Color(0xFF888888);
-  static const faint = Color(0xFFE8E6E1);
-  static const expenseAccent = Color(0xFF111111);
-  static const incomeAccent = Color(0xFF4A7C59);
+  static const muted = Color(0xFF767676);
+  static const faint = Color(0xFFE2E0D8);
+  static const expenseAccent = Color(0xFFD9534F);
+  static const incomeAccent = Color(0xFF2E7D32);
   static const cardBg = Color(0xFFFFFFFF);
-  static const serif = TextStyle(fontFamily: 'Georgia', color: Color(0xFF111111));
 }
 // ────────────────────────────────────────────────────────────────────────────
 
 class ParcelFinanceScreen extends StatefulWidget {
   final int farmId;
-  const ParcelFinanceScreen({super.key, required this.farmId});
+  final int cropId;
+  const ParcelFinanceScreen({super.key, required this.farmId, required this.cropId});
 
   @override
   State<ParcelFinanceScreen> createState() => _ParcelFinanceScreenState();
@@ -34,7 +34,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
   @override
   void initState() {
     super.initState();
-    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _load();
     _fadeCtrl.forward();
@@ -47,8 +47,8 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
   }
 
   void _load() {
-    _listFuture = ApiService.listTransactionsForFarm(widget.farmId);
-    _summaryFuture = ApiService.getFinanceSummary(widget.farmId);
+    _listFuture = ApiService.listTransactionsForCrop(widget.cropId);
+    _summaryFuture = ApiService.getFinanceSummaryForCrop(widget.cropId);
   }
 
   String _formatDate(String? d) {
@@ -66,7 +66,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
     return NumberFormat('#,##0', 'fr_FR').format(n);
   }
 
-  // ─── SHARED BOTTOM SHEET LAYOUT ─────────────────────────────────────────
+  // ─── BOTTOM SHEET TRANSACTIONS ───────────────────────────────────────────
   Widget _buildBottomSheet({
     required BuildContext ctx,
     required String title,
@@ -81,104 +81,103 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
     return Container(
       decoration: const BoxDecoration(
         color: _Z.bg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
-        top: 32,
-        left: 28,
-        right: 28,
+        bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        top: 20,
+        left: 24,
+        right: 24,
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 32,
-                height: 2,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
                 color: _Z.faint,
-                margin: const EdgeInsets.only(bottom: 32),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            Text(title.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 11,
-                  letterSpacing: 3,
-                  fontWeight: FontWeight.w500,
-                  color: _Z.muted,
-                )),
-            const SizedBox(height: 24),
-
-            // Type toggle — minimal pill-less version
-            Row(
-              children: ['expense', 'income'].map((t) {
-                final selected = type == t;
-                final label = t == 'expense' ? 'DÉPENSE' : 'REVENU';
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => onTypeChanged(t),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: EdgeInsets.only(right: t == 'expense' ? 8 : 0),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: selected ? _Z.ink : Colors.transparent,
-                        border: Border.all(color: selected ? _Z.ink : _Z.faint),
-                      ),
-                      child: Text(
-                        label,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 2.5,
-                          fontWeight: FontWeight.w500,
-                          color: selected ? Colors.white : _Z.muted,
-                        ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 12,
+              letterSpacing: 2,
+              fontWeight: FontWeight.bold,
+              color: _Z.ink,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: ['expense', 'income'].map((t) {
+              final selected = type == t;
+              final label = t == 'expense' ? 'DÉPENSE' : 'REVENU';
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onTypeChanged(t),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: EdgeInsets.only(right: t == 'expense' ? 8 : 0),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: selected ? _Z.ink : Colors.transparent,
+                      border: Border.all(color: selected ? _Z.ink : _Z.faint),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w600,
+                        color: selected ? Colors.white : _Z.muted,
                       ),
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-
-            // Fields
-            _ZField(controller: categoryCtrl, label: 'CATÉGORIE', hint: "Main-d'œuvre, semences…"),
-            const SizedBox(height: 16),
-            _ZField(controller: amountCtrl, label: 'MONTANT (FCFA)', hint: '0', numeric: true),
-            const SizedBox(height: 16),
-            _ZField(controller: notesCtrl, label: 'NOTES', hint: 'Détails…', maxLines: 3),
-            const SizedBox(height: 32),
-
-            // Action
-            GestureDetector(
-              onTap: onSubmit,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 18),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+          _ZField(controller: categoryCtrl, label: 'CATÉGORIE', hint: "Main-d'œuvre, semences…"),
+          const SizedBox(height: 14),
+          _ZField(controller: amountCtrl, label: 'MONTANT (FCFA)', hint: '0', numeric: true),
+          const SizedBox(height: 14),
+          _ZField(controller: notesCtrl, label: 'NOTES', hint: 'Détails…', maxLines: 2),
+          const SizedBox(height: 24),
+          GestureDetector(
+            onTap: onSubmit,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
                 color: _Z.ink,
-                child: Text(
-                  actionLabel.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    letterSpacing: 3,
-                    fontWeight: FontWeight.w500,
-                  ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                actionLabel.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  letterSpacing: 2,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // ─── ADD ─────────────────────────────────────────────────────────────────
   Future<void> _showAddTransaction() async {
     final amountCtrl = TextEditingController();
     final categoryCtrl = TextEditingController();
@@ -203,6 +202,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
             try {
               await ApiService.createTransaction({
                 'farm_id': widget.farmId,
+                'crop_id': widget.cropId,
                 'transaction_type': type,
                 'category': categoryCtrl.text.trim(),
                 'amount': double.tryParse(amountCtrl.text) ?? 0.0,
@@ -220,7 +220,6 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
     );
   }
 
-  // ─── EDIT ────────────────────────────────────────────────────────────────
   Future<void> _showEditTransaction(Map<String, dynamic> t) async {
     final amountCtrl = TextEditingController(text: (t['amount'] ?? '').toString());
     final categoryCtrl = TextEditingController(text: t['category'] ?? '');
@@ -234,7 +233,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => _buildBottomSheet(
           ctx: ctx,
-          title: 'Modifier',
+          title: 'Modifier transaction',
           actionLabel: 'Enregistrer',
           type: type,
           categoryCtrl: categoryCtrl,
@@ -261,22 +260,19 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
     );
   }
 
-  // ─── DELETE ──────────────────────────────────────────────────────────────
   Future<void> _deleteTransaction(int id) async {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: _Z.bg,
-        shape: const RoundedRectangleBorder(),
+        backgroundColor: _Z.cardBg,
         title: const Text('SUPPRIMER',
-            style: TextStyle(fontSize: 11, letterSpacing: 3, fontWeight: FontWeight.w500, color: _Z.ink)),
-        content: const Text('Cette action est irréversible.',
+            style: TextStyle(fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold, color: _Z.ink)),
+        content: const Text('Voulez-vous vraiment supprimer cette transaction ?',
             style: TextStyle(color: _Z.muted, fontSize: 13)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('ANNULER',
-                style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted)),
+            child: const Text('ANNULER', style: TextStyle(fontSize: 11, color: _Z.muted)),
           ),
           TextButton(
             onPressed: () async {
@@ -289,8 +285,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                 _showError(e.toString());
               }
             },
-            child: const Text('SUPPRIMER',
-                style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.red)),
+            child: const Text('SUPPRIMER', style: TextStyle(fontSize: 11, color: _Z.expenseAccent)),
           ),
         ],
       ),
@@ -299,14 +294,10 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      AppColors.createSnackBar(
-        message: msg,
-        isError: true,
-      ),
+      AppColors.createSnackBar(message: msg, isError: true),
     );
   }
 
-  // ─── BUILD ───────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -322,9 +313,9 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
         title: const Text(
           'FINANCES',
           style: TextStyle(
-            fontSize: 11,
-            letterSpacing: 4,
-            fontWeight: FontWeight.w500,
+            fontSize: 12,
+            letterSpacing: 3,
+            fontWeight: FontWeight.bold,
             color: _Z.ink,
           ),
         ),
@@ -336,36 +327,49 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
           backgroundColor: _Z.bg,
           onRefresh: () async => setState(() => _load()),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
             children: [
               // ── SUMMARY CARD ──────────────────────────────────────────────
               FutureBuilder<Map<String, dynamic>>(
                 future: _summaryFuture,
                 builder: (context, snap) {
                   if (snap.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(height: 200,
-                        child: Center(child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1)));
+                    return const SizedBox(
+                      height: 160,
+                      child: Center(child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1.5)),
+                    );
                   }
                   final s = snap.data ?? {};
                   final expenses = s['total_expenses'] ?? 0;
                   final income = s['total_income'] ?? 0;
                   final net = s['net_profit'] ?? 0;
-                  final isProfit = (net is num) ? net >= 0 : true;
 
                   return Container(
-                    color: _Z.ink,
-                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: _Z.ink,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('SOLDE ACTUEL',
-                            style: TextStyle(
-                              fontSize: 9,
-                              letterSpacing: 3,
-                              color: Colors.white54,
-                              fontWeight: FontWeight.w500,
-                            )),
-                        const SizedBox(height: 12),
+                        const Text(
+                          'SOLDE NET',
+                          style: TextStyle(
+                            fontSize: 10,
+                            letterSpacing: 2,
+                            color: Colors.white54,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
@@ -374,31 +378,25 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                               _formatAmount(net),
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 42,
+                                fontSize: 36,
                                 fontWeight: FontWeight.w300,
-                                letterSpacing: -1,
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text('FCFA',
-                                style: TextStyle(
-                                  color: Colors.white38,
-                                  fontSize: 12,
-                                  letterSpacing: 1.5,
-                                )),
+                            const Text(
+                              'FCFA',
+                              style: TextStyle(color: Colors.white38, fontSize: 12, letterSpacing: 1),
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Container(
-                          height: 1,
-                          color: Colors.white12,
-                          margin: const EdgeInsets.symmetric(vertical: 20),
-                        ),
+                        const SizedBox(height: 16),
+                        Container(height: 1, color: Colors.white10),
+                        const SizedBox(height: 16),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _SummaryPill(label: 'DÉPENSES', value: _formatAmount(expenses), up: false),
-                            const SizedBox(width: 32),
-                            _SummaryPill(label: 'REVENUS', value: _formatAmount(income), up: true),
+                            _SummaryPill(label: 'DÉPENSES', value: _formatAmount(expenses), isIncome: false),
+                            _SummaryPill(label: 'REVENUS', value: _formatAmount(income), isIncome: true),
                           ],
                         ),
                       ],
@@ -407,30 +405,36 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                 },
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
 
-              // ── SECTION LABEL ─────────────────────────────────────────────
-              const Text('TRANSACTIONS',
-                  style: TextStyle(
-                    fontSize: 9,
-                    letterSpacing: 3,
-                    color: _Z.muted,
-                    fontWeight: FontWeight.w500,
-                  )),
-              const SizedBox(height: 2),
+              // ── SECTION HEADER ────────────────────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  Text(
+                    'TRANSACTIONS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      letterSpacing: 2,
+                      color: _Z.muted,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               Container(height: 1, color: _Z.faint),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // ── LIST ──────────────────────────────────────────────────────
+              // ── TRANSACTION LIST ──────────────────────────────────────────
               FutureBuilder<List<dynamic>>(
                 future: _listFuture,
                 builder: (context, snap) {
                   if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                        child: Padding(
+                    return const Padding(
                       padding: EdgeInsets.all(40),
-                      child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1),
-                    ));
+                      child: Center(child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1.5)),
+                    );
                   }
                   final items = snap.data ?? [];
                   if (items.isEmpty) {
@@ -440,20 +444,18 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                         child: Column(
                           children: [
                             Container(
-                              width: 48,
-                              height: 48,
+                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
+                                shape: BoxShape.circle,
                                 border: Border.all(color: _Z.faint),
                               ),
-                              child: const Icon(Icons.receipt_long_outlined, size: 20, color: _Z.muted),
+                              child: const Icon(Icons.receipt_long_outlined, size: 24, color: _Z.muted),
                             ),
-                            const SizedBox(height: 16),
-                            const Text('AUCUNE TRANSACTION',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  letterSpacing: 3,
-                                  color: _Z.muted,
-                                )),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'AUCUNE TRANSACTION',
+                              style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted),
+                            ),
                           ],
                         ),
                       ),
@@ -468,20 +470,21 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                     itemBuilder: (context, i) {
                       final it = items[i] as Map<String, dynamic>;
                       final isExpense = it['transaction_type'] == 'expense';
+
                       return GestureDetector(
-                        onLongPress: () {
+                        onTap: () {
                           showModalBottomSheet(
                             context: context,
-                            backgroundColor: _Z.bg,
-                            shape: const RoundedRectangleBorder(),
+                            backgroundColor: _Z.cardBg,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                            ),
                             builder: (_) => Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  height: 1,
-                                  color: _Z.faint,
-                                  margin: const EdgeInsets.symmetric(horizontal: 24),
-                                ),
+                                const SizedBox(height: 12),
+                                Container(width: 32, height: 4, decoration: BoxDecoration(color: _Z.faint, borderRadius: BorderRadius.circular(2))),
+                                const SizedBox(height: 12),
                                 _ActionTile(
                                   icon: Icons.edit_outlined,
                                   label: 'MODIFIER',
@@ -490,33 +493,35 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                                     _showEditTransaction(it);
                                   },
                                 ),
-                                Container(height: 1, color: _Z.faint, margin: const EdgeInsets.symmetric(horizontal: 24)),
+                                Container(height: 1, color: _Z.faint, margin: const EdgeInsets.symmetric(horizontal: 20)),
                                 _ActionTile(
                                   icon: Icons.delete_outline,
                                   label: 'SUPPRIMER',
-                                  color: Colors.red[700]!,
+                                  color: _Z.expenseAccent,
                                   onTap: () {
                                     Navigator.pop(context);
                                     _deleteTransaction(it['id']);
                                   },
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 20),
                               ],
                             ),
                           );
                         },
                         child: Container(
                           color: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           child: Row(
                             children: [
-                              // Type indicator
                               Container(
-                                width: 2,
-                                height: 36,
-                                color: isExpense ? _Z.ink : _Z.incomeAccent,
+                                width: 3,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: isExpense ? _Z.ink : _Z.incomeAccent,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,20 +530,25 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                                       (it['category'] ?? '-').toString().toUpperCase(),
                                       style: const TextStyle(
                                         fontSize: 12,
-                                        letterSpacing: 1.5,
-                                        fontWeight: FontWeight.w500,
+                                        letterSpacing: 1,
+                                        fontWeight: FontWeight.w600,
                                         color: _Z.ink,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 2),
                                     Text(
                                       _formatDate(it['transaction_date']),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: _Z.muted,
-                                        letterSpacing: 0.3,
-                                      ),
+                                      style: const TextStyle(fontSize: 11, color: _Z.muted),
                                     ),
+                                    if (it['notes'] != null && it['notes'].toString().isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        it['notes'].toString(),
+                                        style: const TextStyle(fontSize: 11, color: _Z.muted, fontStyle: FontStyle.italic),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -548,20 +558,15 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                                   Text(
                                     '${isExpense ? "−" : "+"}${_formatAmount(it['amount'])}',
                                     style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.5,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
                                       color: isExpense ? _Z.ink : _Z.incomeAccent,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
                                   const Text(
                                     'FCFA',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      letterSpacing: 1.5,
-                                      color: _Z.muted,
-                                    ),
+                                    style: TextStyle(fontSize: 9, letterSpacing: 1, color: _Z.muted),
                                   ),
                                 ],
                               ),
@@ -579,27 +584,18 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
       ),
 
       // ── FAB ──────────────────────────────────────────────────────────────
-      floatingActionButton: GestureDetector(
-        onTap: _showAddTransaction,
-        child: Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          color: _Z.ink,
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'AJOUTER',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  letterSpacing: 3,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddTransaction,
+        backgroundColor: _Z.ink,
+        elevation: 2,
+        icon: const Icon(Icons.add, color: Colors.white, size: 18),
+        label: const Text(
+          'AJOUTER',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            letterSpacing: 2,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
@@ -613,32 +609,34 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
 class _SummaryPill extends StatelessWidget {
   final String label;
   final String value;
-  final bool up;
-  const _SummaryPill({required this.label, required this.value, required this.up});
+  final bool isIncome;
+  const _SummaryPill({required this.label, required this.value, required this.isIncome});
 
   @override
   Widget build(BuildContext context) {
+    final color = isIncome ? const Color(0xFF81C784) : Colors.white70;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 9, letterSpacing: 2.5, color: Colors.white38)),
-        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 9, letterSpacing: 1.5, color: Colors.white38, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
         Row(
           children: [
             Icon(
-              up ? Icons.north : Icons.south,
-              size: 10,
-              color: up ? const Color(0xFF7EC8A4) : Colors.white54,
+              isIncome ? Icons.north_east : Icons.south_west,
+              size: 12,
+              color: color,
             ),
             const SizedBox(width: 4),
             Text(
               value,
               style: TextStyle(
-                color: up ? const Color(0xFF7EC8A4) : Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.w300,
-                letterSpacing: 0.5,
+                color: color,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -668,33 +666,29 @@ class _ZField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-              fontSize: 9,
-              letterSpacing: 2.5,
-              color: _Z.muted,
-              fontWeight: FontWeight.w500,
-            )),
-        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 9, letterSpacing: 1.5, color: _Z.muted, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
         TextField(
           controller: controller,
           maxLines: maxLines,
           keyboardType: numeric ? TextInputType.number : TextInputType.text,
-          style: const TextStyle(fontSize: 14, color: _Z.ink, letterSpacing: 0.3),
+          style: const TextStyle(fontSize: 13, color: _Z.ink),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: _Z.muted, fontSize: 14),
+            hintStyle: const TextStyle(color: _Z.muted, fontSize: 13),
             filled: true,
             fillColor: _Z.cardBg,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: const OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.zero),
-            enabledBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.zero,
-              borderSide: BorderSide(color: _Z.faint),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: _Z.faint),
             ),
-            focusedBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.zero,
-              borderSide: BorderSide(color: _Z.ink, width: 1),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: _Z.ink, width: 1.5),
             ),
           ),
         ),
@@ -719,14 +713,14 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
       leading: Icon(icon, size: 18, color: color),
       title: Text(
         label,
         style: TextStyle(
-          fontSize: 10,
-          letterSpacing: 2.5,
-          fontWeight: FontWeight.w500,
+          fontSize: 11,
+          letterSpacing: 2,
+          fontWeight: FontWeight.w600,
           color: color,
         ),
       ),

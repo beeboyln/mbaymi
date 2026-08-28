@@ -5,11 +5,12 @@ import 'package:intl/intl.dart';
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
 class _Z {
-  static const bg = Color(0xFFF7F6F4);
+  static const bg = Color(0xFFF8F8F7);
   static const ink = Color(0xFF111111);
-  static const muted = Color(0xFF888888);
-  static const faint = Color(0xFFE8E6E1);
+  static const muted = Color(0xFF767676);
+  static const faint = Color(0xFFE2E0D8);
   static const cardBg = Color(0xFFFFFFFF);
+  static const expenseAccent = Color(0xFFD9534F);
 
   // Type accents sobres
   static const seedColor = Color(0xFF4A7C59);
@@ -40,7 +41,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
   @override
   void initState() {
     super.initState();
-    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _load();
     _fadeCtrl.forward();
@@ -53,7 +54,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
   }
 
   void _load() {
-    _listFuture = ApiService.listInputsForFarm(widget.farmId);
+    _listFuture = ApiService.listInputsForCrop(widget.cropId);
   }
 
   Color _typeColor(String type) {
@@ -95,12 +96,15 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
     required VoidCallback onSubmit,
   }) {
     return Container(
-      decoration: const BoxDecoration(color: _Z.bg),
+      decoration: const BoxDecoration(
+        color: _Z.bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
-        top: 32,
-        left: 28,
-        right: 28,
+        bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        top: 20,
+        left: 24,
+        right: 24,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -109,28 +113,37 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
           children: [
             Center(
               child: Container(
-                width: 32, height: 2, color: _Z.faint,
-                margin: const EdgeInsets.only(bottom: 32),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: _Z.faint,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-            Text(title.toUpperCase(),
-                style: const TextStyle(fontSize: 11, letterSpacing: 3,
-                    fontWeight: FontWeight.w500, color: _Z.muted)),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+            Text(
+              title.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 12,
+                letterSpacing: 2,
+                fontWeight: FontWeight.bold,
+                color: _Z.ink,
+              ),
+            ),
+            const SizedBox(height: 20),
 
-            _ZField(controller: typeCtrl, label: 'TYPE',
-                hint: 'Semences, engrais, pesticide…'),
-            const SizedBox(height: 16),
+            _ZField(controller: typeCtrl, label: 'TYPE', hint: 'Semences, engrais, pesticide…'),
+            const SizedBox(height: 14),
             _ZField(controller: nameCtrl, label: 'NOM', hint: "Nom de l'intrant"),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   flex: 2,
-                  child: _ZField(controller: qtyCtrl, label: 'QUANTITÉ',
-                      hint: '0', numeric: true),
+                  child: _ZField(controller: qtyCtrl, label: 'QUANTITÉ', hint: '0', numeric: true),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -138,25 +151,30 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _ZField(controller: costCtrl, label: 'COÛT (FCFA)',
-                hint: '0', numeric: true),
-            const SizedBox(height: 16),
-            _ZField(controller: notesCtrl, label: 'NOTES',
-                hint: 'Détails supplémentaires…', maxLines: 3),
-            const SizedBox(height: 32),
+            const SizedBox(height: 14),
+            _ZField(controller: costCtrl, label: 'COÛT (FCFA)', hint: '0', numeric: true),
+            const SizedBox(height: 14),
+            _ZField(controller: notesCtrl, label: 'NOTES', hint: 'Détails supplémentaires…', maxLines: 2),
+            const SizedBox(height: 24),
 
             GestureDetector(
               onTap: onSubmit,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                color: _Z.ink,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: _Z.ink,
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 child: Text(
                   actionLabel.toUpperCase(),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 11,
-                      letterSpacing: 3, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    letterSpacing: 2,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -261,18 +279,15 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: _Z.bg,
-        shape: const RoundedRectangleBorder(),
+        backgroundColor: _Z.cardBg,
         title: const Text('SUPPRIMER',
-            style: TextStyle(fontSize: 11, letterSpacing: 3,
-                fontWeight: FontWeight.w500, color: _Z.ink)),
-        content: const Text('Cette action est irréversible.',
+            style: TextStyle(fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold, color: _Z.ink)),
+        content: const Text('Voulez-vous vraiment supprimer cet intrant ?',
             style: TextStyle(color: _Z.muted, fontSize: 13)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('ANNULER',
-                style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted)),
+            child: const Text('ANNULER', style: TextStyle(fontSize: 11, color: _Z.muted)),
           ),
           TextButton(
             onPressed: () async {
@@ -285,8 +300,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
                 _showError(e.toString());
               }
             },
-            child: const Text('SUPPRIMER',
-                style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.red)),
+            child: const Text('SUPPRIMER', style: TextStyle(fontSize: 11, color: _Z.expenseAccent)),
           ),
         ],
       ),
@@ -307,8 +321,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
         ),
         centerTitle: true,
         title: const Text('INTRANTS',
-            style: TextStyle(fontSize: 11, letterSpacing: 4,
-                fontWeight: FontWeight.w500, color: _Z.ink)),
+            style: TextStyle(fontSize: 12, letterSpacing: 3, fontWeight: FontWeight.bold, color: _Z.ink)),
       ),
       body: FadeTransition(
         opacity: _fadeAnim,
@@ -317,7 +330,7 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
               return const Center(
-                  child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1));
+                  child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1.5));
             }
 
             final items = snap.data ?? [];
@@ -328,15 +341,17 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 64, height: 64,
-                      decoration: BoxDecoration(border: Border.all(color: _Z.faint)),
-                      child: const Icon(Icons.inventory_2_outlined,
-                          size: 28, color: _Z.muted),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _Z.faint),
+                      ),
+                      child: const Icon(Icons.inventory_2_outlined, size: 28, color: _Z.muted),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     const Text('AUCUN INTRANT',
-                        style: TextStyle(fontSize: 9, letterSpacing: 3, color: _Z.muted)),
-                    const SizedBox(height: 8),
+                        style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
                     const Text('Ajoutez vos premiers intrants',
                         style: TextStyle(fontSize: 13, color: _Z.muted)),
                   ],
@@ -356,28 +371,27 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
               backgroundColor: _Z.bg,
               onRefresh: () async => setState(() => _load()),
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
                 children: grouped.entries.expand((entry) {
                   final type = entry.key;
                   final typeItems = entry.value;
                   final color = _typeColor(type);
 
                   return [
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     // ── Group header ──────────────────────────────────
                     Row(
                       children: [
-                        Container(width: 2, height: 14, color: color),
+                        Container(width: 3, height: 14, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
                         const SizedBox(width: 10),
                         Text(
                           type.toUpperCase(),
-                          style: TextStyle(fontSize: 9, letterSpacing: 3,
-                              fontWeight: FontWeight.w600, color: color),
+                          style: TextStyle(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold, color: color),
                         ),
                         const SizedBox(width: 8),
                         Text('${typeItems.length}',
-                            style: const TextStyle(fontSize: 9, color: _Z.muted)),
+                            style: const TextStyle(fontSize: 10, color: _Z.muted, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -412,21 +426,18 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
           },
         ),
       ),
-      floatingActionButton: GestureDetector(
-        onTap: _showAddInput,
-        child: Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          color: _Z.ink,
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text('AJOUTER',
-                  style: TextStyle(color: Colors.white, fontSize: 10,
-                      letterSpacing: 3, fontWeight: FontWeight.w500)),
-            ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddInput,
+        backgroundColor: _Z.ink,
+        elevation: 2,
+        icon: const Icon(Icons.add, color: Colors.white, size: 18),
+        label: const Text(
+          'AJOUTER',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            letterSpacing: 2,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
@@ -462,8 +473,15 @@ class _InputRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(width: 2, height: 52, color: color.withOpacity(0.4)),
-          const SizedBox(width: 16),
+          Container(
+            width: 3,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 14),
 
           Expanded(
             child: Column(
@@ -476,35 +494,35 @@ class _InputRow extends StatelessWidget {
                     Expanded(
                       child: Text(
                         (item['name'] ?? '-').toString().toUpperCase(),
-                        style: const TextStyle(fontSize: 13, letterSpacing: 1.5,
-                            fontWeight: FontWeight.w500, color: _Z.ink),
+                        style: const TextStyle(fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.w600, color: _Z.ink),
                       ),
                     ),
                     if (formattedCost != null) ...[
                       const SizedBox(width: 12),
                       Text(
                         formattedCost!,
-                        style: const TextStyle(fontSize: 13, letterSpacing: 0.5,
-                            fontWeight: FontWeight.w600, color: _Z.ink),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _Z.ink),
                       ),
                     ],
                   ],
                 ),
 
                 if (hasQty) ...[
-                  const SizedBox(height: 5),
-                  Text('$qty $unit'.trim(),
-                      style: const TextStyle(fontSize: 12, color: _Z.muted)),
+                  const SizedBox(height: 2),
+                  Text('$qty $unit'.trim(), style: const TextStyle(fontSize: 11, color: _Z.muted)),
                 ],
 
                 if ((item['notes'] ?? '').toString().isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(item['notes'].toString(),
-                      style: const TextStyle(fontSize: 11, color: _Z.muted),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    item['notes'].toString(),
+                    style: const TextStyle(fontSize: 11, color: _Z.muted, fontStyle: FontStyle.italic),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
                 Row(
                   children: [
@@ -512,8 +530,7 @@ class _InputRow extends StatelessWidget {
                     const SizedBox(width: 8),
                     Container(width: 1, height: 10, color: _Z.faint),
                     const SizedBox(width: 8),
-                    _MiniAction(label: 'SUPPRIMER', onTap: onDelete,
-                        color: const Color(0xFF9E3A3A)),
+                    _MiniAction(label: 'SUPPRIMER', onTap: onDelete, color: _Z.expenseAccent),
                   ],
                 ),
               ],
@@ -536,9 +553,10 @@ class _MiniAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Text(label,
-          style: TextStyle(fontSize: 9, letterSpacing: 1.5,
-              fontWeight: FontWeight.w500, color: color)),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 9, letterSpacing: 1.5, fontWeight: FontWeight.bold, color: color),
+      ),
     );
   }
 }
@@ -564,29 +582,30 @@ class _ZField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 9, letterSpacing: 2.5,
-                color: _Z.muted, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 9, letterSpacing: 1.5, color: _Z.muted, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
         TextField(
           controller: controller,
           maxLines: maxLines,
           keyboardType: numeric ? TextInputType.number : TextInputType.text,
-          style: const TextStyle(fontSize: 14, color: _Z.ink, letterSpacing: 0.3),
+          style: const TextStyle(fontSize: 13, color: _Z.ink),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: _Z.muted, fontSize: 14),
+            hintStyle: const TextStyle(color: _Z.muted, fontSize: 13),
             filled: true,
             fillColor: _Z.cardBg,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: const OutlineInputBorder(
-                borderSide: BorderSide.none, borderRadius: BorderRadius.zero),
-            enabledBorder: const OutlineInputBorder(
-                borderRadius: BorderRadius.zero,
-                borderSide: BorderSide(color: _Z.faint)),
-            focusedBorder: const OutlineInputBorder(
-                borderRadius: BorderRadius.zero,
-                borderSide: BorderSide(color: _Z.ink, width: 1)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: _Z.faint),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: _Z.ink, width: 1.5),
+            ),
           ),
         ),
       ],

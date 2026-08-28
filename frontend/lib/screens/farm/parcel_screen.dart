@@ -1594,6 +1594,7 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                       onTap: () => widget.onNavigate(
                         ParcelFinanceScreen(
                           farmId: widget.farmId,
+                          cropId: widget.cropId,
                         ),
                       ),
                     ),

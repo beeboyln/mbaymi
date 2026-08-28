@@ -33,6 +33,10 @@ class InputService:
         return db.query(Input).filter(Input.farm_id == farm_id).order_by(Input.applied_date.desc()).offset(skip).limit(limit).all()
 
     @staticmethod
+    def list_inputs_for_crop(db: Session, crop_id: int, skip: int = 0, limit: int = 100) -> List[Input]:
+        return db.query(Input).filter(Input.crop_id == crop_id).order_by(Input.applied_date.desc()).offset(skip).limit(limit).all()
+
+    @staticmethod
     def update_input(db: Session, input_id: int, updates: dict) -> Optional[Input]:
         i = db.query(Input).filter(Input.id == input_id).first()
         if not i:

@@ -31,6 +31,10 @@ class FinanceService:
         return db.query(FinanceTransaction).filter(FinanceTransaction.farm_id == farm_id).order_by(FinanceTransaction.transaction_date.desc()).offset(skip).limit(limit).all()
 
     @staticmethod
+    def list_transactions_for_crop(db: Session, crop_id: int, skip: int = 0, limit: int = 100) -> List[FinanceTransaction]:
+        return db.query(FinanceTransaction).filter(FinanceTransaction.crop_id == crop_id).order_by(FinanceTransaction.transaction_date.desc()).offset(skip).limit(limit).all()
+
+    @staticmethod
     def update_transaction(db: Session, transaction_id: int, updates: dict) -> Optional[FinanceTransaction]:
         t = db.query(FinanceTransaction).filter(FinanceTransaction.id == transaction_id).first()
         if not t:
@@ -58,4 +62,11 @@ class FinanceService:
         incomes = db.query(FinanceTransaction).filter(FinanceTransaction.farm_id == farm_id, FinanceTransaction.transaction_type == 'income').all()
         total_expenses = sum([e.amount for e in expenses]) if expenses else 0.0
         total_income = sum([i.amount for i in incomes]) if incomes else 0.0
+        return {"total_expenses": total_expenses, "total_income": total_income, "net_profit": total_income - total_expenses}
+
+    @staticmethod
+    def summary_for_crop(db: Session, crop_id: int) -> Dict[str, float]:
+        transactions = db.query(FinanceTransaction).filter(FinanceTransaction.crop_id == crop_id).all()
+        total_expenses = sum(t.amount for t in transactions if t.transaction_type == 'expense')
+        total_income = sum(t.amount for t in transactions if t.transaction_type == 'income')
         return {"total_expenses": total_expenses, "total_income": total_income, "net_profit": total_income - total_expenses}
