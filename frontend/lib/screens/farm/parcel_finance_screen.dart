@@ -11,6 +11,7 @@ class _Z {
   static const faint = Color(0xFFE2E0D8);
   static const expenseAccent = Color(0xFFD9534F);
   static const incomeAccent = Color(0xFF2E7D32);
+  static const inputAccent = Color(0xFFB7791F);
   static const cardBg = Color(0xFFFFFFFF);
 }
 // ────────────────────────────────────────────────────────────────────────────
@@ -210,9 +211,11 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                 'amount': double.tryParse(amountCtrl.text) ?? 0.0,
                 'notes': notesCtrl.text.trim(),
               });
+              if (!mounted || !ctx.mounted) return;
               Navigator.pop(ctx);
               setState(() => _load());
             } catch (e) {
+              if (!mounted || !ctx.mounted) return;
               Navigator.pop(ctx);
               _showError(e.toString());
             }
@@ -250,9 +253,11 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                 'amount': double.tryParse(amountCtrl.text) ?? 0.0,
                 'notes': notesCtrl.text.trim(),
               });
+              if (!mounted || !ctx.mounted) return;
               Navigator.pop(ctx);
               setState(() => _load());
             } catch (e) {
+              if (!mounted || !ctx.mounted) return;
               Navigator.pop(ctx);
               _showError(e.toString());
             }
@@ -280,9 +285,11 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
             onPressed: () async {
               try {
                 await ApiService.deleteTransaction(id);
+                if (!mounted || !context.mounted) return;
                 Navigator.pop(context);
                 setState(() => _load());
               } catch (e) {
+                if (!mounted || !context.mounted) return;
                 Navigator.pop(context);
                 _showError(e.toString());
               }
@@ -536,6 +543,13 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                       }
                       final it = filteredItems[i - 1] as Map<String, dynamic>;
                       final isExpense = it['transaction_type'] == 'expense';
+                        final isInputExpense = isExpense && it['input_id'] != null;
+                        final transactionColor = isInputExpense
+                          ? _Z.inputAccent
+                          : isExpense
+                            ? _Z.ink
+                            : _Z.incomeAccent;
+                      final visibleNotes = it['notes']?.toString().trim() ?? '';
 
                       return GestureDetector(
                         onTap: () {
@@ -584,7 +598,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                                 width: 3,
                                 height: 38,
                                 decoration: BoxDecoration(
-                                  color: isExpense ? _Z.ink : _Z.incomeAccent,
+                                  color: transactionColor,
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
@@ -593,24 +607,42 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      (it['category'] ?? '-').toString().toUpperCase(),
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        letterSpacing: 1,
-                                        fontWeight: FontWeight.w600,
-                                        color: _Z.ink,
-                                      ),
+                                    Row(
+                                      children: [
+                                        if (isInputExpense) ...[
+                                          const Icon(Icons.inventory_2_outlined, size: 14, color: _Z.inputAccent),
+                                          const SizedBox(width: 6),
+                                        ],
+                                        Expanded(
+                                          child: Text(
+                                            (it['category'] ?? '-').toString().toUpperCase(),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              letterSpacing: 1,
+                                              fontWeight: FontWeight.w600,
+                                              color: isInputExpense ? _Z.inputAccent : _Z.ink,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (isInputExpense) ...[
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            'INTRANT',
+                                            style: TextStyle(fontSize: 8, letterSpacing: 1, color: _Z.inputAccent),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       _formatDate(it['transaction_date']),
                                       style: const TextStyle(fontSize: 11, color: _Z.muted),
                                     ),
-                                    if (it['notes'] != null && it['notes'].toString().isNotEmpty) ...[
+                                    if (visibleNotes.isNotEmpty) ...[
                                       const SizedBox(height: 4),
                                       Text(
-                                        it['notes'].toString(),
+                                        visibleNotes,
                                         style: const TextStyle(fontSize: 11, color: _Z.muted, fontStyle: FontStyle.italic),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -627,7 +659,7 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
-                                      color: isExpense ? _Z.ink : _Z.incomeAccent,
+                                      color: transactionColor,
                                     ),
                                   ),
                                   const SizedBox(height: 2),

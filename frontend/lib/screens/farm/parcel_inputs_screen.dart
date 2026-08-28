@@ -240,9 +240,11 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
               'cost': double.tryParse(costCtrl.text),
               'notes': notesCtrl.text.trim(),
             });
+            if (!mounted || !ctx.mounted) return;
             Navigator.pop(ctx);
             setState(() => _load());
           } catch (e) {
+            if (!mounted || !ctx.mounted) return;
             Navigator.pop(ctx);
             _showError(e.toString());
           }
@@ -284,9 +286,11 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
               'cost': double.tryParse(costCtrl.text),
               'notes': notesCtrl.text.trim(),
             });
+            if (!mounted || !ctx.mounted) return;
             Navigator.pop(ctx);
             setState(() => _load());
           } catch (e) {
+            if (!mounted || !ctx.mounted) return;
             Navigator.pop(ctx);
             _showError(e.toString());
           }
@@ -314,9 +318,11 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
             onPressed: () async {
               try {
                 await ApiService.deleteInput(id);
+                if (!mounted || !context.mounted) return;
                 Navigator.pop(context);
                 setState(() => _load());
               } catch (e) {
+                if (!mounted || !context.mounted) return;
                 Navigator.pop(context);
                 _showError(e.toString());
               }

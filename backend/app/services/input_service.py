@@ -1,10 +1,21 @@
 from sqlalchemy.orm import Session
 from app.models.input import Input
+from app.models.finance import FinanceTransaction
 from datetime import datetime
 from typing import Optional, List
 
 
 class InputService:
+    _finance_marker = '[MBAYMI_INPUT:{input_id}]'
+
+    @classmethod
+    def _find_finance_transaction(cls, db: Session, input_id: int) -> Optional[FinanceTransaction]:
+        marker = cls._finance_marker.format(input_id=input_id)
+        return db.query(FinanceTransaction).filter(
+            (FinanceTransaction.input_id == input_id) |
+            FinanceTransaction.notes.like(f'{marker}%')
+        ).first()
+
     @staticmethod
     def create_input(db: Session, data: dict) -> Input:
         i = Input(
@@ -20,6 +31,19 @@ class InputService:
             created_at=datetime.utcnow(),
         )
         db.add(i)
+        db.flush()
+        if i.cost is not None and i.cost > 0:
+            db.add(FinanceTransaction(
+                farm_id=i.farm_id,
+                crop_id=i.crop_id,
+                transaction_type='expense',
+                category=i.input_type or 'Intrant',
+                amount=i.cost,
+                input_id=i.id,
+                transaction_date=i.applied_date,
+                notes=i.notes,
+                created_at=datetime.utcnow(),
+            ))
         db.commit()
         db.refresh(i)
         return i
@@ -44,6 +68,29 @@ class InputService:
         for k, v in updates.items():
             if hasattr(i, k):
                 setattr(i, k, v)
+        transaction = InputService._find_finance_transaction(db, input_id)
+        if transaction:
+            transaction.input_id = i.id
+            if i.cost is None or i.cost <= 0:
+                db.delete(transaction)
+            else:
+                transaction.amount = i.cost
+                transaction.category = i.input_type or 'Intrant'
+                transaction.crop_id = i.crop_id
+                transaction.transaction_date = i.applied_date
+                transaction.notes = i.notes
+        elif i.cost is not None and i.cost > 0:
+            db.add(FinanceTransaction(
+                farm_id=i.farm_id,
+                crop_id=i.crop_id,
+                transaction_type='expense',
+                category=i.input_type or 'Intrant',
+                amount=i.cost,
+                input_id=i.id,
+                transaction_date=i.applied_date,
+                notes=i.notes,
+                created_at=datetime.utcnow(),
+            ))
         db.commit()
         db.refresh(i)
         return i
@@ -53,6 +100,9 @@ class InputService:
         i = db.query(Input).filter(Input.id == input_id).first()
         if not i:
             return False
+        transaction = InputService._find_finance_transaction(db, input_id)
+        if transaction:
+            db.delete(transaction)
         db.delete(i)
         db.commit()
         return True

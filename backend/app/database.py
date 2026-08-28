@@ -16,6 +16,8 @@ import app.models.farm_network  # noqa: F401
 import app.models.market_trends  # noqa: F401
 import app.models.notification  # noqa: F401
 import app.models.notebook  # noqa: F401
+import app.models.input  # noqa: F401
+import app.models.finance  # noqa: F401
 from sqlalchemy import text
 
 # Create engine
@@ -44,6 +46,8 @@ def init_db():
             conn.execute(text("ALTER TABLE farms ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;"))
             conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_id INTEGER;"))
             conn.execute(text("ALTER TABLE crops ADD COLUMN IF NOT EXISTS area DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS input_id INTEGER;"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_input_id ON finance_transactions (input_id);"))
             conn.execute(text("ALTER TABLE farm_post_comments ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES farm_post_comments(id) ON DELETE CASCADE;"))
             
             # Update users table: make email and phone nullable for phone-only or email-only registration

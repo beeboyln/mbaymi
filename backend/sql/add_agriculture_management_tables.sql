@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS finance_transactions (
     id SERIAL PRIMARY KEY,
     farm_id INTEGER NOT NULL REFERENCES farms(id),
     crop_id INTEGER NULL REFERENCES crops(id),
+    input_id INTEGER NULL REFERENCES inputs(id) ON DELETE SET NULL,
     transaction_type VARCHAR(20) NOT NULL,
     category VARCHAR(100),
     amount DOUBLE PRECISION NOT NULL,
@@ -36,6 +37,12 @@ CREATE TABLE IF NOT EXISTS finance_transactions (
     notes VARCHAR(1000),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+ALTER TABLE finance_transactions
+ADD COLUMN IF NOT EXISTS input_id INTEGER;
+
+CREATE INDEX IF NOT EXISTS ix_finance_transactions_input_id
+ON finance_transactions (input_id);
 
 -- Create reminders table
 CREATE TABLE IF NOT EXISTS reminders (

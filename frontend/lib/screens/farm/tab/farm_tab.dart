@@ -145,6 +145,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
     await (_section == 1 ? _livestock() : _farms());
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (!_pageScrollController.hasClients) return;
       final maxOffset = _pageScrollController.position.maxScrollExtent;
       _pageScrollController.jumpTo(previousOffset.clamp(0.0, maxOffset));

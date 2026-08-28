@@ -8,6 +8,7 @@ class FinanceTransaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     farm_id = Column(Integer, ForeignKey("farms.id"), nullable=False)
     crop_id = Column(Integer, ForeignKey("crops.id"), nullable=True)
+    input_id = Column(Integer, ForeignKey("inputs.id", ondelete="SET NULL"), nullable=True, index=True)
     transaction_type = Column(String(20))  # expense / income
     category = Column(String(100))  # seeds, labor, sale, other
     amount = Column(Float, nullable=False)
