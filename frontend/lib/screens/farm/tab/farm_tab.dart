@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +17,6 @@ import 'package:mbaymi/screens/farm/parcel_screen.dart';
 import 'package:mbaymi/screens/farm/public_farms_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
-// Import des nouveaux fichiers
 import 'package:mbaymi/screens/farm/tab/farm_tab_components.dart';
 import 'farm_card.dart';
 
@@ -48,6 +48,11 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   late Animation<double> _sectionFade;
   final _pageScrollController = ScrollController();
 
+  late Future<List<dynamic>> _farmsFuture;
+  late Future<List<dynamic>> _livestockFuture;
+  
+  final Map<int, Future<List<dynamic>>> _cropsFutureCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +69,13 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
       CurvedAnimation(parent: _sectionAnim, curve: Curves.easeOut),
     );
     _sectionAnim.forward();
+    
+    _initializeFutures();
+  }
+
+  void _initializeFutures() {
+    _farmsFuture = _farms();
+    _livestockFuture = _livestock();
   }
 
   @override
@@ -92,6 +104,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
     super.didUpdateWidget(old);
     if (old.userId != widget.userId) {
       _section = widget.initialSection;
+      _initializeFutures();
       setState(() {});
     }
   }
@@ -114,6 +127,13 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   }
 
   Future<List<dynamic>> _crops(int farmId) => _repository.getFarmCrops(farmId);
+  
+  Future<List<dynamic>> _cropsFuture(int farmId) {
+    if (!_cropsFutureCache.containsKey(farmId)) {
+      _cropsFutureCache[farmId] = _crops(farmId);
+    }
+    return _cropsFutureCache[farmId]!;
+  }
 
   List<dynamic> _sorted(List<dynamic> items) => List.from(items)
     ..sort((a, b) {
@@ -132,6 +152,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
     }
     _dataCache.clear();
     _cropsCache.clear();
+    _cropsFutureCache.clear();
   }
 
   Future<void> _refresh() async {
@@ -140,10 +161,11 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
         : 0.0;
 
     _invalidateGlobalCaches();
+    _initializeFutures();
     setState(() {});
     _sectionAnim.forward(from: 0);
 
-    await (_section == 1 ? _livestock() : _farms());
+    await (_section == 1 ? _livestockFuture : _farmsFuture);
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -647,7 +669,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
       );
     }
     return FutureBuilder<List<dynamic>>(
-      future: _section == 1 ? _livestock() : _farms(),
+      future: _section == 1 ? _livestockFuture : _farmsFuture,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return FarmLoader(dark: dark);
@@ -726,7 +748,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
       isOwner: isOwner,
       dark: dark,
       aspectRatio: 1.15,
-      cropsFuture: _crops(farmId),
+      cropsFuture: _cropsFuture(farmId),
       onEdit: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -763,18 +785,25 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
           body: SafeArea(
             child: Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                      border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 0.5)),
-                  child: Text(name.toUpperCase(),
-                      style: const TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 2.5,
-                          color: Colors.white70)),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.4),
+                          border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 0.5)),
+                      child: Text(name.toUpperCase(),
+                          style: const TextStyle(
+                              fontSize: 11,
+                              letterSpacing: 2.5,
+                              color: Colors.white70)),
+                    ),
+                  ),
                 ),
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -878,7 +907,7 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ANIMAL CARD (gardé ici car spécifique à FarmTab)
+// ANIMAL CARD GLASSMORPHIC
 // ─────────────────────────────────────────────────────────────────────────────
 class _AnimalCard extends StatelessWidget {
   final Map<String, dynamic> animal;
@@ -892,7 +921,6 @@ class _AnimalCard extends StatelessWidget {
   });
 
   Color _statusColor(Map<String, dynamic> crop) {
-    // Version simplifiée pour les animaux
     try {
       final health = crop['health_status']?.toString().toLowerCase() ?? '';
       if (health.contains('malade') || health.contains('blessé')) {
@@ -937,6 +965,7 @@ class _AnimalCard extends StatelessWidget {
               color: dark ? AppColors.darkCardBg : AppColors.lightCardBg,
                 child: photo != null
                   ? Image.network(photo.toString(),
+                      fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Icon(
                           Icons.pets,
                           size: 24,

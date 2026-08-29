@@ -1,16 +1,13 @@
 /// ParcelOverlay — N parcelles interactives sur la vue aérienne.
-/// Style : minimaliste raffiné — glassmorphism subtil, géométrie précise,
-///         typographie aérée, animations soignées.
-///
-/// Nouveautés :
-///   • Mode lecture / édition — toggle flottant verrouille drag + resize
-///   • Légende de densité — résumé visuel des statuts en mode lecture
+/// Style : minimaliste raffiné — glassmorphic blur, géométrie précise,
+///         typographie aérée, animations soignées et optimisées GPU.
 library;
 
+import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MODÈLE
@@ -123,17 +120,14 @@ class _ParcelOverlayState extends State<ParcelOverlay>
   int _activeId = -1;
   bool _resizing = false;
 
-  // ── Mode lecture/édition ──────────────────────────────────────────────────
   bool _editMode = false;
   late AnimationController _modeToggleCtrl;
   late Animation<double> _modeToggleAnim;
 
-  // ── Menu hamburger dépliant ──────────────────────────────────────────────
   bool _menuExpanded = false;
   late AnimationController _menuCtrl;
   late Animation<double> _menuAnim;
 
-  // ── Légende de densité — repliée/dépliée ─────────────────────────────────
   bool _legendExpanded = false;
   late AnimationController _legendCtrl;
   late Animation<double> _legendAnim;
@@ -197,14 +191,12 @@ class _ParcelOverlayState extends State<ParcelOverlay>
     setState(() => _editMode = !_editMode);
     if (_editMode) {
       _modeToggleCtrl.forward();
-      // Replier la légende en mode édition
       if (_legendExpanded) {
         _legendExpanded = false;
         _legendCtrl.reverse();
       }
     } else {
       _modeToggleCtrl.reverse();
-      // Forcer la fin d'une interaction en cours si on passe en lecture
       _activeId = -1;
       _resizing = false;
     }
@@ -278,7 +270,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
     } catch (_) {}
   }
 
-  // ── Calcul des stats de densité ───────────────────────────────────────────
   ({int healthy, int warning, int critical}) get _densityStats {
     int h = 0, w = 0, c = 0;
     for (final p in widget.parcels) {
@@ -291,7 +282,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
     return (healthy: h, warning: w, critical: c);
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     if (!_loaded) return const SizedBox.shrink();
@@ -302,11 +292,9 @@ class _ParcelOverlayState extends State<ParcelOverlay>
       final H = box.maxHeight;
       return Stack(
         children: [
-          // ── Parcelles ──────────────────────────────────────────────────────
           for (var i = 0; i < widget.parcels.length; i++)
             _buildParcel(widget.parcels[i], i, W, H),
 
-          // ── Toggle Mode Lecture/Édition — haut droite ────────────────────
           Positioned(
             right: 12,
             top: 10,
@@ -317,92 +305,101 @@ class _ParcelOverlayState extends State<ParcelOverlay>
             ),
           ),
 
-          // ── Menu hamburger (trois points) — haut gauche ──────────────────
           Positioned(
             left: 12,
             top: 10,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Bouton hamburger
                 GestureDetector(
                   onTap: _toggleMenu,
-                  child: Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.78),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.45),
-                        width: 1,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.55),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.30),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.menu_outlined,
+                          size: 21,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    child: const Icon(
-                      Icons.menu_outlined,
-                      size: 21,
-                      color: Colors.white,
                     ),
                   ),
                 ),
-                // Menu déroulant
                 SizeTransition(
                   sizeFactor: _menuAnim,
                   axisAlignment: -1,
                   child: Container(
                     margin: const EdgeInsets.only(top: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.72),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.15),
-                        width: 0.5,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.60),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.15),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  _toggleMenu();
+                                  widget.onEdit?.call();
+                                },
+                                child: Container(
+                                  width: 132,
+                                  height: 46,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.edit_note_outlined, size: 19, color: Colors.white),
+                                      SizedBox(width: 10),
+                                      Text('MODIFIER', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Colors.white, fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                height: 0.5,
+                                color: Colors.white.withOpacity(0.1),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  _toggleMenu();
+                                  widget.onDelete?.call();
+                                },
+                                child: Container(
+                                  width: 132,
+                                  height: 46,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.delete_outline, size: 19, color: Color(0xFFFF5252)),
+                                      SizedBox(width: 10),
+                                      Text('SUPPRIMER', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Color(0xFFFF5252), fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Bouton éditer — modif de la ferme
-                        GestureDetector(
-                          onTap: () {
-                            _toggleMenu();
-                            widget.onEdit?.call();
-                          },
-                          child: Container(
-                            width: 132,
-                            height: 46,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.edit_note_outlined, size: 19, color: Colors.white),
-                                SizedBox(width: 10),
-                                Text('MODIFIER', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Colors.white, fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Container(
-                          height: 0.5,
-                          color: Colors.white.withOpacity(0.1),
-                        ),
-                        // Bouton supprimer — suppression de la ferme
-                        GestureDetector(
-                          onTap: () {
-                            _toggleMenu();
-                            widget.onDelete?.call();
-                          },
-                          child: Container(
-                            width: 132,
-                            height: 46,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.delete_outline, size: 19, color: Color(0xFFFF5252)),
-                                SizedBox(width: 10),
-                                Text('SUPPRIMER', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Color(0xFFFF5252), fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -410,7 +407,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
             ),
           ),
 
-          // ── Indicateur de santé — pill repliable (au-dessus du toggle) ────
           Positioned(
             left: 12,
             bottom: 50,
@@ -427,7 +423,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
     });
   }
 
-  // ── Parcelle individuelle ──────────────────────────────────────────────────
   Widget _buildParcel(
       Map<String, dynamic> parcel, int idx, double W, double H) {
     final id = parcel['id'] as int;
@@ -464,7 +459,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
           ),
         ),
         child: GestureDetector(
-          // ── Drag : bloqué en mode lecture ──────────────────────────────
           onPanStart: _editMode ? (_) {
             if (_resizing) return;
             HapticFeedback.lightImpact();
@@ -488,32 +482,30 @@ class _ParcelOverlayState extends State<ParcelOverlay>
             width: width,
             height: height,
             child: Stack(clipBehavior: Clip.none, children: [
-              // ── Corps principal ──────────────────────────────────────
               Positioned.fill(
                 child: _ParcelBody(
                   photo: photo,
                   color: color,
                   isActive: isActive,
-                  // Légère surbrillance en mode lecture au survol du tap
                   lockedMode: !_editMode,
                   width: width,
                   height: height,
                 ),
               ),
 
-              // ── Bordure corner-only ──────────────────────────────────
               Positioned.fill(
                 child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _CornerBorderPainter(
-                      color: color,
-                      active: isActive,
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: _CornerBorderPainter(
+                        color: color,
+                        active: isActive,
+                      ),
                     ),
                   ),
                 ),
               ),
 
-              // ── Icône verrou (mode lecture) ──────────────────────────
               AnimatedBuilder(
                 animation: _modeToggleAnim,
                 builder: (_, __) {
@@ -537,7 +529,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                 },
               ),
 
-              // ── Label ────────────────────────────────────────────────
               Positioned(
                 top: 0,
                 left: 0,
@@ -550,7 +541,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                 ),
               ),
 
-              // ── Badge alerte pulsant ─────────────────────────────────
               if (_pulseCtrl.containsKey(id))
                 Positioned(
                   top: 4,
@@ -576,7 +566,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                   ),
                 ),
 
-              // ── Badge dimensions (édition active uniquement) ─────────
               if (isActive && _editMode)
                 Center(
                   child: _DimBadge(
@@ -585,10 +574,8 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                   ),
                 ),
 
-              // ── Point d'origine (édition uniquement) ─────────────────
               if (_editMode) _DraggableOriginDot(color: color),
 
-              // ── Poignée resize (édition uniquement) ──────────────────
               if (_editMode)
                 Positioned(
                   right: 0,
@@ -628,7 +615,7 @@ class _ParcelOverlayState extends State<ParcelOverlay>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// INDICATEUR DE SANTÉ — PILL REPLIABLE
+// INDICATEUR DE SANTÉ — GLASSMORPHIC PILL REPLIABLE
 // ─────────────────────────────────────────────────────────────────────────────
 class _HealthIndicator extends StatelessWidget {
   final ({int healthy, int warning, int critical}) stats;
@@ -645,7 +632,6 @@ class _HealthIndicator extends StatelessWidget {
     required this.onToggle,
   });
 
-  // Couleur dominante pour la pill
   Color get _dominantColor {
     if (stats.critical > 0) return const Color(0xFFFF5252);
     if (stats.warning > 0)  return const Color(0xFFD4A96A);
@@ -660,7 +646,6 @@ class _HealthIndicator extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Panel déplié ────────────────────────────────────────────────────
         AnimatedBuilder(
           animation: expandAnim,
           builder: (_, child) {
@@ -685,7 +670,6 @@ class _HealthIndicator extends StatelessWidget {
           ),
         ),
 
-        // ── Pill trigger ────────────────────────────────────────────────────
         GestureDetector(
           onTap: onToggle,
           child: AnimatedBuilder(
@@ -697,72 +681,76 @@ class _HealthIndicator extends StatelessWidget {
                 color.withOpacity(0.12),
                 t,
               )!;
-              return Container(
-                height: 26,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: bgColor.withOpacity(0.88),
-                  border: Border.all(
-                    color: color.withOpacity(0.25 + 0.25 * t),
-                    width: 0.6,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                    if (stats.critical > 0)
-                      BoxShadow(
-                        color: const Color(0xFFFF5252).withOpacity(0.12),
-                        blurRadius: 10,
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(13),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    height: 26,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: bgColor.withOpacity(0.70),
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(
+                        color: color.withOpacity(0.25 + 0.25 * t),
+                        width: 0.6,
                       ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Dot de couleur dominante
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: color,
-                        boxShadow: [
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                        if (stats.critical > 0)
                           BoxShadow(
-                            color: color.withOpacity(0.5),
-                            blurRadius: 4,
+                            color: const Color(0xFFFF5252).withOpacity(0.12),
+                            blurRadius: 10,
                           ),
-                        ],
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 7),
-                    Text(
-                      'SANTÉ',
-                      style: TextStyle(
-                        fontSize: 7,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.4,
-                        color: Colors.white.withOpacity(0.6),
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color,
+                            boxShadow: [
+                              BoxShadow(
+                                color: color.withOpacity(0.5),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          'SANTÉ',
+                          style: TextStyle(
+                            fontSize: 7,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.4,
+                            color: Colors.white.withOpacity(0.6),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        _MiniBar(stats: stats, total: total),
+                        const SizedBox(width: 8),
+                        AnimatedRotation(
+                          turns: expanded ? 0.5 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOutCubic,
+                          child: Icon(
+                            Icons.keyboard_arrow_up_rounded,
+                            size: 12,
+                            color: Colors.white.withOpacity(0.4),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 7),
-                    // Mini barre composite
-                    _MiniBar(stats: stats, total: total),
-                    const SizedBox(width: 8),
-                    // Chevron animé
-                    AnimatedRotation(
-                      turns: expanded ? 0.5 : 0.0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOutCubic,
-                      child: Icon(
-                        Icons.keyboard_arrow_up_rounded,
-                        size: 12,
-                        color: Colors.white.withOpacity(0.4),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               );
             },
@@ -773,7 +761,6 @@ class _HealthIndicator extends StatelessWidget {
   }
 }
 
-/// Barre composite miniature pour la pill
 class _MiniBar extends StatelessWidget {
   final ({int healthy, int warning, int critical}) stats;
   final int total;
@@ -787,38 +774,41 @@ class _MiniBar extends StatelessWidget {
     final ratioW = stats.warning / total;
     final ratioC = stats.critical / total;
 
-    return SizedBox(
-      width: 36,
-      height: 3,
-      child: Row(
-        children: [
-          if (ratioH > 0)
-            Expanded(
-              flex: (ratioH * 100).round(),
-              child: Container(color: const Color(0xFF95C8A1).withOpacity(0.75)),
-            ),
-          if (ratioW > 0) ...[
-            const SizedBox(width: 1),
-            Expanded(
-              flex: (ratioW * 100).round(),
-              child: Container(color: const Color(0xFFD4A96A).withOpacity(0.75)),
-            ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(1.5),
+      child: SizedBox(
+        width: 36,
+        height: 3,
+        child: Row(
+          children: [
+            if (ratioH > 0)
+              Expanded(
+                flex: (ratioH * 100).round(),
+                child: Container(color: const Color(0xFF95C8A1).withOpacity(0.75)),
+              ),
+            if (ratioW > 0) ...[
+              const SizedBox(width: 1),
+              Expanded(
+                flex: (ratioW * 100).round(),
+                child: Container(color: const Color(0xFFD4A96A).withOpacity(0.75)),
+              ),
+            ],
+            if (ratioC > 0) ...[
+              const SizedBox(width: 1),
+              Expanded(
+                flex: (ratioC * 100).round(),
+                child: Container(color: const Color(0xFFFF5252).withOpacity(0.75)),
+              ),
+            ],
           ],
-          if (ratioC > 0) ...[
-            const SizedBox(width: 1),
-            Expanded(
-              flex: (ratioC * 100).round(),
-              child: Container(color: const Color(0xFFFF5252).withOpacity(0.75)),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PANNEAU DE DENSITÉ (contenu déplié)
+// PANNEAU DE DENSITÉ GLASSMORPHIC
 // ─────────────────────────────────────────────────────────────────────────────
 class _DensityLegend extends StatelessWidget {
   final ({int healthy, int warning, int critical}) stats;
@@ -830,93 +820,96 @@ class _DensityLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     if (total == 0) return const SizedBox.shrink();
 
-    return Container(
-      width: 148,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D0D0D).withOpacity(0.82),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-          width: 0.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // En-tête
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 4,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF505055),
-                ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          width: 148,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D0D0D).withOpacity(0.68),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.12),
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
-              const SizedBox(width: 6),
-              Text(
-                'ÉTAT DES PARCELLES',
-                style: TextStyle(
-                  fontSize: 6.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.4,
-                  color: Colors.white.withOpacity(0.35),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 4,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF505055),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'ÉTAT DES PARCELLES',
+                    style: TextStyle(
+                      fontSize: 6.5,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.4,
+                      color: Colors.white.withOpacity(0.35),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              _CompositeDensityBar(stats: stats, total: total),
+              const SizedBox(height: 10),
+
+              _LegendRow(
+                color: const Color(0xFF95C8A1),
+                label: 'SAIN',
+                count: stats.healthy,
+                total: total,
+              ),
+              const SizedBox(height: 5),
+              _LegendRow(
+                color: const Color(0xFFD4A96A),
+                label: 'ATTENTION',
+                count: stats.warning,
+                total: total,
+              ),
+              const SizedBox(height: 5),
+              _LegendRow(
+                color: const Color(0xFFFF5252),
+                label: 'CRITIQUE',
+                count: stats.critical,
+                total: total,
+              ),
+              const SizedBox(height: 8),
+
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '$total parcelle${total > 1 ? 's' : ''}',
+                  style: TextStyle(
+                    fontSize: 6.5,
+                    letterSpacing: 0.8,
+                    color: Colors.white.withOpacity(0.25),
+                    fontWeight: FontWeight.w300,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-
-          // Barre de densité composite
-          _CompositeDensityBar(stats: stats, total: total),
-          const SizedBox(height: 10),
-
-          // Légendes individuelles
-          _LegendRow(
-            color: const Color(0xFF95C8A1),
-            label: 'SAIN',
-            count: stats.healthy,
-            total: total,
-          ),
-          const SizedBox(height: 5),
-          _LegendRow(
-            color: const Color(0xFFD4A96A),
-            label: 'ATTENTION',
-            count: stats.warning,
-            total: total,
-          ),
-          const SizedBox(height: 5),
-          _LegendRow(
-            color: const Color(0xFFFF5252),
-            label: 'CRITIQUE',
-            count: stats.critical,
-            total: total,
-          ),
-          const SizedBox(height: 8),
-
-          // Compteur total
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '$total parcelle${total > 1 ? 's' : ''}',
-              style: TextStyle(
-                fontSize: 6.5,
-                letterSpacing: 0.8,
-                color: Colors.white.withOpacity(0.25),
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -967,39 +960,42 @@ class _CompositeDensityBarState extends State<_CompositeDensityBar>
       animation: _anim,
       builder: (_, __) {
         final progress = _anim.value;
-        return SizedBox(
-          height: 5,
-          child: Row(
-            children: [
-              if (ratioH > 0)
-                Expanded(
-                  flex: (ratioH * 1000).round(),
-                  child: Container(
-                    color: const Color(0xFF95C8A1)
-                        .withOpacity(0.4 + 0.6 * progress),
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: SizedBox(
+            height: 5,
+            child: Row(
+              children: [
+                if (ratioH > 0)
+                  Expanded(
+                    flex: (ratioH * 1000).round(),
+                    child: Container(
+                      color: const Color(0xFF95C8A1)
+                          .withOpacity(0.4 + 0.6 * progress),
+                    ),
                   ),
-                ),
-              if (ratioW > 0) ...[
-                const SizedBox(width: 1),
-                Expanded(
-                  flex: (ratioW * 1000).round(),
-                  child: Container(
-                    color: const Color(0xFFD4A96A)
-                        .withOpacity(0.4 + 0.6 * progress),
+                if (ratioW > 0) ...[
+                  const SizedBox(width: 1),
+                  Expanded(
+                    flex: (ratioW * 1000).round(),
+                    child: Container(
+                      color: const Color(0xFFD4A96A)
+                          .withOpacity(0.4 + 0.6 * progress),
+                    ),
                   ),
-                ),
+                ],
+                if (ratioC > 0) ...[
+                  const SizedBox(width: 1),
+                  Expanded(
+                    flex: (ratioC * 1000).round(),
+                    child: Container(
+                      color: const Color(0xFFFF5252)
+                          .withOpacity(0.4 + 0.6 * progress),
+                    ),
+                  ),
+                ],
               ],
-              if (ratioC > 0) ...[
-                const SizedBox(width: 1),
-                Expanded(
-                  flex: (ratioC * 1000).round(),
-                  child: Container(
-                    color: const Color(0xFFFF5252)
-                        .withOpacity(0.4 + 0.6 * progress),
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         );
       },
@@ -1044,18 +1040,20 @@ class _LegendRow extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        // Barre individuelle
         SizedBox(
           width: 40,
           height: 3,
-          child: Stack(
-            children: [
-              Container(color: Colors.white.withOpacity(0.06)),
-              FractionallySizedBox(
-                widthFactor: ratio,
-                child: Container(color: color.withOpacity(count > 0 ? 0.7 : 0)),
-              ),
-            ],
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(1.5),
+            child: Stack(
+              children: [
+                Container(color: Colors.white.withOpacity(0.06)),
+                FractionallySizedBox(
+                  widthFactor: ratio,
+                  child: Container(color: color.withOpacity(count > 0 ? 0.7 : 0)),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(width: 5),
@@ -1127,12 +1125,14 @@ class _ParcelBody extends StatelessWidget {
   }
 
   Widget _hatchBackground() {
-    return CustomPaint(painter: _HatchPainter(color: color));
+    return RepaintBoundary(
+      child: CustomPaint(painter: _HatchPainter(color: color)),
+    );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LABEL DE PARCELLE
+// LABEL DE PARCELLE GLASSMORPHIC
 // ─────────────────────────────────────────────────────────────────────────────
 class _ParcelLabel extends StatelessWidget {
   final String name;
@@ -1151,48 +1151,53 @@ class _ParcelLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      constraints: BoxConstraints(maxWidth: maxW),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isActive
-            ? color.withOpacity(0.92)
-            : Colors.black.withOpacity(0.62),
-        border: Border(
-          right: BorderSide(color: color.withOpacity(0.35), width: 0.5),
-          bottom: BorderSide(color: color.withOpacity(0.35), width: 0.5),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'P${idx + 1}',
-            style: TextStyle(
-              fontSize: 7,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-              color: color.withOpacity(isActive ? 1.0 : 0.85),
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          constraints: BoxConstraints(maxWidth: maxW),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: isActive
+                ? color.withOpacity(0.92)
+                : Colors.black.withOpacity(0.55),
+            border: Border(
+              right: BorderSide(color: color.withOpacity(0.35), width: 0.5),
+              bottom: BorderSide(color: color.withOpacity(0.35), width: 0.5),
             ),
           ),
-          const SizedBox(width: 4),
-          Container(width: 0.5, height: 8, color: Colors.white.withOpacity(0.22)),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              name.toUpperCase(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 7,
-                fontWeight: FontWeight.w300,
-                letterSpacing: 1.1,
-                color: Colors.white,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'P${idx + 1}',
+                style: TextStyle(
+                  fontSize: 7,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  color: color.withOpacity(isActive ? 1.0 : 0.85),
+                ),
               ),
-            ),
+              const SizedBox(width: 4),
+              Container(width: 0.5, height: 8, color: Colors.white.withOpacity(0.22)),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  name.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 7,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 1.1,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1209,19 +1214,25 @@ class _DimBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.65),
-        border: Border.all(color: color.withOpacity(0.4), width: 0.5),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 8,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 1.0,
-          color: color.withOpacity(0.9),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.55),
+            border: Border.all(color: color.withOpacity(0.4), width: 0.5),
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w300,
+              letterSpacing: 1.0,
+              color: color.withOpacity(0.9),
+            ),
+          ),
         ),
       ),
     );
@@ -1229,9 +1240,9 @@ class _DimBadge extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POIGNÉE DE REDIMENSIONNEMENT
+// POIGNÉE DE REDIMENSIONNEMENT INTERACTIVE
 // ─────────────────────────────────────────────────────────────────────────────
-class _ResizeHandle extends StatelessWidget {
+class _ResizeHandle extends StatefulWidget {
   final Color color;
   final VoidCallback onPanStart;
   final void Function(DragUpdateDetails) onPanUpdate;
@@ -1245,23 +1256,43 @@ class _ResizeHandle extends StatelessWidget {
   });
 
   @override
+  State<_ResizeHandle> createState() => _ResizeHandleState();
+}
+
+class _ResizeHandleState extends State<_ResizeHandle> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onPanStart: (_) => onPanStart(),
-      onPanUpdate: onPanUpdate,
-      onPanEnd: (_) => onPanEnd(),
-      child: Container(
+      onPanStart: (_) {
+        setState(() => _hovered = true);
+        widget.onPanStart();
+      },
+      onPanUpdate: widget.onPanUpdate,
+      onPanEnd: (_) {
+        setState(() => _hovered = false);
+        widget.onPanEnd();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
         width: 28,
         height: 28,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: _hovered
+              ? widget.color.withOpacity(0.28)
+              : widget.color.withOpacity(0.12),
           border: Border.all(
-            color: color.withOpacity(0.35),
+            color: _hovered
+                ? widget.color.withOpacity(0.70)
+                : widget.color.withOpacity(0.35),
             width: 0.8,
           ),
         ),
-        child: CustomPaint(painter: _ResizeIconPainter(color: color)),
+        child: RepaintBoundary(
+          child: CustomPaint(painter: _ResizeIconPainter(color: widget.color)),
+        ),
       ),
     );
   }
@@ -1365,9 +1396,11 @@ class _DraggableOriginDotState extends State<_DraggableOriginDot>
                         ],
                       ),
                     ),
-                    CustomPaint(
-                      size: const Size(24, 24),
-                      painter: _CrosshairPainter(color: widget.color),
+                    RepaintBoundary(
+                      child: CustomPaint(
+                        size: const Size(24, 24),
+                        painter: _CrosshairPainter(color: widget.color),
+                      ),
                     ),
                   ]),
                 );
@@ -1554,107 +1587,109 @@ class _ModeToggle extends StatelessWidget {
             t,
           )!;
 
-          // Icône : trait horizontal (lecture) → crayon (édition)
-          // On cross-fade entre les deux via opacité
           final iconOpacityRead = (1 - t).clamp(0.0, 1.0);
           final iconOpacityEdit = t.clamp(0.0, 1.0);
 
-          return Container(
-            width: 44,
-            height: 26,
-            decoration: BoxDecoration(
-              color: trackColor,
-              borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: borderColor, width: 1),
-            ),
-            child: Stack(
-              alignment: Alignment.centerLeft,
-              children: [
-                Positioned(
-                  left: 3 + t * 18,
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: thumbColor,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                        BoxShadow(
-                          color: thumbGlow,
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Lecture : deux lignes horizontales (eye-rest)
-                          Opacity(
-                            opacity: iconOpacityRead,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 1.2,
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.35),
-                                    borderRadius: BorderRadius.circular(1),
-                                  ),
-                                ),
-                                const SizedBox(height: 2.5),
-                                Container(
-                                  width: 5,
-                                  height: 1.2,
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.25),
-                                    borderRadius: BorderRadius.circular(1),
-                                  ),
-                                ),
-                              ],
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(13),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: Container(
+                width: 44,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: trackColor,
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: borderColor, width: 1),
+                ),
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    Positioned(
+                      left: 3 + t * 18,
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: thumbColor,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.12),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
                             ),
-                          ),
-                          // Édition : pointe de crayon minimaliste
-                          Opacity(
-                            opacity: iconOpacityEdit,
-                            child: Transform.rotate(
-                              angle: -0.785, // −45°
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 1.5,
-                                    height: 7,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.85),
-                                      borderRadius: BorderRadius.circular(1),
+                            BoxShadow(
+                              color: thumbGlow,
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Opacity(
+                                opacity: iconOpacityRead,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 1.2,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.35),
+                                        borderRadius: BorderRadius.circular(1),
+                                      ),
                                     ),
-                                  ),
-                                  ClipPath(
-                                    clipper: _TriangleTipClipper(),
-                                    child: Container(
-                                      width: 1.5,
-                                      height: 3,
-                                      color: Colors.white.withOpacity(0.85),
+                                    const SizedBox(height: 2.5),
+                                    Container(
+                                      width: 5,
+                                      height: 1.2,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.25),
+                                        borderRadius: BorderRadius.circular(1),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
+                              Opacity(
+                                opacity: iconOpacityEdit,
+                                child: Transform.rotate(
+                                  angle: -0.785,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 1.5,
+                                        height: 7,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.85),
+                                          borderRadius: BorderRadius.circular(1),
+                                        ),
+                                      ),
+                                      ClipPath(
+                                        clipper: _TriangleTipClipper(),
+                                        child: Container(
+                                          width: 1.5,
+                                          height: 3,
+                                          color: Colors.white.withOpacity(0.85),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         },
@@ -1663,7 +1698,6 @@ class _ModeToggle extends StatelessWidget {
   }
 }
 
-// Petite pointe triangulaire pour le crayon
 class _TriangleTipClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
