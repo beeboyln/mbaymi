@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/api_service.dart';
 import '../services/theme_provider.dart';
 import '../services/auth_service.dart';
+import '../services/token_storage.dart';
 import '../utils/app_colors.dart';
 import 'legal/privacy_policy_screen.dart';
 import 'legal/terms_of_use_screen.dart';
@@ -25,10 +27,12 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
   late Color _cardColor;
   late Color _borderColor;
   late Color _textSecondaryColor;
+  String _selectedCurrency = AppCurrencyService.defaultCurrency;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrency();
     
     // Initialisation avec 'this' qui est maintenant un TickerProvider grâce au mixin
     _themeAnimationController = AnimationController(
@@ -40,6 +44,31 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
       parent: _themeAnimationController,
       curve: Curves.easeInOut,
     );
+  }
+
+  Future<void> _loadCurrency() async {
+    final currency = await AppCurrencyService.getCurrency();
+    if (!mounted) return;
+    setState(() => _selectedCurrency = currency);
+  }
+
+  Future<void> _onCurrencyChanged(String? value) async {
+    if (value == null) return;
+    final normalized = value.trim().isEmpty ? AppCurrencyService.defaultCurrency : value.trim().toUpperCase();
+
+    await AppCurrencyService.setCurrency(normalized);
+
+    final userId = await TokenStorage.getUserId();
+    if (userId != null && userId > 0) {
+      try {
+        await ApiService.updateUserProfile(userId: userId, currency: normalized);
+      } catch (_) {
+        // Keep local preference even if backend sync fails. The app remains usable.
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _selectedCurrency = normalized);
   }
 
   @override
@@ -111,6 +140,41 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
             ],
           ),
           
+          const SizedBox(height: 32),
+
+          _buildSection(
+            title: 'MONNAIE',
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: DropdownButtonFormField<String>(
+                  value: _selectedCurrency,
+                  decoration: InputDecoration(
+                    labelText: 'Devise',
+                    labelStyle: TextStyle(color: _textSecondaryColor),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: _borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: _primaryColor),
+                    ),
+                    filled: true,
+                    fillColor: _cardColor,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'FCFA', child: Text('FCFA')),
+                    DropdownMenuItem(value: 'USD', child: Text('USD')),
+                    DropdownMenuItem(value: 'EUR', child: Text('EUR')),
+                    DropdownMenuItem(value: 'XOF', child: Text('XOF')),
+                  ],
+                  onChanged: _onCurrencyChanged,
+                ),
+              ),
+            ],
+          ),
+
           const SizedBox(height: 32),
 
           // Confiance Section

@@ -4,6 +4,7 @@ import 'package:mbaymi/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/services/traceability_export_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -179,6 +180,25 @@ class _ActivityScreenState extends State<ActivityScreen>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
       duration: Duration(milliseconds: error ? 2500 : 1200),
     ));
+  }
+
+  Future<void> _exportTraceability() {
+    return TraceabilityExportService.showExportMenu(
+      context: context,
+      title: 'Traçabilité des activités',
+      loadSections: () async {
+        final activities = await _future;
+        final inputs = await ApiService.listInputsForCrop(widget.cropId);
+        final enriched = TraceabilityExportService.enrichActivityRows(
+          activities: activities.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+          inputs: inputs,
+        );
+        return [TraceabilitySection(
+          title: 'Activités de la parcelle',
+          rows: enriched,
+        )];
+      },
+    );
   }
 
   Future<void> _pickImages() async {
@@ -360,6 +380,11 @@ class _ActivityScreenState extends State<ActivityScreen>
           ),
           const SizedBox(width: _Z.s20),
           Text('ACTIVITÉS', style: _Z.mono(_text, size: 11, spacing: 3)),
+          const Spacer(),
+          GestureDetector(
+            onTap: _exportTraceability,
+            child: Icon(Icons.download_outlined, size: 20, color: _text),
+          ),
         ],
       ),
     );

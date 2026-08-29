@@ -13,6 +13,7 @@ class UserCreate(BaseModel):
     role: str
     region: str
     village: Optional[str] = None
+    currency: Optional[str] = 'FCFA'
 
 class UserResponse(BaseModel):
     id: int
@@ -22,6 +23,7 @@ class UserResponse(BaseModel):
     role: str
     region: str
     village: Optional[str]
+    currency: str = 'FCFA'
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -44,6 +46,7 @@ class UserLoginResponse(BaseModel):
     email: Optional[str]  # Can be null if phone-only login
     name: str
     role: str
+    currency: str = 'FCFA'
     access_token: str
     refresh_token: str
     message: str

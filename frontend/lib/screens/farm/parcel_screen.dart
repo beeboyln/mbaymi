@@ -9,6 +9,7 @@ import 'package:mbaymi/screens/farm/parcel_finance_screen.dart';
 import 'package:mbaymi/screens/farm/parcel_reminders_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/services/traceability_export_service.dart';
 import 'package:intl/intl.dart';
 
 class ParcelScreen extends StatefulWidget {
@@ -895,6 +896,71 @@ class _ParcelScreenState extends State<ParcelScreen> {
     );
   }
 
+  Future<void> _downloadParcelTraceability(int cropId, String cropName) async {
+    await TraceabilityExportService.showExportMenu(
+      context: context,
+      title: cropName,
+      loadSections: () async {
+        final activities = await ApiService.getActivitiesForCrop(cropId);
+        final inputs = await ApiService.listInputsForCrop(cropId);
+        final transactions = await ApiService.listTransactionsForCrop(cropId);
+        final financeSummary = await ApiService.getFinanceSummaryForCrop(cropId);
+        final problems = await ApiService.getCropProblems(cropId);
+        final reminders = await ApiService.listRemindersForCrop(widget.farmId, cropId);
+
+        final allParcels = await ApiService.getFarmCrops(widget.farmId);
+        final currentParcel = allParcels.firstWhere(
+          (parcel) => (parcel['id'] == cropId || parcel['crop_id'] == cropId),
+          orElse: () => <String, dynamic>{'area': null},
+        );
+        final summaryRow = <String, dynamic>{
+          'Parcelle': cropName,
+          'Surface': _formatArea(currentParcel['area']),
+        };
+        if (financeSummary.isNotEmpty) {
+          summaryRow.addAll(Map<String, dynamic>.from(financeSummary));
+        }
+
+        final enrichedActivities = TraceabilityExportService.enrichActivityRows(
+          activities: activities.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+          inputs: inputs,
+        );
+
+        return [
+          TraceabilitySection(
+            title: 'Résumé de la parcelle',
+            rows: [summaryRow],
+          ),
+          if (activities.isNotEmpty)
+            TraceabilitySection(
+              title: 'Activités',
+              rows: enrichedActivities,
+            ),
+          if (inputs.isNotEmpty)
+            TraceabilitySection(
+              title: 'Intrants',
+              rows: inputs.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+            ),
+          if (transactions.isNotEmpty)
+            TraceabilitySection(
+              title: 'Finances',
+              rows: transactions.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+            ),
+          if (problems.isNotEmpty)
+            TraceabilitySection(
+              title: 'Maladies et problèmes',
+              rows: problems.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+            ),
+          if (reminders.isNotEmpty)
+            TraceabilitySection(
+              title: 'Rappels',
+              rows: reminders.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+            ),
+        ].whereType<TraceabilitySection>().toList();
+      },
+    );
+  }
+
   Future<void> _deleteParcel(int cropId, String cropName) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
@@ -1002,6 +1068,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
       farmOwnerId: widget.farmOwnerId,
       onPhotoAdd: () => _addParcelPhoto(cropId),
       onDelete: () => _deleteParcel(cropId, cropName),
+      onDownload: () => _downloadParcelTraceability(cropId, cropName),
       onEdit: (id, name) => _editParcel(id, name, parcel['area'] as double?),
       onNavigate: (screen) {
         Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
@@ -1054,6 +1121,7 @@ class _ParcelCardWidget extends StatefulWidget {
   final int? farmOwnerId;
   final VoidCallback onPhotoAdd;
   final VoidCallback onDelete;
+  final VoidCallback onDownload;
   final Function(Widget) onNavigate;
   final int farmId;
   final int userId;
@@ -1074,6 +1142,7 @@ class _ParcelCardWidget extends StatefulWidget {
     this.farmOwnerId,
     required this.onPhotoAdd,
     required this.onDelete,
+    required this.onDownload,
     required this.onNavigate,
     required this.farmId,
     required this.userId,
@@ -1607,6 +1676,11 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                           cropId: widget.cropId,
                         ),
                       ),
+                    ),
+                    _buildActionButton(
+                      label: 'TÉLÉCHARGER',
+                      icon: Icons.download_outlined,
+                      onTap: widget.onDownload,
                     ),
                     _buildActionButton(
                       label: 'SUPPRIMER',

@@ -44,3 +44,20 @@ class ThemeProvider extends ChangeNotifier {
     return _isDarkMode ? ThemeMode.dark : ThemeMode.light;
   }
 }
+
+class AppCurrencyService {
+  static const String defaultCurrency = 'FCFA';
+  static const String storageKey = 'app_currency';
+
+  static Future<String> getCurrency() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(storageKey);
+    return (value == null || value.trim().isEmpty) ? defaultCurrency : value.trim().toUpperCase();
+  }
+
+  static Future<void> setCurrency(String currency) async {
+    final prefs = await SharedPreferences.getInstance();
+    final normalized = currency.trim();
+    await prefs.setString(storageKey, normalized.isEmpty ? defaultCurrency : normalized.toUpperCase());
+  }
+}

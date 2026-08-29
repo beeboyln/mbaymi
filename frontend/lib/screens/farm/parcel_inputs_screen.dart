@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:intl/intl.dart';
+import 'package:mbaymi/services/traceability_export_service.dart';
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
 class _Z {
@@ -100,6 +101,20 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
         message: msg,
         isError: true,
       ),
+    );
+  }
+
+  Future<void> _exportTraceability() {
+    return TraceabilityExportService.showExportMenu(
+      context: context,
+      title: 'Traçabilité des intrants',
+      loadSections: () async {
+        final items = await _listFuture;
+        return [TraceabilitySection(
+          title: 'Intrants de la parcelle',
+          rows: items.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+        )];
+      },
     );
   }
 
@@ -358,6 +373,13 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
         centerTitle: true,
         title: const Text('INTRANTS',
             style: TextStyle(fontSize: 12, letterSpacing: 3, fontWeight: FontWeight.bold, color: _Z.ink)),
+        actions: [
+          IconButton(
+            tooltip: 'Télécharger la traçabilité',
+            icon: const Icon(Icons.download_outlined, size: 20, color: _Z.ink),
+            onPressed: _exportTraceability,
+          ),
+        ],
       ),
       body: FadeTransition(
         opacity: _fadeAnim,

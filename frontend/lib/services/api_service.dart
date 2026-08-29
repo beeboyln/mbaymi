@@ -2294,6 +2294,7 @@ class ApiService {
     String? email,
     String? phone,
     String? profileImage,
+    String? currency,
   }) async {
     try {
       final params = <String, String>{};
@@ -2301,6 +2302,7 @@ class ApiService {
       if (email != null && email.isNotEmpty) params['email'] = email;
       if (phone != null && phone.isNotEmpty) params['phone'] = phone;
       if (profileImage != null && profileImage.isNotEmpty) params['profile_image'] = profileImage;
+      if (currency != null && currency.isNotEmpty) params['currency'] = currency;
 
       final response = await http.put(
         Uri.parse('$baseUrl/users/$userId/profile').replace(

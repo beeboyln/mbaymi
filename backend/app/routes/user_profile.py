@@ -66,6 +66,7 @@ def get_user_profile(user_id: int, viewer_id: Optional[int] = None, db: Session 
             "email": user.email,
             "phone": getattr(user, 'phone', None),
             "profile_image": getattr(user, 'profile_image', None),
+            "currency": getattr(user, 'currency', 'FCFA'),
             "total_farms": len(farms),
             "total_followers": total_followers,
             "followed_by_user": followed_by_user,
@@ -94,10 +95,11 @@ def update_user_profile(
     name: str = None,
     email: str = None,
     profile_image: str = None,
+    currency: str = None,
     db: Session = Depends(get_db)
 ):
     """
-    ✏️ Mettre à jour le profil utilisateur (nom, email et photo de profil).
+    ✏️ Mettre à jour le profil utilisateur (nom, email, photo et devise).
     """
     try:
         user = db.query(User).filter(User.id == user_id).first()
@@ -127,6 +129,14 @@ def update_user_profile(
         if profile_image:
             profile_image = profile_image.strip()
             user.profile_image = profile_image
+
+        # Mettre à jour la devise si fournie
+        if currency:
+            normalized_currency = currency.strip().upper()
+            valid_currencies = {'FCFA', 'XOF', 'USD', 'EUR'}
+            if normalized_currency not in valid_currencies:
+                raise HTTPException(status_code=400, detail="Devise invalide")
+            user.currency = normalized_currency
         
         db.commit()
         db.refresh(user)
@@ -136,6 +146,7 @@ def update_user_profile(
             "name": user.name,
             "email": user.email,
             "profile_image": getattr(user, 'profile_image', None),
+            "currency": getattr(user, 'currency', 'FCFA'),
             "success": True,
             "message": "Profil mis à jour avec succès"
         }

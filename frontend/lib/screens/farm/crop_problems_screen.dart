@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
+import 'package:mbaymi/services/traceability_export_service.dart';
 
 class CropProblemsScreen extends StatefulWidget {
   final int farmId;
@@ -52,6 +53,20 @@ class _CropProblemsScreenState extends State<CropProblemsScreen>
       widget.isDarkMode ? const Color(0xFFF5F3F0) : const Color(0xFF2A2A28);
   Color get _mutedColor =>
       widget.isDarkMode ? const Color(0xFF9E9E9E) : const Color(0xFF8A8783);
+
+  Future<void> _exportTraceability() {
+    return TraceabilityExportService.showExportMenu(
+      context: context,
+      title: 'Traçabilité des maladies',
+      loadSections: () async {
+        final problems = await _problemsFuture;
+        return [TraceabilitySection(
+          title: 'Maladies et problèmes signalés',
+          rows: problems.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+        )];
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +143,13 @@ class _CropProblemsScreenState extends State<CropProblemsScreen>
       ),
       centerTitle: false,
       toolbarHeight: 70,
+      actions: [
+        IconButton(
+          tooltip: 'Télécharger la traçabilité',
+          icon: Icon(Icons.download_outlined, color: _textColor, size: 20),
+          onPressed: _exportTraceability,
+        ),
+      ],
     );
   }
 

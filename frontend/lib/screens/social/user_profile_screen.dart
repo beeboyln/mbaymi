@@ -10,6 +10,7 @@ import 'package:mbaymi/screens/notebook/project_notebook_list_screen.dart';
 import 'package:mbaymi/screens/home_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/widgets/skeleton_loader.dart';
+import 'package:mbaymi/services/traceability_export_service.dart';
 import 'dart:async';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,6 +203,67 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     ));
   }
 
+  Future<void> _exportTraceability() {
+    return TraceabilityExportService.showExportMenu(
+      context: context,
+      title: 'Traçabilité du profil',
+      loadSections: () async {
+        final profile = await _profileFuture;
+        final farms = await _farmsFuture;
+        final livestock = await _livestockFuture;
+        final sections = <TraceabilitySection>[
+          TraceabilitySection(title: 'Profil utilisateur', rows: [profile]),
+          TraceabilitySection(
+            title: 'Fermes',
+            rows: farms.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+          ),
+          TraceabilitySection(
+            title: 'Élevage',
+            rows: livestock.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+          ),
+        ];
+
+        for (final farmValue in farms) {
+          final farm = Map<String, dynamic>.from(farmValue as Map);
+          final farmId = int.tryParse('${farm['id']}');
+          if (farmId == null) continue;
+          final crops = await ApiService.getFarmCrops(farmId);
+          for (final cropValue in crops) {
+            final crop = Map<String, dynamic>.from(cropValue as Map);
+            final cropId = int.tryParse('${crop['id']}');
+            if (cropId == null) continue;
+            final results = await Future.wait([
+              ApiService.getActivitiesForCrop(cropId),
+              ApiService.listInputsForCrop(cropId),
+              ApiService.listTransactionsForCrop(cropId),
+              ApiService.getCropProblems(cropId),
+            ]);
+            final cropName = crop['name'] ?? crop['crop_name'] ?? cropId;
+            sections.addAll([
+              TraceabilitySection(
+                title: 'Activités · $cropName',
+                rows: (results[0] as List).map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+              ),
+              TraceabilitySection(
+                title: 'Intrants · $cropName',
+                rows: (results[1] as List).map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+              ),
+              TraceabilitySection(
+                title: 'Finances · $cropName',
+                rows: (results[2] as List).map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+              ),
+              TraceabilitySection(
+                title: 'Maladies · $cropName',
+                rows: (results[3] as List).map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+              ),
+            ]);
+          }
+        }
+        return sections;
+      },
+    );
+  }
+
   // ── Actions ──────────────────────────────────────────────────────────────
   Future<void> _uploadAvatar() async {
     final file = await _picker.pickImage(
@@ -330,6 +392,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         title: Text('PROFIL', style: _Z.label(text)),
         iconTheme: IconThemeData(color: text),
         actions: [
+          IconButton(
+            tooltip: 'Télécharger la traçabilité',
+            icon: Icon(Icons.download_outlined, color: text, size: 20),
+            onPressed: _isOwn ? _exportTraceability : null,
+          ),
           Padding(
             padding: const EdgeInsets.only(right: _Z.s16),
             child: GestureDetector(

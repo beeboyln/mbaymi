@@ -6,6 +6,8 @@ import 'package:mbaymi/screens/livestock/animal_health_tab.dart';
 import 'package:mbaymi/screens/livestock/animal_production_tab.dart';
 import 'package:mbaymi/screens/livestock/animal_reproduction_tab.dart';
 import 'package:mbaymi/screens/livestock/animal_reminders_tab.dart';
+import 'package:mbaymi/services/animal_service.dart';
+import 'package:mbaymi/services/traceability_export_service.dart';
 
 class AnimalDetailScreen extends StatefulWidget {
   final Animal animal;
@@ -88,6 +90,11 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
         title: Text(_currentAnimal.name),
         elevation: 0,
         actions: [
+          IconButton(
+            tooltip: 'Télécharger la traçabilité',
+            icon: const Icon(Icons.download_outlined),
+            onPressed: _exportTraceability,
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
@@ -269,5 +276,91 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen>
       default:
         return status;
     }
+  }
+
+  Future<void> _exportTraceability() {
+    return TraceabilityExportService.showExportMenu(
+      context: context,
+      title: _currentAnimal.name,
+      loadSections: () async {
+        final healthSummary = await AnimalService.getHealthSummary(_currentAnimal.id);
+        final healthRecords = await AnimalService.getHealthRecords(_currentAnimal.id);
+        final productionRecords = await AnimalService.getProductionRecords(_currentAnimal.id);
+        final reproductionRecords = await AnimalService.getReproductionRecords(_currentAnimal.id);
+        final reminders = await AnimalService.getCareReminders(_currentAnimal.id);
+
+        return [
+          TraceabilitySection(
+            title: 'Profil de l’animal',
+            rows: [
+              {'Nom': _currentAnimal.name},
+              {'Espèce': _getSpeciesDisplay(_currentAnimal.species)},
+              {'Sexe': _currentAnimal.gender == 'male' ? 'Mâle' : 'Femelle'},
+              {'Date de naissance': _currentAnimal.dateOfBirth.toIso8601String().split('T')[0]},
+              {'Statut de santé': _getHealthStatusDisplay(_currentAnimal.healthStatus)},
+              if (_currentAnimal.tagId != null) {'Identifiant': _currentAnimal.tagId},
+              if (_currentAnimal.breed != null) {'Race': _currentAnimal.breed},
+              if (_currentAnimal.location != null) {'Localisation': _currentAnimal.location},
+            ],
+          ),
+          TraceabilitySection(
+            title: 'Résumé de santé',
+            rows: [
+              {'Animal': healthSummary.animalName},
+              {'Statut': _getHealthStatusDisplay(healthSummary.currentHealthStatus)},
+              {'Dossiers de santé': healthSummary.totalHealthRecords},
+              {'Dernière visite': healthSummary.lastCheckupDate != null ? healthSummary.lastCheckupDate!.toIso8601String().split('T')[0] : 'Aucune'},
+              {'Rappels à venir': healthSummary.upcomingCareCount},
+              {'Rappels en retard': healthSummary.overdueCareCount},
+            ],
+          ),
+          if (healthRecords.isNotEmpty)
+            TraceabilitySection(
+              title: 'Suivi médical',
+              rows: healthRecords.map((record) => {
+                'Date': record.date.toIso8601String().split('T')[0],
+                'Type': record.recordType,
+                'Traitement': record.medicalName,
+                if (record.description != null) 'Description': record.description,
+                if (record.dosage != null) 'Dosage': record.dosage,
+                if (record.cost != null) 'Coût': record.cost,
+              }).toList(),
+            ),
+          if (productionRecords.isNotEmpty)
+            TraceabilitySection(
+              title: 'Production',
+              rows: productionRecords.map((record) => {
+                'Date': record.date.toIso8601String().split('T')[0],
+                'Type': record.metricType,
+                'Quantité': '${record.quantity} ${record.unit}',
+                if (record.qualityGrade != null) 'Qualité': record.qualityGrade,
+                if (record.notes != null) 'Notes': record.notes,
+              }).toList(),
+            ),
+          if (reproductionRecords.isNotEmpty)
+            TraceabilitySection(
+              title: 'Reproduction',
+              rows: reproductionRecords.map((record) => {
+                'Date': record.eventDate.toIso8601String().split('T')[0],
+                'Événement': record.eventType,
+                if (record.partnerName != null) 'Partenaire': record.partnerName,
+                if (record.numberOfOffspring != null) 'Nombre de petits': record.numberOfOffspring,
+                if (record.notes != null) 'Notes': record.notes,
+              }).toList(),
+            ),
+          if (reminders.isNotEmpty)
+            TraceabilitySection(
+              title: 'Rappels de soins',
+              rows: reminders.map((reminder) => {
+                'Titre': reminder.title,
+                'Date': reminder.dueDate.toIso8601String().split('T')[0],
+                'Priorité': reminder.priority,
+                'Statut': reminder.isCompleted ? 'Terminé' : 'À faire',
+                if (reminder.description != null) 'Description': reminder.description,
+              }).toList(),
+            ),
+        ];
+      },
+    );
   }
 }

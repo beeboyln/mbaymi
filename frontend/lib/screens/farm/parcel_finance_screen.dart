@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/utils/app_colors.dart';
+import 'package:mbaymi/services/traceability_export_service.dart';
 
 // ─── ZARA-STYLE DESIGN TOKENS ───────────────────────────────────────────────
 class _Z {
@@ -67,6 +68,24 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
     if (v == null) return '0';
     final n = (v is num) ? v.toDouble() : double.tryParse(v.toString()) ?? 0.0;
     return NumberFormat('#,##0', 'fr_FR').format(n);
+  }
+
+  Future<void> _exportTraceability() {
+    return TraceabilityExportService.showExportMenu(
+      context: context,
+      title: 'Traçabilité financière',
+      loadSections: () async {
+        final transactions = await _listFuture;
+        final summary = await _summaryFuture;
+        return [
+          TraceabilitySection(title: 'Résumé financier', rows: [summary]),
+          TraceabilitySection(
+            title: 'Transactions de la parcelle',
+            rows: transactions.map((item) => Map<String, dynamic>.from(item as Map)).toList(),
+          ),
+        ];
+      },
+    );
   }
 
   // ─── BOTTOM SHEET TRANSACTIONS ───────────────────────────────────────────
@@ -371,6 +390,13 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
             color: _Z.ink,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Télécharger la traçabilité',
+            icon: const Icon(Icons.download_outlined, size: 20, color: _Z.ink),
+            onPressed: _exportTraceability,
+          ),
+        ],
       ),
       body: FadeTransition(
         opacity: _fadeAnim,

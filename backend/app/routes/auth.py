@@ -103,6 +103,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         "email": new_user.email,
         "name": new_user.name,
         "role": new_user.role,
+        "currency": getattr(new_user, 'currency', 'FCFA'),
         "access_token": access_token,
         "refresh_token": refresh_token,
         "message": "Registration successful"
@@ -136,6 +137,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         "email": db_user.email,
         "name": db_user.name,
         "role": db_user.role,
+        "currency": getattr(db_user, 'currency', 'FCFA'),
         "access_token": access_token,
         "refresh_token": refresh_token,
         "message": "Login successful"

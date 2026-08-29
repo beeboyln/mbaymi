@@ -15,6 +15,7 @@ class User(Base):
     region = Column(String(100))
     village = Column(String(100))
     profile_image = Column(String(500))  # URL de la photo de profil
+    currency = Column(String(10), nullable=False, default="FCFA")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
