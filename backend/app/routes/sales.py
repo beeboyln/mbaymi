@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.sale import Sale
 from app.schemas.schemas import SaleCreate, SaleResponse
+from app.schemas.pagination import paginate_query, PaginatedResponse
 from typing import Optional
 
 SALE_NOT_FOUND = "Sale not found"
@@ -34,16 +35,67 @@ def create_sale(s: SaleCreate, db: Session = Depends(get_db)):
     return new_sale
 
 @router.get("/user/{user_id}")
-def get_sales_by_user(user_id: int, db: Session = Depends(get_db)):
-    items = db.query(Sale).filter(Sale.user_id == user_id).order_by(Sale.created_at.desc()).all()
-    return items
+def get_sales_by_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    category: Optional[str] = Query(None),
+):
+    """Get paginated sales for a specific user with optional category filtering"""
+    query = db.query(Sale).filter(Sale.user_id == user_id)
+    
+    # Apply category filter if provided
+    if category and category != "Tous":
+        query = query.filter(Sale.category == category)
+    
+    items, total, total_pages, has_next, has_previous = paginate_query(
+        query, page, limit, Sale.created_at, "desc"
+    )
+    
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "has_next": has_next,
+        "has_previous": has_previous,
+    }
 
 
 @router.get("/")
-def get_all_sales(limit: Optional[int] = 100, db: Session = Depends(get_db)):
-    """Récupérer les ventes récentes (accessible à tous, connecté ou non)."""
-    items = db.query(Sale).order_by(Sale.created_at.desc()).limit(limit).all()
-    return items
+def get_all_sales(
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    category: Optional[str] = Query(None),
+    location: Optional[str] = Query(None),
+):
+    """Récupérer les ventes récentes avec pagination et filtres (accessible à tous)"""
+    query = db.query(Sale)
+    
+    # Apply category filter
+    if category and category != "Tous":
+        query = query.filter(Sale.category == category)
+    
+    # Apply location filter
+    if location and location != "Tous":
+        query = query.filter(Sale.delivery_location == location)
+    
+    items, total, total_pages, has_next, has_previous = paginate_query(
+        query, page, limit, Sale.created_at, "desc"
+    )
+    
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "has_next": has_next,
+        "has_previous": has_previous,
+    }
 
 
 @router.get("/{sale_id}", response_model=SaleResponse)
@@ -54,9 +106,28 @@ def get_sale(sale_id: int, db: Session = Depends(get_db)):
     return sale
 
 @router.get("/harvest/{harvest_id}")
-def get_sales_for_harvest(harvest_id: int, db: Session = Depends(get_db)):
-    items = db.query(Sale).filter(Sale.harvest_id == harvest_id).order_by(Sale.created_at.desc()).all()
-    return items
+def get_sales_for_harvest(
+    harvest_id: int,
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+):
+    """Get paginated sales for a specific harvest"""
+    query = db.query(Sale).filter(Sale.harvest_id == harvest_id)
+    
+    items, total, total_pages, has_next, has_previous = paginate_query(
+        query, page, limit, Sale.created_at, "desc"
+    )
+    
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "has_next": has_next,
+        "has_previous": has_previous,
+    }
 
 @router.put("/{sale_id}", response_model=SaleResponse)
 def update_sale(sale_id: int, s: SaleCreate, db: Session = Depends(get_db)):

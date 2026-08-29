@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models.farm import Farm, Crop
@@ -8,7 +8,9 @@ from app.models.livestock import Livestock
 from app.models.farm_network import FarmProfile
 from app.models.crop_problem import CropProblem
 from app.schemas.schemas import FarmCreate, FarmResponse, CropCreate, CropResponse
+from app.schemas.pagination import paginate_query, PaginatedResponse
 from app.routes.auth import get_current_user_obj
+from typing import Optional
 
 router = APIRouter(tags=["farms"])
 
@@ -158,11 +160,29 @@ def get_farm(farm_id: int, db: Session = Depends(get_db)):
     }
 
 @router.get("/user/{user_id}")
-def get_user_farms(user_id: int, db: Session = Depends(get_db)):
-    farms = db.query(Farm).filter(Farm.user_id == user_id).all()
+def get_user_farms(
+    user_id: int,
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    location: Optional[str] = Query(None),
+):
+    """Get paginated farms for a specific user with optional location filtering"""
+    query = db.query(Farm).filter(Farm.user_id == user_id)
+    
+    # Apply location filter if provided
+    if location and location != "Tous":
+        query = query.filter(Farm.location == location)
+    
+    # Load photos with joinedload for efficiency
+    query = query.options(joinedload(Farm.photos))
+    
+    items, total, total_pages, has_next, has_previous = paginate_query(
+        query, page, limit, Farm.created_at, "desc"
+    )
+    
     result = []
-    for f in farms:
-        photos = db.query(FarmPhoto).filter(FarmPhoto.farm_id == f.id).all()
+    for f in items:
         d = {
             'id': f.id,
             'user_id': f.user_id,
@@ -175,10 +195,19 @@ def get_user_farms(user_id: int, db: Session = Depends(get_db)):
             'longitude': f.longitude,
             'created_at': f.created_at,
             'updated_at': f.updated_at,
-            'photos': [{'id': p.id, 'image_url': p.image_url} for p in photos]
+            'photos': [{'id': p.id, 'image_url': p.image_url} for p in f.photos]
         }
         result.append(d)
-    return result
+    
+    return {
+        "items": result,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "has_next": has_next,
+        "has_previous": has_previous,
+    }
 
 
 @router.put("/{farm_id}")

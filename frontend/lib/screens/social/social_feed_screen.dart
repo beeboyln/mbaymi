@@ -14,6 +14,7 @@ import 'package:mbaymi/screens/social/profile_detail_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
+import 'package:mbaymi/services/data_repository.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/widgets/comments_bottom_sheet.dart';
 
@@ -59,6 +60,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
 
   late Future<List<FeedItem>> _feedFuture;
   static final Map<String, Future<List<FeedItem>>> _globalFeedCache = {};
+  final DataRepository _repository = DataRepository();
 
   Future<List<dynamic>>? _farmsFuture;
   Future<List<dynamic>>? _livestockFuture;
@@ -70,8 +72,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     _feedFuture = _getOrCreateFeed();
 
     if (_userId > 0) {
-      _farmsFuture = ApiService.getUserFarms();
-      _livestockFuture = _getOwnLivestockWithPhotos();
+      _farmsFuture = _repository.getFarmsForUser(_userId);
+      _livestockFuture = _repository.getLivestockForUser(_userId);
     }
 
     _setupListeners();
@@ -119,12 +121,22 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     return _globalFeedCache.putIfAbsent(key, _loadCombinedFeed);
   }
 
-  void _refreshFeed() {
-    _globalFeedCache.remove('feed_$_userId');
+  void _invalidateSocialCaches() {
+    _globalFeedCache.clear();
+    _repository.invalidateFarmCaches(_userId);
+    _farmsFuture = null;
     _livestockFuture = null;
+  }
+
+  void _refreshFeed() {
+    _invalidateSocialCaches();
     if (mounted) {
       setState(() {
         _feedFuture = _getOrCreateFeed();
+        if (_userId > 0) {
+          _farmsFuture = _repository.getFarmsForUser(_userId);
+          _livestockFuture = _repository.getLivestockForUser(_userId);
+        }
       });
     }
   }

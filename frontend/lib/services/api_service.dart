@@ -102,6 +102,12 @@ class ApiService {
     debugPrint('🔄 Invalidated cache for $cacheKey');
   }
 
+  /// Helper: Invalider toutes les clés commençant par un préfixe.
+  static void invalidateCachePrefix(String prefix) {
+    _getCache.removeByPrefix(prefix);
+    debugPrint('🔄 Invalidated cache prefix: $prefix');
+  }
+
   /// Helper: Vider tout le cache
   static void clearCache() {
     _getCache.clear();
@@ -329,7 +335,9 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final payload = jsonDecode(response.body);
+        invalidateCachePrefix('farms_');
+        return payload;
       } else {
         throw Exception('Failed to create farm: ${response.body}');
       }
@@ -439,7 +447,9 @@ class ApiService {
         }),
       );
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final payload = jsonDecode(response.body);
+        invalidateCachePrefix('farms_');
+        return payload;
       } else {
         throw Exception('Failed to update farm: ${response.body}');
       }
@@ -470,6 +480,8 @@ class ApiService {
       } else if (response.statusCode != 200) {
         throw Exception('Failed to delete farm: ${response.statusCode} ${response.body}');
       }
+
+      invalidateCachePrefix('farms_');
     } catch (e) {
       throw Exception('Error deleting farm: $e');
     }
@@ -642,7 +654,10 @@ class ApiService {
       }
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        invalidateCachePrefix('farms_');
+        invalidateCachePrefix('crops_');
+        return payload;
       } else {
         throw Exception('Failed to create crop: ${response.body}');
       }
@@ -700,7 +715,10 @@ class ApiService {
         });
       }
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        invalidateCachePrefix('farms_');
+        invalidateCachePrefix('crops_');
+        return payload;
       }
       throw Exception('Failed to update crop');
     } catch (e) {
@@ -716,6 +734,10 @@ class ApiService {
         response = await _handleUnauthorized((newHeaders) async {
           return await http.delete(Uri.parse('$baseUrl/crops/$cropId'), headers: newHeaders);
         });
+      }
+      if (response.statusCode == 200) {
+        invalidateCachePrefix('farms_');
+        invalidateCachePrefix('crops_');
       }
       return response.statusCode == 200;
     } catch (e) {
@@ -733,7 +755,11 @@ class ApiService {
           return await http.post(Uri.parse('$baseUrl/inputs/'), headers: newHeaders, body: jsonEncode(payload));
         });
       }
-      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        invalidateCachePrefix('farms_');
+        invalidateCachePrefix('inputs_');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
       throw Exception('Failed to create input: ${response.body}');
     } catch (e) {
       throw Exception('Error creating input: $e');
@@ -797,7 +823,11 @@ class ApiService {
           return await http.patch(Uri.parse('$baseUrl/inputs/$inputId'), headers: newHeaders, body: jsonEncode(updates));
         });
       }
-      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        invalidateCachePrefix('farms_');
+        invalidateCachePrefix('inputs_');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
       throw Exception('Failed to update input');
     } catch (e) {
       throw Exception('Error updating input: $e');
@@ -812,6 +842,10 @@ class ApiService {
         response = await _handleUnauthorized((newHeaders) async {
           return await http.delete(Uri.parse('$baseUrl/inputs/$inputId'), headers: newHeaders);
         });
+      }
+      if (response.statusCode == 200) {
+        invalidateCachePrefix('farms_');
+        invalidateCachePrefix('inputs_');
       }
       return response.statusCode == 200;
     } catch (e) {
@@ -829,7 +863,11 @@ class ApiService {
           return await http.post(Uri.parse('$baseUrl/finance/transactions/'), headers: newHeaders, body: jsonEncode(payload));
         });
       }
-      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        invalidateCachePrefix('farms_');
+        invalidateCachePrefix('finance_');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
       throw Exception('Failed to create transaction: ${response.body}');
     } catch (e) {
       throw Exception('Error creating transaction: $e');
@@ -893,7 +931,11 @@ class ApiService {
           return await http.patch(Uri.parse('$baseUrl/finance/transactions/$transactionId'), headers: newHeaders, body: jsonEncode(updates));
         });
       }
-      if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        invalidateCachePrefix('farms_');
+        invalidateCachePrefix('finance_');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
       throw Exception('Failed to update transaction');
     } catch (e) {
       throw Exception('Error updating transaction: $e');
@@ -908,6 +950,10 @@ class ApiService {
         response = await _handleUnauthorized((newHeaders) async {
           return await http.delete(Uri.parse('$baseUrl/finance/transactions/$transactionId'), headers: newHeaders);
         });
+      }
+      if (response.statusCode == 200) {
+        invalidateCachePrefix('farms_');
+        invalidateCachePrefix('finance_');
       }
       return response.statusCode == 200;
     } catch (e) {

@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.livestock import Livestock
 from app.models.farm_post import FarmImagePost
 from app.models.user import User
 from app.schemas.schemas import LivestockCreate, LivestockResponse
+from app.schemas.pagination import paginate_query
 from app.routes.auth import get_current_user
+from typing import Optional
 
 router = APIRouter(prefix="/api/livestock", tags=["livestock"])
 
@@ -105,26 +107,73 @@ def get_public_livestock(
         raise HTTPException(status_code=500, detail="Error fetching livestock")
 
 @router.get("/user/{user_id}")
-def get_user_livestock(user_id: int, db: Session = Depends(get_db)):
+def get_user_livestock(
+    user_id: int,
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    animal_type: Optional[str] = Query(None),
+):
+    """Get paginated livestock for a user with optional animal_type filtering"""
     try:
-        # Only get non-deleted livestock
-        livestock_list = db.query(Livestock).filter(
+        query = db.query(Livestock).filter(
             Livestock.user_id == user_id,
             Livestock.deleted_at == None
-        ).all()
-        return livestock_list
+        )
+        
+        # Apply animal_type filter if provided
+        if animal_type and animal_type != "Tous":
+            query = query.filter(Livestock.animal_type == animal_type)
+        
+        items, total, total_pages, has_next, has_previous = paginate_query(
+            query, page, limit, Livestock.created_at, "desc"
+        )
+        
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+            "has_next": has_next,
+            "has_previous": has_previous,
+        }
     except Exception as e:
         print(f"Error fetching livestock for user {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching livestock")
 
 @router.get("/public/user/{user_id}")
-def get_public_user_livestock(user_id: int, db: Session = Depends(get_db)):
-    """Get only public active livestock for a public user profile."""
-    return db.query(Livestock).filter(
+def get_public_user_livestock(
+    user_id: int,
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    animal_type: Optional[str] = Query(None),
+):
+    """Get paginated public livestock for a user profile with optional filtering"""
+    query = db.query(Livestock).filter(
         Livestock.user_id == user_id,
         Livestock.deleted_at == None,
         Livestock.visibility == "PUBLIC",
-    ).all()
+    )
+    
+    # Apply animal_type filter if provided
+    if animal_type and animal_type != "Tous":
+        query = query.filter(Livestock.animal_type == animal_type)
+    
+    items, total, total_pages, has_next, has_previous = paginate_query(
+        query, page, limit, Livestock.created_at, "desc"
+    )
+    
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "has_next": has_next,
+        "has_previous": has_previous,
+    }
 
 @router.get("/{livestock_id:int}", response_model=LivestockResponse)
 def get_livestock(livestock_id: int, db: Session = Depends(get_db)):

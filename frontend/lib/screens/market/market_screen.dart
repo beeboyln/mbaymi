@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
 import 'package:mbaymi/services/theme_provider.dart';
+import 'package:mbaymi/services/data_repository.dart';
 import 'package:mbaymi/services/cart_provider.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 import 'package:mbaymi/models/market_model.dart';
@@ -53,6 +54,7 @@ class _MarketTabState extends State<MarketTab> {
   // ✅ STATIC PERSISTENT CACHE
   static final Map<String, Future<List<dynamic>>> _globalSalesCache = {};
   static final Map<String, Future<List<MarketPrice>>> _globalPricesCache = {};
+  final DataRepository _repository = DataRepository();
   
   final List<String> _categories = [
     'Tous',
@@ -75,7 +77,7 @@ class _MarketTabState extends State<MarketTab> {
   Future<List<dynamic>> _getSalesCached() {
     const cacheKey = 'sales_all';
     if (!_globalSalesCache.containsKey(cacheKey)) {
-      _globalSalesCache[cacheKey] = ApiService.getAllSales().catchError((_) => <dynamic>[]);
+      _globalSalesCache[cacheKey] = _repository.getMarketSales().catchError((_) => <dynamic>[]);
     }
     return _globalSalesCache[cacheKey]!;
   }
@@ -97,11 +99,15 @@ class _MarketTabState extends State<MarketTab> {
     return _globalPricesCache[cacheKey]!;
   }
 
+  void _invalidateAllCaches() {
+    _repository.invalidateMarketCaches();
+    _globalSalesCache.clear();
+    _globalPricesCache.clear();
+  }
+
   Future<void> _refreshData() async {
     HapticFeedback.mediumImpact();
-    _globalSalesCache.remove('sales_all');
-    _globalSalesCache.remove('sales_user_$_userId');
-    _globalPricesCache.remove('prices_market');
+    _invalidateAllCaches();
     _searchController.clear();
     _searchQuery = '';
     if (mounted) {

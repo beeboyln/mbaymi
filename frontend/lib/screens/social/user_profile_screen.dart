@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/services/data_repository.dart';
 import 'package:mbaymi/screens/farm/tab/farm_tab.dart';
 import 'package:mbaymi/screens/farm/parcel_screen.dart';
 import 'package:mbaymi/screens/livestock/edit_livestock_screen.dart';
@@ -95,6 +96,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   static final Map<int, Future<Map<String, dynamic>>> _globalProfileCache = {};
   static final Map<int, Future<List<dynamic>>> _globalFarmsCache = {};
   static final Map<int, Future<List<dynamic>>> _globalLivestockCache = {};
+  final DataRepository _repository = DataRepository();
   
   late StreamSubscription<void> _farmPostSub;
   late StreamSubscription<void> _profileUpdateSub;
@@ -162,7 +164,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     _globalProfileCache.remove(widget.userId);
     _globalFarmsCache.remove(widget.userId);
     _globalLivestockCache.remove(widget.userId);
-    
+    _repository.invalidateFarmCaches(widget.userId);
+
     if (mounted) {
       setState(() {
         _profileFuture = _getOrCreateProfile();
@@ -179,12 +182,12 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
   
   Future<List<dynamic>> _loadFarms() async {
-    return await ApiService.getPublicUserFarms(widget.userId);
+    return await _repository.getFarmsForUser(widget.userId);
   }
   
   Future<List<dynamic>> _loadLivestock() async {
     return _isOwn
-        ? ApiService.getUserLivestock(widget.userId)
+        ? _repository.getLivestockForUser(widget.userId)
         : ApiService.getPublicUserLivestock(widget.userId);
   }
 

@@ -38,6 +38,11 @@ class SimpleCache<T> {
     _cache.remove(key);
   }
 
+  /// Supprime toutes les entrées dont la clé commence par le préfixe donné.
+  void removeByPrefix(String prefix) {
+    _cache.removeWhere((key, _) => key.startsWith(prefix));
+  }
+
   /// Vide tout le cache
   void clear() {
     _cache.clear();

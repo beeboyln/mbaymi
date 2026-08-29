@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/services/data_repository.dart';
 import 'package:mbaymi/screens/farm/parcel_screen.dart';
 import 'package:mbaymi/utils/app_colors.dart';
 
@@ -32,6 +33,7 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
   static final Map<String, Future<List<dynamic>>> _globalDataCache = {};
   static final Map<int, Future<List<dynamic>>> _globalCropsCache = {};
   static final Map<int, Future<List<dynamic>>> _globalLivestockCache = {};
+  final DataRepository _repository = DataRepository();
   
   // Track selected tab per farm (true = crops, false = livestock)
   final Map<int, bool> _farmTabSelection = {};
@@ -91,6 +93,16 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
     }
   }
 
+  void _invalidateGlobalCaches() {
+    final currentUserId = AuthService.currentSession?.userId;
+    if (currentUserId != null) {
+      _repository.invalidateFarmCaches(currentUserId);
+    }
+    _globalDataCache.clear();
+    _globalCropsCache.clear();
+    _globalLivestockCache.clear();
+  }
+
   Future<void> _toggleFollowFarm(int farmId) async {
     final currentUserId = AuthService.currentSession?.userId;
     if (currentUserId == null) {
@@ -120,14 +132,13 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
         // Unfollow - decrement followers count
         final currentCount = _farmFollowersCount[farmId] ?? 0;
         await ApiService.unfollowFarm(farmId: farmId, userId: currentUserId);
-        
-        // Invalidate cache to sync with backend
-        _globalDataCache.remove('public_farms');
-        
+
+        _invalidateGlobalCaches();
+
         setState(() {
           _followedFarmIds.remove(farmId);
           _farmFollowersCount[farmId] = (currentCount - 1).clamp(0, double.infinity).toInt();
-          _farmsFuture = _getPublicFarmsCached(); // Reload with fresh data
+          _farmsFuture = _getPublicFarmsCached();
         });
         if (mounted) {
           _showToast('Vous ne suivez plus cette ferme', Colors.black87, Icons.person_remove_outlined);
@@ -136,14 +147,13 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
         // Follow - increment followers count
         final currentCount = _farmFollowersCount[farmId] ?? 0;
         await ApiService.followFarm(farmId: farmId, userId: currentUserId);
-        
-        // Invalidate cache to sync with backend
-        _globalDataCache.remove('public_farms');
-        
+
+        _invalidateGlobalCaches();
+
         setState(() {
           _followedFarmIds.add(farmId);
           _farmFollowersCount[farmId] = currentCount + 1;
-          _farmsFuture = _getPublicFarmsCached(); // Reload with fresh data
+          _farmsFuture = _getPublicFarmsCached();
         });
         if (mounted) {
           _showToast('Ferme ajoutée à vos abonnements', AppColors.primary, Icons.check_circle_outline);
@@ -181,14 +191,14 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
   Future<List<dynamic>> _getPublicFarmsCached() {
     const cacheKey = 'public_farms';
     if (!_globalDataCache.containsKey(cacheKey)) {
-      _globalDataCache[cacheKey] = ApiService.getPublicFarms();
+      _globalDataCache[cacheKey] = _repository.getFarmsForUser(AuthService.currentSession?.userId ?? 0).catchError((_) => <dynamic>[]);
     }
     return _globalDataCache[cacheKey]!;
   }
 
   Future<List<dynamic>> _getCropsCached(int farmId) {
     if (!_globalCropsCache.containsKey(farmId)) {
-      _globalCropsCache[farmId] = ApiService.getPublicFarmCrops(farmId);
+      _globalCropsCache[farmId] = _repository.getFarmCrops(farmId).catchError((_) => <dynamic>[]);
     }
     return _globalCropsCache[farmId]!;
   }
@@ -222,9 +232,7 @@ class _PublicFarmsScreenState extends State<PublicFarmsScreen>
         color: AppColors.accent,
         backgroundColor: AppColors.getBgColor(isDarkMode),
         onRefresh: () async {
-          _globalDataCache.remove('public_farms');
-          _globalCropsCache.clear();
-          _globalLivestockCache.clear();
+          _invalidateGlobalCaches();
           _farmsFuture = _getPublicFarmsCached();
           _searchController.clear();
           _searchQuery = '';

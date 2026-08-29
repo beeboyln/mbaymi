@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:mbaymi/services/theme_provider.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:mbaymi/services/auth_service.dart';
+import 'package:mbaymi/services/data_repository.dart';
 import 'package:mbaymi/screens/livestock/edit_livestock_screen.dart';
 import 'package:mbaymi/screens/farm/edit_farm_screen.dart';
 import 'package:mbaymi/screens/farm/create_farm_screen.dart';
@@ -24,6 +25,7 @@ import 'farm_card.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 final _dataCache = <String, Future<List<dynamic>>>{};
 final _cropsCache = <int, Future<List<dynamic>>>{};
+final _repository = DataRepository();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WIDGET PRINCIPAL
@@ -98,27 +100,20 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
   Future<List<dynamic>> _farms() {
     final session = AuthService.currentSession;
     if (widget.userId != null) {
-      return _dataCache.putIfAbsent(
-          'farms_${widget.userId}',
-          () => ApiService.getPublicUserFarms(widget.userId!));
+      return _repository.getFarmsForUser(widget.userId!);
     }
     if (session?.userId != null) {
-      return _dataCache.putIfAbsent(
-          'farms_user_${session!.userId}',
-          () => ApiService.getPublicUserFarms(session.userId));
+      return _repository.getFarmsForUser(session!.userId);
     }
     return Future.value([]);
   }
 
   Future<List<dynamic>> _livestock() {
     if (widget.userId == null) return Future.value([]);
-    return _dataCache.putIfAbsent(
-        'livestock_${widget.userId}',
-        () => ApiService.getUserLivestock(widget.userId!));
+    return _repository.getLivestockForUser(widget.userId!);
   }
 
-  Future<List<dynamic>> _crops(int farmId) =>
-      _cropsCache.putIfAbsent(farmId, () => ApiService.getFarmCrops(farmId));
+  Future<List<dynamic>> _crops(int farmId) => _repository.getFarmCrops(farmId);
 
   List<dynamic> _sorted(List<dynamic> items) => List.from(items)
     ..sort((a, b) {
@@ -130,15 +125,21 @@ class _FarmTabState extends State<FarmTab> with TickerProviderStateMixin {
       }
     });
 
+  void _invalidateGlobalCaches() {
+    final activeUserId = widget.userId ?? AuthService.currentSession?.userId;
+    if (activeUserId != null) {
+      _repository.invalidateFarmCaches(activeUserId);
+    }
+    _dataCache.clear();
+    _cropsCache.clear();
+  }
+
   Future<void> _refresh() async {
     final previousOffset = _pageScrollController.hasClients
         ? _pageScrollController.offset
         : 0.0;
-    final cacheKey = _section == 1
-        ? 'livestock_${widget.userId}'
-        : 'farms_${widget.userId ?? 'user_${AuthService.currentSession?.userId}'}';
-    _dataCache.remove(cacheKey);
-    if (_section == 0) _cropsCache.clear();
+
+    _invalidateGlobalCaches();
     setState(() {});
     _sectionAnim.forward(from: 0);
 
