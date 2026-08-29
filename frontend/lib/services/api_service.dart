@@ -1265,7 +1265,8 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List;
+        final decoded = jsonDecode(response.body);
+        return _unwrapItems(decoded, 'sales/user/$userId');
       } else {
         throw Exception('Failed to get sales for user');
       }
@@ -1282,7 +1283,8 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List;
+        final decoded = jsonDecode(response.body);
+        return _unwrapItems(decoded, 'sales');
       } else {
         throw Exception('Failed to get sales');
       }
@@ -1410,7 +1412,8 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List<dynamic>;
+        final decoded = jsonDecode(response.body);
+        return _unwrapItems(decoded, 'farms/user/$userId');
       } else {
         throw Exception('Failed to get farms');
       }
@@ -1473,7 +1476,8 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List;
+        final decoded = jsonDecode(response.body);
+        return _unwrapItems(decoded, 'livestock/user/$userId');
       } else {
         throw Exception('Failed to get livestock');
       }
@@ -1489,7 +1493,8 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
       );
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List;
+        final decoded = jsonDecode(response.body);
+        return _unwrapItems(decoded, 'livestock/public/user/$userId');
       }
       throw Exception('Failed to get public livestock');
     } catch (e) {
@@ -3428,21 +3433,31 @@ class ApiService {
 
   // 🔐 AUTHORIZATION ENDPOINTS
 
+  static List<dynamic> _unwrapItems(dynamic decodedBody, String endpoint) {
+    if (decodedBody is List) {
+      return decodedBody;
+    }
+    if (decodedBody is Map<String, dynamic>) {
+      final items = decodedBody['items'];
+      if (items is List) return items;
+    }
+    throw FormatException('Unexpected $endpoint payload: expected List or {items: [...]}.');
+  }
+
   /// Get current user's farms (authenticated endpoint)
   static Future<List<dynamic>> getUserFarms() async {
     try {
       final headers = await _getAuthHeaders();
       if (headers['Authorization'] == null) throw Exception('Token manquant');
 
-      // Try to fetch farms - the backend route should be /api/farms or similar
-      // If that doesn't work, we'll need to add a dedicated endpoint
       final response = await http.get(
         Uri.parse('$baseUrl/farms/'),
         headers: headers,
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as List<dynamic>;
+        final decoded = jsonDecode(response.body);
+        return _unwrapItems(decoded, 'farms');
       } else if (response.statusCode == 401) {
         throw Exception('Non authentifié');
       } else {
