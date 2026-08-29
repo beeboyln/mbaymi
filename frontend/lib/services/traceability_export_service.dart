@@ -68,8 +68,17 @@ class TraceabilityExportService {
 
     if (format == null || !context.mounted) return;
 
+    // Afficher le dialog de chargement
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _buildDownloadingDialog(format),
+    );
+
     try {
       final sections = await loadSections();
+      if (context.mounted) Navigator.pop(context); // Fermer le dialog de chargement
+      
       if (format == 'pdf') {
         await _sharePdf(title, sections);
       } else {
@@ -77,10 +86,92 @@ class TraceabilityExportService {
       }
     } catch (error) {
       if (!context.mounted) return;
+      Navigator.pop(context); // Fermer le dialog en cas d'erreur
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Export impossible : $error')),
       );
     }
+  }
+
+  static Widget _buildDownloadingDialog(String format) {
+    final isWord = format == 'word';
+    
+    return Center(
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                spreadRadius: 5,
+              )
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icône animée de téléchargement
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(seconds: 2),
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, -5 + (value * 10)),
+                    child: Icon(
+                      isWord ? Icons.description : Icons.picture_as_pdf,
+                      size: 72,
+                      color: const Color(0xFFA89968),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              
+              // Cercle de loading
+              SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    const Color(0xFFA89968).withOpacity(0.8),
+                  ),
+                  strokeWidth: 3,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Texte
+              Text(
+                isWord
+                    ? 'Préparation du document Word...'
+                    : 'Génération du PDF...',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF333333),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Un instant s\'il vous plaît',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   static Future<String> getCurrencyCode() async {
@@ -183,7 +274,7 @@ class TraceabilityExportService {
               pw.Text(
                 'MBAYMI · TRAÇABILITÉ',
                 style: pw.TextStyle(
-                  fontSize: 12,
+                  fontSize: 15,
                   fontWeight: pw.FontWeight.bold,
                   color: primaryColor,
                   letterSpacing: 1.2,
@@ -192,7 +283,7 @@ class TraceabilityExportService {
               pw.Text(
                 'DOCUMENT PROFESSIONNEL',
                 style: pw.TextStyle(
-                  fontSize: 10,
+                  fontSize: 13,
                   fontWeight: pw.FontWeight.normal,
                   color: textMuted,
                   letterSpacing: 0.6,
@@ -214,12 +305,12 @@ class TraceabilityExportService {
             children: [
               pw.Text(
                 'Généré le ${_date(DateTime.now())}',
-                style: const pw.TextStyle(fontSize: 9.5, color: textMuted),
+                style: const pw.TextStyle(fontSize: 14, color: textMuted),
               ),
               pw.Text(
                 'Page ${context.pageNumber} / ${context.pagesCount}',
                 style: pw.TextStyle(
-                  fontSize: 9.5,
+                  fontSize: 14,
                   fontWeight: pw.FontWeight.bold,
                   color: textMuted,
                 ),
@@ -254,7 +345,7 @@ class TraceabilityExportService {
                 pw.Text(
                   title,
                   style: pw.TextStyle(
-                    fontSize: 38,
+                    fontSize: 50,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.white,
                     lineSpacing: 1.1,
@@ -292,7 +383,7 @@ class TraceabilityExportService {
         child: pw.Text(
           section.title,
           style: pw.TextStyle(
-            fontSize: 20,
+            fontSize: 26,
             fontWeight: pw.FontWeight.bold,
             color: primaryColor,
             letterSpacing: 0.3,
@@ -307,10 +398,10 @@ class TraceabilityExportService {
           child: pw.Text(
             summaryLine,
             style: pw.TextStyle(
-              fontSize: 10,
+              fontSize: 13,
               color: textMuted,
               fontStyle: pw.FontStyle.italic,
-              lineSpacing: 1.2,
+              lineSpacing: 1.4,
             ),
           ),
         ),
@@ -322,7 +413,7 @@ class TraceabilityExportService {
           child: pw.Text(
             'Aucune donnée enregistrée.',
             style: pw.TextStyle(
-              fontSize: 11,
+              fontSize: 14,
               color: textMuted,
               fontStyle: pw.FontStyle.italic,
             ),
@@ -341,11 +432,11 @@ class TraceabilityExportService {
               decoration: const pw.BoxDecoration(color: primaryColor),
               children: [
                 pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: pw.Text(
                     'DÉTAIL',
                     style: pw.TextStyle(
-                      fontSize: 11,
+                      fontSize: 14,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.white,
                       letterSpacing: 0.5,
@@ -353,11 +444,11 @@ class TraceabilityExportService {
                   ),
                 ),
                 pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: pw.Text(
                     'VALEUR',
                     style: pw.TextStyle(
-                      fontSize: 11,
+                      fontSize: 14,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.white,
                       letterSpacing: 0.5,
@@ -378,11 +469,11 @@ class TraceabilityExportService {
                 ),
                 children: [
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     child: pw.Text(
                       entry.key,
                       style: pw.TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 13,
                         fontWeight: pw.FontWeight.bold,
                         color: primaryColor,
                         letterSpacing: 0.2,
@@ -390,13 +481,13 @@ class TraceabilityExportService {
                     ),
                   ),
                   pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     child: pw.Text(
                       _value(entry.value),
                       style: pw.TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 13,
                         color: textColor,
-                        lineSpacing: 1.3,
+                        lineSpacing: 1.4,
                       ),
                     ),
                   ),
