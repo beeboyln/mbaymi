@@ -416,9 +416,15 @@ class _ParcelScreenState extends State<ParcelScreen> {
     }
   }
 
-  Future<void> _editParcel(int cropId, String currentName, double? currentArea) async {
+  Future<void> _editParcel(
+    int cropId,
+    String currentName,
+    double? currentArea,
+    String currentStatus,
+  ) async {
     final nameCtrl = TextEditingController(text: currentName);
     final areaCtrl = TextEditingController(text: currentArea?.toString() ?? '');
+    String status = currentStatus;
 
     showModalBottomSheet(
       context: context,
@@ -538,6 +544,29 @@ class _ParcelScreenState extends State<ParcelScreen> {
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
+                const SizedBox(height: 32),
+
+                // État
+                Text(
+                  'ÉTAT',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 1.5,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _buildStatusChip('En préparation', status, (v) => setModalState(() => status = v), isDark),
+                    _buildStatusChip('Semé', status, (v) => setModalState(() => status = v), isDark),
+                    _buildStatusChip('En croissance', status, (v) => setModalState(() => status = v), isDark),
+                    _buildStatusChip('Récolté', status, (v) => setModalState(() => status = v), isDark),
+                  ],
+                ),
                 const SizedBox(height: 40),
 
                 // Boutons
@@ -581,6 +610,7 @@ class _ParcelScreenState extends State<ParcelScreen> {
                               updates: {
                                 'crop_name': name,
                                 'area': area,
+                                'status': status,
                               },
                             );
                             Navigator.pop(context);
@@ -1069,7 +1099,12 @@ class _ParcelScreenState extends State<ParcelScreen> {
       onPhotoAdd: () => _addParcelPhoto(cropId),
       onDelete: () => _deleteParcel(cropId, cropName),
       onDownload: () => _downloadParcelTraceability(cropId, cropName),
-      onEdit: (id, name) => _editParcel(id, name, parcel['area'] as double?),
+      onEdit: (id, name) => _editParcel(
+        id,
+        name,
+        parcel['area'] as double?,
+        (parcel['status'] ?? 'En préparation').toString(),
+      ),
       onNavigate: (screen) {
         Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
             .then((_) => _refresh());
@@ -1527,9 +1562,7 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildInfoRowAsync('SEMIS', widget.plantedDateFuture),
-                  const SizedBox(height: 12),
-                  _buildInfoRowAsync('RÉCOLTE', widget.expectedHarvestFuture),
+                  _buildInfoRow('ÉTAT', widget.status),
                   const SizedBox(height: 12),
                   _buildInfoRow('SURFACE', widget.area),
                 ],
