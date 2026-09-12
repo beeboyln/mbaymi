@@ -282,6 +282,7 @@ class InputResponse(InputCreate):
 class FinanceTransactionCreate(BaseModel):
     farm_id: int
     crop_id: Optional[int] = None
+    activity_id: Optional[int] = None
     transaction_type: str  # expense / income
     category: Optional[str] = None
     amount: float

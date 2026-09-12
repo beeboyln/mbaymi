@@ -5,6 +5,7 @@ from app.routes.auth import get_current_user_obj
 from app.models.user import User
 from app.models.farm import Farm
 from app.models.farm import Crop
+from app.models.activity import Activity
 from app.schemas.schemas import FinanceTransactionCreate, FinanceTransactionResponse
 from app.services.finance_service import FinanceService
 
@@ -27,6 +28,13 @@ def create_transaction(
     crop = db.query(Crop).filter(Crop.id == payload.crop_id, Crop.farm_id == payload.farm_id).first()
     if not crop:
         raise HTTPException(status_code=400, detail="Crop does not belong to this farm")
+    if payload.activity_id is not None:
+        activity = db.query(Activity).filter(
+            Activity.id == payload.activity_id,
+            Activity.crop_id == payload.crop_id,
+        ).first()
+        if not activity:
+            raise HTTPException(status_code=400, detail="Activity does not belong to this crop")
 
     t = FinanceService.create_transaction(db, payload.model_dump())
     return t
@@ -72,6 +80,13 @@ def update_transaction(transaction_id: int, updates: dict, current_user: User = 
     farm = db.query(Farm).filter(Farm.id == t.farm_id).first()
     if farm.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You don't own this farm")
+    if "activity_id" in updates and updates["activity_id"] is not None:
+        activity = db.query(Activity).filter(
+            Activity.id == updates["activity_id"],
+            Activity.crop_id == t.crop_id,
+        ).first()
+        if not activity:
+            raise HTTPException(status_code=400, detail="Activity does not belong to this crop")
     return FinanceService.update_transaction(db, transaction_id, updates)
 
 

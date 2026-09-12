@@ -10,6 +10,7 @@ class FinanceService:
         t = FinanceTransaction(
             farm_id=data.get("farm_id"),
             crop_id=data.get("crop_id"),
+            activity_id=data.get("activity_id"),
             transaction_type=data.get("transaction_type"),
             category=data.get("category"),
             amount=data.get("amount"),
