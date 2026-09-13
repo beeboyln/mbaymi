@@ -1287,15 +1287,13 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
               if (notes.isNotEmpty) notes,
             ].join(' · ');
             try {
-              await ApiService.createSale({
+              await ApiService.createTransaction({
                 'farm_id': widget.farmId,
                 'crop_id': widget.cropId,
-                'product_name': product,
-                'quantity': quantity,
-                'unit': unitCtrl.text.trim().isEmpty ? 'kg' : unitCtrl.text.trim(),
-                'price_per_unit': unitPrice,
-                'category': 'Vente parcelle',
-                'description': saleNotes,
+                'transaction_type': 'income',
+                'category': 'Vente - $product',
+                'amount': quantity * unitPrice,
+                'notes': saleNotes,
               });
               if (!sheetContext.mounted) return;
               Navigator.pop(sheetContext);

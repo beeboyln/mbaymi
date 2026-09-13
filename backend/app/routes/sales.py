@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.sale import Sale
-from app.models.finance import FinanceTransaction
 from app.models.farm import Farm, Crop
 from app.schemas.schemas import SaleCreate, SaleResponse
 from app.schemas.pagination import paginate_query, PaginatedResponse
@@ -43,22 +42,7 @@ def create_sale(s: SaleCreate, db: Session = Depends(get_db)):
     )
 
     db.add(new_sale)
-    db.flush()
-
-    if farm_id is not None and s.crop_id is not None:
-        db.add(FinanceTransaction(
-            farm_id=farm_id,
-            crop_id=s.crop_id,
-            sale_id=new_sale.id,
-            transaction_type='income',
-            category=f'Vente - {s.product_name}',
-            amount=s.quantity * s.price_per_unit,
-            notes=s.description,
-            transaction_date=new_sale.created_at,
-        ))
-        db.commit()
-    else:
-        db.commit()
+    db.commit()
 
     return new_sale
 
@@ -183,27 +167,6 @@ def update_sale(sale_id: int, s: SaleCreate, db: Session = Depends(get_db)):
     sale.contact = s.contact
     sale.description = s.description
 
-    transaction = db.query(FinanceTransaction).filter(
-        FinanceTransaction.sale_id == sale.id
-    ).first()
-    if transaction:
-        transaction.farm_id = s.farm_id or sale.farm_id
-        transaction.category = f'Vente - {s.product_name}'
-        transaction.amount = s.quantity * s.price_per_unit
-        transaction.notes = s.description
-        transaction.crop_id = s.crop_id
-    elif sale.farm_id is not None and sale.crop_id is not None:
-        db.add(FinanceTransaction(
-            farm_id=sale.farm_id,
-            crop_id=sale.crop_id,
-            sale_id=sale.id,
-            transaction_type='income',
-            category=f'Vente - {s.product_name}',
-            amount=s.quantity * s.price_per_unit,
-            notes=s.description,
-            transaction_date=sale.created_at,
-        ))
-    
     db.commit()
     db.refresh(sale)
     
@@ -216,7 +179,6 @@ def delete_sale(sale_id: int, db: Session = Depends(get_db)):
     if not sale:
         raise HTTPException(status_code=404, detail=SALE_NOT_FOUND)
     
-    db.query(FinanceTransaction).filter(FinanceTransaction.sale_id == sale.id).delete()
     db.delete(sale)
     db.commit()
     
