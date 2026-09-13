@@ -188,6 +188,8 @@ class HarvestResponse(HarvestCreate):
 # Sale Schemas
 class SaleCreate(BaseModel):
     harvest_id: Optional[int] = None
+    farm_id: Optional[int] = None
+    crop_id: Optional[int] = None
     product_name: str
     quantity: float
     unit: Optional[str] = "kg"

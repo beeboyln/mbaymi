@@ -60,6 +60,9 @@ def init_db():
             conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS input_id INTEGER;"))
             conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS activity_id INTEGER;"))
             conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS problem_id INTEGER;"))
+            conn.execute(text("ALTER TABLE sales ADD COLUMN IF NOT EXISTS farm_id INTEGER;"))
+            conn.execute(text("ALTER TABLE sales ADD COLUMN IF NOT EXISTS crop_id INTEGER;"))
+            conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS sale_id INTEGER;"))
             conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS input_id INTEGER;"))
             conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS quantity_used DOUBLE PRECISION;"))
             conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS finance_type VARCHAR(20);"))
@@ -67,6 +70,9 @@ def init_db():
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_input_id ON finance_transactions (input_id);"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_activity_id ON finance_transactions (activity_id);"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_problem_id ON finance_transactions (problem_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_farm_id ON sales (farm_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_crop_id ON sales (crop_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_sale_id ON finance_transactions (sale_id);"))
             conn.execute(text("ALTER TABLE farm_post_comments ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES farm_post_comments(id) ON DELETE CASCADE;"))
             
             # Update users table: make email and phone nullable for phone-only or email-only registration
@@ -93,6 +99,20 @@ def init_db():
             print("[✓] Database migration completed: email and phone columns are now nullable")
     except Exception as e:
         print(f"Warning: could not run ALTER TABLE statements: {e}")
+
+    # Keep the sale-to-finance migration independent from older migrations.
+    # A failure in one legacy statement must not prevent these columns from being added.
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE sales ADD COLUMN IF NOT EXISTS farm_id INTEGER;"))
+            conn.execute(text("ALTER TABLE sales ADD COLUMN IF NOT EXISTS crop_id INTEGER;"))
+            conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS sale_id INTEGER;"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_farm_id ON sales (farm_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_crop_id ON sales (crop_id);"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_finance_transactions_sale_id ON finance_transactions (sale_id);"))
+        print("[OK] Sale and finance columns initialized")
+    except Exception as e:
+        print(f"Warning: could not initialize sale finance columns: {e}")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

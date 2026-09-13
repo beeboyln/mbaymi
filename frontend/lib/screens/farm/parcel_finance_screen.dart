@@ -443,8 +443,51 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
       loadSections: () async {
         final transactions = await _listFuture;
         final summary = await _summaryFuture;
+        final profitability = await _profitabilityFuture;
+        final profitabilityRows = profitability.map((group) {
+          final activity = group['activity'] as Map<String, dynamic>?;
+          final activityName = (group['name'] ?? 'Activité').toString();
+          final activityDate = activity?['activity_date']?.toString();
+          final activityNotes = activity?['notes']?.toString().trim() ?? '';
+          return <String, dynamic>{
+            'Activité': activityName,
+            if (activityDate != null && activityDate.isNotEmpty)
+              'Date de l’activité': activityDate,
+            'Dépenses': group['expenses'],
+            'Revenus': group['income'],
+            'Bénéfice net': group['net'],
+            if (activityNotes.isNotEmpty) 'Notes de l’activité': activityNotes,
+          };
+        }).toList();
+        final transactionRows = <Map<String, dynamic>>[];
+        for (final group in profitability) {
+          final activityName = (group['name'] ?? 'Activité').toString();
+          final groupTransactions =
+              (group['transactions'] as List<Map<String, dynamic>>?) ??
+                  const <Map<String, dynamic>>[];
+          for (final transaction in groupTransactions) {
+            transactionRows.add({
+              'Activité': activityName,
+              'Type de transaction': transaction['transaction_type'],
+              'Catégorie': transaction['category'],
+              'Montant': transaction['amount'],
+              'Date de transaction': transaction['transaction_date'],
+              if (transaction['notes'] != null &&
+                  transaction['notes'].toString().trim().isNotEmpty)
+                'Notes': transaction['notes'],
+            });
+          }
+        }
         return [
           TraceabilitySection(title: 'Résumé financier', rows: [summary]),
+          TraceabilitySection(
+            title: 'Rentabilité par activité',
+            rows: profitabilityRows,
+          ),
+          TraceabilitySection(
+            title: 'Détail des opérations par activité',
+            rows: transactionRows,
+          ),
           TraceabilitySection(
             title: 'Transactions de la parcelle',
             rows: transactions

@@ -7,6 +7,8 @@ class Sale(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     harvest_id = Column(Integer, ForeignKey("harvests.id"), nullable=True)
+    farm_id = Column(Integer, ForeignKey("farms.id"), nullable=True, index=True)
+    crop_id = Column(Integer, ForeignKey("crops.id"), nullable=True, index=True)
     product_name = Column(String(200), nullable=False)
     quantity = Column(Float, nullable=False)
     unit = Column(String(50), default="kg", nullable=False)

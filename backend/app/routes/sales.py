@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.sale import Sale
+from app.models.finance import FinanceTransaction
+from app.models.farm import Farm, Crop
 from app.schemas.schemas import SaleCreate, SaleResponse
 from app.schemas.pagination import paginate_query, PaginatedResponse
 from typing import Optional
@@ -12,8 +14,20 @@ router = APIRouter(prefix="/api/sales", tags=["sales"])
 
 @router.post("/", response_model=SaleResponse)
 def create_sale(s: SaleCreate, db: Session = Depends(get_db)):
+    if s.crop_id is not None:
+        crop = db.query(Crop).filter(Crop.id == s.crop_id).first()
+        if not crop or (s.farm_id is not None and crop.farm_id != s.farm_id):
+            raise HTTPException(status_code=400, detail="Crop does not belong to this farm")
+        farm_id = crop.farm_id
+    else:
+        farm_id = s.farm_id
+    if farm_id is not None and not db.query(Farm).filter(Farm.id == farm_id).first():
+        raise HTTPException(status_code=400, detail="Farm not found")
+
     new_sale = Sale(
         harvest_id=s.harvest_id,
+        farm_id=farm_id,
+        crop_id=s.crop_id,
         product_name=s.product_name,
         quantity=s.quantity,
         unit=s.unit,
@@ -29,8 +43,22 @@ def create_sale(s: SaleCreate, db: Session = Depends(get_db)):
     )
 
     db.add(new_sale)
-    db.commit()
-    db.refresh(new_sale)
+    db.flush()
+
+    if farm_id is not None and s.crop_id is not None:
+        db.add(FinanceTransaction(
+            farm_id=farm_id,
+            crop_id=s.crop_id,
+            sale_id=new_sale.id,
+            transaction_type='income',
+            category=f'Vente - {s.product_name}',
+            amount=s.quantity * s.price_per_unit,
+            notes=s.description,
+            transaction_date=new_sale.created_at,
+        ))
+        db.commit()
+    else:
+        db.commit()
 
     return new_sale
 
@@ -135,8 +163,15 @@ def update_sale(sale_id: int, s: SaleCreate, db: Session = Depends(get_db)):
     
     if not sale:
         raise HTTPException(status_code=404, detail=SALE_NOT_FOUND)
+
+    if s.crop_id is not None:
+        crop = db.query(Crop).filter(Crop.id == s.crop_id).first()
+        if not crop or (s.farm_id is not None and crop.farm_id != s.farm_id):
+            raise HTTPException(status_code=400, detail="Crop does not belong to this farm")
     
     sale.product_name = s.product_name
+    sale.farm_id = s.farm_id
+    sale.crop_id = s.crop_id
     sale.quantity = s.quantity
     sale.unit = s.unit
     sale.price_per_unit = s.price_per_unit
@@ -147,6 +182,27 @@ def update_sale(sale_id: int, s: SaleCreate, db: Session = Depends(get_db)):
     sale.delivery_location = s.delivery_location
     sale.contact = s.contact
     sale.description = s.description
+
+    transaction = db.query(FinanceTransaction).filter(
+        FinanceTransaction.sale_id == sale.id
+    ).first()
+    if transaction:
+        transaction.farm_id = s.farm_id or sale.farm_id
+        transaction.category = f'Vente - {s.product_name}'
+        transaction.amount = s.quantity * s.price_per_unit
+        transaction.notes = s.description
+        transaction.crop_id = s.crop_id
+    elif sale.farm_id is not None and sale.crop_id is not None:
+        db.add(FinanceTransaction(
+            farm_id=sale.farm_id,
+            crop_id=sale.crop_id,
+            sale_id=sale.id,
+            transaction_type='income',
+            category=f'Vente - {s.product_name}',
+            amount=s.quantity * s.price_per_unit,
+            notes=s.description,
+            transaction_date=sale.created_at,
+        ))
     
     db.commit()
     db.refresh(sale)
@@ -160,6 +216,7 @@ def delete_sale(sale_id: int, db: Session = Depends(get_db)):
     if not sale:
         raise HTTPException(status_code=404, detail=SALE_NOT_FOUND)
     
+    db.query(FinanceTransaction).filter(FinanceTransaction.sale_id == sale.id).delete()
     db.delete(sale)
     db.commit()
     

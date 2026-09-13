@@ -11,6 +11,7 @@ class FinanceTransaction(Base):
     input_id = Column(Integer, ForeignKey("inputs.id", ondelete="SET NULL"), nullable=True, index=True)
     activity_id = Column(Integer, ForeignKey("activities.id", ondelete="CASCADE"), nullable=True, index=True)
     problem_id = Column(Integer, ForeignKey("crop_problems.id", ondelete="CASCADE"), nullable=True, index=True)
+    sale_id = Column(Integer, ForeignKey("sales.id", ondelete="SET NULL"), nullable=True, index=True)
     transaction_type = Column(String(20))  # expense / income
     category = Column(String(100))  # seeds, labor, sale, other
     amount = Column(Float, nullable=False)
