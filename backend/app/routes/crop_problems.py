@@ -27,6 +27,12 @@ class CropProblemCreate(BaseModel):
     finance_type: Optional[str] = None
     finance_amount: Optional[float] = None
 
+class CropProblemUpdate(BaseModel):
+    problem_type: Optional[str] = None
+    description: Optional[str] = None
+    photo_url: Optional[str] = None
+    severity: Optional[str] = None
+
 class UpdateProblemStatus(BaseModel):
     status: str  # identified, treated, resolved
     treatment_notes: Optional[str] = None
@@ -108,6 +114,7 @@ def report_crop_problem(
             "problem_type": crop_problem.problem_type,
             "severity": crop_problem.severity,
             "status": crop_problem.status,
+            "photo_url": crop_problem.photo_url,
             "created_at": crop_problem.created_at.isoformat(),
             "message": "✅ Problème signalé avec succès"
         }
@@ -174,6 +181,51 @@ def get_farm_problems(farm_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
+
+@router.put("/{problem_id}")
+def update_crop_problem(
+    problem_id: int,
+    data: CropProblemUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    ✏️ Mettre à jour un problème signalé.
+    """
+    try:
+        problem = db.query(CropProblem).filter(CropProblem.id == problem_id).first()
+        if not problem:
+            raise HTTPException(status_code=404, detail="Problème non trouvé")
+
+        if data.problem_type is not None:
+            problem.problem_type = data.problem_type
+        if data.description is not None:
+            problem.description = data.description
+        if data.photo_url is not None:
+            problem.photo_url = data.photo_url
+        if data.severity is not None:
+            problem.severity = data.severity
+
+        problem.updated_at = datetime.utcnow()
+
+        db.commit()
+        db.refresh(problem)
+
+        return {
+            "id": problem.id,
+            "crop_id": problem.crop_id,
+            "problem_type": problem.problem_type,
+            "description": problem.description,
+            "photo_url": problem.photo_url,
+            "severity": problem.severity,
+            "status": problem.status,
+            "updated_at": problem.updated_at.isoformat(),
+        }
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
 @router.put("/{problem_id}/status")
 def update_problem_status(

@@ -63,6 +63,7 @@ def init_db():
             conn.execute(text("ALTER TABLE sales ADD COLUMN IF NOT EXISTS farm_id INTEGER;"))
             conn.execute(text("ALTER TABLE sales ADD COLUMN IF NOT EXISTS crop_id INTEGER;"))
             conn.execute(text("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS sale_id INTEGER;"))
+            conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500);"))
             conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS input_id INTEGER;"))
             conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS quantity_used DOUBLE PRECISION;"))
             conn.execute(text("ALTER TABLE crop_problems ADD COLUMN IF NOT EXISTS finance_type VARCHAR(20);"))

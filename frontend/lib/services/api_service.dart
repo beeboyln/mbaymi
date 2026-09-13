@@ -1959,6 +1959,52 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateCropProblem({
+    required int problemId,
+    required String problemType,
+    String description = '',
+    String? photoUrl,
+    String severity = 'medium',
+  }) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/crop-problems/$problemId'),
+        headers: headers,
+        body: jsonEncode({
+          'problem_type': problemType,
+          'description': description,
+          'photo_url': photoUrl,
+          'severity': severity,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to update problem: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error updating problem: $e');
+    }
+  }
+
+  static Future<void> deleteCropProblem(int problemId) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/crop-problems/$problemId'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete problem: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error deleting problem: $e');
+    }
+  }
+
   static Future<void> updateProblemStatus({
     required int problemId,
     required String status,
