@@ -4,7 +4,6 @@ import 'package:mbaymi/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mbaymi/screens/farm/activity_screen.dart';
 import 'package:mbaymi/screens/farm/crop_problems_screen.dart';
-import 'package:mbaymi/screens/farm/parcel_inputs_screen.dart';
 import 'package:mbaymi/screens/farm/parcel_finance_screen.dart';
 import 'package:mbaymi/screens/farm/parcel_reminders_screen.dart';
 import 'package:mbaymi/widgets/farm_posts_widget.dart';
@@ -1114,30 +1113,6 @@ class _ParcelScreenState extends State<ParcelScreen> {
     );
   }
 
-  Widget _buildPlaceholder(bool isDark) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.landscape_outlined,
-            size: 40,
-            color: isDark ? Colors.white12 : Colors.black12,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'AJOUTER UNE PHOTO',
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w300,
-              letterSpacing: 1.5,
-              color: isDark ? Colors.white38 : Colors.black26,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // Stateful widget for expandable parcel card
@@ -1245,169 +1220,6 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
         _actionsAnimationController.reverse();
       }
     });
-  }
-
-  Future<void> _showSaleDialog() async {
-    final productCtrl = TextEditingController(text: widget.cropName);
-    final quantityCtrl = TextEditingController();
-    final unitCtrl = TextEditingController(text: 'kg');
-    final priceCtrl = TextEditingController();
-    final buyerCtrl = TextEditingController();
-    final notesCtrl = TextEditingController();
-    var saving = false;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: widget.isDark ? const Color(0xFF1A1A1A) : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) {
-          Future<void> submit() async {
-            final quantity = double.tryParse(
-                quantityCtrl.text.trim().replaceAll(',', '.'));
-            final unitPrice = double.tryParse(
-                priceCtrl.text.trim().replaceAll(',', '.'));
-            final product = productCtrl.text.trim();
-            if (product.isEmpty || quantity == null || quantity <= 0 || unitPrice == null || unitPrice <= 0) {
-              ScaffoldMessenger.of(sheetContext).showSnackBar(
-                const SnackBar(content: Text('Renseignez le produit, la quantité et le prix unitaire.')),
-              );
-              return;
-            }
-
-            setSheetState(() => saving = true);
-            final buyer = buyerCtrl.text.trim();
-            final notes = notesCtrl.text.trim();
-            final saleNotes = [
-              'Quantité : ${quantity.toString()} ${unitCtrl.text.trim().isEmpty ? 'unité(s)' : unitCtrl.text.trim()}',
-              if (buyer.isNotEmpty) 'Acheteur : $buyer',
-              if (notes.isNotEmpty) notes,
-            ].join(' · ');
-            try {
-              await ApiService.createTransaction({
-                'farm_id': widget.farmId,
-                'crop_id': widget.cropId,
-                'transaction_type': 'income',
-                'category': 'Vente - $product',
-                'amount': quantity * unitPrice,
-                'notes': saleNotes,
-              });
-              if (!sheetContext.mounted) return;
-              Navigator.pop(sheetContext);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Vente enregistrée dans les finances.')),
-              );
-            } catch (error) {
-              if (!sheetContext.mounted) return;
-              setSheetState(() => saving = false);
-              ScaffoldMessenger.of(sheetContext).showSnackBar(
-                SnackBar(content: Text('Impossible d’enregistrer la vente : $error')),
-              );
-            }
-          }
-
-          final textColor = widget.isDark ? Colors.white : Colors.black87;
-          final mutedColor = widget.isDark ? Colors.white54 : Colors.black54;
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 20,
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 38,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: mutedColor.withOpacity(0.35),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text('ENREGISTRER UNE VENTE',
-                      style: TextStyle(fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold, color: textColor)),
-                  const SizedBox(height: 20),
-                  _saleField(productCtrl, 'PRODUIT', 'Maïs, tomate…', textColor, mutedColor),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: _saleField(quantityCtrl, 'QUANTITÉ', '0', textColor, mutedColor, numeric: true)),
-                      const SizedBox(width: 10),
-                      SizedBox(width: 105, child: _saleField(unitCtrl, 'UNITÉ', 'kg', textColor, mutedColor)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _saleField(priceCtrl, 'PRIX UNITAIRE (FCFA)', '0', textColor, mutedColor, numeric: true),
-                  const SizedBox(height: 12),
-                  _saleField(buyerCtrl, 'ACHETEUR (OPTIONNEL)', 'Nom du client', textColor, mutedColor),
-                  const SizedBox(height: 12),
-                  _saleField(notesCtrl, 'NOTES', 'Détails de la vente…', textColor, mutedColor, maxLines: 2),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: saving ? null : submit,
-                      icon: saving
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.check, size: 17),
-                      label: Text(saving ? 'ENREGISTREMENT…' : 'ENREGISTRER LA VENTE'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: widget.isDark ? Colors.white : Colors.black87,
-                        foregroundColor: widget.isDark ? Colors.black : Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-    productCtrl.dispose();
-    quantityCtrl.dispose();
-    unitCtrl.dispose();
-    priceCtrl.dispose();
-    buyerCtrl.dispose();
-    notesCtrl.dispose();
-  }
-
-  Widget _saleField(
-    TextEditingController controller,
-    String label,
-    String hint,
-    Color textColor,
-    Color mutedColor, {
-    bool numeric = false,
-    int maxLines = 1,
-  }) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-      style: TextStyle(fontSize: 13, color: textColor),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: TextStyle(fontSize: 10, letterSpacing: 1, color: mutedColor),
-        hintStyle: TextStyle(fontSize: 12, color: mutedColor),
-        filled: true,
-        fillColor: widget.isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.03),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(5), borderSide: BorderSide(color: mutedColor.withOpacity(0.25))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(5), borderSide: BorderSide(color: mutedColor.withOpacity(0.25))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(5), borderSide: BorderSide(color: textColor)),
-      ),
-    );
   }
 
   Widget _buildPlaceholder() {
@@ -1831,9 +1643,14 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                       ),
                     ),
                     _buildActionButton(
-                      label: 'VENDRE',
-                      icon: Icons.point_of_sale_outlined,
-                      onTap: _showSaleDialog,
+                      label: 'FINANCE',
+                      icon: Icons.account_balance_wallet_outlined,
+                      onTap: () => widget.onNavigate(
+                        ParcelFinanceScreen(
+                          farmId: widget.farmId,
+                          cropId: widget.cropId,
+                        ),
+                      ),
                     ),
                     _buildActionButton(
                       label: 'PROBLÈMES',
@@ -1845,26 +1662,6 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
                           userId: widget.userId,
                           cropName: widget.cropName,
                           isDarkMode: widget.isDark,
-                        ),
-                      ),
-                    ),
-                    _buildActionButton(
-                      label: 'INTRANTS',
-                      icon: Icons.inventory_2_outlined,
-                      onTap: () => widget.onNavigate(
-                        ParcelInputsScreen(
-                          farmId: widget.farmId,
-                          cropId: widget.cropId,
-                        ),
-                      ),
-                    ),
-                    _buildActionButton(
-                      label: 'FINANCES',
-                      icon: Icons.analytics_outlined,
-                      onTap: () => widget.onNavigate(
-                        ParcelFinanceScreen(
-                          farmId: widget.farmId,
-                          cropId: widget.cropId,
                         ),
                       ),
                     ),
@@ -1924,36 +1721,4 @@ class _ParcelCardWidgetState extends State<_ParcelCardWidget> with TickerProvide
     );
   }
 
-  Widget _buildInfoRowAsync(String label, Future<String> valueFuture) {
-    return FutureBuilder<String>(
-      future: valueFuture,
-      builder: (context, snapshot) {
-        final value = snapshot.hasData ? snapshot.data! : '—';
-        
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w300,
-                letterSpacing: 1.5,
-                color: widget.isDark ? Colors.white38 : Colors.black38,
-              ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w300,
-                letterSpacing: 0.5,
-                color: widget.isDark ? Colors.white60 : Colors.black87,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }

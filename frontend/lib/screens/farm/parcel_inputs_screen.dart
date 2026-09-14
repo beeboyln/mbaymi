@@ -26,8 +26,16 @@ class _Z {
 class ParcelInputsScreen extends StatefulWidget {
   final int farmId;
   final int cropId;
+  final bool embedded;
+  final bool showFab;
 
-  const ParcelInputsScreen({super.key, required this.farmId, required this.cropId});
+  const ParcelInputsScreen({
+    super.key,
+    required this.farmId,
+    required this.cropId,
+    this.embedded = false,
+    this.showFab = true,
+  });
 
   @override
   State<ParcelInputsScreen> createState() => _ParcelInputsScreenState();
@@ -361,6 +369,10 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
   // ─── BUILD ───────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return _buildContent();
+    }
+
     return Scaffold(
       backgroundColor: _Z.bg,
       appBar: AppBar(
@@ -381,162 +393,165 @@ class _ParcelInputsScreenState extends State<ParcelInputsScreen>
           ),
         ],
       ),
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: FutureBuilder<List<dynamic>>(
-          future: _listFuture,
-          builder: (context, snap) {
-            if (snap.connectionState == ConnectionState.waiting) {
-              return const Center(
-                  child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1.5));
-            }
-
-            final items = snap.data ?? [];
-
-            final types = items
-                .map((item) => (item['input_type'] ?? 'Autre').toString())
-                .toSet()
-                .toList()
-              ..sort();
-            final query = _normalizeSearchText(_searchQuery);
-            final filteredItems = items.where((item) {
-              final type = (item['input_type'] ?? 'Autre').toString();
-              final searchable = _normalizeSearchText(
-                '${item['name'] ?? ''} $type ${item['unit'] ?? ''} ${item['notes'] ?? ''}',
-              );
-              return (_selectedType == 'Tous' || type == _selectedType) &&
-                  (query.isEmpty || searchable.contains(query));
-            }).toList();
-            final totalCost = items.fold<double>(
-              0,
-              (sum, item) => sum + ((item['cost'] as num?)?.toDouble() ?? 0),
-            );
-
-            if (items.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _Z.faint),
-                      ),
-                      child: const Icon(Icons.inventory_2_outlined, size: 28, color: _Z.muted),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('AUCUN INTRANT',
-                        style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    const Text('Ajoutez vos premiers intrants',
-                        style: TextStyle(fontSize: 13, color: _Z.muted)),
-                  ],
+      body: _buildContent(),
+      floatingActionButton: widget.showFab
+          ? FloatingActionButton.extended(
+              onPressed: _showAddInput,
+              backgroundColor: _Z.ink,
+              elevation: 2,
+              icon: const Icon(Icons.add, color: Colors.white, size: 18),
+              label: const Text(
+                'AJOUTER',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  fontWeight: FontWeight.bold,
                 ),
-              );
-            }
+              ),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
 
-            final filterTypes = ['Tous', ...types];
-            final groupedItems = filteredItems;
+  Widget _buildContent() {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: FutureBuilder<List<dynamic>>(
+        future: _listFuture,
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(
+                child: CircularProgressIndicator(color: _Z.ink, strokeWidth: 1.5));
+          }
 
-            // Group by type
-            final Map<String, List<dynamic>> grouped = {};
-            for (final item in groupedItems) {
-              final t = item['input_type'] ?? 'Autre';
-              grouped.putIfAbsent(t, () => []).add(item);
-            }
+          final items = snap.data ?? [];
 
-            return RefreshIndicator(
-              color: _Z.ink,
-              backgroundColor: _Z.bg,
-              onRefresh: () async => setState(() => _load()),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+          final types = items
+              .map((item) => (item['input_type'] ?? 'Autre').toString())
+              .toSet()
+              .toList()
+            ..sort();
+          final query = _normalizeSearchText(_searchQuery);
+          final filteredItems = items.where((item) {
+            final type = (item['input_type'] ?? 'Autre').toString();
+            final searchable = _normalizeSearchText(
+              '${item['name'] ?? ''} $type ${item['unit'] ?? ''} ${item['notes'] ?? ''}',
+            );
+            return (_selectedType == 'Tous' || type == _selectedType) &&
+                (query.isEmpty || searchable.contains(query));
+          }).toList();
+          final totalCost = items.fold<double>(
+            0,
+            (sum, item) => sum + ((item['cost'] as num?)?.toDouble() ?? 0),
+          );
+
+          if (items.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildOverview(totalCost, items.length),
-                  _buildFilters(filterTypes),
-                  if (groupedItems.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48),
-                      child: Center(
-                        child: Text(
-                          'AUCUN RÉSULTAT',
-                          style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted),
-                        ),
-                      ),
-                    )
-                  else
-                    ...grouped.entries.expand((entry) {
-                  final type = entry.key;
-                  final typeItems = entry.value;
-                  final color = _typeColor(type);
-
-                  return [
-                    const SizedBox(height: 20),
-
-                    // ── Group header ──────────────────────────────────
-                    Row(
-                      children: [
-                        Container(width: 3, height: 14, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
-                        const SizedBox(width: 10),
-                        Text(
-                          type.toUpperCase(),
-                          style: TextStyle(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold, color: color),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('${typeItems.length}',
-                            style: const TextStyle(fontSize: 10, color: _Z.muted, fontWeight: FontWeight.bold)),
-                      ],
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _Z.faint),
                     ),
-                    const SizedBox(height: 8),
-                    Container(height: 1, color: _Z.faint),
-                    const SizedBox(height: 4),
-
-                    // ── Items ─────────────────────────────────────────
-                    ...typeItems.asMap().entries.map((e) {
-                      final i = e.key;
-                      final it = e.value as Map<String, dynamic>;
-                      final isLast = i == typeItems.length - 1;
-
-                      return Column(
-                        children: [
-                          _InputRow(
-                            item: it,
-                            color: color,
-                            formattedCost: it['cost'] != null
-                                ? '${_formatCost(it['cost'])} FCFA'
-                                : null,
-                            onEdit: () => _showEditInput(it),
-                            onDelete: () => _deleteInput(it['id'] as int),
-                          ),
-                          if (!isLast) Container(height: 1, color: _Z.faint),
-                        ],
-                      );
-                    }),
-                  ];
-                  }).toList(),
+                    child: const Icon(Icons.inventory_2_outlined, size: 28, color: _Z.muted),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('AUCUN INTRANT',
+                      style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  const Text('Ajoutez vos premiers intrants',
+                      style: TextStyle(fontSize: 13, color: _Z.muted)),
                 ],
               ),
             );
-          },
-        ),
+          }
+
+          final filterTypes = ['Tous', ...types];
+          final groupedItems = filteredItems;
+
+          final Map<String, List<dynamic>> grouped = {};
+          for (final item in groupedItems) {
+            final t = item['input_type'] ?? 'Autre';
+            grouped.putIfAbsent(t, () => []).add(item);
+          }
+
+          return RefreshIndicator(
+            color: _Z.ink,
+            backgroundColor: _Z.bg,
+            onRefresh: () async => setState(() => _load()),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+              children: [
+                _buildOverview(totalCost, items.length),
+                _buildFilters(filterTypes),
+                if (groupedItems.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(
+                      child: Text(
+                        'AUCUN RÉSULTAT',
+                        style: TextStyle(fontSize: 10, letterSpacing: 2, color: _Z.muted),
+                      ),
+                    ),
+                  )
+                else
+                  ...grouped.entries.expand((entry) {
+                final type = entry.key;
+                final typeItems = entry.value;
+                final color = _typeColor(type);
+
+                return [
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Container(width: 3, height: 14, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+                      const SizedBox(width: 10),
+                      Text(
+                        type.toUpperCase(),
+                        style: TextStyle(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold, color: color),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('${typeItems.length}',
+                          style: const TextStyle(fontSize: 10, color: _Z.muted, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(height: 1, color: _Z.faint),
+                  const SizedBox(height: 4),
+
+                  ...typeItems.asMap().entries.map((e) {
+                    final i = e.key;
+                    final it = e.value as Map<String, dynamic>;
+                    final isLast = i == typeItems.length - 1;
+
+                    return Column(
+                      children: [
+                        _InputRow(
+                          item: it,
+                          color: color,
+                          formattedCost: it['cost'] != null
+                              ? '${_formatCost(it['cost'])} FCFA'
+                              : null,
+                          onEdit: () => _showEditInput(it),
+                          onDelete: () => _deleteInput(it['id'] as int),
+                        ),
+                        if (!isLast) Container(height: 1, color: _Z.faint),
+                      ],
+                    );
+                  }),
+                ];
+                }).toList(),
+              ],
+            ),
+          );
+        },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddInput,
-        backgroundColor: _Z.ink,
-        elevation: 2,
-        icon: const Icon(Icons.add, color: Colors.white, size: 18),
-        label: const Text(
-          'AJOUTER',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            letterSpacing: 2,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 

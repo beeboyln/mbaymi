@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbaymi/screens/farm/parcel_inputs_screen.dart';
 import 'package:mbaymi/services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:mbaymi/utils/app_colors.dart';
@@ -39,6 +40,14 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
   String _searchQuery = '';
   String _selectedType = 'Tous';
 
+  final TextEditingController _saleProductCtrl = TextEditingController(text: '');
+  final TextEditingController _saleQuantityCtrl = TextEditingController(text: '');
+  final TextEditingController _saleUnitCtrl = TextEditingController(text: 'kg');
+  final TextEditingController _salePriceCtrl = TextEditingController(text: '');
+  final TextEditingController _saleBuyerCtrl = TextEditingController(text: '');
+  final TextEditingController _saleNotesCtrl = TextEditingController(text: '');
+  bool _isSavingSale = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +61,12 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
   @override
   void dispose() {
     _fadeCtrl.dispose();
+    _saleProductCtrl.dispose();
+    _saleQuantityCtrl.dispose();
+    _saleUnitCtrl.dispose();
+    _salePriceCtrl.dispose();
+    _saleBuyerCtrl.dispose();
+    _saleNotesCtrl.dispose();
     super.dispose();
   }
 
@@ -1047,499 +1062,700 @@ class _ParcelFinanceScreenState extends State<ParcelFinanceScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _Z.bg,
-      appBar: AppBar(
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
         backgroundColor: _Z.bg,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, size: 20, color: _Z.ink),
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
-        title: const Text(
-          'FINANCES',
-          style: TextStyle(
-            fontSize: 12,
-            letterSpacing: 3,
-            fontWeight: FontWeight.bold,
-            color: _Z.ink,
-          ),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Télécharger la traçabilité',
-            icon: const Icon(Icons.download_outlined, size: 20, color: _Z.ink),
-            onPressed: _exportTraceability,
-          ),
-        ],
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: RefreshIndicator(
-          color: _Z.ink,
+        appBar: AppBar(
           backgroundColor: _Z.bg,
-          onRefresh: () async => setState(() => _load()),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-            children: [
-              // ── SUMMARY CARD ──────────────────────────────────────────────
-              FutureBuilder<Map<String, dynamic>>(
-                future: _summaryFuture,
-                builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      height: 160,
-                      child: Center(
-                          child: CircularProgressIndicator(
-                              color: _Z.ink, strokeWidth: 1.5)),
-                    );
-                  }
-                  final s = snap.data ?? {};
-                  final expenses = s['total_expenses'] ?? 0;
-                  final income = s['total_income'] ?? 0;
-                  final net = s['net_profit'] ?? 0;
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: _Z.ink,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        )
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'SOLDE NET',
-                          style: TextStyle(
-                            fontSize: 10,
-                            letterSpacing: 2,
-                            color: Colors.white54,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              _formatAmount(net),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 36,
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'FCFA',
-                              style: TextStyle(
-                                  color: Colors.white38,
-                                  fontSize: 12,
-                                  letterSpacing: 1),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Container(height: 1, color: Colors.white10),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _SummaryPill(
-                                label: 'DÉPENSES',
-                                value: _formatAmount(expenses),
-                                isIncome: false),
-                            _SummaryPill(
-                                label: 'REVENUS',
-                                value: _formatAmount(income),
-                                isIncome: true),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 32),
-
-              // ── SECTION HEADER ────────────────────────────────────────────
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: _profitabilityFuture,
-                builder: (context, snap) {
-                  final groups = snap.data ?? const <Map<String, dynamic>>[];
-                  if (groups.isEmpty) return const SizedBox.shrink();
-                  final totalNet = groups.fold<double>(
-                      0, (total, group) => total + (group['net'] as double));
-                  final totalPositive = totalNet >= 0;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: _Z.cardBg,
-                          border: Border.all(color: _Z.faint),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: ExpansionTile(
-                          initiallyExpanded: false,
-                          tilePadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
-                          title: const Text('RENTABILITÉ PAR ACTIVITÉ',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  letterSpacing: 2,
-                                  color: _Z.ink,
-                                  fontWeight: FontWeight.bold)),
-                          subtitle: Text(
-                            '${groups.length} activité${groups.length > 1 ? 's' : ''} · ${totalPositive ? '+' : '−'}${_formatAmount(totalNet.abs())} FCFA net',
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: totalPositive
-                                    ? _Z.incomeAccent
-                                    : _Z.expenseAccent),
-                          ),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-                              child: Column(
-                                children: groups
-                                    .map(_buildProfitabilityGroup)
-                                    .toList(),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  );
-                },
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
-                    'TRANSACTIONS',
-                    style: TextStyle(
-                      fontSize: 10,
-                      letterSpacing: 2,
-                      color: _Z.muted,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, size: 20, color: _Z.ink),
+            onPressed: () => Navigator.pop(context),
+          ),
+          centerTitle: true,
+          title: const Text(
+            'FINANCES',
+            style: TextStyle(
+              fontSize: 12,
+              letterSpacing: 3,
+              fontWeight: FontWeight.bold,
+              color: _Z.ink,
+            ),
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Télécharger la traçabilité',
+              icon: const Icon(Icons.download_outlined, size: 20, color: _Z.ink),
+              onPressed: _exportTraceability,
+            ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: Container(
+              color: _Z.bg,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: const TabBar(
+                indicatorColor: _Z.ink,
+                labelColor: _Z.ink,
+                unselectedLabelColor: _Z.muted,
+                labelStyle: TextStyle(
+                  fontSize: 10,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.bold,
+                ),
+                tabs: [
+                  Tab(text: 'FINANCE'),
+                  Tab(text: 'INTRANTS'),
+                  Tab(text: 'VENDRE'),
                 ],
               ),
-              const SizedBox(height: 8),
-              Container(height: 1, color: _Z.faint),
-              const SizedBox(height: 12),
+            ),
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _buildFinanceTab(),
+            ParcelInputsScreen(
+              farmId: widget.farmId,
+              cropId: widget.cropId,
+              embedded: true,
+            ),
+            _buildSaleTab(),
+          ],
+        ),
+      ),
+    );
+  }
 
-              // ── TRANSACTION LIST ──────────────────────────────────────────
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: _displayTransactionsFuture,
-                builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.all(40),
-                      child: Center(
-                          child: CircularProgressIndicator(
-                              color: _Z.ink, strokeWidth: 1.5)),
-                    );
-                  }
-                  final items = snap.data ?? const <Map<String, dynamic>>[];
-                  final query = _searchQuery.trim().toLowerCase();
-                  final filteredItems = items.where((item) {
-                    final type = item['transaction_type'] == 'income'
-                        ? 'Revenu'
-                        : 'Dépense';
-                    final searchable =
-                        '${item['category'] ?? ''} ${item['notes'] ?? ''} ${item['activity_name'] ?? ''}'
-                            .toLowerCase();
-                    return (_selectedType == 'Tous' || type == _selectedType) &&
-                        (query.isEmpty || searchable.contains(query));
-                  }).toList();
-                  if (items.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 48),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: _Z.faint),
-                              ),
-                              child: const Icon(Icons.receipt_long_outlined,
-                                  size: 24, color: _Z.muted),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'AUCUNE TRANSACTION',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  letterSpacing: 2,
-                                  color: _Z.muted),
-                            ),
-                          ],
+  Widget _buildFinanceTab() {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: RefreshIndicator(
+        color: _Z.ink,
+        backgroundColor: _Z.bg,
+        onRefresh: () async => setState(() => _load()),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+          children: [
+            FutureBuilder<Map<String, dynamic>>(
+              future: _summaryFuture,
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 160,
+                    child: Center(
+                        child: CircularProgressIndicator(
+                            color: _Z.ink, strokeWidth: 1.5)),
+                  );
+                }
+                final s = snap.data ?? {};
+                final expenses = s['total_expenses'] ?? 0;
+                final income = s['total_income'] ?? 0;
+                final net = s['net_profit'] ?? 0;
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: _Z.ink,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'SOLDE NET',
+                        style: TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 2,
+                          color: Colors.white54,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    );
-                  }
-
-                  final filters = ['Tous', 'Dépense', 'Revenu'];
-
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount:
-                        filteredItems.isEmpty ? 2 : filteredItems.length + 1,
-                    separatorBuilder: (_, __) =>
-                        Container(height: 1, color: _Z.faint),
-                    itemBuilder: (context, i) {
-                      if (i == 0) return _buildFilters(filters);
-                      if (filteredItems.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 48),
-                          child: Center(
-                            child: Text(
-                              'AUCUN RÉSULTAT',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  letterSpacing: 2,
-                                  color: _Z.muted),
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            _formatAmount(net),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.w300,
                             ),
                           ),
-                        );
-                      }
-                      final it = filteredItems[i - 1];
-                      final isExpense = it['transaction_type'] == 'expense';
-                      final isInputExpense =
-                          isExpense && it['input_id'] != null;
-                      final transactionColor = isInputExpense
-                          ? _Z.inputAccent
-                          : isExpense
-                              ? _Z.ink
-                              : _Z.incomeAccent;
-                      final visibleNotes = it['notes']?.toString().trim() ?? '';
-                      final activityName =
-                          it['activity_name']?.toString().trim();
-                      final isGeneralFinance =
-                          activityName == null || activityName.isEmpty;
+                          const SizedBox(width: 8),
+                          const Text(
+                            'FCFA',
+                            style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 12,
+                                letterSpacing: 1),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Container(height: 1, color: Colors.white10),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _SummaryPill(
+                              label: 'DÉPENSES',
+                              value: _formatAmount(expenses),
+                              isIncome: false),
+                          _SummaryPill(
+                              label: 'REVENUS',
+                              value: _formatAmount(income),
+                              isIncome: true),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
 
-                      return GestureDetector(
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            backgroundColor: _Z.cardBg,
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(12)),
+            const SizedBox(height: 32),
+
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _profitabilityFuture,
+              builder: (context, snap) {
+                final groups = snap.data ?? const <Map<String, dynamic>>[];
+                if (groups.isEmpty) return const SizedBox.shrink();
+                final totalNet = groups.fold<double>(
+                    0, (total, group) => total + (group['net'] as double));
+                final totalPositive = totalNet >= 0;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _Z.cardBg,
+                        border: Border.all(color: _Z.faint),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: ExpansionTile(
+                        initiallyExpanded: false,
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                        title: const Text('RENTABILITÉ PAR ACTIVITÉ',
+                            style: TextStyle(
+                                fontSize: 10,
+                                letterSpacing: 2,
+                                color: _Z.ink,
+                                fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          '${groups.length} activité${groups.length > 1 ? 's' : ''} · ${totalPositive ? '+' : '−'}${_formatAmount(totalNet.abs())} FCFA net',
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: totalPositive
+                                  ? _Z.incomeAccent
+                                  : _Z.expenseAccent),
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                            child: Column(
+                              children: groups
+                                  .map(_buildProfitabilityGroup)
+                                  .toList(),
                             ),
-                            builder: (_) => Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(height: 12),
-                                Container(
-                                    width: 32,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                        color: _Z.faint,
-                                        borderRadius:
-                                            BorderRadius.circular(2))),
-                                const SizedBox(height: 12),
-                                _ActionTile(
-                                  icon: Icons.edit_outlined,
-                                  label: 'MODIFIER',
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _showEditTransaction(it);
-                                  },
-                                ),
-                                Container(
-                                    height: 1,
-                                    color: _Z.faint,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 20)),
-                                _ActionTile(
-                                  icon: Icons.delete_outline,
-                                  label: 'SUPPRIMER',
-                                  color: _Z.expenseAccent,
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _deleteTransaction(it['id']);
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-                              ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                );
+              },
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: const [
+                Text(
+                  'TRANSACTIONS',
+                  style: TextStyle(
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    color: _Z.muted,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(height: 1, color: _Z.faint),
+            const SizedBox(height: 12),
+
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _displayTransactionsFuture,
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(
+                        child: CircularProgressIndicator(
+                            color: _Z.ink, strokeWidth: 1.5)),
+                  );
+                }
+                final items = snap.data ?? const <Map<String, dynamic>>[];
+                final query = _searchQuery.trim().toLowerCase();
+                final filteredItems = items.where((item) {
+                  final type = item['transaction_type'] == 'income'
+                      ? 'Revenu'
+                      : 'Dépense';
+                  final searchable =
+                      '${item['category'] ?? ''} ${item['notes'] ?? ''} ${item['activity_name'] ?? ''}'
+                          .toLowerCase();
+                  return (_selectedType == 'Tous' || type == _selectedType) &&
+                      (query.isEmpty || searchable.contains(query));
+                }).toList();
+                if (items.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _Z.faint),
                             ),
-                          );
-                        },
-                        child: Container(
-                          color: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 3,
-                                height: 38,
-                                decoration: BoxDecoration(
-                                  color: transactionColor,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        if (isInputExpense) ...[
-                                          const Icon(Icons.inventory_2_outlined,
-                                              size: 14, color: _Z.inputAccent),
-                                          const SizedBox(width: 6),
-                                        ],
-                                        Expanded(
-                                          child: Text(
-                                            (it['category'] ?? '-')
-                                                .toString()
-                                                .toUpperCase(),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              letterSpacing: 1,
-                                              fontWeight: FontWeight.w600,
-                                              color: isInputExpense
-                                                  ? _Z.inputAccent
-                                                  : _Z.ink,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        if (isInputExpense) ...[
-                                          const SizedBox(width: 8),
-                                          const Text(
-                                            'INTRANT',
-                                            style: TextStyle(
-                                                fontSize: 8,
-                                                letterSpacing: 1,
-                                                color: _Z.inputAccent),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _formatDate(it['transaction_date']),
-                                      style: const TextStyle(
-                                          fontSize: 11, color: _Z.muted),
-                                    ),
-                                    if (visibleNotes.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        visibleNotes,
-                                        style: const TextStyle(
-                                            fontSize: 11,
-                                            color: _Z.muted,
-                                            fontStyle: FontStyle.italic),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          isGeneralFinance
-                                              ? Icons.layers_clear_outlined
-                                              : Icons.agriculture_outlined,
-                                          size: 12,
-                                          color: isGeneralFinance
-                                              ? _Z.muted
-                                              : _Z.inputAccent,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: Text(
-                                            isGeneralFinance
-                                                ? 'FINANCE GÉNÉRALE'
-                                                : 'ACTIVITÉ · ${activityName.toUpperCase()}',
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              letterSpacing: 0.7,
-                                              fontWeight: FontWeight.w600,
-                                              color: isGeneralFinance
-                                                  ? _Z.muted
-                                                  : _Z.inputAccent,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    '${isExpense ? "−" : "+"}${_formatAmount(it['amount'])}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: transactionColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  const Text(
-                                    'FCFA',
-                                    style: TextStyle(
-                                        fontSize: 9,
-                                        letterSpacing: 1,
-                                        color: _Z.muted),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            child: const Icon(Icons.receipt_long_outlined,
+                                size: 24, color: _Z.muted),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'AUCUNE TRANSACTION',
+                            style: TextStyle(
+                                fontSize: 10,
+                                letterSpacing: 2,
+                                color: _Z.muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final filters = ['Tous', 'Dépense', 'Revenu'];
+
+                return ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredItems.isEmpty ? 2 : filteredItems.length + 1,
+                  separatorBuilder: (_, __) =>
+                      Container(height: 1, color: _Z.faint),
+                  itemBuilder: (context, i) {
+                    if (i == 0) return _buildFilters(filters);
+                    if (filteredItems.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 48),
+                        child: Center(
+                          child: Text(
+                            'AUCUN RÉSULTAT',
+                            style: TextStyle(
+                                fontSize: 10,
+                                letterSpacing: 2,
+                                color: _Z.muted),
                           ),
                         ),
                       );
-                    },
-                  );
-                },
+                    }
+                    final it = filteredItems[i - 1];
+                    final isExpense = it['transaction_type'] == 'expense';
+                    final isInputExpense = isExpense && it['input_id'] != null;
+                    final transactionColor = isInputExpense
+                        ? _Z.inputAccent
+                        : isExpense
+                            ? _Z.ink
+                            : _Z.incomeAccent;
+                    final visibleNotes = it['notes']?.toString().trim() ?? '';
+                    final activityName = it['activity_name']?.toString().trim();
+                    final isGeneralFinance =
+                        activityName == null || activityName.isEmpty;
+
+                    return GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          backgroundColor: _Z.cardBg,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(12)),
+                          ),
+                          builder: (_) => Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: 12),
+                              Container(
+                                  width: 32,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                      color: _Z.faint,
+                                      borderRadius:
+                                          BorderRadius.circular(2))),
+                              const SizedBox(height: 12),
+                              _ActionTile(
+                                icon: Icons.edit_outlined,
+                                label: 'MODIFIER',
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showEditTransaction(it);
+                                },
+                              ),
+                              Container(
+                                  height: 1,
+                                  color: _Z.faint,
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 20)),
+                              _ActionTile(
+                                icon: Icons.delete_outline,
+                                label: 'SUPPRIMER',
+                                color: _Z.expenseAccent,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _deleteTransaction(it['id']);
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        );
+                      },
+                      child: Container(
+                        color: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 3,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: transactionColor,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      if (isInputExpense) ...[
+                                        const Icon(Icons.inventory_2_outlined,
+                                            size: 14, color: _Z.inputAccent),
+                                        const SizedBox(width: 6),
+                                      ],
+                                      Expanded(
+                                        child: Text(
+                                          (it['category'] ?? '-')
+                                              .toString()
+                                              .toUpperCase(),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            letterSpacing: 1,
+                                            fontWeight: FontWeight.w600,
+                                            color: isInputExpense
+                                                ? _Z.inputAccent
+                                                : _Z.ink,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (isInputExpense) ...[
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'INTRANT',
+                                          style: TextStyle(
+                                              fontSize: 8,
+                                              letterSpacing: 1,
+                                              color: _Z.inputAccent),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _formatDate(it['transaction_date']),
+                                    style: const TextStyle(
+                                        fontSize: 11, color: _Z.muted),
+                                  ),
+                                  if (visibleNotes.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      visibleNotes,
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: _Z.muted,
+                                          fontStyle: FontStyle.italic),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        isGeneralFinance
+                                            ? Icons.layers_clear_outlined
+                                            : Icons.agriculture_outlined,
+                                        size: 12,
+                                        color: isGeneralFinance
+                                            ? _Z.muted
+                                            : _Z.inputAccent,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          isGeneralFinance
+                                              ? 'FINANCE GÉNÉRALE'
+                                              : 'ACTIVITÉ · ${activityName.toUpperCase()}',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            letterSpacing: 0.7,
+                                            fontWeight: FontWeight.w600,
+                                            color: isGeneralFinance
+                                                ? _Z.muted
+                                                : _Z.inputAccent,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${isExpense ? "−" : "+"}${_formatAmount(it['amount'])}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: transactionColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'FCFA',
+                                  style: TextStyle(
+                                      fontSize: 9,
+                                      letterSpacing: 1,
+                                      color: _Z.muted),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaleTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ENREGISTRER UNE VENTE',
+            style: TextStyle(
+              fontSize: 12,
+              letterSpacing: 2,
+              fontWeight: FontWeight.bold,
+              color: _Z.ink,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildSaleField(_saleProductCtrl, 'PRODUIT', 'Maïs, tomate…'),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSaleField(
+                  _saleQuantityCtrl,
+                  'QUANTITÉ',
+                  '0',
+                  numeric: true,
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 105,
+                child: _buildSaleField(_saleUnitCtrl, 'UNITÉ', 'kg'),
               ),
             ],
           ),
-        ),
-      ),
-
-      // ── FAB ──────────────────────────────────────────────────────────────
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddTransaction,
-        backgroundColor: _Z.ink,
-        elevation: 2,
-        icon: const Icon(Icons.add, color: Colors.white, size: 18),
-        label: const Text(
-          'AJOUTER',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            letterSpacing: 2,
-            fontWeight: FontWeight.bold,
+          const SizedBox(height: 12),
+          _buildSaleField(
+            _salePriceCtrl,
+            'PRIX UNITAIRE (FCFA)',
+            '0',
+            numeric: true,
           ),
+          const SizedBox(height: 12),
+          _buildSaleField(
+            _saleBuyerCtrl,
+            'ACHETEUR (OPTIONNEL)',
+            'Nom du client',
+          ),
+          const SizedBox(height: 12),
+          _buildSaleField(
+            _saleNotesCtrl,
+            'NOTES',
+            'Détails de la vente…',
+            maxLines: 2,
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _isSavingSale ? null : _submitSale,
+              icon: _isSavingSale
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.check, size: 17),
+              label: Text(_isSavingSale ? 'ENREGISTREMENT…' : 'ENREGISTRER LA VENTE'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _Z.ink,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitSale() async {
+    final quantity = double.tryParse(
+      _saleQuantityCtrl.text.trim().replaceAll(',', '.'),
+    );
+    final unitPrice = double.tryParse(
+      _salePriceCtrl.text.trim().replaceAll(',', '.'),
+    );
+    final product = _saleProductCtrl.text.trim();
+
+    if (product.isEmpty || quantity == null || quantity <= 0 || unitPrice == null || unitPrice <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Renseignez le produit, la quantité et le prix unitaire.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSavingSale = true);
+
+    final buyer = _saleBuyerCtrl.text.trim();
+    final notes = _saleNotesCtrl.text.trim();
+    final saleNotes = [
+      'Quantité : ${quantity.toString()} ${_saleUnitCtrl.text.trim().isEmpty ? 'unité(s)' : _saleUnitCtrl.text.trim()}',
+      if (buyer.isNotEmpty) 'Acheteur : $buyer',
+      if (notes.isNotEmpty) notes,
+    ].join(' · ');
+
+    try {
+      await ApiService.createTransaction({
+        'farm_id': widget.farmId,
+        'crop_id': widget.cropId,
+        'transaction_type': 'income',
+        'category': 'Vente - $product',
+        'amount': quantity * unitPrice,
+        'notes': saleNotes,
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSavingSale = false;
+        _saleProductCtrl.clear();
+        _saleQuantityCtrl.clear();
+        _saleUnitCtrl.text = 'kg';
+        _salePriceCtrl.clear();
+        _saleBuyerCtrl.clear();
+        _saleNotesCtrl.clear();
+        _load();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vente enregistrée dans les finances.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isSavingSale = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible d’enregistrer la vente : $error')),
+      );
+    }
+  }
+
+  Widget _buildSaleField(
+    TextEditingController controller,
+    String label,
+    String hint, {
+    bool numeric = false,
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: numeric
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : TextInputType.text,
+      style: const TextStyle(fontSize: 13, color: _Z.ink),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: const TextStyle(
+          fontSize: 10,
+          letterSpacing: 1,
+          color: _Z.muted,
+        ),
+        hintStyle: const TextStyle(fontSize: 12, color: _Z.muted),
+        filled: true,
+        fillColor: _Z.cardBg,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(color: _Z.faint),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(color: _Z.faint),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(color: _Z.ink),
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }

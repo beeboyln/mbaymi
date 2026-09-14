@@ -3,6 +3,7 @@
 ///         typographie aérée, animations soignées et optimisées GPU.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -121,6 +122,8 @@ class _ParcelOverlayState extends State<ParcelOverlay>
   bool _resizing = false;
 
   bool _editMode = false;
+  bool _showModeHint = false;
+  Timer? _modeHintTimer;
   late AnimationController _modeToggleCtrl;
   late Animation<double> _modeToggleAnim;
 
@@ -164,6 +167,7 @@ class _ParcelOverlayState extends State<ParcelOverlay>
 
   @override
   void dispose() {
+    _modeHintTimer?.cancel();
     _modeToggleCtrl.dispose();
     _menuCtrl.dispose();
     _legendCtrl.dispose();
@@ -188,9 +192,20 @@ class _ParcelOverlayState extends State<ParcelOverlay>
 
   void _toggleMode() {
     HapticFeedback.mediumImpact();
-    setState(() => _editMode = !_editMode);
-    if (_editMode) {
+    final next = !_editMode;
+    setState(() {
+      _editMode = next;
+      _showModeHint = next;
+    });
+
+    _modeHintTimer?.cancel();
+    if (next) {
       _modeToggleCtrl.forward();
+      _modeHintTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() => _showModeHint = false);
+        }
+      });
       if (_legendExpanded) {
         _legendExpanded = false;
         _legendCtrl.reverse();
@@ -199,6 +214,7 @@ class _ParcelOverlayState extends State<ParcelOverlay>
       _modeToggleCtrl.reverse();
       _activeId = -1;
       _resizing = false;
+      _showModeHint = false;
     }
   }
 
@@ -296,16 +312,6 @@ class _ParcelOverlayState extends State<ParcelOverlay>
             _buildParcel(widget.parcels[i], i, W, H),
 
           Positioned(
-            right: 12,
-            top: 10,
-            child: _ModeToggle(
-              editMode: _editMode,
-              modeAnim: _modeToggleAnim,
-              onToggle: _toggleMode,
-            ),
-          ),
-
-          Positioned(
             left: 12,
             top: 10,
             child: Column(
@@ -362,14 +368,59 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                                   widget.onEdit?.call();
                                 },
                                 child: Container(
-                                  width: 132,
+                                  width: 150,
                                   height: 46,
                                   padding: const EdgeInsets.symmetric(horizontal: 14),
                                   child: const Row(
                                     children: [
                                       Icon(Icons.edit_note_outlined, size: 19, color: Colors.white),
                                       SizedBox(width: 10),
-                                      Text('MODIFIER', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Colors.white, fontWeight: FontWeight.w600)),
+                                      Flexible(
+                                        child: Text(
+                                          'MODIFIER',
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                          style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Colors.white, fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                height: 0.5,
+                                color: Colors.white.withOpacity(0.1),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  _toggleMenu();
+                                  _toggleMode();
+                                },
+                                child: Container(
+                                  width: 150,
+                                  height: 46,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        _editMode ? Icons.check_rounded : Icons.open_with_rounded,
+                                        size: 19,
+                                        color: _editMode ? const Color(0xFF34D399) : Colors.white,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Text(
+                                          _editMode ? 'FINIR' : 'RÉORGANISER',
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            letterSpacing: 1.2,
+                                            color: _editMode ? const Color(0xFF34D399) : Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -384,14 +435,21 @@ class _ParcelOverlayState extends State<ParcelOverlay>
                                   widget.onDelete?.call();
                                 },
                                 child: Container(
-                                  width: 132,
+                                  width: 150,
                                   height: 46,
                                   padding: const EdgeInsets.symmetric(horizontal: 14),
                                   child: const Row(
                                     children: [
                                       Icon(Icons.delete_outline, size: 19, color: Color(0xFFFF5252)),
                                       SizedBox(width: 10),
-                                      Text('SUPPRIMER', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Color(0xFFFF5252), fontWeight: FontWeight.w600)),
+                                      Flexible(
+                                        child: Text(
+                                          'SUPPRIMER',
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                          style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: Color(0xFFFF5252), fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -406,6 +464,41 @@ class _ParcelOverlayState extends State<ParcelOverlay>
               ],
             ),
           ),
+
+          if (_editMode && _showModeHint)
+            Positioned(
+              top: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width - 24,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.45),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.20),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: const Text(
+                      'DÉPLACEZ LES PARCELLES POUR LES RÉORGANISER',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 9,
+                        letterSpacing: 1.2,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
           Positioned(
             left: 12,
@@ -1537,177 +1630,3 @@ class _CrosshairPainter extends CustomPainter {
   bool shouldRepaint(_CrosshairPainter old) => old.color != color;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TOGGLE MODE LECTURE/ÉDITION
-// ─────────────────────────────────────────────────────────────────────────────
-class _ModeToggle extends StatelessWidget {
-  final bool editMode;
-  final Animation<double> modeAnim;
-  final VoidCallback onToggle;
-
-  const _ModeToggle({
-    required this.editMode,
-    required this.modeAnim,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onToggle();
-      },
-      child: AnimatedBuilder(
-        animation: modeAnim,
-        builder: (_, __) {
-          final t = modeAnim.value;
-
-          final trackColor = Color.lerp(
-            Colors.white.withOpacity(0.10),
-            const Color(0xFF34D399).withOpacity(0.18),
-            t,
-          )!;
-
-          final borderColor = Color.lerp(
-            Colors.white.withOpacity(0.14),
-            const Color(0xFF34D399).withOpacity(0.45),
-            t,
-          )!;
-
-          final thumbColor = Color.lerp(
-            Colors.white,
-            const Color(0xFF34D399),
-            t,
-          )!;
-
-          final thumbGlow = Color.lerp(
-            Colors.transparent,
-            const Color(0xFF34D399).withOpacity(0.50),
-            t,
-          )!;
-
-          final iconOpacityRead = (1 - t).clamp(0.0, 1.0);
-          final iconOpacityEdit = t.clamp(0.0, 1.0);
-
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(13),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-              child: Container(
-                width: 44,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: trackColor,
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border.all(color: borderColor, width: 1),
-                ),
-                child: Stack(
-                  alignment: Alignment.centerLeft,
-                  children: [
-                    Positioned(
-                      left: 3 + t * 18,
-                      child: Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: thumbColor,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                            BoxShadow(
-                              color: thumbGlow,
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Opacity(
-                                opacity: iconOpacityRead,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 8,
-                                      height: 1.2,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.35),
-                                        borderRadius: BorderRadius.circular(1),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2.5),
-                                    Container(
-                                      width: 5,
-                                      height: 1.2,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.25),
-                                        borderRadius: BorderRadius.circular(1),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Opacity(
-                                opacity: iconOpacityEdit,
-                                child: Transform.rotate(
-                                  angle: -0.785,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 1.5,
-                                        height: 7,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.85),
-                                          borderRadius: BorderRadius.circular(1),
-                                        ),
-                                      ),
-                                      ClipPath(
-                                        clipper: _TriangleTipClipper(),
-                                        child: Container(
-                                          width: 1.5,
-                                          height: 3,
-                                          color: Colors.white.withOpacity(0.85),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _TriangleTipClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    return Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width / 2, size.height)
-      ..close();
-  }
-
-  @override
-  bool shouldReclip(_TriangleTipClipper old) => false;
-}
