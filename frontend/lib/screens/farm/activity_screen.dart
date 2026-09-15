@@ -12,7 +12,9 @@ import 'package:mbaymi/services/traceability_export_service.dart';
 class _Z {
   static const s4 = 4.0;
   static const s8 = 8.0;
+  static const s10 = 10.0;
   static const s12 = 12.0;
+  static const s14 = 14.0;
   static const s16 = 16.0;
   static const s20 = 20.0;
   static const s24 = 24.0;
@@ -22,27 +24,19 @@ class _Z {
   static const primary = Color(0xFF8B6B4D);
   static const primaryMuted = Color(0xFFA58A6D);
 
-  static TextStyle mono(Color c, {double size = 10, double spacing = 2}) =>
+  static TextStyle mono(Color c, {double size = 10, double spacing = 1.5, FontWeight weight = FontWeight.w400}) =>
       TextStyle(
           fontSize: size,
           letterSpacing: spacing,
-          fontWeight: FontWeight.w400,
+          fontWeight: weight,
           color: c);
 
-  static TextStyle serif(Color c, {double size = 22, double spacing = 1}) =>
-      TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: size,
-          letterSpacing: spacing,
-          fontWeight: FontWeight.w300,
-          color: c);
-
-  static TextStyle body(Color c) => TextStyle(
-      fontSize: 13,
+  static TextStyle body(Color c, {double size = 14, FontWeight weight = FontWeight.w400}) => TextStyle(
+      fontSize: size,
       letterSpacing: 0.2,
-      fontWeight: FontWeight.w300,
+      fontWeight: weight,
       color: c,
-      height: 1.6);
+      height: 1.4);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,7 +104,7 @@ class ActivityScreen extends StatefulWidget {
 }
 
 class _ActivityScreenState extends State<ActivityScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   // Form state
   final _notesCtrl = TextEditingController();
   final _customTypeCtrl = TextEditingController();
@@ -127,6 +121,7 @@ class _ActivityScreenState extends State<ActivityScreen>
   // UI state
   bool _loading = false;
   bool _showForm = false;
+  String _selectedTabCategory = 'TOUT';
   late Future<List<dynamic>> _future;
   late AnimationController _formAnim;
   late Animation<double> _formFade;
@@ -141,8 +136,8 @@ class _ActivityScreenState extends State<ActivityScreen>
     _future = ApiService.getActivitiesForCrop(widget.cropId);
     _inputsFuture = ApiService.listInputsForCrop(widget.cropId);
     _formAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 250));
-    _formFade = CurvedAnimation(parent: _formAnim, curve: Curves.easeOut);
+        vsync: this, duration: const Duration(milliseconds: 300));
+    _formFade = CurvedAnimation(parent: _formAnim, curve: Curves.easeInOut);
   }
 
   @override
@@ -174,10 +169,10 @@ class _ActivityScreenState extends State<ActivityScreen>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
           style: const TextStyle(
-              fontSize: 12, letterSpacing: 0.5, color: Colors.white)),
+              fontSize: 13, letterSpacing: 0.5, color: Colors.white, fontWeight: FontWeight.w500)),
       backgroundColor: error ? AppColors.error : _Z.primary,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       duration: Duration(milliseconds: error ? 2500 : 1200),
     ));
   }
@@ -224,7 +219,7 @@ class _ActivityScreenState extends State<ActivityScreen>
         ? null
         : double.tryParse(_quantityUsedCtrl.text.replaceAll(',', '.'));
     if (_selectedInputId != null && (quantityUsed == null || quantityUsed <= 0)) {
-      _snack('Saisissez une quantité d\'intrant utilisée', error: true);
+      _snack('Saisissez une quantité d\'intrant valide', error: true);
       return;
     }
     final financeAmount = double.tryParse(_financeAmountCtrl.text.replaceAll(',', '.'));
@@ -257,8 +252,8 @@ class _ActivityScreenState extends State<ActivityScreen>
       if (mounted) {
         _notesCtrl.clear();
         _customTypeCtrl.clear();
-          _quantityUsedCtrl.clear();
-          _financeAmountCtrl.clear();
+        _quantityUsedCtrl.clear();
+        _financeAmountCtrl.clear();
         _imageFiles.clear();
         _imageBytes.clear();
         setState(() {
@@ -270,7 +265,7 @@ class _ActivityScreenState extends State<ActivityScreen>
           _loading = false;
         });
         _formAnim.reverse();
-        _snack('Activité enregistrée');
+        _snack('Activité enregistrée avec succès');
         _refresh();
       }
     } catch (e) {
@@ -323,11 +318,14 @@ class _ActivityScreenState extends State<ActivityScreen>
     }
   }
 
-  // ── Colors ────────────────────────────────────────────────────────────────
+  String _formatActivityAmount(double amount) =>
+      NumberFormat('#,##0', 'fr_FR').format(amount);
+
   Color get _bg => AppColors.getBgColor(_dark);
   Color get _text => AppColors.getTextColor(_dark);
   Color get _sub => AppColors.getSecondaryTextColor(_dark);
   Color get _border => AppColors.getBorderColor(_dark);
+  Color get _fieldBg => _dark ? const Color(0xFF1E232A) : const Color(0xFFF4F5F7);
   bool _dark = false;
 
   @override
@@ -343,13 +341,14 @@ class _ActivityScreenState extends State<ActivityScreen>
             _buildHeader(),
             Expanded(
               child: SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom + _Z.s24),
+                    bottom: MediaQuery.of(context).viewInsets.bottom + _Z.s32),
                 child: Column(
                   children: [
+                    if (_canEdit) _buildActionTriggerBar(),
                     if (_canEdit) _buildFormSection(),
+                    _buildTabsBar(),
                     _buildHistorySection(),
                   ],
                 ),
@@ -364,83 +363,134 @@ class _ActivityScreenState extends State<ActivityScreen>
   // ── Header ────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: _Z.s20, vertical: _Z.s16),
+      padding: const EdgeInsets.symmetric(horizontal: _Z.s16, vertical: _Z.s12),
       decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: _border, width: 0.5))),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {
+          IconButton(
+            onPressed: () {
               HapticFeedback.lightImpact();
               Navigator.pop(context);
             },
-            child: Icon(Icons.arrow_back_ios_new,
-                size: 16, color: _sub),
+            tooltip: 'Retour',
+            icon: Icon(Icons.arrow_back_ios_new, size: 18, color: _text),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
-          const SizedBox(width: _Z.s20),
-          Text('ACTIVITÉS', style: _Z.mono(_text, size: 11, spacing: 3)),
+          const SizedBox(width: _Z.s8),
+          Text('ACTIVITÉS', style: _Z.mono(_text, size: 13, spacing: 2.5, weight: FontWeight.w600)),
           const Spacer(),
-          GestureDetector(
-            onTap: _exportTraceability,
-            child: Icon(Icons.download_outlined, size: 20, color: _text),
+          IconButton(
+            onPressed: _exportTraceability,
+            tooltip: 'Exporter la traçabilité',
+            icon: Icon(Icons.download_outlined, size: 22, color: _text),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
         ],
       ),
     );
   }
 
-  // ── Form section ──────────────────────────────────────────────────────────
-  Widget _buildFormSection() {
-    return Container(
-      margin: const EdgeInsets.all(_Z.s20),
-      decoration: BoxDecoration(
-          border: Border.all(color: _border, width: 0.5)),
-      child: Column(
-        children: [
-          // Toggle button
-          GestureDetector(
-            onTap: _toggleForm,
-            child: Padding(
-              padding: const EdgeInsets.all(_Z.s16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedRotation(
-                    turns: _showForm ? 0.125 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(Icons.add, size: 16, color: _text),
-                  ),
-                  const SizedBox(width: _Z.s12),
-                  Text(
-                    _showForm
-                        ? 'ANNULER'
-                        : 'NOUVELLE ACTIVITÉ',
-                    style: _Z.mono(_text, size: 10, spacing: 2.5),
-                  ),
-                ],
-              ),
-            ),
-          ),
+  // ── Action Bar (Trigger Form) ─────────────────────────────────────────────
+Widget _buildActionTriggerBar() {
+  final accentColor = _showForm 
+      ? Color(0xFFE8877C)    // Terracotta doux
+      : Color(0xFFD4AF37);   // Or doux
 
-          // Form (animated)
-          FadeTransition(
-            opacity: _formFade,
-            child: SizeTransition(
-              sizeFactor: _formFade,
-              child: _showForm
-                  ? Container(
-                      decoration: BoxDecoration(
-                          border: Border(
-                              top: BorderSide(
-                                  color: _border, width: 0.5))),
-                      padding: const EdgeInsets.all(_Z.s20),
-                      child: _buildForm(),
-                    )
-                  : const SizedBox.shrink(),
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(_Z.s20, _Z.s24, _Z.s20, _Z.s16),
+    child: Align(
+      alignment: Alignment.centerRight,
+      child: GestureDetector(
+        onTap: _toggleForm,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+          width: 64,
+          height: 48,
+          decoration: BoxDecoration(
+            // ── Fond gris très clair ──
+            color: Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(24),
+            // ── Border gris subtile ──
+            border: Border.all(
+              color: Color(0xFFE0E0E0),
+              width: 1,
             ),
+            // ── Ombre douce et diffuse ──
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 10,
+                spreadRadius: 0,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
+          child: Stack(
+            children: [
+              // ── Slider : cercle qui glisse ──
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOutCubic,
+                left: _showForm ? 16 : 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    // ── Shadow du cercle (très subtile) ──
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 6,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  // ── Icône au centre du cercle ──
+                  child: Center(
+                    child: AnimatedRotation(
+                      turns: _showForm ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        _showForm ? Icons.close_rounded : Icons.add_rounded,
+                        size: 20,
+                        color: accentColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+  // ── Form Section ──────────────────────────────────────────────────────────
+  Widget _buildFormSection() {
+    return FadeTransition(
+      opacity: _formFade,
+      child: SizeTransition(
+        sizeFactor: _formFade,
+        child: _showForm
+            ? Container(
+                margin: const EdgeInsets.symmetric(horizontal: _Z.s20, vertical: _Z.s8),
+                padding: const EdgeInsets.all(_Z.s16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: _border, width: 0.8),
+                ),
+                child: _buildForm(),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
@@ -449,73 +499,66 @@ class _ActivityScreenState extends State<ActivityScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Activity type grid ──────────────────────────────────────────
+        // ── Activity Type Selection ─────────────────────────────────────
         ..._categories.entries.map((e) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(bottom: _Z.s12),
-                  child: Text(e.key,
-                      style: _Z.mono(_sub, size: 9, spacing: 2.5)),
+                  padding: const EdgeInsets.only(bottom: _Z.s8, top: _Z.s4),
+                  child: Text(e.key, style: _Z.mono(_sub, size: 11, spacing: 2, weight: FontWeight.w600)),
                 ),
                 Wrap(
                   spacing: _Z.s8,
                   runSpacing: _Z.s8,
                   children: e.value.map((t) {
                     final sel = _selectedType == t.value;
-                    return GestureDetector(
+                    return InkWell(
                       onTap: () {
                         HapticFeedback.selectionClick();
                         setState(() => _selectedType = t.value);
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: _Z.s12, vertical: _Z.s8),
+                        padding: const EdgeInsets.symmetric(horizontal: _Z.s12, vertical: _Z.s10),
                         decoration: BoxDecoration(
-                          color: sel
-                              ? t.color.withOpacity(0.15)
-                              : t.color.withOpacity(0.05),
+                          color: sel ? t.color.withOpacity(0.18) : _fieldBg,
                           border: Border.all(
-                            color: sel ? t.color : t.color.withOpacity(0.25),
-                            width: sel ? 1.5 : 0.5,
+                            color: sel ? t.color : _border,
+                            width: sel ? 1.5 : 0.8,
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(t.icon,
-                                size: 14,
-                                color: sel ? t.color : t.color.withOpacity(0.7)),
+                            Icon(t.icon, size: 15, color: sel ? t.color : _sub),
                             const SizedBox(width: _Z.s8),
                             Text(t.label,
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    letterSpacing: 0.5,
-                                    fontWeight: sel ? FontWeight.w500 : FontWeight.w300,
-                                    color: sel ? t.color : _text)),
+                                style: _Z.body(sel ? t.color : _text,
+                                    size: 13, weight: sel ? FontWeight.w600 : FontWeight.w400)),
                           ],
                         ),
                       ),
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: _Z.s20),
+                const SizedBox(height: _Z.s14),
               ],
             )),
 
-        // ── Custom type ─────────────────────────────────────────────────
         if (_selectedType == 'Autre') ...[
-          _ZaraField(
-              controller: _customTypeCtrl,
-              label: 'PRÉCISER',
-              text: _text,
-              sub: _sub,
-              border: _border),
-          const SizedBox(height: _Z.s20),
+          _ZaraVisibleField(
+            controller: _customTypeCtrl,
+            label: 'PRÉCISER LE TYPE',
+            hint: 'Ex: Traitement spécial',
+            icon: Icons.edit_note,
+            dark: _dark,
+          ),
+          const SizedBox(height: _Z.s16),
         ],
 
-        // ── Date picker ─────────────────────────────────────────────────
+        // ── Date Picker ─────────────────────────────────────────────────
+        Text('DATE DE L\'ACTIVITÉ', style: _Z.mono(_sub, size: 10, spacing: 1.5, weight: FontWeight.w600)),
+        const SizedBox(height: _Z.s8),
         GestureDetector(
           onTap: () async {
             final d = await showDatePicker(
@@ -536,37 +579,28 @@ class _ActivityScreenState extends State<ActivityScreen>
             if (d != null) setState(() => _date = d);
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 0, vertical: _Z.s12),
+            padding: const EdgeInsets.symmetric(horizontal: _Z.s14, vertical: _Z.s14),
             decoration: BoxDecoration(
-                border: Border(
-                    bottom: BorderSide(
-                        color: _date != null ? _Z.primary : _border,
-                        width: 0.5))),
+                color: _fieldBg,
+                border: Border.all(color: _date != null ? _Z.primary : _border, width: _date != null ? 1.5 : 0.8),
+                borderRadius: BorderRadius.circular(2)),
             child: Row(
               children: [
-                Icon(Icons.calendar_today_outlined,
-                    size: 14,
-                    color: _date != null ? _Z.primary : _sub),
+                Icon(Icons.calendar_month_outlined, size: 18, color: _date != null ? _Z.primary : _sub),
                 const SizedBox(width: _Z.s12),
                 Text(
-                  _date != null
-                      ? _fmt(_date, p: 'EEEE d MMMM yyyy')
-                      : 'DATE',
-                  style: TextStyle(
-                      fontSize: 11,
-                      letterSpacing: 1,
-                      color: _date != null ? _text : _sub),
+                  _date != null ? _fmt(_date, p: 'EEEE d MMMM yyyy') : 'Sélectionner une date',
+                  style: _Z.body(_date != null ? _text : _sub, size: 13, weight: _date != null ? FontWeight.w500 : FontWeight.w400),
                 ),
                 const Spacer(),
-                Icon(Icons.chevron_right,
-                    size: 16, color: _sub),
+                Icon(Icons.chevron_right, size: 18, color: _sub),
               ],
             ),
           ),
         ),
         const SizedBox(height: _Z.s20),
 
+        // ── Intrant selection (Input très visible) ──────────────────────
         FutureBuilder<List<dynamic>>(
           future: _inputsFuture,
           builder: (context, snapshot) {
@@ -577,38 +611,63 @@ class _ActivityScreenState extends State<ActivityScreen>
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('INTRANT UTILISÉ (OPTIONNEL)', style: _Z.mono(_sub, size: 9, spacing: 2.5)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<int?>(
-                  value: _selectedInputId,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    hintText: 'Aucun intrant',
-                    hintStyle: _Z.body(_sub),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: _border, width: 0.5)),
-                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: _text, width: 0.5)),
+                Text('INTRANT UTILISÉ (OPTIONNEL)', style: _Z.mono(_sub, size: 10, spacing: 1.5, weight: FontWeight.w600)),
+                const SizedBox(height: _Z.s8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: _Z.s12),
+                  decoration: BoxDecoration(
+                    color: _fieldBg,
+                    border: Border.all(color: _selectedInputId != null ? _Z.primary : _border, width: _selectedInputId != null ? 1.5 : 0.8),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text('Aucun intrant')),
-                    ...inputs.map((item) => DropdownMenuItem<int?>(
-                          value: item['id'] as int,
-                          child: Text('${item['name'] ?? item['input_type'] ?? 'Intrant'} (${item['quantity'] ?? 0} ${item['unit'] ?? ''})'),
-                        )),
-                  ],
-                  onChanged: (value) => setState(() => _selectedInputId = value),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int?>(
+                      value: _selectedInputId,
+                      isExpanded: true,
+                      dropdownColor: _bg,
+                      icon: Icon(Icons.arrow_drop_down, color: _text),
+                      style: _Z.body(_text, size: 14, weight: FontWeight.w500),
+                      items: [
+                        DropdownMenuItem<int?>(
+                          value: null,
+                          child: Row(
+                            children: [
+                              Icon(Icons.inventory_2_outlined, size: 18, color: _sub),
+                              const SizedBox(width: _Z.s10),
+                              Text('Aucun intrant', style: _Z.body(_sub, size: 13)),
+                            ],
+                          ),
+                        ),
+                        ...inputs.map((item) => DropdownMenuItem<int?>(
+                              value: item['id'] as int,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.inventory_2, size: 18, color: _Z.primary),
+                                  const SizedBox(width: _Z.s10),
+                                  Expanded(
+                                    child: Text(
+                                      '${item['name'] ?? item['input_type'] ?? 'Intrant'} (${item['quantity'] ?? 0} ${item['unit'] ?? ''})',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: _Z.body(_text, size: 13, weight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )),
+                      ],
+                      onChanged: (value) => setState(() => _selectedInputId = value),
+                    ),
+                  ),
                 ),
                 if (selected != null) ...[
-                  const SizedBox(height: _Z.s12),
-                  TextField(
+                  const SizedBox(height: _Z.s16),
+                  _ZaraVisibleField(
                     controller: _quantityUsedCtrl,
+                    label: 'QUANTITÉ UTILISÉE (${selected['unit'] ?? ''})',
+                    hint: 'Ex: 2.5',
+                    icon: Icons.scale_outlined,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: _Z.body(_text),
-                    decoration: InputDecoration(
-                      labelText: 'QUANTITÉ UTILISÉE (${selected['unit'] ?? ''})',
-                      labelStyle: _Z.mono(_sub, size: 9, spacing: 1.5),
-                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: _border, width: 0.5)),
-                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: _text, width: 0.5)),
-                    ),
+                    dark: _dark,
                   ),
                 ],
                 const SizedBox(height: _Z.s20),
@@ -617,75 +676,68 @@ class _ActivityScreenState extends State<ActivityScreen>
           },
         ),
 
-        Text('IMPACT FINANCIER (OPTIONNEL)', style: _Z.mono(_sub, size: 9, spacing: 2.5)),
+        // ── Impact financier (Contrôle & Saisie très visibles) ─────────
+        Text('IMPACT FINANCIER (OPTIONNEL)', style: _Z.mono(_sub, size: 10, spacing: 1.5, weight: FontWeight.w600)),
         const SizedBox(height: _Z.s8),
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _financeType = 'expense'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: _Z.s12),
-                  decoration: BoxDecoration(
-                    color: _financeType == 'expense' ? Colors.red.withOpacity(0.12) : Colors.transparent,
-                    border: Border.all(color: _financeType == 'expense' ? Colors.red.shade300 : _border),
+        Container(
+          height: 44,
+          decoration: BoxDecoration(border: Border.all(color: _border, width: 0.8)),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _financeType = 'expense'),
+                  child: Container(
+                    color: _financeType == 'expense' ? Colors.red.shade700 : _fieldBg,
+                    alignment: Alignment.center,
+                    child: Text('DÉPENSE',
+                        style: _Z.mono(_financeType == 'expense' ? Colors.white : _sub,
+                            size: 11, spacing: 1.5, weight: FontWeight.w600)),
                   ),
-                  child: Text('DÉPENSE', textAlign: TextAlign.center, style: _Z.mono(_financeType == 'expense' ? Colors.red.shade700 : _sub, size: 10, spacing: 1.5)),
                 ),
               ),
-            ),
-            const SizedBox(width: _Z.s8),
-            Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _financeType = 'income'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: _Z.s12),
-                  decoration: BoxDecoration(
-                    color: _financeType == 'income' ? Colors.green.withOpacity(0.12) : Colors.transparent,
-                    border: Border.all(color: _financeType == 'income' ? Colors.green.shade300 : _border),
+              Container(width: 0.8, color: _border),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _financeType = 'income'),
+                  child: Container(
+                    color: _financeType == 'income' ? Colors.green.shade700 : _fieldBg,
+                    alignment: Alignment.center,
+                    child: Text('REVENU',
+                        style: _Z.mono(_financeType == 'income' ? Colors.white : _sub,
+                            size: 11, spacing: 1.5, weight: FontWeight.w600)),
                   ),
-                  child: Text('REVENU', textAlign: TextAlign.center, style: _Z.mono(_financeType == 'income' ? Colors.green.shade700 : _sub, size: 10, spacing: 1.5)),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: _Z.s12),
-        TextField(
-          controller: _financeAmountCtrl,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: _Z.body(_text),
-          decoration: InputDecoration(
-            labelText: 'MONTANT (FCFA)',
-            labelStyle: _Z.mono(_sub, size: 9, spacing: 1.5),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: _border, width: 0.5)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: _text, width: 0.5)),
+            ],
           ),
+        ),
+        const SizedBox(height: _Z.s14),
+        _ZaraVisibleField(
+          controller: _financeAmountCtrl,
+          label: 'MONTANT DE LA TRANSACTION (FCFA)',
+          hint: 'Ex: 15000',
+          icon: Icons.payments_outlined,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          dark: _dark,
         ),
         const SizedBox(height: _Z.s20),
 
-        // ── Notes ───────────────────────────────────────────────────────
-        TextField(
+        // ── Notes (Visible & Confortable) ──────────────────────────────
+        _ZaraVisibleField(
           controller: _notesCtrl,
-          maxLines: 4,
-          style: _Z.body(_text),
-          decoration: InputDecoration(
-            hintText: 'Notes et observations...',
-            hintStyle: _Z.body(_sub),
-            enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: _border, width: 0.5)),
-            focusedBorder: UnderlineInputBorder(
-                borderSide:
-                    BorderSide(color: _text, width: 0.5)),
-            contentPadding: EdgeInsets.zero,
-          ),
+          label: 'NOTES ET OBSERVATIONS',
+          hint: 'Écrivez vos remarques, conditions météo, etc...',
+          icon: Icons.notes_outlined,
+          maxLines: 3,
+          dark: _dark,
         ),
-        const SizedBox(height: _Z.s24),
+        const SizedBox(height: _Z.s20),
 
-        // ── Image picker ────────────────────────────────────────────────
+        // ── Gallery Preview & Add Photos ────────────────────────────────
         if (_imageBytes.isNotEmpty) ...[
           SizedBox(
-            height: 80,
+            height: 70,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _imageBytes.length,
@@ -694,26 +746,23 @@ class _ActivityScreenState extends State<ActivityScreen>
                 child: Stack(
                   children: [
                     Container(
-                      width: 80,
-                      height: 80,
-                      decoration:
-                          BoxDecoration(border: Border.all(color: _border, width: 0.5)),
-                      child: Image.memory(_imageBytes[i],
-                          fit: BoxFit.cover),
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(border: Border.all(color: _border, width: 0.8)),
+                      child: Image.memory(_imageBytes[i], fit: BoxFit.cover),
                     ),
                     Positioned(
-                      top: 0,
-                      right: 0,
+                      top: 2,
+                      right: 2,
                       child: GestureDetector(
                         onTap: () => setState(() {
                           _imageFiles.removeAt(i);
                           _imageBytes.removeAt(i);
                         }),
                         child: Container(
-                          color: Colors.black54,
-                          padding: const EdgeInsets.all(3),
-                          child: const Icon(Icons.close,
-                              size: 10, color: Colors.white),
+                          color: Colors.black.withOpacity(0.7),
+                          padding: const EdgeInsets.all(2),
+                          child: const Icon(Icons.close, size: 12, color: Colors.white),
                         ),
                       ),
                     ),
@@ -722,109 +771,137 @@ class _ActivityScreenState extends State<ActivityScreen>
               ),
             ),
           ),
-          const SizedBox(height: _Z.s16),
+          const SizedBox(height: _Z.s12),
         ],
 
-        GestureDetector(
+        InkWell(
           onTap: _pickImages,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: _Z.s12),
-            decoration: BoxDecoration(
-                border: Border.all(color: _border, width: 0.5)),
+            padding: const EdgeInsets.symmetric(vertical: _Z.s14),
+            decoration: BoxDecoration(color: _fieldBg, border: Border.all(color: _border, width: 0.8)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_photo_alternate_outlined,
-                    size: 14, color: _sub),
+                Icon(Icons.add_photo_alternate_outlined, size: 18, color: _sub),
                 const SizedBox(width: _Z.s8),
-                Text('AJOUTER PHOTOS',
-                    style:
-                        _Z.mono(_sub, size: 10, spacing: 2)),
+                Text('AJOUTER DES PHOTOS', style: _Z.mono(_sub, size: 11, spacing: 1.5, weight: FontWeight.w600)),
               ],
             ),
           ),
         ),
         const SizedBox(height: _Z.s24),
 
-        // ── Submit ──────────────────────────────────────────────────────
-        GestureDetector(
-          onTap: _loading ? null : _submit,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: _Z.s16),
-            color: _loading ? _Z.primaryMuted : _Z.primary,
-            child: Center(
-              child: _loading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 1.5,
-                          color: Colors.white))
-                  : Text('ENREGISTRER',
-                      style: _Z.mono(Colors.white,
-                          size: 10, spacing: 3)),
+        // ── Submit Button ───────────────────────────────────────────────
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: _loading ? null : _submit,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _Z.primary,
+              elevation: 0,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
+            child: _loading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : Text('ENREGISTRER L\'ACTIVITÉ', style: _Z.mono(Colors.white, size: 11, spacing: 2, weight: FontWeight.w600)),
           ),
         ),
       ],
     );
   }
 
-  // ── History section ───────────────────────────────────────────────────────
-  Widget _buildHistorySection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: _Z.s20, vertical: _Z.s8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: _Z.s16),
-            child: Text('HISTORIQUE',
-                style: _Z.mono(_sub, size: 9, spacing: 2.5)),
-          ),
-          FutureBuilder<List<dynamic>>(
-            future: _future,
-            builder: (_, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const Padding(
-                  padding: EdgeInsets.all(_Z.s48),
-                  child: Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 1,
-                          color: _Z.primary),
+  // ── Tabs Navigation ───────────────────────────────────────────────────────
+  Widget _buildTabsBar() {
+    final tabs = ['TOUT', 'CULTURE', 'SOINS', 'AUTRES'];
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: _Z.s20, vertical: _Z.s12),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: _border, width: 0.8))),
+      child: Row(
+        children: tabs.map((t) {
+          final isSelected = _selectedTabCategory == t;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _selectedTabCategory = t);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: _Z.s12),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isSelected ? _Z.primary : Colors.transparent,
+                      width: 2.5,
                     ),
                   ),
-                );
-              }
-
-              final activities = snap.data ?? [];
-              if (activities.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: _Z.s48),
-                  child: Center(
-                    child: Text('AUCUNE ACTIVITÉ',
-                        style: _Z.mono(_sub,
-                            size: 10, spacing: 2.5)),
+                ),
+                child: Center(
+                  child: Text(
+                    t,
+                    style: _Z.mono(
+                      isSelected ? _Z.primary : _sub,
+                      size: 10,
+                      spacing: 1.2,
+                      weight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                    ),
                   ),
-                );
-              }
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
-              return Column(
-                children: activities
-                    .map((a) => _buildCard(
-                        a as Map<String, dynamic>))
-                    .toList(),
-              );
-            },
-          ),
-        ],
+  // ── History Section ───────────────────────────────────────────────────────
+  Widget _buildHistorySection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: _Z.s20),
+      child: FutureBuilder<List<dynamic>>(
+        future: _future,
+        builder: (_, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Padding(
+              padding: EdgeInsets.all(_Z.s48),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 1.5, color: _Z.primary),
+                ),
+              ),
+            );
+          }
+
+          final allActivities = snap.data ?? [];
+          
+          final activities = allActivities.where((a) {
+            if (_selectedTabCategory == 'TOUT') return true;
+            final categoryItems = _categories[_selectedTabCategory] ?? [];
+            final typeStr = a['activity_type'] ?? '';
+            return categoryItems.any((c) => c.value == typeStr);
+          }).toList();
+
+          if (activities.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: _Z.s48),
+              child: Center(
+                child: Text('AUCUNE ACTIVITÉ DANS CETTE CATÉGORIE',
+                    style: _Z.mono(_sub, size: 10, spacing: 1.5)),
+              ),
+            );
+          }
+
+          return Column(
+            children: activities.map((a) => _buildCard(a as Map<String, dynamic>)).toList(),
+          );
+        },
       ),
     );
   }
@@ -837,83 +914,89 @@ class _ActivityScreenState extends State<ActivityScreen>
     final imgs = (a['image_urls'] as List?) ?? [];
     final financeAmount = (a['finance_amount'] as num?)?.toDouble();
     final financeType = a['finance_type']?.toString();
-    final isCreator =
-        !widget.readOnly && a['user_id'] == widget.userId;
+    final isCreator = !widget.readOnly && a['user_id'] == widget.userId;
 
     return Container(
       margin: const EdgeInsets.only(bottom: _Z.s12),
-      decoration:
-          BoxDecoration(border: Border.all(color: _border, width: 0.5)),
+      decoration: BoxDecoration(border: Border.all(color: _border, width: 0.8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Card header ──────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.all(_Z.s16),
+            padding: const EdgeInsets.all(_Z.s12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Color bar
                 Container(
-                  width: 3,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: type.color,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                  margin: const EdgeInsets.only(right: _Z.s12),
+                  padding: const EdgeInsets.all(_Z.s8),
+                  decoration: BoxDecoration(color: type.color.withOpacity(0.12)),
+                  child: Icon(type.icon, size: 18, color: type.color),
                 ),
+                const SizedBox(width: _Z.s12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(type.icon, size: 13, color: type.color),
-                          const SizedBox(width: _Z.s8),
                           Text(a['activity_type'] ?? '',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  letterSpacing: 1.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: type.color)),
+                              style: _Z.mono(_text, size: 12, spacing: 1, weight: FontWeight.w600)),
+                          if (date != null)
+                            Text(_fmt(date), style: _Z.mono(_sub, size: 10, spacing: 0.5)),
                         ],
                       ),
-                      if (date != null) ...[
-                        const SizedBox(height: _Z.s4),
-                        Text(_fmt(date),
-                            style: _Z.mono(_sub,
-                                size: 10, spacing: 1)),
-                      ],
                       if (financeAmount != null && financeAmount > 0 && financeType != null) ...[
-                        const SizedBox(height: _Z.s8),
-                        Text(
-                          '${financeType == 'expense' ? 'DÉPENSE' : 'REVENU'} · ${_formatActivityAmount(financeAmount)} FCFA',
-                          style: _Z.mono(financeType == 'expense' ? Colors.red.shade700 : Colors.green.shade700, size: 9, spacing: 1.2),
+                        const SizedBox(height: _Z.s4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: financeType == 'expense' ? Colors.red.shade50 : Colors.green.shade50,
+                            border: Border.all(
+                                color: financeType == 'expense' ? Colors.red.shade300 : Colors.green.shade300,
+                                width: 0.8),
+                          ),
+                          child: Text(
+                            '${financeType == 'expense' ? '-' : '+'} ${_formatActivityAmount(financeAmount)} FCFA',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: financeType == 'expense' ? Colors.red.shade800 : Colors.green.shade800,
+                            ),
+                          ),
                         ),
                       ],
                     ],
                   ),
                 ),
                 if (isCreator)
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => _showEditDialog(a),
-                        child: Padding(
-                          padding: const EdgeInsets.all(_Z.s4),
-                          child: Icon(Icons.edit_outlined,
-                              size: 14, color: _sub),
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert, size: 18, color: _sub),
+                    color: _bg,
+                    elevation: 2,
+                    onSelected: (value) {
+                      if (value == 'edit') _showEditDialog(a);
+                      if (value == 'delete') _showDeleteDialog(a['id']);
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 16, color: _text),
+                            const SizedBox(width: 8),
+                            Text('Modifier', style: _Z.body(_text, size: 13)),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: _Z.s8),
-                      GestureDetector(
-                        onTap: () => _showDeleteDialog(a['id']),
-                        child: Padding(
-                          padding: const EdgeInsets.all(_Z.s4),
-                          child: Icon(Icons.delete_outline,
-                              size: 14,
-                              color: Colors.red.shade300),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, size: 16, color: Colors.red.shade400),
+                            const SizedBox(width: 8),
+                            Text('Supprimer', style: _Z.body(Colors.red.shade400, size: 13)),
+                          ],
                         ),
                       ),
                     ],
@@ -922,39 +1005,35 @@ class _ActivityScreenState extends State<ActivityScreen>
             ),
           ),
 
-          // ── Notes ────────────────────────────────────────────────────
           if ((a['notes'] ?? '').toString().isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  _Z.s16 + 14, 0, _Z.s16, _Z.s16),
-              child: Text(a['notes'].toString(),
-                  style: _Z.body(_text)),
+              padding: const EdgeInsets.fromLTRB(_Z.s12, 0, _Z.s12, _Z.s12),
+              child: Text(a['notes'].toString(), style: _Z.body(_text, size: 13)),
             ),
 
-          // ── Images ───────────────────────────────────────────────────
           if (imgs.isNotEmpty)
             SizedBox(
-              height: 90,
+              height: 80,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(
-                    _Z.s16, 0, _Z.s16, _Z.s16),
+                padding: const EdgeInsets.fromLTRB(_Z.s12, 0, _Z.s12, _Z.s12),
                 itemCount: imgs.length,
                 itemBuilder: (_, i) => Padding(
                   padding: const EdgeInsets.only(right: _Z.s8),
-                  child: Image.network(imgs[i] as String,
-                      width: 90,
-                      height: 75,
+                  child: ClipRRect(
+                    child: Image.network(
+                      imgs[i] as String,
+                      width: 80,
+                      height: 68,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
-                            width: 90,
-                            height: 75,
-                            color: _border,
-                            child: Icon(
-                                Icons.broken_image_outlined,
-                                size: 18,
-                                color: _sub),
-                          )),
+                        width: 80,
+                        height: 68,
+                        color: _border,
+                        child: Icon(Icons.broken_image_outlined, size: 18, color: _sub),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -963,14 +1042,10 @@ class _ActivityScreenState extends State<ActivityScreen>
     );
   }
 
-  String _formatActivityAmount(double amount) =>
-      NumberFormat('#,##0', 'fr_FR').format(amount);
-
   // ── Dialogs ───────────────────────────────────────────────────────────────
   void _showEditDialog(Map<String, dynamic> a) {
     HapticFeedback.lightImpact();
-    final notesC =
-        TextEditingController(text: a['notes'] ?? '');
+    final notesC = TextEditingController(text: a['notes'] ?? '');
     String selType = a['activity_type'] ?? '';
     DateTime? selDate = a['activity_date'] != null
         ? DateTime.tryParse(a['activity_date'].toString())
@@ -981,49 +1056,42 @@ class _ActivityScreenState extends State<ActivityScreen>
       builder: (_) => StatefulBuilder(
         builder: (ctx, setS) => _ZaraDialog(
           dark: _dark,
-          title: 'MODIFIER',
+          title: 'MODIFIER L\'ACTIVITÉ',
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Type dropdown
-              Text('TYPE', style: _Z.mono(_sub, size: 9)),
+              Text('TYPE D\'ACTIVITÉ', style: _Z.mono(_sub, size: 9, weight: FontWeight.w600)),
               const SizedBox(height: _Z.s8),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: _Z.s12, vertical: _Z.s4),
+                padding: const EdgeInsets.symmetric(horizontal: _Z.s12),
                 decoration: BoxDecoration(
-                    border: Border.all(color: _border, width: 0.5)),
+                  color: _fieldBg,
+                  border: Border.all(color: _border, width: 0.8),
+                ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: selType.isNotEmpty ? selType : null,
                     isExpanded: true,
-                    hint: Text('Sélectionner',
-                        style: _Z.body(_sub)),
                     dropdownColor: _bg,
-                    style: _Z.body(_text),
+                    style: _Z.body(_text, size: 13, weight: FontWeight.w500),
                     items: _categories.values
                         .expand((l) => l)
                         .map((t) => DropdownMenuItem(
                               value: t.value,
                               child: Row(children: [
-                                Icon(t.icon,
-                                    size: 14, color: t.color),
+                                Icon(t.icon, size: 16, color: t.color),
                                 const SizedBox(width: _Z.s8),
-                                Text(t.label,
-                                    style: _Z.body(_text)),
+                                Text(t.label, style: _Z.body(_text, size: 13)),
                               ]),
                             ))
                         .toList(),
-                    onChanged: (v) =>
-                        setS(() => selType = v ?? selType),
+                    onChanged: (v) => setS(() => selType = v ?? selType),
                   ),
                 ),
               ),
               const SizedBox(height: _Z.s16),
-
-              // Date
               GestureDetector(
                 onTap: () async {
                   final d = await showDatePicker(
@@ -1035,53 +1103,36 @@ class _ActivityScreenState extends State<ActivityScreen>
                   if (d != null) setS(() => selDate = d);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: _Z.s12),
+                  padding: const EdgeInsets.symmetric(horizontal: _Z.s12, vertical: _Z.s12),
                   decoration: BoxDecoration(
-                      border: Border(
-                          bottom: BorderSide(
-                              color: _border, width: 0.5))),
+                    color: _fieldBg,
+                    border: Border.all(color: _border, width: 0.8),
+                  ),
                   child: Row(
                     children: [
-                      Icon(Icons.calendar_today_outlined,
-                          size: 13, color: _sub),
+                      Icon(Icons.calendar_today_outlined, size: 15, color: _sub),
                       const SizedBox(width: _Z.s8),
                       Text(
-                        selDate != null
-                            ? DateFormat('dd MMM yyyy', 'fr_FR')
-                                .format(selDate!)
-                            : 'DATE',
-                        style: _Z.mono(_text,
-                            size: 11, spacing: 1),
+                        selDate != null ? DateFormat('dd MMM yyyy', 'fr_FR').format(selDate!) : 'SÉLECTIONNER DATE',
+                        style: _Z.mono(_text, size: 11, spacing: 1, weight: FontWeight.w500),
                       ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: _Z.s16),
-
-              // Notes
-              TextField(
+              _ZaraVisibleField(
                 controller: notesC,
+                label: 'NOTES',
+                hint: 'Modifier les notes...',
+                icon: Icons.notes_outlined,
                 maxLines: 3,
-                style: _Z.body(_text),
-                decoration: InputDecoration(
-                  hintText: 'Notes...',
-                  hintStyle: _Z.body(_sub),
-                  enabledBorder: UnderlineInputBorder(
-                      borderSide:
-                          BorderSide(color: _border, width: 0.5)),
-                  focusedBorder: UnderlineInputBorder(
-                      borderSide:
-                          BorderSide(color: _text, width: 0.5)),
-                  contentPadding: EdgeInsets.zero,
-                ),
+                dark: _dark,
               ),
             ],
           ),
           onConfirm: () {
-            _updateActivity(
-                a['id'] as int, selType, selDate, notesC.text);
+            _updateActivity(a['id'] as int, selType, selDate, notesC.text);
             notesC.dispose();
           },
           onCancel: () => notesC.dispose(),
@@ -1097,9 +1148,7 @@ class _ActivityScreenState extends State<ActivityScreen>
       builder: (_) => _ZaraDialog(
         dark: _dark,
         title: 'SUPPRIMER',
-        content: Text(
-            'Cette action est irréversible.',
-            style: _Z.body(_sub)),
+        content: Text('Voulez-vous vraiment supprimer cette activité ?', style: _Z.body(_sub, size: 13)),
         confirmLabel: 'SUPPRIMER',
         confirmColor: Colors.red.shade700,
         onConfirm: () => _deleteActivity(id as int),
@@ -1109,48 +1158,62 @@ class _ActivityScreenState extends State<ActivityScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SHARED COMPONENTS
+// COMPOSANT CHAMP VISIBLE ET CONTRASTÉ
 // ─────────────────────────────────────────────────────────────────────────────
-
-class _ZaraField extends StatelessWidget {
+class _ZaraVisibleField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final Color text, sub, border;
-  final TextInputType type;
-  final bool obscure;
+  final String hint;
+  final IconData icon;
+  final TextInputType keyboardType;
+  final int maxLines;
+  final bool dark;
 
-  const _ZaraField({
+  const _ZaraVisibleField({
     required this.controller,
     required this.label,
-    required this.text,
-    required this.sub,
-    required this.border,
-    this.type = TextInputType.text,
-    this.obscure = false,
+    required this.hint,
+    required this.icon,
+    required this.dark,
+    this.keyboardType = TextInputType.text,
+    this.maxLines = 1,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: type,
-      obscureText: obscure,
-      style: TextStyle(
-          fontSize: 13,
-          letterSpacing: 0.3,
-          color: text,
-          fontWeight: FontWeight.w300),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle:
-            TextStyle(fontSize: 10, letterSpacing: 2, color: sub),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 12),
-        enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: border, width: 0.5)),
-        focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: text, width: 1)),
-      ),
+    final text = AppColors.getTextColor(dark);
+    final sub = AppColors.getSecondaryTextColor(dark);
+    final border = AppColors.getBorderColor(dark);
+    final fieldBg = dark ? const Color(0xFF1E232A) : const Color(0xFFF4F5F7);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: _Z.mono(sub, size: 10, spacing: 1.5, weight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          style: _Z.body(text, size: 14, weight: FontWeight.w500),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: _Z.body(sub.withOpacity(0.6), size: 13),
+            prefixIcon: Icon(icon, size: 18, color: sub),
+            filled: true,
+            fillColor: fieldBg,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: border, width: 0.8),
+              borderRadius: BorderRadius.circular(2),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: _Z.primary, width: 1.5),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1186,67 +1249,49 @@ class _ZaraDialog extends StatelessWidget {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(24),
       child: Container(
-        decoration: BoxDecoration(
-            color: bg,
-            border: Border.all(color: border, width: 0.5)),
-        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: bg, border: Border.all(color: border, width: 0.8)),
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: TextStyle(
-                    fontSize: 10,
-                    letterSpacing: 3,
-                    color: text)),
-            const SizedBox(height: 6),
-            Container(height: 0.5, color: border),
-            const SizedBox(height: 20),
+            Text(title, style: _Z.mono(text, size: 11, spacing: 2, weight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Container(height: 0.8, color: border),
+            const SizedBox(height: 16),
             content,
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
-                  child: GestureDetector(
+                  child: InkWell(
                     onTap: () {
                       HapticFeedback.lightImpact();
                       Navigator.pop(context);
                       onCancel?.call();
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14),
-                      decoration: BoxDecoration(
-                          border: Border.all(
-                              color: border, width: 0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(border: Border.all(color: border, width: 0.8)),
                       child: Center(
-                        child: Text('ANNULER',
-                            style: TextStyle(
-                                fontSize: 10,
-                                letterSpacing: 2,
-                                color: sub)),
+                        child: Text('ANNULER', style: _Z.mono(sub, size: 10, spacing: 1.5, weight: FontWeight.w500)),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: GestureDetector(
+                  child: InkWell(
                     onTap: () {
                       HapticFeedback.mediumImpact();
                       Navigator.pop(context);
                       onConfirm();
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       color: action,
                       child: Center(
-                        child: Text(confirmLabel,
-                            style: const TextStyle(
-                                fontSize: 10,
-                                letterSpacing: 2,
-                                color: Colors.white)),
+                        child: Text(confirmLabel, style: _Z.mono(Colors.white, size: 10, spacing: 1.5, weight: FontWeight.w600)),
                       ),
                     ),
                   ),

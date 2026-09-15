@@ -47,3 +47,13 @@ logs/
 ehthumbs.db
 .vercel
 .env*.local
+# Next.js
+frontend-next/.next/
+frontend-next/out/
+
+# Node
+frontend-next/node_modules/
+
+# Environment
+frontend-next/.env
+frontend-next/.env.local

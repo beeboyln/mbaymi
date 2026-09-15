@@ -26,7 +26,8 @@ docker run -e DATABASE_URL="postgresql://..." -e SECRET_KEY="..." -p 8000:8000 m
 - `DATABASE_URL` (required)
 - `SECRET_KEY` (required)
 - `DEBUG` (False)
-- `ALLOWED_ORIGINS` (comma separated list)
+- `ALLOWED_ORIGINS` (comma separated list). Include the Next.js frontend origins, for example:
+	`http://localhost:3000,https://mbaymi.vercel.app,https://your-next-frontend.vercel.app`
 - Optional: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `GOOGLE_MAPS_API_KEY`
 
 6) Port & health checks
