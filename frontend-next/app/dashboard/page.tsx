@@ -5,6 +5,7 @@ import {
   createCrop,
   createFarm,
   createLivestock,
+  deleteFarm,
   deleteLivestock,
   deleteCrop,
   getFarmDetails,
@@ -150,6 +151,11 @@ export default function DashboardPage() {
   const [farmEditLoading, setFarmEditLoading] = useState(false);
   const [farmEditError, setFarmEditError] = useState("");
   const [farmPhotoLoading, setFarmPhotoLoading] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [editingCropId, setEditingCropId] = useState<number | null>(null);
+  const [cropForm, setCropForm] = useState({ crop_name: "", status: "growing", area: "" });
+  const [cropFormLoading, setCropFormLoading] = useState(false);
+  const [cropFormError, setCropFormError] = useState("");
 
   useEffect(() => {
     const storedTab = window.localStorage.getItem(activeTabStorageKey);
@@ -562,34 +568,38 @@ export default function DashboardPage() {
     }
   }
 
-  async function addParcel(farmId: number) {
-    if (!session?.access_token) return;
-    const cropName = window.prompt("Nom de la parcelle");
-    if (!cropName?.trim()) return;
-    await createCrop(
-      farmId,
-      { crop_name: cropName.trim(), status: "growing" },
-      session.access_token,
-    );
-    await openFarm(farmId);
-    setActionNotice("Parcelle créée.");
+  function openCropEditor(crop?: { id?: number; crop_name?: string; status?: string; area?: number }) {
+    setEditingCropId(crop?.id ?? null);
+    setCropForm({ crop_name: crop?.crop_name || "", status: crop?.status || "growing", area: crop?.area ? String(crop.area) : "" });
+    setCropFormError("");
+    setCropModalOpen(true);
   }
 
-  async function editParcel(
-    cropId: number,
-    farmId: number,
-    currentName: string,
-  ) {
-    if (!session?.access_token) return;
-    const cropName = window.prompt("Nom de la parcelle", currentName);
-    if (!cropName?.trim()) return;
-    await updateCrop(
-      cropId,
-      { crop_name: cropName.trim() },
-      session.access_token,
-    );
-    await openFarm(farmId);
-    setActionNotice("Parcelle mise à jour.");
+  async function submitCropForm(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedFarm || !session?.access_token || !cropForm.crop_name.trim()) return;
+    setCropFormLoading(true);
+    setCropFormError("");
+    const payload = { crop_name: cropForm.crop_name.trim(), status: cropForm.status, area: cropForm.area ? Number(cropForm.area) : undefined };
+    try {
+      if (editingCropId) await updateCrop(editingCropId, payload, session.access_token);
+      else await createCrop(selectedFarm.farm.id, payload, session.access_token);
+      setCropModalOpen(false);
+      await openFarm(selectedFarm.farm.id);
+      setActionNotice(editingCropId ? "Parcelle mise à jour." : "Parcelle créée.");
+    } catch (requestError) {
+      setCropFormError(requestError instanceof Error ? requestError.message : "Enregistrement impossible.");
+    } finally {
+      setCropFormLoading(false);
+    }
+  }
+
+  async function removeFarm() {
+    if (!selectedFarm || !session?.access_token || !window.confirm(`Supprimer la ferme « ${selectedFarm.farm.name} » et toutes ses données ?`)) return;
+    await deleteFarm(selectedFarm.farm.id, session.access_token);
+    setFarms((current) => current.filter((farm) => farm.id !== selectedFarm.farm.id));
+    setSelectedFarm(null);
+    setActiveTab("Fermes");
   }
 
   async function removeParcel(
@@ -733,7 +743,10 @@ export default function DashboardPage() {
           <button className="back-action" onClick={() => setSelectedFarm(null)}>
             <ArrowLeft size={15} aria-hidden="true" /> Toutes les fermes
           </button>
-          <button className="outline-action" onClick={() => openFarmEditor(farm)}>Modifier la ferme</button>
+          <div className="farm-detail-action-buttons">
+            <button className="outline-action" onClick={() => openFarmEditor(farm)}>Modifier la ferme</button>
+            <button className="danger-action farm-delete-action" onClick={removeFarm}>Supprimer la ferme</button>
+          </div>
         </div>
         <div className="farm-detail-header">
           <div
@@ -785,7 +798,7 @@ export default function DashboardPage() {
               </div>
               <button
                 className="text-action"
-                onClick={() => addParcel(farm.id)}
+                onClick={() => openCropEditor()}
               >
                 Ajouter <ArrowUpRight size={15} aria-hidden="true" />
               </button>
@@ -861,13 +874,7 @@ export default function DashboardPage() {
                         )}
                         <div className="crop-actions">
                           <button
-                            onClick={() =>
-                              editParcel(
-                                crop.id,
-                                farm.id,
-                                crop.crop_name || "Culture",
-                              )
-                            }
+                            onClick={() => openCropEditor(crop)}
                           >
                             Modifier
                           </button>
@@ -1406,6 +1413,23 @@ export default function DashboardPage() {
         </section>
       </div>
 
+      {cropModalOpen && (
+        <div className="farm-edit-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCropModalOpen(false); }}>
+          <section className="farm-edit-modal crop-edit-modal" role="dialog" aria-modal="true" aria-labelledby="crop-edit-title">
+            <div className="action-modal-header">
+              <div><span className="metric-label">PARCELLE</span><h2 id="crop-edit-title">{editingCropId ? "Modifier la parcelle" : "Ajouter une parcelle"}</h2></div>
+              <button className="modal-close" onClick={() => setCropModalOpen(false)} aria-label="Fermer"><X size={20} aria-hidden="true" /></button>
+            </div>
+            <form className="modal-form" onSubmit={submitCropForm}>
+              <label>Nom de la parcelle<input required value={cropForm.crop_name} onChange={(event) => setCropForm({ ...cropForm, crop_name: event.target.value })} placeholder="Ex. Parcelle Nord" /></label>
+              <label>Statut<select value={cropForm.status} onChange={(event) => setCropForm({ ...cropForm, status: event.target.value })}><option value="growing">En croissance</option><option value="planned">Planifiée</option><option value="harvested">Récoltée</option><option value="paused">En pause</option></select></label>
+              <label>Surface en m²<input type="number" min="0" step="0.01" value={cropForm.area} onChange={(event) => setCropForm({ ...cropForm, area: event.target.value })} /></label>
+              {cropFormError && <p className="error-message" role="alert">{cropFormError}</p>}
+              <button className="primary-action" type="submit" disabled={cropFormLoading}>{cropFormLoading ? "Enregistrement..." : "Enregistrer"}</button>
+            </form>
+          </section>
+        </div>
+      )}
       {farmEditOpen && (
         <div className="farm-edit-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setFarmEditOpen(false); }}>
           <section className="farm-edit-modal" role="dialog" aria-modal="true" aria-labelledby="farm-edit-title">

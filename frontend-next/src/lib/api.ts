@@ -138,6 +138,13 @@ export function updateFarm(
   });
 }
 
+export function deleteFarm(farmId: number, accessToken: string) {
+  return request<{ message?: string }>(`/farms/${farmId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
 export type FarmDetails = {
   id: number;
   name: string;
