@@ -60,16 +60,70 @@ export type FarmStats = {
   average_parcel_size?: number;
 };
 
+export type CropDetails = {
+  id: number;
+  farm_id?: number;
+  crop_name?: string;
+  variety?: string;
+  status?: string;
+  area?: number;
+  planted_date?: string;
+  expected_harvest_date?: string;
+  quantity_planted?: number;
+  expected_yield?: number;
+  notes?: string;
+  image_url?: string;
+  coordinates?: string | Array<Array<number>>;
+};
+
+export type FarmActivity = {
+  id: number;
+  crop_id?: number;
+  activity_type?: string;
+  activity_date?: string;
+  notes?: string;
+  input_id?: number;
+  quantity_used?: number;
+  finance_type?: string;
+  finance_amount?: number;
+  image_urls?: string[];
+};
+
+export type FarmInput = {
+  id: number;
+  crop_id?: number;
+  input_type?: string;
+  name?: string;
+  quantity?: number;
+  unit?: string;
+  cost?: number;
+  applied_date?: string;
+  notes?: string;
+};
+
+export type FinanceTransaction = {
+  id: number;
+  crop_id?: number;
+  transaction_type?: string;
+  category?: string;
+  amount?: number;
+  transaction_date?: string;
+  notes?: string;
+};
+
 export async function getFarmDetails(farmId: number, accessToken: string) {
   const headers = { Authorization: `Bearer ${accessToken}` };
-  const [farm, crops, stats, finances] = await Promise.all([
+  const [farm, crops, stats, finances, inputs, activities, transactions] = await Promise.all([
     request<FarmDetails>(`/farms/${farmId}`, { headers }),
-    request<Array<{ id: number; crop_name?: string; status?: string; area?: number; expected_yield?: number }>>(`/farms/${farmId}/crops`, { headers }),
+    request<CropDetails[]>(`/farms/${farmId}/crops`, { headers }),
     request<FarmStats>(`/farms/${farmId}/stats`, { headers }),
     request<{ revenue_by_category?: Record<string, number>; top_products?: Array<{ product?: string; revenue?: number; quantity?: number }> }>(`/farms/${farmId}/financial-summary`, { headers }),
+    request<FarmInput[]>(`/inputs/farm/${farmId}`, { headers }),
+    request<FarmActivity[]>(`/activities/farm/${farmId}`, { headers }),
+    request<FinanceTransaction[]>(`/finance/transactions/farm/${farmId}`, { headers }),
   ]);
 
-  return { farm, crops, stats, finances };
+  return { farm, crops, stats, finances, inputs, activities, transactions };
 }
 
 export async function createCrop(
@@ -101,6 +155,50 @@ export async function deleteCrop(cropId: number, accessToken: string) {
     method: "DELETE",
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+}
+
+export function getCropActivities(cropId: number, accessToken: string) {
+  return request<FarmActivity[]>(`/activities/crop/${cropId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+}
+
+export function getCropInputs(cropId: number, accessToken: string) {
+  return request<FarmInput[]>(`/inputs/crop/${cropId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+}
+
+export function getCropTransactions(cropId: number, accessToken: string) {
+  return request<FinanceTransaction[]>(`/finance/transactions/crop/${cropId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+}
+
+export function getCropProblems(cropId: number, accessToken: string) {
+  return request<Array<Record<string, unknown>>>(`/crop-problems/crop/${cropId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+}
+
+export function getCropReminders(cropId: number, accessToken: string) {
+  return request<Array<Record<string, unknown>>>(`/reminders/crop/${cropId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+}
+
+export function createActivity(payload: Record<string, unknown>, accessToken: string) {
+  return request<FarmActivity>("/activities/", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(payload) });
+}
+
+export function createInput(payload: Record<string, unknown>, accessToken: string) {
+  return request<FarmInput>("/inputs/", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(payload) });
+}
+
+export function createTransaction(payload: Record<string, unknown>, accessToken: string) {
+  return request<FinanceTransaction>("/finance/transactions/", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(payload) });
+}
+
+export function createSale(payload: Record<string, unknown>, accessToken: string) {
+  return request<Record<string, unknown>>("/sales/", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(payload) });
+}
+
+export function createReminder(payload: Record<string, unknown>, accessToken: string) {
+  return request<Record<string, unknown>>("/reminders/", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(payload) });
+}
+
+export function createProblem(payload: Record<string, unknown>, accessToken: string) {
+  return request<Record<string, unknown>>("/crop-problems/", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(payload) });
 }
 
 export { apiBaseUrl };
