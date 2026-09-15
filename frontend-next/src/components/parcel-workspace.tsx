@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import {
   createActivity,
   createInput,
@@ -140,7 +141,7 @@ export default function ParcelWorkspace({ mode, farmId, cropId }: Props) {
   const title = mode === "activity" ? "Activites" : mode === "finance" ? "Finance" : mode === "problems" ? "Problemes" : "Rappels";
   const back = `/dashboard?farm=${farmId}&crop=${cropId}`;
 
-  return <main className="workspace-page"><header className="workspace-header"><button className="back-action" onClick={() => window.location.assign(back)}>← Retour a la parcelle</button><p className="eyebrow">PARCELLE {cropId} · FERME {farmId}</p><h1>{title}</h1><p>Une page metier dediee, avec donnees et actions.</p></header>
+  return <main className="workspace-page"><header className="workspace-header"><button className="back-action" onClick={() => window.location.assign(back)}><ArrowLeft size={15} aria-hidden="true" /> Retour a la parcelle</button><p className="eyebrow">PARCELLE {cropId} · FERME {farmId}</p><h1>{title}</h1><p>Une page metier dediee, avec donnees et actions.</p></header>
     {notice && <p className="action-notice" role="status">{notice}</p>}
     {error && <p className="error-message" role="alert">{error}</p>}
     {mode === "activity" && <><form className="workspace-form" onSubmit={submitActivity}><h2>Nouvelle activite</h2><input name="activity_type" required placeholder="Type: Semis, Arrosage, Recolte..." /><input name="activity_date" type="date" /><input name="finance_amount" type="number" min="0" placeholder="Montant associe (optionnel)" /><select name="finance_type" defaultValue=""><option value="">Sans finance</option><option value="expense">Depense</option><option value="income">Revenu</option></select><textarea name="notes" placeholder="Notes terrain" /><button className="primary-action">Enregistrer l'activite</button></form><DataList items={items} kind="activity" /> </>}

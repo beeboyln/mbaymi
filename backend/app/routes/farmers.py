@@ -21,7 +21,10 @@ def get_current_user_farms(
 ):
     """✅ OPTIMIZED: Get all farms for the authenticated user with their livestock (N+1 fixed)"""
     # Also get user's livestock
-    livestocks = db.query(Livestock).filter(Livestock.user_id == current_user.id).all()
+    livestocks = db.query(Livestock).filter(
+        Livestock.user_id == current_user.id,
+        Livestock.deleted_at.is_(None),
+    ).all()
     livestock_list = [
         {
             'id': l.id,
