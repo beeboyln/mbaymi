@@ -72,4 +72,35 @@ export async function getFarmDetails(farmId: number, accessToken: string) {
   return { farm, crops, stats, finances };
 }
 
+export async function createCrop(
+  farmId: number,
+  payload: { crop_name: string; status?: string; area?: number },
+  accessToken: string,
+) {
+  return request(`/farms/${farmId}/crops`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateCrop(
+  cropId: number,
+  payload: { crop_name?: string; status?: string; area?: number },
+  accessToken: string,
+) {
+  return request(`/crops/${cropId}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteCrop(cropId: number, accessToken: string) {
+  return request(`/crops/${cropId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
 export { apiBaseUrl };

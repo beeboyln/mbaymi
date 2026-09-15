@@ -38,8 +38,7 @@ def get_farm_stats(farm_id: int, db: Session = Depends(get_db)):
     
     # Count active parcels (crops)
     parcel_count = db.query(func.count(Crop.id)).filter(
-        Crop.farm_id == farm_id,
-        Crop.deleted_at == None
+        Crop.farm_id == farm_id
     ).scalar() or 0
     
     # Count livestock
@@ -70,9 +69,8 @@ def get_farm_stats(farm_id: int, db: Session = Depends(get_db)):
     ).scalar() or 0
     
     # Calculate average parcel size
-    avg_parcel_size = db.query(func.avg(Crop.size_hectares)).filter(
-        Crop.farm_id == farm_id,
-        Crop.deleted_at == None
+    avg_parcel_size = db.query(func.avg(Crop.area)).filter(
+        Crop.farm_id == farm_id
     ).scalar() or 0
     
     # Calculate net income

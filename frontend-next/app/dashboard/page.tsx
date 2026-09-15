@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getFarmDetails, getFarms } from "@/lib/api";
+import { createCrop, deleteCrop, getFarmDetails, getFarms, updateCrop } from "@/lib/api";
 
 type Session = { id?: number; name?: string; role?: string; access_token?: string };
 type Farm = { id: number; name: string; location?: string; size_hectares?: number; image_url?: string; crops?: Array<{ crop_name?: string }>; livestocks?: Array<unknown> };
@@ -17,11 +17,14 @@ export default function DashboardPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [activeTab, setActiveTab] = useState("Accueil");
-  const [tip] = useState(() => tips[Math.floor(Math.random() * tips.length)]);
+  const [tip, setTip] = useState(tips[0]);
   const [selectedFarm, setSelectedFarm] = useState<FarmDetailState | null>(null);
   const [farmLoading, setFarmLoading] = useState(false);
+  const [expandedCropId, setExpandedCropId] = useState<number | null>(null);
+  const [actionNotice, setActionNotice] = useState("");
 
   useEffect(() => {
+    setTip(tips[Math.floor(Math.random() * tips.length)]);
     const storedSession = window.localStorage.getItem("mbaymi_session");
     if (!storedSession) {
       window.location.assign("/");
@@ -46,11 +49,38 @@ export default function DashboardPage() {
     if (!session?.access_token) return;
     setFarmLoading(true);
     setSelectedFarm(null);
+    setExpandedCropId(null);
+    setActionNotice("");
     try {
       setSelectedFarm(await getFarmDetails(farmId, session.access_token));
     } finally {
       setFarmLoading(false);
     }
+  }
+
+  async function addParcel(farmId: number) {
+    if (!session?.access_token) return;
+    const cropName = window.prompt("Nom de la parcelle");
+    if (!cropName?.trim()) return;
+    await createCrop(farmId, { crop_name: cropName.trim(), status: "growing" }, session.access_token);
+    await openFarm(farmId);
+    setActionNotice("Parcelle créée.");
+  }
+
+  async function editParcel(cropId: number, farmId: number, currentName: string) {
+    if (!session?.access_token) return;
+    const cropName = window.prompt("Nom de la parcelle", currentName);
+    if (!cropName?.trim()) return;
+    await updateCrop(cropId, { crop_name: cropName.trim() }, session.access_token);
+    await openFarm(farmId);
+    setActionNotice("Parcelle mise à jour.");
+  }
+
+  async function removeParcel(cropId: number, farmId: number, cropName: string) {
+    if (!session?.access_token || !window.confirm(`Supprimer « ${cropName} » ?`)) return;
+    await deleteCrop(cropId, session.access_token);
+    await openFarm(farmId);
+    setActionNotice("Parcelle supprimée.");
   }
 
   function formatMoney(value = 0) {
@@ -70,7 +100,7 @@ export default function DashboardPage() {
       </div>
       <div className="farm-stats-strip"><div><span>PARCELLES</span><strong>{stats.parcel_count ?? crops.length}</strong></div><div><span>ANIMAUX</span><strong>{stats.livestock_count ?? 0}</strong></div><div><span>REVENUS · 30 J</span><strong>{formatMoney(stats.total_revenue)}</strong></div><div><span>RÉSULTAT NET</span><strong className={(stats.net_income ?? 0) >= 0 ? "positive" : "negative"}>{formatMoney(stats.net_income)}</strong></div></div>
       <div className="farm-detail-columns">
-        <article className="detail-section"><div className="section-heading"><div><span className="metric-label">PARCELLES & CULTURES</span><h3>Ce qui pousse ici</h3></div><button className="text-action">Ajouter ↗</button></div>{crops.length ? <div className="crop-list">{crops.map((crop) => <div className="crop-row" key={crop.id}><span className="crop-mark">✦</span><div><strong>{crop.crop_name || "Culture"}</strong><span>{crop.status || "En suivi"}{crop.area ? ` · ${crop.area} ha` : ""}</span></div><span>{crop.expected_yield ? `${crop.expected_yield} kg` : "→"}</span></div>)}</div> : <p className="detail-empty">Aucune parcelle enregistrée pour cette ferme.</p>}</article>
+        <article className="detail-section"><div className="section-heading"><div><span className="metric-label">PARCELLES & CULTURES</span><h3>Ce qui pousse ici</h3></div><button className="text-action" onClick={() => addParcel(farm.id)}>Ajouter ↗</button></div>{actionNotice && <p className="action-notice" role="status">{actionNotice}</p>}{crops.length ? <div className="crop-list">{crops.map((crop) => <div className="crop-entry" key={crop.id}><button className="crop-row" onClick={() => setExpandedCropId(expandedCropId === crop.id ? null : crop.id)} aria-expanded={expandedCropId === crop.id}><span className="crop-mark">✦</span><span className="crop-row-copy"><strong>{crop.crop_name || "Culture"}</strong><span>{crop.status || "En suivi"}{crop.area ? ` · ${crop.area} ha` : ""}</span></span><span>{crop.expected_yield ? `${crop.expected_yield} kg` : "⌄"}</span></button>{expandedCropId === crop.id && <div className="crop-actions"><button onClick={() => editParcel(crop.id, farm.id, crop.crop_name || "Culture")}>Modifier</button><button onClick={() => setActionNotice("Le suivi des activités sera disponible dans la prochaine vue.")}>Activités</button><button onClick={() => setActionNotice("Les finances de la parcelle seront disponibles dans la prochaine vue.")}>Finance</button><button onClick={() => setActionNotice("Les problèmes de culture seront disponibles dans la prochaine vue.")}>Problèmes</button><button onClick={() => setActionNotice("Les rappels de parcelle seront disponibles dans la prochaine vue.")}>Rappels</button><button onClick={() => setActionNotice("L’export de parcelle sera disponible dans la prochaine vue.")}>Télécharger</button><button className="danger-action" onClick={() => removeParcel(crop.id, farm.id, crop.crop_name || "Culture")}>Supprimer</button></div>}</div>)}</div> : <p className="detail-empty">Aucune parcelle enregistrée pour cette ferme.</p>}</article>
         <article className="detail-section finance-section"><div className="section-heading"><div><span className="metric-label">FINANCES · 30 JOURS</span><h3>Le mouvement</h3></div><span className="finance-badge">FCFA</span></div><div className="finance-total"><span>Revenus</span><strong>{formatMoney(stats.total_revenue)}</strong></div><div className="finance-total"><span>Dépenses</span><strong>{formatMoney(stats.total_expenses)}</strong></div>{finances.top_products?.length ? <div className="product-list"><span className="metric-label">MEILLEURES VENTES</span>{finances.top_products.slice(0, 3).map((product) => <div key={product.product} className="product-row"><span>{product.product || "Produit"}</span><strong>{formatMoney(product.revenue)}</strong></div>)}</div> : <p className="detail-empty">Pas encore de ventes classées.</p>}</article>
       </div>
     </div>;

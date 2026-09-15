@@ -1,13 +1,13 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap");
 :root {
-  --ink: #17231d;
-  --muted: #66736c;
-  --line: #dce4dc;
-  --paper: #f5f7f1;
-  --cream: #fffdf7;
-  --green: #1c6849;
-  --green-dark: #124631;
-  --orange: #e27b42;
+  --ink: #1a1a1a;
+  --muted: #6b6b6b;
+  --line: #e8e2d8;
+  --paper: #f5f1e8;
+  --cream: #ffffff;
+  --green: #9c4e2f;
+  --green-dark: #6b3e2a;
+  --orange: #ab7743;
 }
 
 * {
@@ -46,8 +46,8 @@ button {
   justify-content: space-between;
   overflow: hidden;
   padding: 42px clamp(32px, 6vw, 96px);
-  color: #f9fff8;
-  background: linear-gradient(135deg, #0e3e2b 0%, #1d6a4b 60%, #8bb476 100%);
+  color: #fff7ec;
+  background: linear-gradient(135deg, #3e2015 0%, #7b402b 60%, #b0784f 100%);
 }
 
 .auth-visual::after {
@@ -80,8 +80,8 @@ button {
   height: 36px;
   place-items: center;
   border-radius: 11px;
-  color: var(--green-dark);
-  background: #f2c66d;
+  color: #6b3e2a;
+  background: #f2bd7b;
   font-size: 1.2rem;
 }
 
@@ -113,7 +113,7 @@ button {
 .visual-copy p {
   max-width: 430px;
   margin: 28px 0 0;
-  color: rgb(249 255 248 / 78%);
+  color: rgb(255 247 236 / 78%);
   font-size: 1.05rem;
   line-height: 1.7;
 }
@@ -121,7 +121,7 @@ button {
 .visual-footer {
   position: relative;
   z-index: 1;
-  color: rgb(249 255 248 / 70%);
+  color: rgb(255 247 236 / 70%);
   font-size: 0.85rem;
 }
 
@@ -156,7 +156,7 @@ button {
 }
 
 .field label {
-  color: #46544c;
+  color: #5d4739;
   font-size: 0.85rem;
   font-weight: 700;
 }
@@ -174,7 +174,7 @@ button {
 
 .field input:focus {
   border-color: var(--green);
-  box-shadow: 0 0 0 4px rgb(28 104 73 / 12%);
+  box-shadow: 0 0 0 4px rgb(156 78 47 / 12%);
 }
 
 .submit-button {
@@ -204,7 +204,7 @@ button {
   border-left: 3px solid #bf4d3d;
   padding: 10px 12px;
   color: #8f3024;
-  background: #fff1ee;
+  background: #fff4e5;
   font-size: 0.9rem;
 }
 
@@ -382,12 +382,19 @@ button {
 .farm-detail-columns { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; margin-top: 18px; }
 .detail-section { border: 1px solid #e8e2d8; padding: 24px; background: #faf8f4; }
 .crop-list { display: grid; gap: 0; }
-.crop-row, .product-row { display: flex; align-items: center; gap: 12px; border-top: 1px solid #e8e2d8; padding: 13px 0; }
+.crop-entry { border-top: 1px solid #e8e2d8; }
+.crop-row, .product-row { display: flex; width: 100%; align-items: center; gap: 12px; border: 0; padding: 13px 0; color: inherit; background: transparent; text-align: left; }
+.crop-row { cursor: pointer; }
 .crop-mark { color: #ab7743; }
-.crop-row div { flex: 1; }
-.crop-row strong, .crop-row div span { display: block; }
+.crop-row-copy { flex: 1; }
+.crop-row strong, .crop-row-copy span { display: block; }
 .crop-row strong { color: #3e2c23; font-size: .85rem; }
-.crop-row div span, .crop-row > span:last-child { color: #948b80; font-size: .72rem; }
+.crop-row-copy span, .crop-row > span:last-child { color: #948b80; font-size: .72rem; }
+.crop-actions { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 0 14px 28px; }
+.crop-actions button { border: 1px solid #e8e2d8; border-radius: 3px; padding: 7px 9px; color: #6b3e2a; background: #fff; font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.crop-actions button:hover { border-color: #ab7743; background: #fff8ee; }
+.crop-actions .danger-action { color: #bd4d3c; }
+.action-notice { margin: -8px 0 12px; color: #6b3e2a; font-size: .75rem; line-height: 1.4; }
 .finance-section { background: #eee2cc; }
 .finance-badge { color: #9c4e2f; font-size: .68rem; font-weight: 700; }
 .finance-total { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgb(156 78 47 / 17%); padding: 13px 0; color: #725a49; font-size: .78rem; }
