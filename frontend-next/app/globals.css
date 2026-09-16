@@ -51,7 +51,7 @@ button {
   justify-content: space-between;
   overflow: hidden;
   padding: 42px clamp(32px, 6vw, 96px);
-  color: #fff7ec;
+  color: #ffffff;
   background: linear-gradient(135deg, #3e2015 0%, #7b402b 60%, #b0784f 100%);
 }
 
@@ -405,6 +405,20 @@ button {
 .panel-span-two { grid-column: span 2; }
 .dashboard-hero { position: relative; min-height: 298px; overflow: hidden; padding: 32px; color: #fff7ec; background: linear-gradient(135deg, #3e2015, #7b402b 66%, #b0784f); }
 .hero-grain { position: absolute; inset: 0; opacity: .12; background-image: repeating-linear-gradient(115deg, transparent 0 7px, #fff 8px 9px); }
+.hero-farms-header { position: relative; z-index: 1; display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.hero-farms-header p { margin: 0; color: #f2bd7b; font-size: .72rem; font-weight: 700; letter-spacing: .17em; }
+.hero-farms-header span { color: rgb(255 247 236 / 70%); font-size: .82rem; }
+.hero-farms-window { position: relative; z-index: 1; overflow: hidden; margin: 34px -32px 0; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.hero-farms-track { display: flex; width: max-content; gap: 16px; animation: farms-marquee 28s linear infinite; }
+.hero-farm-item { display: grid; width: 190px; gap: 7px; flex: 0 0 190px; }
+.hero-farm-image { display: grid; height: 142px; place-items: center; overflow: hidden; border: 1px solid rgb(255 247 236 / 35%); background: rgb(62 32 21 / 45%); }
+.hero-farm-image img { width: 100%; height: 100%; object-fit: cover; }
+.hero-farm-item strong { overflow: hidden; font-size: .88rem; text-overflow: ellipsis; white-space: nowrap; }
+.hero-farm-item > span { overflow: hidden; color: rgb(255 247 236 / 68%); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.hero-farms-empty { position: relative; z-index: 1; display: grid; max-width: 260px; gap: 12px; margin-top: 42px; color: #f2bd7b; }
+.hero-farms-empty strong { color: #fff7ec; font-size: 1.2rem; }
+.hero-farms-action { width: fit-content; border: 1px solid rgb(255 247 236 / 55%); padding: 9px 12px; color: #fff7ec; background: transparent; font-size: .72rem; }
+@keyframes farms-marquee { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 8px)); } }
 .hero-copy { position: relative; z-index: 1; }
 .hero-copy p { margin: 0 0 24px; color: #e5b37c; font-size: .78rem; font-weight: 700; letter-spacing: .17em; }
 .hero-copy h2 { margin: 0; font-family: "Manrope", sans-serif; font-size: clamp(3rem, 5.5vw, 5.2rem); line-height: .95; letter-spacing: -.08em; }
@@ -416,6 +430,9 @@ button {
 .hero-sun { position: absolute; right: 62px; top: 70px; color: #f2bd7b; font-size: 3rem; }
 .metric-panel, .weather-panel, .farms-panel, .tip-panel, .news-panel { border: 1px solid #e8e2d8; background: #faf8f4; }
 .metric-panel, .weather-panel { min-height: 180px; padding: 24px; }
+.farms-count-panel { display: flex; min-height: 0; flex-direction: column; justify-content: center; border: 0; padding: 18px 8px; background: transparent; }
+.farms-count-panel strong { font-size: 2.6rem; }
+.farms-count-panel .metric-line { width: 34px; height: 2px; }
 .metric-label { display: block; color: #ab7743; font-size: .67rem; font-weight: 700; letter-spacing: .14em; }
 .metric-panel strong, .weather-panel strong { display: block; margin-top: 25px; color: #9c4e2f; font-family: "Manrope", sans-serif; font-size: 3rem; letter-spacing: -.08em; }
 .metric-note { display: block; margin-top: 4px; color: #888078; font-size: .78rem; }
@@ -598,7 +615,9 @@ button {
   .panel-span-two { grid-column: span 2; }
   .tip-panel, .news-panel { grid-column: span 2; }
   .dashboard-hero { min-height: 255px; padding: 25px; }
+  .hero-farms-window { margin-right: -25px; margin-left: -25px; }
   .metric-panel, .weather-panel { min-height: 150px; padding: 18px; }
+  .farms-count-panel { min-height: 0; padding: 12px 8px; }
   .metric-panel strong, .weather-panel strong { margin-top: 18px; font-size: 2.4rem; }
   .farms-panel, .tip-panel, .news-panel { padding: 18px; }
   .dashboard-menu-trigger { display: grid; }
@@ -635,10 +654,15 @@ button {
   .panel-span-two { grid-column: span 2; }
   .tip-panel, .news-panel { grid-column: span 2; }
   .dashboard-hero { min-height: 220px; padding: 22px; }
+  .hero-farms-header { display: grid; gap: 5px; }
+  .hero-farms-window { margin-top: 24px; margin-right: -22px; margin-left: -22px; }
+  .hero-farm-item { width: 160px; flex-basis: 160px; }
+  .hero-farm-image { height: 118px; }
   .hero-copy p { font-size: .72rem; }
   .hero-copy h2 { font-size: clamp(2.8rem, 9vw, 4rem); }
   .hero-copy span { font-size: .95rem; }
   .metric-panel, .weather-panel { min-height: 132px; padding: 16px; }
+  .farms-count-panel { min-height: 0; padding: 10px 4px; }
   .farms-panel, .tip-panel, .news-panel { padding: 16px; }
   .farm-row { gap: 9px; }
   .farm-row strong { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

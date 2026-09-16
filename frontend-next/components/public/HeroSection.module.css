@@ -1,11 +1,13 @@
 .hero {
   position: relative;
   display: grid;
-  min-height: 620px;
-  place-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
+  align-items: center;
+  gap: clamp(24px, 7vw, 84px);
+  min-height: 640px;
   overflow: hidden;
   isolation: isolate;
-  padding: clamp(72px, 9vw, 128px) clamp(18px, 5vw, 72px);
+  padding: clamp(72px, 9vw, 128px) clamp(24px, 6vw, 80px);
   background: #c9b99d;
 }
 
@@ -14,7 +16,7 @@
   z-index: -2;
   inset: -2%;
   background: url("https://i.pinimg.com/1200x/37/e1/88/37e188f66fae739133ab9e102a5c3897.jpg") center 42% / cover no-repeat;
-  filter: grayscale(.38) sepia(.38) contrast(.92) saturate(.78);
+  filter: grayscale(.25) sepia(.2) contrast(.95) saturate(.85);
   content: "";
   transform: scale(1.02);
 }
@@ -24,55 +26,229 @@
   z-index: -1;
   inset: 0;
   background:
-    linear-gradient(90deg, rgb(245 241 232 / 78%), rgb(245 241 232 / 20%)),
-    linear-gradient(180deg, transparent 48%, rgb(62 32 21 / 30%)),
-    repeating-linear-gradient(0deg, rgb(62 32 21 / 3%) 0 1px, transparent 1px 3px);
+    linear-gradient(90deg, rgba(245, 241, 232, 0.88) 0%, rgba(245, 241, 232, 0.35) 100%),
+    linear-gradient(180deg, transparent 40%, rgba(62, 32, 21, 0.35) 100%),
+    repeating-linear-gradient(0deg, rgba(62, 32, 21, 0.02) 0 1px, transparent 1px 3px);
   opacity: .95;
   content: "";
 }
 
 .copy {
+  position: relative;
+  z-index: 1;
   max-width: 720px;
-  text-align: center;
-  animation: heroCopyIn .8s cubic-bezier(.2, .75, .25, 1) both;
+  text-align: left;
+  animation: heroCopyIn .9s cubic-bezier(.16, 1, .3, 1) both;
 }
 
 .copy h1 {
   margin: 0;
-  color: #3e2c23;
+  color: #2b1f18;
   font-family: "Manrope", sans-serif;
-  font-size: clamp(3.5rem, 8vw, 7.5rem);
-  line-height: .9;
-  letter-spacing: -.08em;
-  text-shadow: 0 2px 20px rgb(245 241 232 / 42%);
+  font-size: clamp(3.5rem, 7.5vw, 7.2rem);
+  font-weight: 800;
+  line-height: .92;
+  letter-spacing: -.05em;
+  text-shadow: 0 4px 24px rgba(245, 241, 232, 0.5);
 }
 
 .copy h1 em {
-  color: #9c4e2f;
+  color: #a84b23;
   font-style: normal;
+  background: linear-gradient(135deg, #a84b23 0%, #7d3314 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .copy :global(.eyebrow) {
   margin-bottom: 20px;
 }
 
+/* Framework du Smartphone */
+.phone {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 216px);
+  aspect-ratio: 9 / 18.8;
+  justify-self: end;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 36px;
+  padding: 6px;
+  background: #111111;
+  box-shadow: 
+    0 20px 40px -10px rgba(40, 20, 10, 0.35),
+    0 0 0 1px rgba(0, 0, 0, 0.8),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  transform: rotate(2deg);
+  animation: phoneFloat 6s ease-in-out infinite;
+}
+
+/* Dynamic Island / Speaker */
+.phoneSpeaker {
+  position: absolute;
+  z-index: 10;
+  top: 10px;
+  left: 50%;
+  width: 68px;
+  height: 14px;
+  border-radius: 20px;
+  background: #000000;
+  transform: translateX(-50%);
+}
+
+.phoneScreen {
+  position: relative;
+  display: grid;
+  height: 100%;
+  gap: 8px;
+  overflow: hidden;
+  border-radius: 30px;
+  padding: 26px 10px 10px;
+  color: #283047;
+  background: #f7f4ed;
+  font-family: "DM Sans", sans-serif;
+  box-shadow: inset 0 0 12px rgba(0,0,0,0.03);
+}
+
+/* Effet de reflet de verre sur l'écran */
+.phoneScreen::before {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 45%);
+  pointer-events: none;
+  content: "";
+}
+
+/* Composants UI internes */
+.appTopbar { display: flex; align-items: center; justify-content: space-between; color: #a86532; padding: 0 2px; }
+.appTopbarActions { display: flex; align-items: center; gap: 8px; }
+
+.appDate { display: flex; align-items: center; justify-content: space-between; gap: 4px; color: #a3795d; font-size: .38rem; font-weight: 500; }
+.appDate b { display: inline-flex; align-items: center; gap: 3px; padding: 3px 6px; border-radius: 4px; color: #7f4d28; background: rgba(168, 101, 50, 0.12); font-size: .34rem; letter-spacing: .04em; }
+
+.appGreeting { display: grid; gap: 1px; color: #a86532; font-size: .62rem; }
+.appGreeting strong { color: #1a1a1a; font-size: .82rem; font-weight: 700; }
+
+.appLandscape { 
+  position: relative; 
+  display: grid; 
+  height: 76px; 
+  align-content: end; 
+  overflow: hidden; 
+  border-radius: 12px; 
+  padding: 8px 10px; 
+  color: rgba(255, 255, 255, 0.95); 
+  background: linear-gradient(180deg, #dfcbb0 0%, #be9069 60%, #9e5f33 100%); 
+}
+.appLandscape::before, .appLandscape::after { 
+  position: absolute; 
+  right: -10%; 
+  bottom: 12px; 
+  left: -10%; 
+  height: 28px; 
+  border-radius: 50%; 
+  background: rgba(255, 247, 236, 0.35); 
+  content: ""; 
+}
+.appLandscape::after { bottom: -12px; background: rgba(90, 50, 25, 0.25); }
+.appLandscape span { position: relative; z-index: 1; font-size: .38rem; font-weight: 600; letter-spacing: .12em; }
+.appLandscape i { position: absolute; z-index: 1; bottom: 24px; width: 4px; height: 10px; border-radius: 50% 50% 0 0; background: #566340; }
+.appLandscape i:nth-of-type(1) { right: 32px; }
+.appLandscape i:nth-of-type(2) { right: 44px; height: 15px; }
+.appLandscape i:nth-of-type(3) { right: 22px; height: 7px; }
+
+.appMessage { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  padding: 8px 10px; 
+  border-radius: 10px; 
+  color: #4b5845; 
+  background: #eef3e8; 
+  border: 1px solid rgba(83, 99, 77, 0.08); 
+}
+.appMessage > span { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; color: #7f4d28; background: #e5d8c5; }
+.appMessage div { display: grid; flex: 1; gap: 1px; }
+.appMessage small, .appWeather small { color: #9c958b; font-size: .34rem; font-weight: 600; letter-spacing: .08em; }
+.appMessage strong { color: #8e4e23; font-size: .44rem; font-weight: 600; }
+.appMessage b { color: #b0957f; font-size: .75rem; transition: transform .2s ease; }
+
+.appWeather { 
+  display: grid; 
+  grid-template-columns: 0.9fr 1.1fr; 
+  gap: 8px; 
+  padding: 9px; 
+  border-radius: 12px; 
+  background: #ffffff; 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02); 
+}
+.appWeather > div { display: grid; align-content: start; gap: 3px; }
+.appWeather > div + div { border-left: 1px solid #f0ebe3; padding-left: 8px; }
+.appWeather strong { color: #1c1c1c; font-family: "Manrope", sans-serif; font-size: 1.35rem; font-weight: 700; line-height: .9; }
+.appWeather strong em { color: #a86532; font-size: .46rem; font-style: normal; vertical-align: top; }
+.appWeather span { width: fit-content; border-radius: 3px; padding: 2px 4px; color: #888; background: #f4f3f0; font-size: .35rem; }
+.appAdvice strong { color: #2c2c2c; font-family: "DM Sans", sans-serif; font-size: .52rem; font-weight: 600; line-height: 1.2; }
+.appAdvice span { color: #7d8b91; font-size: .38rem; }
+
+.appBottomNav { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  margin: auto -10px -10px; 
+  padding: 8px 12px 6px; 
+  color: #8c8780; 
+  background: #ffffff; 
+  border-top: 1px solid #f0ebe3; 
+}
+.appBottomNav span { display: grid; justify-items: center; gap: 2px; font-size: .36rem; cursor: pointer; }
+.appBottomNav span.active { color: #9a5323; font-weight: 600; }
+.appBottomNav small { font-size: .34rem; }
+.appBottomNav b { 
+  display: grid; 
+  width: 28px; 
+  height: 28px; 
+  place-items: center; 
+  border-radius: 8px; 
+  color: #fff; 
+  background: linear-gradient(135deg, #b8713a 0%, #8e4e23 100%); 
+  box-shadow: 0 4px 10px rgba(168, 101, 50, 0.35); 
+  font-size: 1.1rem; 
+  font-weight: 300; 
+}
+
+@keyframes phoneFloat {
+  0%, 100% { transform: rotate(2deg) translateY(0); }
+  50% { transform: rotate(0.5deg) translateY(-10px); }
+}
+
 @keyframes heroCopyIn {
-  from { opacity: 0; transform: translateY(18px); }
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .copy { animation: none; }
+  .copy, .phone { animation: none; }
 }
 
 @media (max-width: 700px) {
   .hero {
-    min-height: 540px;
-    padding: 76px 18px 110px;
-    background-position: 60% center;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 36px;
+    min-height: auto;
+    padding: 80px 20px 60px;
   }
 
   .copy h1 {
-    font-size: clamp(3.35rem, 17vw, 5.4rem);
+    font-size: clamp(3rem, 14vw, 4.8rem);
+  }
+
+  .copy { align-self: center; text-align: center; }
+  .phone {
+    align-self: center;
+    width: min(60vw, 200px);
+    transform: rotate(0deg);
   }
 }

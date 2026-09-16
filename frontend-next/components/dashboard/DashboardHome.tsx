@@ -35,28 +35,40 @@ export default function DashboardHome({
       <div className="dashboard-grid">
         <article className="dashboard-hero panel-span-two">
           <div className="hero-grain" />
-          <div className="hero-copy">
-            <p>LE JOUR COMMENCE ICI</p>
-            <h2>Faire grandir<br /><em>l&apos;essentiel.</em></h2>
-            <span>Votre activité agricole, au même endroit.</span>
+          <div className="hero-farms-header">
+            <p>VOS FERMES</p>
+            <span>Votre terrain, en mouvement.</span>
           </div>
-          <div className="hero-orbit orbit-one" />
-          <div className="hero-orbit orbit-two" />
-          <div className="hero-sun" />
+          {farms.length ? (
+            <div className="hero-farms-window">
+              <div className="hero-farms-track">
+                {[...farms, ...farms].map((farm, index) => (
+                  <div className="hero-farm-item" key={`${farm.id}-${index}`}>
+                    <div className="hero-farm-image">
+                      {(farm.image_url || farm.photos?.[0]?.image_url) && (
+                        <img src={farm.image_url || farm.photos?.[0]?.image_url} alt={farm.name} />
+                      )}
+                      {!farm.image_url && !farm.photos?.[0]?.image_url && <Sprout size={30} aria-hidden="true" />}
+                    </div>
+                    <strong>{farm.name}</strong>
+                    <span>{farm.location || "Localisation non renseignée"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="hero-farms-empty">
+              <Sprout size={34} aria-hidden="true" />
+              <strong>Aucune ferme pour le moment</strong>
+              <button className="hero-farms-action" onClick={() => onTabChange("Fermes")}>Ajouter une ferme</button>
+            </div>
+          )}
         </article>
-        <article className="metric-panel">
+        <article className="metric-panel farms-count-panel">
           <span className="metric-label">MES FERMES</span>
           <strong>{farms.length || "—"}</strong>
           <span className="metric-note">ferme{farms.length > 1 ? "s" : ""} enregistrée{farms.length > 1 ? "s" : ""}</span>
           <div className="metric-line" />
-        </article>
-        <article className="weather-panel">
-          <div>
-            <span className="metric-label">MÉTÉO AUJOURD&apos;HUI</span>
-            <strong>29°</strong>
-            <span className="metric-note">Ciel dégagé · Dakar</span>
-          </div>
-          <div className="weather-symbol"><Sun size={42} aria-hidden="true" /></div>
         </article>
         <article className="farms-panel panel-span-two">
           <div className="section-heading">
@@ -68,7 +80,7 @@ export default function DashboardHome({
               {farms.slice(0, 3).map((farm) => (
                 <div className="farm-row" key={farm.id}>
                   <span className="farm-icon">
-                    {farm.image_url || farm.photos?.[0]?.image_url ? <img src={farm.image_url || farm.photos?.[0]?.image_url} alt={`Photo de ${farm.name}`} /> : <Sprout size={18} aria-hidden="true" />}
+                    {farm.image_url || farm.photos?.[0]?.image_url ? <img src={farm.image_url || farm.photos?.[0]?.image_url} alt={farm.name} /> : <Sprout size={18} aria-hidden="true" />}
                   </span>
                   <div><strong>{farm.name}</strong><span>{farm.location || "Localisation non renseignée"}</span></div>
                   <span className="farm-size">{farm.size_hectares ? `${farm.size_hectares} ha` : "Ouvrir"}</span>
