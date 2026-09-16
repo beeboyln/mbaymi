@@ -55,6 +55,21 @@ export function login(identifier: string, password: string) {
   });
 }
 
+export function register(payload: {
+  name: string;
+  email?: string;
+  phone?: string;
+  password: string;
+  role: string;
+  region: string;
+  village?: string;
+}) {
+  return request<Session>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getFarms(accessToken: string) {
   return request<Array<{ id: number; name: string; location?: string; size_hectares?: number; image_url?: string; photos?: Array<{ id: number; image_url?: string }>; crops?: Array<{ crop_name?: string }>; livestocks?: Array<unknown> }>>(
     "/farms/",

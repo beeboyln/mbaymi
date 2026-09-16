@@ -751,8 +751,8 @@ export default function DashboardPage() {
         <div className="farm-detail-header">
           <div
             className="farm-cover"
-            style={cover ? { backgroundImage: `url(${cover})` } : undefined}
           >
+            {cover && <img src={cover} alt={`Paysage de ${farm.name}`} />}
             <span>{cover ? "" : <Sprout size={48} aria-hidden="true" />}</span>
             <small>{farm.location || "LOCALISATION NON RENSEIGNÉE"}</small>
           </div>
@@ -1102,17 +1102,14 @@ export default function DashboardPage() {
               >
                 <div
                   className="farm-detail-art"
-                  style={
-                    farm.image_url
-                      ? {
-                          backgroundImage: `url(${farm.image_url})`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                        }
-                      : undefined
-                  }
                 >
-                  <span>{farm.image_url ? "" : <Sprout size={42} aria-hidden="true" />}</span>
+                  {(farm.photos?.[0]?.image_url || farm.image_url) && (
+                    <img
+                      src={farm.photos?.[0]?.image_url || farm.image_url}
+                      alt={`Paysage de ${farm.name}`}
+                    />
+                  )}
+                  <span>{farm.photos?.[0]?.image_url || farm.image_url ? "" : <Sprout size={42} aria-hidden="true" />}</span>
                   <small>{farm.location || "LOCALISATION"}</small>
                 </div>
                 <div className="farm-detail-body">

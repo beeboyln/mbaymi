@@ -1,0 +1,78 @@
+.hero {
+  position: relative;
+  display: grid;
+  min-height: 620px;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  padding: clamp(72px, 9vw, 128px) clamp(18px, 5vw, 72px);
+  background: #c9b99d;
+}
+
+.hero::before {
+  position: absolute;
+  z-index: -2;
+  inset: -2%;
+  background: url("https://i.pinimg.com/1200x/37/e1/88/37e188f66fae739133ab9e102a5c3897.jpg") center 42% / cover no-repeat;
+  filter: grayscale(.38) sepia(.38) contrast(.92) saturate(.78);
+  content: "";
+  transform: scale(1.02);
+}
+
+.hero::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgb(245 241 232 / 78%), rgb(245 241 232 / 20%)),
+    linear-gradient(180deg, transparent 48%, rgb(62 32 21 / 30%)),
+    repeating-linear-gradient(0deg, rgb(62 32 21 / 3%) 0 1px, transparent 1px 3px);
+  opacity: .95;
+  content: "";
+}
+
+.copy {
+  max-width: 720px;
+  text-align: center;
+  animation: heroCopyIn .8s cubic-bezier(.2, .75, .25, 1) both;
+}
+
+.copy h1 {
+  margin: 0;
+  color: #3e2c23;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(3.5rem, 8vw, 7.5rem);
+  line-height: .9;
+  letter-spacing: -.08em;
+  text-shadow: 0 2px 20px rgb(245 241 232 / 42%);
+}
+
+.copy h1 em {
+  color: #9c4e2f;
+  font-style: normal;
+}
+
+.copy :global(.eyebrow) {
+  margin-bottom: 20px;
+}
+
+@keyframes heroCopyIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copy { animation: none; }
+}
+
+@media (max-width: 700px) {
+  .hero {
+    min-height: 540px;
+    padding: 76px 18px 110px;
+    background-position: 60% center;
+  }
+
+  .copy h1 {
+    font-size: clamp(3.35rem, 17vw, 5.4rem);
+  }
+}
