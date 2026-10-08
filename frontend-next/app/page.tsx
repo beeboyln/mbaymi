@@ -54,8 +54,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const modalOpen = loginOpen || registerOpen;
-    if (!modalOpen) return;
+    const overlayOpen = loginOpen || registerOpen || menuOpen;
+    if (!overlayOpen) return;
 
     const previousOverflow = document.body.style.overflow;
     const previousPaddingRight = document.body.style.paddingRight;
@@ -70,7 +70,21 @@ export default function Home() {
       document.body.style.overflow = previousOverflow;
       document.body.style.paddingRight = previousPaddingRight;
     };
-  }, [loginOpen, registerOpen]);
+  }, [loginOpen, registerOpen, menuOpen]);
+
+  useEffect(() => {
+    if (!loginOpen && !registerOpen && !menuOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setLoginOpen(false);
+      setRegisterOpen(false);
+      setMenuOpen(false);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [loginOpen, registerOpen, menuOpen]);
 
   async function handleSubmit(event: FormSubmitEvent) {
     event.preventDefault();

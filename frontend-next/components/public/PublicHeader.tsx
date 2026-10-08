@@ -1,4 +1,4 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Sprout, X } from "lucide-react";
 
 type PublicHeaderProps = {
   headerVisible: boolean;
@@ -37,17 +37,53 @@ export default function PublicHeader({
       </div>
       {menuOpen && (
         <nav id="public-menu" className="public-menu" aria-label="Navigation principale">
-          <a className="is-active" href="#accueil" onClick={onMenuClose}>Accueil</a>
-          <a href="#fermes" onClick={onMenuClose}>Fermes</a>
-          <a href="#activites" onClick={onMenuClose}>Activités</a>
-          <a href="#finances" onClick={onMenuClose}>Finances</a>
-          <a href="#contact" onClick={onMenuClose}>Contact</a>
-          <button className="menu-login" onClick={() => { onMenuClose(); onLogin(); }}>
-            Se connecter <ArrowUpRight size={15} aria-hidden="true" />
-          </button>
-          <button className="menu-login" onClick={() => { onMenuClose(); onRegister(); }}>
-            Créer un compte <ArrowUpRight size={15} aria-hidden="true" />
-          </button>
+          <div className="menu-topline">
+            <div className="menu-brand">
+              <Sprout size={21} aria-hidden="true" />
+              <span>MBAYMI</span>
+              <small>Votre activité agricole, au même endroit.</small>
+            </div>
+            <button className="menu-close" onClick={onMenuClose} aria-label="Fermer le menu">
+              <X size={22} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="menu-content">
+            <div className="menu-navigation">
+              <p className="menu-kicker">Explorer Mbaymi</p>
+              <a className="is-active" href="#accueil" onClick={onMenuClose}>
+                <span>01</span>Accueil<ArrowRight size={20} aria-hidden="true" />
+              </a>
+              <a href="#fermes" onClick={onMenuClose}>
+                <span>02</span>Fermes<ArrowRight size={20} aria-hidden="true" />
+              </a>
+              <a href="#activites" onClick={onMenuClose}>
+                <span>03</span>Activités<ArrowRight size={20} aria-hidden="true" />
+              </a>
+              <a href="#finances" onClick={onMenuClose}>
+                <span>04</span>Finances<ArrowRight size={20} aria-hidden="true" />
+              </a>
+              <a href="#contact" onClick={onMenuClose}>
+                <span>05</span>Contact<ArrowRight size={20} aria-hidden="true" />
+              </a>
+            </div>
+            <aside className="menu-highlight">
+              <span className="menu-highlight-label">AU RYTHME DE VOTRE FERME</span>
+              <h2>Le terrain d&apos;abord. Le reste, en plus clair.</h2>
+              <p>Retrouvez vos fermes, vos activités et vos décisions au même endroit.</p>
+              <div className="menu-actions">
+                <button className="menu-login menu-login-primary" onClick={() => { onMenuClose(); onRegister(); }}>
+                  Créer mon compte <ArrowUpRight size={17} aria-hidden="true" />
+                </button>
+                <button className="menu-login menu-login-secondary" onClick={() => { onMenuClose(); onLogin(); }}>
+                  Se connecter <ArrowUpRight size={17} aria-hidden="true" />
+                </button>
+              </div>
+            </aside>
+          </div>
+          <div className="menu-bottomline">
+            <span>Une agriculture mieux organisée, jour après jour.</span>
+            <span>© Mbaymi 2026</span>
+          </div>
         </nav>
       )}
     </header>
